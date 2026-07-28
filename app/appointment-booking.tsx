@@ -467,10 +467,10 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           <CalendarBlank size={18} weight="duotone" className="text-brand-blue" />
         </div>
         <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-          Finalise your loan details
+          Pick a time to collect your funds
         </h2>
         <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
-          Book a private session with your Relationship Manager to discuss your personalised loan.
+          We'll have your funds ready for same-day disbursement.
         </p>
       </div>
 

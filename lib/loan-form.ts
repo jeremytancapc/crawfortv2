@@ -83,7 +83,9 @@ export const initialLoanFormData: LoanFormData = {
   maritalStatus: "Single",
   email: "",
   moneylenderLoanAmount: "",
-  moneylenderNoLoans: false,
+  // Moneylender step was removed from the funnel — default to "no loans declared"
+  // (same assumption already used by the AXS flow, which never asks this either).
+  moneylenderNoLoans: true,
   moneylenderPaymentHistory: "",
   dob: "",
   cpfContributions: [],

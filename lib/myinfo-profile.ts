@@ -1,5 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
+import type { AdminClient } from "@/lib/db/client";
 import { peekAuthCallbackPayload } from "@/lib/auth-callback-store";
 import { buildMyInfoPatch } from "@/lib/myinfo";
 import type { CpfContribution, LoanFormData, NoaRecord } from "@/lib/loan-form";
@@ -34,7 +33,7 @@ function rawFromStore(singpassRawKey: string | undefined) {
 
 /** Persist MyInfo at activate so the session cookie can stay slim. */
 export async function upsertMyinfoProfileForLead(
-  admin: SupabaseClient,
+  admin: AdminClient,
   leadId: string,
   form: Partial<LoanFormData>,
 ): Promise<void> {
@@ -71,7 +70,7 @@ export async function upsertMyinfoProfileForLead(
 }
 
 export async function loadMyinfoProcessedPayload(
-  admin: SupabaseClient,
+  admin: AdminClient,
   leadId: string,
 ): Promise<MyinfoProcessedPayload | null> {
   const { data, error } = await admin

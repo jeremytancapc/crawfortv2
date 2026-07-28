@@ -1,9 +1,9 @@
 /**
  * Logs external API requests in a detailed format AND persists them to the
- * `api_logs` table in Supabase so you can view them from the dashboard.
+ * in-memory `api_logs` table for local diagnostics.
  */
 
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 
 export interface ExternalApiLog {
   /** Label for the caller, e.g. "[apply/book]" */
@@ -99,15 +99,15 @@ export function logExternalApi(log: ExternalApiLog): void {
     ].join("\n"),
   );
 
-  // Persist to Supabase — fire-and-forget (don't block the response)
+  // Persist to memory store — fire-and-forget (don't block the response)
   persistToDb(log).catch((err) => {
     console.error(`${log.tag} Failed to persist api_log to DB`, err);
   });
 }
 
 /**
- * Persists the API log entry to Supabase `api_logs` table.
- * Headers are masked before storage (no raw API keys in the DB).
+ * Persists the API log entry to in-memory `api_logs`.
+ * Headers are masked before storage (no raw API keys).
  */
 async function persistToDb(log: ExternalApiLog): Promise<void> {
   try {

@@ -15,7 +15,7 @@ import {
   newApplyTraceId,
 } from "@/lib/apply-flow-log";
 import type { LoanFormData } from "@/lib/loan-form";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
 import { buildActivateSessionCookie } from "@/lib/apply-session-slim";

@@ -10,7 +10,6 @@ import {
   Step7_Additional,
   Step7_BankruptcyDeclaration,
   Step8_Review,
-  Step9_MoneylenderLoans,
   StepIndicator,
 } from "@/app/loan-application-form";
 import type { LoanFormData } from "@/lib/loan-form";
@@ -24,7 +23,7 @@ interface Props {
 }
 
 // Internal step numbers (same as original form)
-// 4=Identity, 5=Contact, 6=Additional, 7=Bankruptcy, 8=Review, 9=Moneylender
+// 4=Identity, 5=Contact, 6=Additional, 7=Bankruptcy (final step), 8=Review
 
 export function ReviewForm({ initialData }: Props) {
   const router = useRouter();
@@ -76,15 +75,6 @@ export function ReviewForm({ initialData }: Props) {
         );
       case 8:
         return true;
-      case 9: {
-        const rawAmount = formData.moneylenderLoanAmount ?? "";
-        const hasAmount =
-          rawAmount.trim() !== "" && !Number.isNaN(parseInt(rawAmount, 10));
-        return (
-          formData.moneylenderNoLoans === true ||
-          (hasAmount && (formData.moneylenderPaymentHistory ?? "") !== "")
-        );
-      }
       default:
         return false;
     }
@@ -155,10 +145,9 @@ export function ReviewForm({ initialData }: Props) {
   const handleNext = useCallback(() => {
     // Step 4 (Identity) → jump to review (8)
     if (step === 4) { navigateTo(8); scrollToTop(); return; }
-    // Post-review: contact (5) → bankruptcy (7), skipping additional (6)
+    // Post-review: contact (5) → bankruptcy (7), skipping additional (6).
+    // Bankruptcy (7) is now the final step — submitApplication handles it.
     if (step === 5 && history.includes(8)) { navigateTo(7); scrollToTop(); return; }
-    // Post-review: bankruptcy (7) → moneylender (9)
-    if (step === 7 && history.includes(8)) { navigateTo(9); scrollToTop(); return; }
     navigateTo(step + 1);
     scrollToTop();
   }, [step, history, navigateTo, scrollToTop]);
@@ -193,7 +182,7 @@ export function ReviewForm({ initialData }: Props) {
 
   // Progress indicator: count unique logical steps for display
   const singpassFlow = formData.authMethod === "singpass";
-  const totalDisplay = singpassFlow ? 7 : 8;
+  const totalDisplay = singpassFlow ? 6 : 7;
   const displayStep = history.length + 3; // offset: apply page was steps 1-3
 
   return (
@@ -259,12 +248,6 @@ export function ReviewForm({ initialData }: Props) {
                   onModalOpenChange={setIsLegalModalOpen}
                 />
               )}
-              {step === 9 && (
-                <Step9_MoneylenderLoans
-                  formData={formData}
-                  updateField={updateField}
-                />
-              )}
             </div>
 
             {/* Floating scroll-to-CTA for review step */}
@@ -299,7 +282,7 @@ export function ReviewForm({ initialData }: Props) {
                 >
                   Yes, I confirm
                 </button>
-              ) : step === 9 ? (
+              ) : step === 7 ? (
                 <button
                   type="button"
                   onClick={submitApplication}

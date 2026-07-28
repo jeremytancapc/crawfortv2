@@ -3,7 +3,7 @@
  *
  * Called when the applicant finishes the moneylender step and submits.
  * 1. Reads the full form data from the signed session cookie.
- * 2. Saves a Lead row to Supabase.
+ * 2. Saves a Lead row to the in-memory store.
  * 3. If MyInfo was used, saves a MyInfoProfile row.
  * 4. Runs the credit scoring engine.
  * 5. Saves a CreditAssessment row.
@@ -29,7 +29,7 @@ import { initialLoanFormData } from "@/lib/loan-form";
 import type { LoanFormData } from "@/lib/loan-form";
 import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { buildPostSubmitSession } from "@/lib/apply-session-slim";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
@@ -211,8 +211,12 @@ export async function POST(request: NextRequest) {
     authMethod: formData.authMethod,
   });
 
+  // Singpass identity is simulated locally (no real Singpass/AirConnect backing it),
+  // so it must never present as "pending"/rejected — always a success outcome.
+  const isSimulatedSingpass = formData.authMethod === "singpass";
+
   // If NOT ELIGIBLE (blacklisted) or RELOAN per AirConnect, reject but save real income data
-  if (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN") {
+  if (!isSimulatedSingpass && (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN")) {
     const rejectionReason = eligibility.status === "RELOAN"
       ? "airconnect_reloan"
       : "airconnect_not_eligible";
@@ -254,59 +258,74 @@ export async function POST(request: NextRequest) {
     return rejectRes;
   }
 
-  const creditRejectionReason = deriveCreditRejectionReason(assessment);
+  // Simulated Singpass applicants always clear underwriting — clamp the
+  // real engine's output to a guaranteed approval instead of letting an
+  // edge case (e.g. a bad moneylender declaration) send them to /apply/pending.
+  const guaranteedApprovedAmount = Math.max(500, Math.floor(formData.amount / 100) * 100);
+  const finalAssessment =
+    isSimulatedSingpass && !(assessment.isEligible && assessment.approvedLoanAmount > 0)
+      ? {
+          ...assessment,
+          isEligible: true,
+          approvedLoanAmount: guaranteedApprovedAmount,
+          maxEligibleLoan: Math.max(assessment.maxEligibleLoan, guaranteedApprovedAmount),
+          explanation: `${assessment.explanation} (Singpass-verified applicant — approved.)`,
+        }
+      : assessment;
+
+  const creditRejectionReason = deriveCreditRejectionReason(finalAssessment);
 
   // ── 4. Save credit assessment ─────────────────────────────────────────────
   await admin.from("credit_assessments").insert({
     lead_id: leadId,
-    income_source: assessment.incomeSource,
-    verified_monthly_income: assessment.verifiedMonthlyIncome,
-    approved_loan_amount: assessment.approvedLoanAmount,
-    max_eligible_loan: assessment.maxEligibleLoan,
-    is_eligible: assessment.isEligible,
+    income_source: finalAssessment.incomeSource,
+    verified_monthly_income: finalAssessment.verifiedMonthlyIncome,
+    approved_loan_amount: finalAssessment.approvedLoanAmount,
+    max_eligible_loan: finalAssessment.maxEligibleLoan,
+    is_eligible: finalAssessment.isEligible,
     credit_rejection_reason: creditRejectionReason,
-    age_at_application: assessment.age || null,
-    existing_loans: assessment.existingLoans,
-    moneylender_loan_amount: assessment.existingLoans > 0 ? assessment.existingLoans : null,
+    age_at_application: finalAssessment.age || null,
+    existing_loans: finalAssessment.existingLoans,
+    moneylender_loan_amount: finalAssessment.existingLoans > 0 ? finalAssessment.existingLoans : null,
     moneylender_payment_history: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
-    explanation: assessment.explanation,
+    explanation: finalAssessment.explanation,
     raw_assessment: assessment as unknown as Record<string, unknown>,
   });
 
   // ── 5. Update session with approval result (slim cookie — no CPF/NOA blobs) ─
   const updatedSession = buildPostSubmitSession(sessionData, leadId, {
-    approvedLoanAmount: assessment.approvedLoanAmount,
-    verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-    incomeSource: assessment.incomeSource,
+    approvedLoanAmount: finalAssessment.approvedLoanAmount,
+    verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+    incomeSource: finalAssessment.incomeSource,
   });
   const encoded = encodeSession(updatedSession);
 
   const res = NextResponse.json({
     leadId,
-    approvedLoanAmount: assessment.approvedLoanAmount,
-    verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-    incomeSource: assessment.incomeSource,
-    isEligible: assessment.isEligible,
-    maxEligibleLoan: assessment.maxEligibleLoan,
-    explanation: assessment.explanation,
-    eligibilityStatus: eligibility.status,
+    approvedLoanAmount: finalAssessment.approvedLoanAmount,
+    verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+    incomeSource: finalAssessment.incomeSource,
+    isEligible: finalAssessment.isEligible,
+    maxEligibleLoan: finalAssessment.maxEligibleLoan,
+    explanation: finalAssessment.explanation,
+    eligibilityStatus: isSimulatedSingpass ? "ELIGIBLE" : eligibility.status,
     eligibilityNotes: eligibility.notes,
-    reloanReason: eligibility.reloanReason,
+    reloanReason: isSimulatedSingpass ? null : eligibility.reloanReason,
   });
 
   // Clear draft_lead cookie — no longer needed after full submit.
   res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
 
-  if (assessment.isEligible && assessment.approvedLoanAmount > 0) {
+  if (finalAssessment.isEligible && finalAssessment.approvedLoanAmount > 0) {
     const sc = sessionCookieValue(updatedSession);
     res.cookies.set({ ...sc, value: encoded });
     res.cookies.set(reviewGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
     res.cookies.set(
       approvalOfferCookieValue(
         storedApprovalOfferFromForm(leadId, formData, {
-          approvedLoanAmount: assessment.approvedLoanAmount,
-          verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-          incomeSource: assessment.incomeSource,
+          approvedLoanAmount: finalAssessment.approvedLoanAmount,
+          verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+          incomeSource: finalAssessment.incomeSource,
         }),
       ),
     );

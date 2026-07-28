@@ -2,9 +2,8 @@
 # Simulate the 3 Singpass logging steps without real Singpass.
 #
 # Prerequisites:
-#   1. Migration 20260517000001_create_apply_flow_events.sql applied in Supabase
-#   2. .env.local has SUPABASE_SERVICE_ROLE_KEY (+ Supabase URL keys)
-#   3. App running: npm run dev   (or set BASE_URL to your Vercel preview)
+#   1. App running: npm run dev   (or set BASE_URL to your Vercel preview)
+#   2. Events land in the in-memory apply_flow_events store (process logs)
 #
 # Usage:
 #   ./scripts/test-apply-flow-logs.sh              # happy path (cookie kept)
@@ -108,16 +107,10 @@ if [[ "$FINAL_URL" != *"/apply/review"* ]]; then
 fi
 
 echo ""
-echo "Done. Check Supabase table apply_flow_events (newest rows first):"
+echo "Done. Check server logs for [apply-flow-log] / activate_merged events."
+echo "Events are stored in the in-memory apply_flow_events table for this process."
 echo ""
-echo "  select created_at, event, apply_trace_id, singpass_raw_key,"
-echo "         resume_would_pass, had_existing_session_cookie,"
-echo "         cookie_merged_bytes, mobile_last4, nric_last4"
-echo "  from apply_flow_events"
-echo "  order by created_at desc"
-echo "  limit 10;"
-echo ""
-echo "You should see 3 rows for scenario '$SCENARIO' within the last minute."
+echo "You should see 3 events for scenario '$SCENARIO' within the last minute."
 if [[ "$SCENARIO" == "cookie-lost" ]]; then
   echo "Expect activate_merged.had_existing_session_cookie = false"
 elif [[ "$SCENARIO" == "empty-myinfo" ]]; then

@@ -9,13 +9,21 @@ import {
   ArrowLeft,
   X,
   TrendUp,
-  LockKey,
-  CalendarCheck,
-  CurrencyCircleDollar,
+  CheckCircle,
+  Sparkle,
+  SealCheck,
 } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
-import { APPROVAL_PAGE_DISCLAIMER } from "@/lib/loan-form";
+import {
+  buildOfferPlans,
+  calculateInstalment,
+  OFFER_MONTHLY_RATE,
+  MAX_OFFER_TENURE,
+  MIN_OFFER_TENURE,
+  OFFER_CONFIRMATION_DISCLAIMER,
+  type OfferPlan,
+} from "@/lib/offer-plans";
 
 // ── Offer expiry helpers ──────────────────────────────────────────────────────
 
@@ -34,7 +42,7 @@ function isBusinessDay(d: Date) {
 }
 
 /** Advance `from` by exactly `n` business days and return 7:30 PM on that date. */
-function computeExpiry(from: Date, n = 4): Date {
+function computeExpiry(from: Date, n = 3): Date {
   const d = new Date(from);
   d.setHours(0, 0, 0, 0);
   let counted = 0;
@@ -109,11 +117,13 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-// ── Deadline strip (replaces FlipClockBadge) ─────────────────────────────────
+function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(2)}%`;
+}
+
+// ── Deadline strip (airport flip-clock) ──────────────────────────────────────
 
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-// ── Split-flap (airport board) tile ──────────────────────────────────────────
 
 const FLIP_TILE_W = 34;
 const FLIP_TILE_H = 30;
@@ -135,7 +145,6 @@ const flipDigitStyle: React.CSSProperties = {
   fontVariantNumeric: "tabular-nums",
 };
 
-/** One half (top or bottom) of a flip tile, clipping a full-height digit. */
 function FlipHalf({
   pos,
   text,
@@ -165,7 +174,6 @@ function FlipHalf({
   );
 }
 
-/** Airport-style split-flap tile: black background, white digits, flips on change. */
 function FlipTile({ value, label, labelColor }: { value: number; label: string; labelColor: string }) {
   const display = String(value).padStart(2, "0");
   const [shown, setShown] = useState(display);
@@ -183,14 +191,11 @@ function FlipTile({ value, label, labelColor }: { value: number; label: string; 
           borderRadius: 4,
         }}
       >
-        {/* Static top half — already shows the incoming value */}
         <FlipHalf pos="top" text={isFlipping ? display : shown} />
-        {/* Static bottom half — keeps the outgoing value until the flap lands */}
         <FlipHalf pos="bottom" text={shown} />
 
         {isFlipping && (
           <>
-            {/* Outgoing top flap: folds down */}
             <FlipHalf
               key={`t-${display}`}
               pos="top"
@@ -201,7 +206,6 @@ function FlipTile({ value, label, labelColor }: { value: number; label: string; 
                 animation: `flip-top-down ${FLIP_DURATION_MS}ms ease-in both`,
               }}
             />
-            {/* Incoming bottom flap: folds up into place */}
             <div
               key={`b-${display}`}
               style={{
@@ -224,7 +228,6 @@ function FlipTile({ value, label, labelColor }: { value: number; label: string; 
           </>
         )}
 
-        {/* Centre seam */}
         <div
           aria-hidden="true"
           style={{
@@ -261,12 +264,11 @@ function DeadlineStrip() {
   const remainingMs = parts.expired ? 0 : (
     (parts.days * 86400 + parts.hrs * 3600 + parts.mins * 60 + parts.secs) * 1000
   );
-  const totalWindowMs = 4 * 24 * 60 * 60 * 1000;
+  const totalWindowMs = 3 * 24 * 60 * 60 * 1000;
   const progress = Math.max(0, Math.min(1, remainingMs / totalWindowMs));
 
   const isUrgent = parts.days < 1 && !parts.expired;
 
-  // Colour scheme toggles between amber (normal) and red (urgent)
   const scheme = isUrgent
     ? {
         bg: "oklch(0.96 0.03 25)",
@@ -298,12 +300,10 @@ function DeadlineStrip() {
           boxShadow: "0 0 0 1px oklch(0.85 0.06 25)",
         }}
       >
-        {/* Red left accent bar */}
         <div className="w-1 shrink-0 self-stretch" style={{ background: "#dc2626" }} aria-hidden="true" />
 
         <div className="flex flex-col flex-1 min-w-0">
           <div className="flex items-start gap-3 px-4 py-3.5">
-            {/* Icon */}
             <span
               className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
               style={{ background: "oklch(0.91 0.05 25)" }}
@@ -311,7 +311,6 @@ function DeadlineStrip() {
               <Warning size={17} weight="duotone" style={{ color: "#dc2626" }} />
             </span>
 
-            {/* Text block */}
             <div className="flex flex-col gap-1 min-w-0">
               <p
                 className="text-sm font-bold leading-snug"
@@ -332,7 +331,6 @@ function DeadlineStrip() {
             </div>
           </div>
 
-          {/* Fully depleted progress bar */}
           <div
             className="h-[3px] w-full"
             style={{ background: "oklch(0.90 0.04 25)" }}
@@ -351,7 +349,6 @@ function DeadlineStrip() {
         boxShadow: `0 0 0 1px ${scheme.border}`,
       }}
     >
-      {/* Left accent bar */}
       <div
         className="w-1 shrink-0 self-stretch"
         style={{ background: scheme.leftBar }}
@@ -359,9 +356,7 @@ function DeadlineStrip() {
       />
 
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Main row */}
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Left: label + date */}
           <div className="flex flex-col gap-0.5">
             <span
               className="text-[10px] font-bold tracking-[0.16em] uppercase"
@@ -377,7 +372,6 @@ function DeadlineStrip() {
             </span>
           </div>
 
-          {/* Right: split-flap tiles */}
           <div className="flex items-start gap-1">
             {[
               { value: parts.days, label: "d" },
@@ -404,7 +398,6 @@ function DeadlineStrip() {
           </div>
         </div>
 
-        {/* Depleting progress bar */}
         <div
           className="h-[3px] w-full"
           style={{ background: scheme.trackBg }}
@@ -423,15 +416,14 @@ function DeadlineStrip() {
   );
 }
 
-// ── Term-sheet offer card ─────────────────────────────────────────────────────
+// ── Term-sheet confirmed offer card ───────────────────────────────────────────
 
 interface OfferCardProps {
   formData: FormData;
-  monthlyRepayment: number;
   revealStage: number;
 }
 
-function TermSheetCard({ formData, monthlyRepayment, revealStage }: OfferCardProps) {
+function OfferHeader({ formData, revealStage }: OfferCardProps) {
   const today = new Date();
   const dateLabel = `${today.getDate()} ${FULL_MONTHS[today.getMonth()].slice(0, 3)} ${today.getFullYear()}`;
 
@@ -440,167 +432,404 @@ function TermSheetCard({ formData, monthlyRepayment, revealStage }: OfferCardPro
       initial={{ opacity: 0, y: 14 }}
       animate={revealStage >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative w-full rounded-[var(--radius-lg)] overflow-hidden"
-      style={{
-        background: `
-          radial-gradient(ellipse at 30% 40%, oklch(0.38 0.20 260) 0%, transparent 60%),
-          linear-gradient(145deg, oklch(0.30 0.16 262) 0%, oklch(0.24 0.18 258) 100%)
-        `,
-        boxShadow:
-          "0 24px 60px oklch(0.24 0.18 258 / 0.45), 0 4px 16px oklch(0.24 0.18 258 / 0.25), inset 0 1px 0 oklch(1 0 0 / 0.10)",
-      }}
+      className="flex flex-col items-center gap-1.5 py-2 text-center"
     >
-      {/* Decorative circles for depth */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full"
-        style={{ background: "oklch(0.78 0.16 178 / 0.07)" }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-8 -left-8 w-32 h-32 rounded-full"
-        style={{ background: "oklch(0.78 0.16 178 / 0.05)" }}
-      />
-
-      {/* Card header row */}
-      <div
-        className="relative flex items-center justify-between px-5 py-3.5"
-        style={{ borderBottom: "1px solid oklch(1 0 0 / 0.10)" }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2" aria-hidden="true">
-            <span
-              className="absolute inline-flex h-full w-full rounded-full animate-ping"
-              style={{ background: "#06DEC0", opacity: 0.55 }}
-            />
-            <span
-              className="relative inline-flex h-2 w-2 rounded-full"
-              style={{ background: "#06DEC0" }}
-            />
-          </span>
-          <span
-            className="text-[10px] font-bold tracking-[0.18em] uppercase"
-            style={{ color: "#06DEC0" }}
-          >
-            In-principle approval
-          </span>
-        </div>
+      <div className="flex items-center gap-2">
+        <SealCheck size={18} weight="fill" style={{ color: "#06DEC0" }} />
         <span
-          className="text-[11px] font-medium"
-          style={{ color: "oklch(1 0 0 / 0.45)" }}
+          className="text-[11px] font-bold tracking-[0.18em] uppercase"
+          style={{ color: "var(--text-tertiary)" }}
         >
-          {dateLabel}
+          Loan offer confirmed · {dateLabel}
         </span>
       </div>
 
-      {/* Approved amount */}
-      <div className="relative px-5 pt-5 pb-4">
-        <p
-          className="text-[10px] font-bold tracking-[0.18em] uppercase mb-2"
-          style={{ color: "oklch(1 0 0 / 0.40)" }}
-        >
-          Approved amount
-        </p>
-        <p
-          className="tabular-nums leading-none"
-          style={{
-            fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-            fontSize: "clamp(2.4rem, 9vw, 3.25rem)",
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            color: "#ffffff",
-            textShadow: "0 2px 12px oklch(0.24 0.18 258 / 0.5)",
-          }}
-        >
-          {formatCurrency(formData.amount)}
-          <sup
-            style={{
-              fontSize: "0.38em",
-              verticalAlign: "super",
-              letterSpacing: 0,
-              opacity: 0.50,
-            }}
-          >
-            *
-          </sup>
-        </p>
-      </div>
-
-      {/* Term rows */}
-      <div
-        className="relative"
-        style={{ borderTop: "1px solid oklch(1 0 0 / 0.10)" }}
+      <p
+        className="tabular-nums leading-none"
+        style={{
+          fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+          fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+          fontWeight: 800,
+          letterSpacing: "-0.04em",
+          background: "linear-gradient(120deg, oklch(0.32 0.16 262) 20%, oklch(0.55 0.13 190) 80%)",
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          color: "transparent",
+        }}
       >
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: "1px solid oklch(1 0 0 / 0.10)" }}
-        >
-          <span
-            className="text-xs font-medium"
-            style={{ color: "oklch(1 0 0 / 0.45)" }}
-          >
-            Loan tenure
-          </span>
-          <span
-            className="text-sm font-semibold tabular-nums"
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              color: "oklch(1 0 0 / 0.90)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {formData.tenure} months*
-          </span>
-        </div>
-        <div className="flex items-center justify-between px-5 py-3">
-          <span
-            className="text-xs font-medium"
-            style={{ color: "oklch(1 0 0 / 0.45)" }}
-          >
-            Monthly Instalment
-          </span>
-          <span
-            className="text-sm font-semibold tabular-nums"
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              color: "oklch(1 0 0 / 0.90)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {formatCurrency(monthlyRepayment)}
-            <span style={{ fontSize: "0.75em", fontWeight: 400, opacity: 0.45, marginLeft: 2 }}>/month*</span>
-          </span>
-        </div>
+        {formatCurrency(formData.amount)}
+      </p>
+
+      <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+        Approved and ready for disbursement
+      </p>
+
+      {/* Divider with centred hint */}
+      <div className="mt-3 flex w-full items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+        <span className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--text-tertiary)" }}>
+          Now pick your plan
+        </span>
+        <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
       </div>
     </motion.div>
   );
 }
 
-// ── Notice items ──────────────────────────────────────────────────────────────
+// ── Plan picker ───────────────────────────────────────────────────────────────
 
-const NOTICE_ITEMS = [
-  {
-    Icon: LockKey,
-    short: "Lock in this offer now",
-    text: "No obligation to take the loan, only decide later.",
-  },
-  {
-    Icon: CalendarCheck,
-    short: "Simple 30-minute verification",
-    text: "A brief in-person discussion at our branch office.",
-  },
-  {
-    Icon: CurrencyCircleDollar,
-    short: "Same-day PayNow transfer",
-    text: "Funds will be disbursed to you on the spot.",
-  },
+interface PlanCardProps {
+  plan: OfferPlan;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="relative w-full text-left rounded-[var(--radius-lg)] overflow-hidden transition-all duration-200 focus:outline-none"
+      style={{
+        background: isSelected
+          ? `radial-gradient(ellipse at 20% 50%, oklch(0.34 0.18 262) 0%, transparent 70%), linear-gradient(145deg, oklch(0.28 0.16 262) 0%, oklch(0.22 0.16 258) 100%)`
+          : "var(--surface-elevated)",
+        boxShadow: isSelected
+          ? "0 0 0 2px #06DEC0, 0 12px 40px oklch(0.24 0.18 258 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.10)"
+          : "0 0 0 1px var(--border-subtle)",
+        transform: isSelected ? "scale(1.01)" : "scale(1)",
+      }}
+      aria-pressed={isSelected}
+    >
+      {/* Shine sweep on selected */}
+      {isSelected && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: "linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.04) 50%, transparent 65%)",
+          }}
+        />
+      )}
+
+      <div className="relative p-4">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span
+              className="text-lg font-bold leading-snug"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                color: isSelected ? "#ffffff" : "var(--text-primary)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {plan.title}
+            </span>
+            <span
+              className="text-xs font-medium leading-snug"
+              style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
+            >
+              {plan.tagline}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {plan.badge && (
+              <span
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide"
+                style={{
+                  background: "oklch(0.78 0.16 178 / 0.18)",
+                  color: "#06DEC0",
+                  border: "1px solid oklch(0.78 0.16 178 / 0.30)",
+                }}
+              >
+                <Sparkle size={10} weight="fill" />
+                Popular
+              </span>
+            )}
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
+              style={{
+                border: isSelected ? "2px solid #06DEC0" : "2px solid var(--text-tertiary)",
+                background: isSelected ? "#06DEC0" : "var(--surface-elevated)",
+                boxShadow: isSelected
+                  ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
+                  : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
+              }}
+              aria-hidden="true"
+            >
+              {isSelected && <CheckCircle size={16} weight="fill" style={{ color: "#0a1628" }} />}
+            </span>
+          </div>
+        </div>
+
+        {/* Stats row — interest paid and tenure stack on the left, monthly instalment anchors the right */}
+        <div
+          className="flex items-stretch gap-3 rounded-[var(--radius-sm)] px-3 py-2.5"
+          style={{
+            background: isSelected ? "oklch(1 0 0 / 0.06)" : "var(--surface-secondary)",
+          }}
+        >
+          <div className="flex flex-col justify-center gap-2 flex-1 min-w-0">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.45)" : "var(--text-tertiary)" }}>
+                Interest paid
+              </span>
+              <span
+                className="text-xl font-extrabold tabular-nums leading-none"
+                style={{
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  color: isSelected ? "#ffffff" : "var(--text-primary)",
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                {formatCurrency(plan.totalInterest)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.45)" : "var(--text-tertiary)" }}>
+                Tenure
+              </span>
+              <span
+                className="text-xl font-extrabold tabular-nums leading-none"
+                style={{
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  color: isSelected ? "#ffffff" : "var(--text-primary)",
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="w-px self-stretch shrink-0"
+            style={{ background: isSelected ? "oklch(1 0 0 / 0.12)" : "var(--border-subtle)" }}
+            aria-hidden="true"
+          />
+
+          <div className="flex flex-col items-end text-right justify-center gap-0.5 flex-[1.2] min-w-0">
+            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}>
+              Monthly instalment
+            </span>
+            <span
+              className="text-xl font-extrabold tabular-nums leading-none"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                color: isSelected ? "#06DEC0" : "var(--text-primary)",
+                letterSpacing: "-0.03em",
+              }}
+            >
+              {formatCurrency(plan.monthlyInstalment)}
+            </span>
+          </div>
+        </div>
+
+        {/* Rate caption */}
+        <p
+          className="mt-2 text-[10px]"
+          style={{ color: isSelected ? "oklch(1 0 0 / 0.35)" : "var(--text-tertiary)" }}
+        >
+          {formatRate(plan.monthlyRate)}/month · Total repayment {formatCurrency(plan.totalRepayment)}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+interface CustomPlanState {
+  amount: string;
+  tenure: string;
+}
+
+interface CustomPlanCardProps {
+  isSelected: boolean;
+  onSelect: () => void;
+  approvedAmount: number;
+  customPlan: CustomPlanState;
+  onCustomPlanChange: (v: CustomPlanState) => void;
+}
+
+function CustomPlanCard({ isSelected, onSelect, approvedAmount, customPlan, onCustomPlanChange }: CustomPlanCardProps) {
+  const amountNum = parseFloat(customPlan.amount.replace(/[^0-9.]/g, "")) || 0;
+  const tenureNum = parseInt(customPlan.tenure, 10) || 0;
+
+  const amountError =
+    customPlan.amount && (amountNum < 500 || amountNum > approvedAmount)
+      ? amountNum < 500
+        ? "Minimum $500"
+        : `Maximum ${formatCurrency(approvedAmount)}`
+      : null;
+
+  const tenureError =
+    customPlan.tenure && (tenureNum < MIN_OFFER_TENURE || tenureNum > MAX_OFFER_TENURE)
+      ? `Between ${MIN_OFFER_TENURE}–${MAX_OFFER_TENURE} months`
+      : null;
+
+  const previewInstalment =
+    amountNum >= 500 && amountNum <= approvedAmount && tenureNum >= MIN_OFFER_TENURE && tenureNum <= MAX_OFFER_TENURE
+      ? Math.ceil(calculateInstalment(amountNum, tenureNum, OFFER_MONTHLY_RATE))
+      : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="relative w-full text-left rounded-[var(--radius-lg)] overflow-hidden transition-all duration-200 focus:outline-none"
+      style={{
+        background: "var(--surface-elevated)",
+        boxShadow: isSelected
+          ? "0 0 0 2px oklch(0.78 0.16 178 / 0.50), 0 4px 16px oklch(0.24 0.18 258 / 0.15)"
+          : "0 0 0 1px var(--border-subtle)",
+      }}
+      aria-pressed={isSelected}
+    >
+      <div className="relative p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
+              style={{
+                border: isSelected ? "2px solid #06DEC0" : "2px solid var(--text-tertiary)",
+                background: isSelected ? "#06DEC0" : "var(--surface-elevated)",
+                boxShadow: isSelected
+                  ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
+                  : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
+              }}
+              aria-hidden="true"
+            >
+              {isSelected && <CheckCircle size={16} weight="fill" style={{ color: "#0a1628" }} />}
+            </span>
+            <span className="text-sm font-bold" style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+              Request a custom plan
+            </span>
+          </div>
+          <span className="text-[10px] font-medium rounded-full px-2 py-0.5" style={{ background: "var(--surface-secondary)", color: "var(--text-tertiary)" }}>
+            3.29%/mo
+          </span>
+        </div>
+
+        {isSelected && (
+          <div
+            className="flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-1 flex-1">
+                <label className="text-[10px] font-semibold tracking-[0.12em] uppercase" style={{ color: "var(--text-tertiary)" }}>
+                  Loan amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: "var(--text-tertiary)" }}>$</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={500}
+                    max={approvedAmount}
+                    value={customPlan.amount}
+                    onChange={(e) => onCustomPlanChange({ ...customPlan, amount: e.target.value })}
+                    placeholder="e.g. 3000"
+                    className="w-full rounded-[var(--radius-sm)] pl-6 pr-3 py-2.5 text-sm font-semibold tabular-nums outline-none transition-colors duration-150"
+                    style={{
+                      background: "var(--surface-secondary)",
+                      border: `1px solid ${amountError ? "#dc2626" : "var(--border-subtle)"}`,
+                      color: "var(--text-primary)",
+                    }}
+                  />
+                </div>
+                {amountError && <span className="text-[10px]" style={{ color: "#dc2626" }}>{amountError}</span>}
+              </div>
+              <div className="flex flex-col gap-1 flex-1">
+                <label className="text-[10px] font-semibold tracking-[0.12em] uppercase" style={{ color: "var(--text-tertiary)" }}>
+                  Tenure (months)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_OFFER_TENURE}
+                  max={MAX_OFFER_TENURE}
+                  value={customPlan.tenure}
+                  onChange={(e) => onCustomPlanChange({ ...customPlan, tenure: e.target.value })}
+                  placeholder="1–12"
+                  className="w-full rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-semibold tabular-nums outline-none transition-colors duration-150"
+                  style={{
+                    background: "var(--surface-secondary)",
+                    border: `1px solid ${tenureError ? "#dc2626" : "var(--border-subtle)"}`,
+                    color: "var(--text-primary)",
+                  }}
+                />
+                {tenureError && <span className="text-[10px]" style={{ color: "#dc2626" }}>{tenureError}</span>}
+              </div>
+            </div>
+
+            {previewInstalment !== null && (
+              <div
+                className="flex items-center justify-between rounded-[var(--radius-sm)] px-3 py-2.5"
+                style={{ background: "oklch(0.32 0.14 260 / 0.07)", border: "1px solid oklch(0.32 0.14 260 / 0.12)" }}
+              >
+                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Estimated monthly instalment</span>
+                <span
+                  className="text-sm font-bold tabular-nums"
+                  style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)", letterSpacing: "-0.02em" }}
+                >
+                  {formatCurrency(previewInstalment)}/mo
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+interface PlanPickerProps {
+  approvedAmount: number;
+  selectedPlanId: OfferPlan["id"] | "custom" | null;
+  onPlanSelect: (id: OfferPlan["id"] | "custom") => void;
+  customPlan: CustomPlanState;
+  onCustomPlanChange: (v: CustomPlanState) => void;
+  plans: OfferPlan[];
+}
+
+function PlanPicker({ approvedAmount, selectedPlanId, onPlanSelect, customPlan, onCustomPlanChange, plans }: PlanPickerProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      {plans.map((plan) => (
+        <PlanCard
+          key={plan.id}
+          plan={plan}
+          isSelected={selectedPlanId === plan.id}
+          onSelect={() => onPlanSelect(plan.id)}
+        />
+      ))}
+      <CustomPlanCard
+        isSelected={selectedPlanId === "custom"}
+        onSelect={() => onPlanSelect("custom")}
+        approvedAmount={approvedAmount}
+        customPlan={customPlan}
+        onCustomPlanChange={onCustomPlanChange}
+      />
+    </div>
+  );
+}
+
+// ── Reconsider Modal ──────────────────────────────────────────────────────────
+
+const SURVEY_REASONS = [
+  { emoji: "🔍", label: "Shopping around" },
+  { emoji: "⏳", label: "Don't need for now" },
+  { emoji: "💰", label: "Loan amount doesn't match my expectation" },
+  { emoji: "📊", label: "Rates don't match my expectations" },
 ];
 
 const DETERRENT_ITEMS = [
   {
     icon: Clock,
-    heading: "Offer expires in 4 days",
-    body: "This in-principle approval is time-limited. If it expires, you will need to submit a full application again.",
+    heading: "Offer expires in 3 days",
+    body: "This confirmed loan offer is time-limited. If it expires, you will need to submit a full application again.",
   },
   {
     icon: TrendUp,
@@ -613,21 +842,6 @@ const DETERRENT_ITEMS = [
     body: "We have already performed a soft credit assessment for this offer. Reapplying later triggers a fresh check.",
   },
 ] as const;
-
-interface LoanResultsProps {
-  formData: FormData;
-  monthlyRepayment: number;
-  onAccept: () => void;
-  reminderItems?: string[];
-}
-
-/* ── Reconsider Modal ─────────────────────────────────────────────── */
-const SURVEY_REASONS = [
-  { emoji: "🔍", label: "Shopping around" },
-  { emoji: "⏳", label: "Don't need for now" },
-  { emoji: "💰", label: "Loan amount doesn't match my expectation" },
-  { emoji: "📊", label: "Rates don't match my expectations" },
-];
 
 function OfferCountdown() {
   const { parts } = useCountdownParts();
@@ -650,7 +864,6 @@ function ReconsiderModal({
   const [step, setStep] = useState<ModalStep>("deterrent");
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
 
-  // Prevent body scroll while modal is open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -659,7 +872,6 @@ function ReconsiderModal({
 
   const handleReasonSelect = (label: string) => {
     setSelectedReason(label);
-    // Save decline reason to lead in the background
     if (leadId) {
       fetch("/api/apply/decline-reason", {
         method: "POST",
@@ -670,6 +882,9 @@ function ReconsiderModal({
     trackEvent("step_offer_declined", { reason: label });
     setStep("final");
   };
+
+  // suppress unused warning — selectedReason is set for tracking purposes
+  void selectedReason;
 
   return (
     <div
@@ -687,7 +902,6 @@ function ReconsiderModal({
         style={{ background: "var(--surface-elevated)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button — hidden on final step */}
         {step !== "final" && (
           <button
             type="button"
@@ -699,7 +913,6 @@ function ReconsiderModal({
           </button>
         )}
 
-        {/* ── Step 1: Deterrent ─────────────────────────────────── */}
         {step === "deterrent" && (
           <>
             <div className="flex flex-col gap-2 pr-8">
@@ -710,7 +923,7 @@ function ReconsiderModal({
                 Are you sure?
               </p>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                Your application is approved in principle. Here is what you stand to lose by waiting.
+                Your loan offer is confirmed. Here is what you stand to lose by waiting.
               </p>
             </div>
 
@@ -766,7 +979,6 @@ function ReconsiderModal({
           </>
         )}
 
-        {/* ── Step 2: Survey ─────────────────────────────────────── */}
         {step === "survey" && (
           <>
             <div
@@ -801,7 +1013,6 @@ function ReconsiderModal({
           </>
         )}
 
-        {/* ── Step 3: Final chance ─────────────────────────────────── */}
         {step === "final" && (
           <>
             <div
@@ -816,7 +1027,7 @@ function ReconsiderModal({
                 Final Chance!
               </p>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[320px]">
-                Your in-principle approval is reserved. Once it expires, you&apos;ll need to reapply from scratch.
+                Your confirmed loan offer is reserved. Once it expires, you&apos;ll need to reapply from scratch.
               </p>
             </div>
 
@@ -842,10 +1053,17 @@ function ReconsiderModal({
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-/* ── Main component ───────────────────────────────────────────────── */
+// ── Main component ────────────────────────────────────────────────────────────
+
+interface LoanResultsProps {
+  formData: FormData;
+  monthlyRepayment: number;
+  onAccept: () => void;
+  reminderItems?: string[];
+}
+
 export function LoanResults({
   formData,
-  monthlyRepayment,
   onAccept,
 }: LoanResultsProps) {
   const [showModal, setShowModal] = useState(false);
@@ -857,8 +1075,6 @@ export function LoanResults({
   const [isCtaVisible, setIsCtaVisible] = useState(false);
 
   useEffect(() => {
-    // Observe the actual button (not the wrapper) with a bottom margin equal to
-    // the sticky button height + gap (~80px) so the sticky disappears before overlap.
     const el = ctaButtonRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -885,16 +1101,65 @@ export function LoanResults({
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []);
 
-  const handleAccept = useCallback(() => {
-    trackEvent("step_10_offer_accepted");
+  const plans = buildOfferPlans(formData.amount);
+  const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | "custom" | null>(null);
+  const [customPlan, setCustomPlan] = useState<CustomPlanState>({ amount: "", tenure: "" });
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+
+  const getSelectedPlanPayload = useCallback(() => {
+    if (selectedPlanId === null) return null;
+    if (selectedPlanId === "custom") {
+      const amountNum = parseFloat(customPlan.amount.replace(/[^0-9.]/g, "")) || 0;
+      const tenureNum = parseInt(customPlan.tenure, 10) || 0;
+      const isValid = amountNum >= 500 && amountNum <= formData.amount && tenureNum >= MIN_OFFER_TENURE && tenureNum <= MAX_OFFER_TENURE;
+      if (!isValid) return null;
+      return {
+        planId: "custom" as const,
+        tenure: tenureNum,
+        amount: amountNum,
+        monthlyRate: OFFER_MONTHLY_RATE,
+        monthlyInstalment: Math.ceil(calculateInstalment(amountNum, tenureNum, OFFER_MONTHLY_RATE)),
+      };
+    }
+    const plan = plans.find((p) => p.id === selectedPlanId);
+    if (!plan) return null;
+    return {
+      planId: plan.id,
+      tenure: plan.tenure,
+      amount: formData.amount,
+      monthlyRate: plan.monthlyRate,
+      monthlyInstalment: plan.monthlyInstalment,
+    };
+  }, [selectedPlanId, customPlan, formData.amount, plans]);
+
+  const handleAccept = useCallback(async () => {
+    trackEvent("step_10_offer_accepted", { planId: selectedPlanId });
+    const payload = getSelectedPlanPayload();
+    if (payload && formData.leadId) {
+      setIsSavingPlan(true);
+      try {
+        await fetch("/api/apply/select-plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ leadId: formData.leadId, ...payload }),
+        });
+      } catch {
+        // Graceful fallback — booking proceeds regardless
+      } finally {
+        setIsSavingPlan(false);
+      }
+    }
     onAccept();
-  }, [onAccept]);
+  }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept]);
+
+  const hasNoSelection = selectedPlanId === null;
+  const isCustomInvalid = selectedPlanId === "custom" && getSelectedPlanPayload() === null;
 
   return (
     <>
       <div className="relative z-[1] flex flex-col gap-5">
 
-        {/* Eyebrow heading */}
+        {/* Heading */}
         <motion.div
           className="flex flex-col gap-2"
           initial={{ opacity: 0, y: 10 }}
@@ -911,95 +1176,63 @@ export function LoanResults({
               color: isExpired ? "#7f1d1d" : "var(--text-primary)",
             }}
           >
-            {isExpired ? "Your offer has expired." : "You\u2019re pre-approved."}
+            {isExpired ? "Your offer has expired." : "Your loan offer is confirmed."}
           </h1>
           <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {isExpired
-              ? "This in-principle approval is no longer valid. Start a new application to get a fresh offer."
-              : <>Secure it by booking a quick appointment below.<br />No commitment until you decide on the day.</>
+              ? "This loan offer is no longer valid. Start a new application to get a fresh offer."
+              : <>Choose the repayment plan that suits you best, then book a quick appointment to collect your funds.</>
             }
           </p>
         </motion.div>
 
-        {/* Term-sheet card — dimmed when expired */}
+        {/* Confirmed offer header */}
         <div style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
-          <TermSheetCard
+          <OfferHeader
             formData={formData}
-            monthlyRepayment={monthlyRepayment}
             revealStage={revealStage}
           />
         </div>
 
+        {/* Plan picker */}
+        {!isExpired && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={revealStage >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ duration: 0.45, ease: EASE }}
+            style={{ pointerEvents: revealStage >= 2 ? "auto" : "none" }}
+          >
+            <PlanPicker
+              approvedAmount={formData.amount}
+              selectedPlanId={selectedPlanId}
+              onPlanSelect={setSelectedPlanId}
+              customPlan={customPlan}
+              onCustomPlanChange={setCustomPlan}
+              plans={plans}
+            />
+          </motion.div>
+        )}
+
         {/* Deadline strip */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
-          animate={revealStage >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+          animate={revealStage >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
           transition={{ duration: 0.45, ease: EASE }}
           style={{ position: "relative", zIndex: 1 }}
         >
           <DeadlineStrip />
         </motion.div>
 
-        {/* Disclaimer below the deadline strip */}
+        {/* Offer validity disclaimer */}
         <motion.p
           className="text-[10px] leading-relaxed -mt-2"
           initial={{ opacity: 0 }}
-          animate={{ opacity: revealStage >= 2 ? 1 : 0 }}
-          transition={{ duration: 0.4, delay: revealStage >= 2 ? 0.2 : 0 }}
+          animate={{ opacity: revealStage >= 3 ? 1 : 0 }}
+          transition={{ duration: 0.4, delay: revealStage >= 3 ? 0.2 : 0 }}
           style={{ color: "var(--text-secondary)", position: "relative", zIndex: 1, textAlign: "center" }}
         >
-          *{APPROVAL_PAGE_DISCLAIMER}
+          {OFFER_CONFIRMATION_DISCLAIMER}
         </motion.p>
-
-        {/* To receive your funds */}
-        <motion.div
-          className="flex flex-col gap-4 rounded-[var(--radius-md)] px-5 py-4"
-          initial={{ opacity: 0, y: 12 }}
-          animate={revealStage >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-          transition={{ duration: 0.45, ease: EASE }}
-          style={{
-            pointerEvents: revealStage >= 3 ? "auto" : "none",
-            background: "var(--surface-elevated)",
-            boxShadow: "0 0 0 1px var(--border-subtle)",
-          }}
-        >
-          <p
-            className="text-[10px] font-bold tracking-[0.18em] uppercase"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            To receive your funds
-          </p>
-          <ul className="flex flex-col gap-4">
-            {NOTICE_ITEMS.map(({ Icon, short, text }, i) => (
-              <motion.li
-                key={i}
-                className="flex items-start gap-3"
-                initial={{ opacity: 0, x: -8 }}
-                animate={
-                  revealStage >= 3
-                    ? { opacity: 1, x: 0 }
-                    : { opacity: 0, x: -8 }
-                }
-                transition={{ duration: 0.35, ease: EASE, delay: revealStage >= 3 ? i * 0.08 : 0 }}
-              >
-                <span
-                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                  style={{ background: "oklch(0.32 0.14 260 / 0.07)" }}
-                >
-                  <Icon size={15} weight="duotone" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
-                </span>
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
-                    {short}
-                  </span>
-                  <span className="text-xs leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
-                    {text}
-                  </span>
-                </span>
-              </motion.li>
-            ))}
-          </ul>
-        </motion.div>
 
         {/* CTA buttons */}
         <motion.div
@@ -1025,11 +1258,22 @@ export function LoanResults({
                 ref={ctaButtonRef}
                 type="button"
                 onClick={handleAccept}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+                disabled={hasNoSelection || isCustomInvalid || isSavingPlan}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
-                Secure My Offer Now
-                <ArrowRight size={16} weight="bold" />
+                {isSavingPlan ? "Saving plan…" : "Continue"}
+                {!isSavingPlan && <ArrowRight size={16} weight="bold" />}
               </button>
+              {hasNoSelection && (
+                <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                  Select a repayment plan above to continue.
+                </p>
+              )}
+              {isCustomInvalid && (
+                <p className="text-center text-[11px]" style={{ color: "#dc2626" }}>
+                  Please enter a valid loan amount and tenure to continue.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => setShowModal(true)}

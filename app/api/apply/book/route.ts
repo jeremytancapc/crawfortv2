@@ -1,7 +1,7 @@
 /**
  * POST /api/apply/book
  *
- * Saves the chosen appointment slot to Supabase, clears apply cookies, and
+ * Saves the chosen appointment slot to the in-memory store, clears apply cookies, and
  * notifies AirConnect via the external appointments API.
  * Body: { date: "YYYY-MM-DD", time: "HH:MM" }
  * Success JSON: { ok, appointmentId, cfh5Id, loanAmount, date, time }
@@ -19,7 +19,7 @@ import {
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
 import { bookingConfirmCookieValue } from "@/lib/booking-confirmation";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { logExternalApi } from "@/lib/external-api-logger";
 
 export const runtime = "nodejs";

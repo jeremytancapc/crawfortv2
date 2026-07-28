@@ -185,6 +185,11 @@ export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
     return null;
   }
 
+  // Accept: T&C page shares the approval/book session stage.
+  if ((stage === "approval" || stage === "book") && path.startsWith("/apply/accept")) {
+    return null;
+  }
+
   // Pending: only valid with ?leadId= (cookies cleared on that page).
   if (stage === "pending" && path.startsWith("/apply/pending") && !ctx.queryLeadId) {
     return "/";

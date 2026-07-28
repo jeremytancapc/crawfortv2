@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { verifyAxsToken } from "@/lib/axs-token";
 import { logExternalApi } from "@/lib/external-api-logger";
 

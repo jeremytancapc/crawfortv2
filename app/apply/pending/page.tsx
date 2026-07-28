@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import type { PendingDisplay } from "@/lib/pending-display";
 

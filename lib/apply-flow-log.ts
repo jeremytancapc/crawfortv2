@@ -1,12 +1,12 @@
 /**
- * Persist apply / Singpass funnel diagnostics to Supabase `apply_flow_events`.
- * Used on production (stg) to debug customer complaints without storing full PII.
+ * Persist apply / Singpass funnel diagnostics to in-memory `apply_flow_events`.
+ * Used to debug customer complaints without storing full PII.
  */
 
 import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import type { LoanFormData } from "@/lib/loan-form";
 
 export const APPLY_TRACE_ID_KEY = "applyTraceId";
@@ -15,6 +15,7 @@ export type ApplyFlowEventName =
   | "singpass_gate_saved"
   | "manual_gate_saved"
   | "auth_callback_received"
+  | "singpass_simulated"
   | "activate_merged";
 
 /** Browser cookie size guidance (~4 KB limit for Set-Cookie). */

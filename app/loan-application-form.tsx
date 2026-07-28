@@ -12,7 +12,6 @@ import {
 import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
-import { PaymentHistorySelector } from "@/components/ui/gradient-selector-card";
 import {
   ArrowRight,
   ArrowLeft,
@@ -25,7 +24,6 @@ import {
   Phone,
   IdentificationCard,
   Buildings,
-  ChartLineUp,
   Lock,
   Fingerprint,
   Coins,
@@ -1563,128 +1561,6 @@ function Step9_EmploymentDeclaration({
             </>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 9: Moneylender Loans ────────────────────────────────────────────────
-
-export function Step9_MoneylenderLoans({
-  formData,
-  updateField,
-}: {
-  formData: FormData;
-  updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
-}) {
-  const rawAmount = formData.moneylenderLoanAmount ?? "";
-  const hasAmount =
-    rawAmount.trim() !== "" &&
-    !Number.isNaN(parseInt(rawAmount, 10));
-
-  return (
-    <div>
-      <StepHeader
-        icon={ChartLineUp}
-        title="Almost Done!"
-        subtitle="To help us calculate the most accurate rates for you, please let us know if you have any existing moneylender loans."
-      />
-
-      <div className="flex flex-col gap-4">
-        {/* Amount input — always visible */}
-        <div className="flex flex-col gap-2">
-          <label className="text-base font-medium text-[var(--text-primary)]">
-            Total outstanding amount
-          </label>
-          <div
-            className="flex min-h-[40px] sm:min-h-[46px] items-center rounded-[var(--radius-md)] border bg-[var(--surface-elevated)] gap-2 pl-4 pr-4 transition-all duration-200 focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/10"
-            style={{
-              borderColor: "var(--border-subtle)",
-              opacity: formData.moneylenderNoLoans ? 0.45 : 1,
-            }}
-          >
-            <span className="shrink-0 select-none text-sm text-[var(--text-tertiary)]">$</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="e.g. 5,000"
-              value={formData.moneylenderLoanAmount}
-              onFocus={() => {
-                if (formData.moneylenderNoLoans) {
-                  updateField("moneylenderNoLoans", false);
-                }
-              }}
-              onChange={(e) => {
-                updateField("moneylenderLoanAmount", e.target.value);
-                if (e.target.value.trim() !== "") {
-                  updateField("moneylenderNoLoans", false);
-                }
-              }}
-              className="min-w-0 flex-1 border-0 bg-transparent py-2 sm:py-3 pl-0 text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
-            />
-          </div>
-        </div>
-
-        {/* Payment history — 5-state gradient selector */}
-        {hasAmount && !formData.moneylenderNoLoans && (
-          <div className="animate-slide-in" key="payment-history">
-            <label className="mb-3 block text-sm font-medium text-[var(--text-primary)]">
-              How is your repayment history with this lender?
-            </label>
-            <PaymentHistorySelector
-              value={formData.moneylenderPaymentHistory}
-              onChange={(v) => updateField("moneylenderPaymentHistory", v)}
-            />
-          </div>
-        )}
-
-        {/* "No loans to declare" — prominent, easy-to-tap */}
-        <button
-          type="button"
-          onClick={() => {
-            const next = !formData.moneylenderNoLoans;
-            updateField("moneylenderNoLoans", next);
-            if (next) {
-              updateField("moneylenderLoanAmount", "");
-              updateField("moneylenderPaymentHistory", "");
-            }
-          }}
-          className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3.5 text-left transition-all duration-200 active:scale-[0.99]"
-          style={{
-            borderColor: formData.moneylenderNoLoans
-              ? "var(--brand-blue-hex)"
-              : "var(--border-subtle)",
-            background: formData.moneylenderNoLoans
-              ? "oklch(0.32 0.14 260 / 0.06)"
-              : "var(--surface-elevated)",
-          }}
-        >
-          <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150"
-            style={{
-              borderColor: formData.moneylenderNoLoans
-                ? "var(--brand-blue-hex)"
-                : "var(--border-medium)",
-              background: formData.moneylenderNoLoans
-                ? "var(--brand-blue-hex)"
-                : "transparent",
-            }}
-          >
-            {formData.moneylenderNoLoans && (
-              <div className="h-2 w-2 rounded-full bg-white" />
-            )}
-          </span>
-          <span
-            className="text-sm font-medium"
-            style={{
-              color: formData.moneylenderNoLoans
-                ? "var(--brand-blue-hex)"
-                : "var(--text-secondary)",
-            }}
-          >
-            No moneylender loans to declare
-          </span>
-        </button>
       </div>
     </div>
   );
