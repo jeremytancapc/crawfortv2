@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { LoanFormData } from "@/lib/loan-form";
-import { calculateMonthlyRepayment } from "@/lib/loan-form";
 import { LoanResults } from "@/app/loan-results";
 import { MobileHeader } from "@/app/mobile-header";
 
@@ -14,11 +13,8 @@ interface Props {
 export function ApprovalView({ formData }: Props) {
   const router = useRouter();
 
-  const { approvedLoanAmount, tenure } = formData;
-
   // Show the approved amount (not the requested amount) in the results screen.
-  const displayData = { ...formData, amount: approvedLoanAmount };
-  const monthlyRepayment = calculateMonthlyRepayment(approvedLoanAmount, tenure);
+  const displayData = { ...formData, amount: formData.approvedLoanAmount };
 
   return (
     <div className="approval-theme flex flex-col lg:flex-row min-h-dvh">
@@ -36,10 +32,10 @@ export function ApprovalView({ formData }: Props) {
             />
           </div>
           <h1 className="font-display text-4xl xl:text-5xl font-extrabold leading-[1.08] tracking-[-0.04em] text-[var(--text-on-brand)] max-w-[420px]">
-            You&apos;re pre-approved.
+            Your loan offer is confirmed.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
-            This is an in-principle approval based on your verified income. Final approval is subject to our assessment at your appointment.
+            Choose the repayment plan that works best for you, then book an appointment to collect your funds.
           </p>
         </div>
       </aside>
@@ -52,7 +48,7 @@ export function ApprovalView({ formData }: Props) {
           <div className="w-full max-w-[520px]">
             <LoanResults
               formData={displayData}
-              monthlyRepayment={monthlyRepayment}
+              monthlyRepayment={0}
               onAccept={() => router.push("/apply/book")}
             />
           </div>

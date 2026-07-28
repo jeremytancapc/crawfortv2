@@ -63,6 +63,10 @@ export interface Lead {
   eligibility_status?: string | null;
   eligibility_notes?: string | null;
   eligibility_reloan_reason?: string | null;
+
+  selected_plan?: string | null;
+  plan_monthly_rate?: number | null;
+  plan_monthly_instalment?: number | null;
 }
 
 export interface MyInfoProfile {
