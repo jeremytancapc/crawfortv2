@@ -6,8 +6,8 @@
  * Do not mix them up.
  */
 
-/** Standard offer rate: 3.29% per month. */
-export const OFFER_MONTHLY_RATE = 0.0329;
+/** Standard offer rate: 3.92% per month. */
+export const OFFER_MONTHLY_RATE = 0.0392;
 
 /** Preferential rate for the "Lowest interest paid" plan: 1% per month. */
 export const LOWEST_INTEREST_MONTHLY_RATE = 0.01;
@@ -17,9 +17,9 @@ export const MIN_OFFER_TENURE = 1;
 
 /** Display name for each plan id, used on the acceptance page. */
 export const PLAN_TITLES: Record<string, string> = {
-  lowest_interest: "Lowest interest paid",
+  lowest_interest: "Lowest Interest Plan",
   average: "Balanced plan",
-  lowest_instalment: "Lowest monthly instalment",
+  lowest_instalment: "Lowest Monthly Instalment Plan",
   custom: "Custom plan",
 };
 
@@ -75,7 +75,7 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
   return [
     make(
       "lowest_interest",
-      "Lowest interest paid",
+      "Lowest Interest Plan",
       "3 months at our lowest 1% rate",
       3,
       LOWEST_INTEREST_MONTHLY_RATE,
@@ -93,7 +93,7 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
     ),
     make(
       "lowest_instalment",
-      "Lowest monthly instalment",
+      "Lowest Monthly Instalment Plan",
       "Smallest payment, spread over 12 months",
       MAX_OFFER_TENURE,
       OFFER_MONTHLY_RATE,
