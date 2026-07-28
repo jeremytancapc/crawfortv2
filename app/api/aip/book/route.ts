@@ -17,7 +17,7 @@ import {
   aipBookingConfirmCookieValue,
   clearAipSessionCookie,
 } from "@/lib/aip-session";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { logExternalApi } from "@/lib/external-api-logger";
 
 export const runtime = "nodejs";

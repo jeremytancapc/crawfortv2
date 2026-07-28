@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session-codec";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import type { LoanFormData } from "@/lib/loan-form";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import {

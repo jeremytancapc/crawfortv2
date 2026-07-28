@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       .eq("id", leadId);
 
     if (error) {
-      console.error("[decline-reason] supabase error", error);
+      console.error("[decline-reason] db error", error);
       return new Response("DB error", { status: 500 });
     }
 

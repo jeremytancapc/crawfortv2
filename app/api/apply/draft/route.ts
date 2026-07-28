@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { initialLoanFormData } from "@/lib/loan-form";
 import type { LoanFormData } from "@/lib/loan-form";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";

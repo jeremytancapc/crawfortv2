@@ -6,7 +6,7 @@ import {
   mergeOfferIntoFormData,
 } from "@/lib/approval-offer";
 import { getApplySession } from "@/lib/apply-session";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient } from "@/lib/db/client";
 import { initialLoanFormData, type LoanFormData } from "@/lib/loan-form";
 
 import { ApprovalView } from "./approval-view";
