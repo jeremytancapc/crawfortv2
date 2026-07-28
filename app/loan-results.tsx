@@ -1261,7 +1261,7 @@ export function LoanResults({
                 disabled={hasNoSelection || isCustomInvalid || isSavingPlan}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
-                {isSavingPlan ? "Saving plan…" : "Secure My Offer Now"}
+                {isSavingPlan ? "Saving plan…" : "Continue"}
                 {!isSavingPlan && <ArrowRight size={16} weight="bold" />}
               </button>
               {hasNoSelection && (

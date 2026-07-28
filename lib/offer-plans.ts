@@ -15,6 +15,14 @@ export const LOWEST_INTEREST_MONTHLY_RATE = 0.01;
 export const MAX_OFFER_TENURE = 12;
 export const MIN_OFFER_TENURE = 1;
 
+/** Display name for each plan id, used on the acceptance page. */
+export const PLAN_TITLES: Record<string, string> = {
+  lowest_interest: "Lowest interest paid",
+  average: "Balanced plan",
+  lowest_instalment: "Lowest monthly instalment",
+  custom: "Custom plan",
+};
+
 export const OFFER_CONFIRMATION_DISCLAIMER =
   "This offer stands from the time of acceptance until loan disbursement, provided there are no changes to your income and you do not apply with another lender in a way that affects your credit profile.";
 

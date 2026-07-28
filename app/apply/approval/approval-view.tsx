@@ -49,7 +49,7 @@ export function ApprovalView({ formData }: Props) {
             <LoanResults
               formData={displayData}
               monthlyRepayment={0}
-              onAccept={() => router.push("/apply/book")}
+              onAccept={() => router.push("/apply/accept")}
             />
           </div>
         </div>
