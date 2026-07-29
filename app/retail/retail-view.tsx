@@ -5,7 +5,7 @@ import type { RetailTab } from "./types";
 import { RetailProvider } from "./retail-store";
 import { RetailHeader } from "./retail-header";
 import { QueueTab } from "./queue-tab";
-import { RegistrationTab } from "./registration-tab";
+import { ApplicationsTab } from "./applications-tab";
 import { LoansTab } from "./loans-tab";
 
 export function RetailView() {
@@ -18,9 +18,9 @@ export function RetailView() {
 
         <main className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "queue"        && <QueueTab />}
-          {activeTab === "registration" && (
+          {activeTab === "applications" && (
             <div className="h-full overflow-hidden">
-              <RegistrationTab onRegistered={setActiveTab} />
+              <ApplicationsTab />
             </div>
           )}
           {activeTab === "loans"        && <LoansTab />}

@@ -220,7 +220,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
     <button
       onClick={onSelect}
       className={[
-        "w-full text-left rounded-xl border-2 px-4 py-3 transition-all duration-200",
+        "w-full text-left rounded-md border-2 px-4 py-3 transition-all duration-200",
         isSelected
           ? "border-[#0033AA] shadow-lg bg-white"
           : "border-transparent bg-white hover:border-slate-200 hover:shadow-sm",
@@ -231,7 +231,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
       <div className="flex items-start gap-3">
         {/* Queue number — colored by appointment type */}
         <div
-          className={`flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center text-xs font-bold text-white ${cfg.badge}`}
+          className={`flex-shrink-0 w-11 h-11 rounded-md flex items-center justify-center text-xs font-bold text-white ${cfg.badge}`}
         >
           {customer.queueNumber}
         </div>
@@ -282,7 +282,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
             {(customer.status === "queued" || customer.status === "called" || customer.status === "serving") && (
               <button
                 onClick={onReassign}
-                className="flex items-center gap-1.5 bg-white border-2 border-[#0033AA] text-[#0033AA] text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-50 active:scale-95 transition-all"
+                className="flex items-center gap-1.5 bg-white border-2 border-[#0033AA] text-[#0033AA] text-xs font-bold px-3 py-1.5 rounded-md hover:bg-blue-50 active:scale-95 transition-all"
               >
                 <ArrowsClockwise size={12} weight="bold" />
                 Re-assign
@@ -291,7 +291,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
             {customer.status === "scheduled" && (
               <button
                 onClick={onAutoAssign}
-                className="flex items-center gap-1.5 bg-[#0033AA] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:opacity-90 active:scale-95 transition-all"
+                className="flex items-center gap-1.5 bg-[#0033AA] text-white text-xs font-bold px-3 py-1.5 rounded-md hover:opacity-90 active:scale-95 transition-all"
               >
                 <Lightning size={12} weight="fill" />
                 Auto Assign
@@ -310,7 +310,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
           </p>
           <button
             onClick={onReassign}
-            className="flex items-center gap-1.5 bg-white border-2 border-[#0033AA] text-[#0033AA] text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-50 active:scale-95 transition-all flex-shrink-0"
+            className="flex items-center gap-1.5 bg-white border-2 border-[#0033AA] text-[#0033AA] text-xs font-bold px-3 py-1.5 rounded-md hover:bg-blue-50 active:scale-95 transition-all flex-shrink-0"
           >
             <ArrowsClockwise size={12} weight="bold" />
             Re-assign
@@ -372,7 +372,7 @@ export function AppointmentList() {
             </div>
             <button
               onClick={() => setShowWalkIn(true)}
-              className="flex items-center gap-1.5 bg-[#0033AA] text-white text-xs font-bold px-3 py-2 rounded-lg hover:opacity-90 active:scale-95 transition-all"
+              className="flex items-center gap-1.5 bg-[#0033AA] text-white text-xs font-bold px-3 py-2 rounded-md hover:opacity-90 active:scale-95 transition-all"
             >
               <Plus size={14} weight="bold" />
               Walk-in
@@ -385,7 +385,7 @@ export function AppointmentList() {
           <button
             onClick={() => setFilter("all")}
             className={[
-              "w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 border",
+              "w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 border",
               filter === "all"
                 ? "bg-[#0033AA] text-white border-[#0033AA]"
                 : "bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300",
@@ -402,7 +402,7 @@ export function AppointmentList() {
                   key={f}
                   onClick={() => setFilter(f)}
                   className={[
-                    "flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 border truncate",
+                    "flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 border truncate",
                     isActive
                       ? "bg-[#0033AA] text-white border-[#0033AA]"
                       : "bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300",
