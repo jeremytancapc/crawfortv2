@@ -340,6 +340,50 @@ input[type="range"]::-moz-range-thumb {
   will-change: box-shadow;
 }
 
+/* ─── Popular badge glow + shine ─────────────────────────────────── */
+
+@keyframes popular-badge-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px oklch(0.88 0.18 95 / 0.25),
+      0 0 4px 0 oklch(0.88 0.18 95 / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px oklch(0.90 0.20 95 / 0.40),
+      0 0 7px 1px oklch(0.90 0.20 95 / 0.50);
+  }
+}
+
+@keyframes popular-badge-shine {
+  0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  15%  { opacity: 0.85; }
+  45%  { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+
+.popular-badge-glow {
+  position: relative;
+  overflow: hidden;
+  animation: popular-badge-glow 2s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.popular-badge-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(1 0 0 / 0.55) 50%,
+    transparent 100%
+  );
+  animation: popular-badge-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* ─── Approval theme — Inter Tight headings, clean finance aesthetic ─── */
 
 .approval-theme {

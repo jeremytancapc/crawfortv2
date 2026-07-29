@@ -8,6 +8,7 @@ import {
   SealCheck,
   CheckCircle,
   Warning,
+  CurrencyCircleDollar,
 } from "@phosphor-icons/react";
 
 import { MobileHeader } from "@/app/mobile-header";
@@ -32,6 +33,9 @@ function formatRate(rate: number): string {
 
 const DRAWDOWN_NOTICE =
   "Final drawdown of funds must be completed face to face at our office, as required by anti-money laundering (AML) and know-your-customer (KYC) regulations. If the loan is not drawn down within 3 business days, this loan agreement will be void and a re-application will be required. Every re-application may affect your subsequent approval.";
+
+const DISBURSEMENT_NOTICE =
+  "Funds are disbursed via PayNow on the spot at your appointment. Please ensure your PayNow is linked to your NRIC (we will PayNow using your linked NRIC instead of mobile number). Cash disbursement is strongly discouraged.";
 
 const TC_ITEMS = [
   "This loan is granted by CF Money Pte Ltd, a licensed moneylender (Licence No. 86/2025) under the Moneylenders Act (Cap. 188).",
@@ -278,6 +282,36 @@ function TermsSection() {
         >
           {TC_CLOSING}
         </p>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+        </div>
+
+        {/* Funds disbursement — callout */}
+        <div
+          className="rounded-[var(--radius-sm)] px-3.5 py-3.5 flex flex-col gap-2"
+          style={{
+            background: "oklch(0.96 0.04 190)",
+            boxShadow: "0 0 0 1.5px oklch(0.78 0.16 178 / 0.45)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <CurrencyCircleDollar size={15} weight="fill" style={{ color: "#0d9488" }} />
+            <span
+              className="text-[10px] font-bold tracking-[0.14em] uppercase"
+              style={{ color: "#0f766e" }}
+            >
+              Funds disbursement method
+            </span>
+          </div>
+          <p
+            className="text-[12px] leading-relaxed font-semibold"
+            style={{ color: "#115e59" }}
+          >
+            {DISBURSEMENT_NOTICE}
+          </p>
+        </div>
       </div>
     </div>
   );

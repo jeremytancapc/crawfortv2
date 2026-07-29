@@ -496,7 +496,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           : "var(--surface-elevated)",
         boxShadow: isSelected
           ? "0 0 0 2px #06DEC0, 0 12px 40px oklch(0.24 0.18 258 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.10)"
-          : "0 0 0 1px var(--border-subtle)",
+          : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
         transform: isSelected ? "scale(1.01)" : "scale(1)",
       }}
       aria-pressed={isSelected}
@@ -516,16 +516,30 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
         {/* Header row */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex flex-col gap-1 min-w-0">
-            <span
-              className="text-lg font-bold leading-snug"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: isSelected ? "#ffffff" : "var(--text-primary)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {plan.title}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className="text-lg font-bold leading-snug"
+                style={{
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  color: isSelected ? "#ffffff" : "var(--text-primary)",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {plan.title}
+              </span>
+              {plan.badge && (
+                <span
+                  className="popular-badge-glow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide shrink-0"
+                  style={{
+                    background: "#F5C518",
+                    color: "#0a1628",
+                  }}
+                >
+                  <Sparkle size={10} weight="fill" className="relative z-[1]" />
+                  <span className="relative z-[1]">Most Popular</span>
+                </span>
+              )}
+            </div>
             <span
               className="text-xs font-medium leading-snug"
               style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
@@ -534,34 +548,19 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {plan.badge && (
-              <span
-                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide"
-                style={{
-                  background: "oklch(0.78 0.16 178 / 0.18)",
-                  color: "#06DEC0",
-                  border: "1px solid oklch(0.78 0.16 178 / 0.30)",
-                }}
-              >
-                <Sparkle size={10} weight="fill" />
-                Popular
-              </span>
-            )}
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
-              style={{
-                border: isSelected ? "2px solid #06DEC0" : "2px solid var(--text-tertiary)",
-                background: isSelected ? "#06DEC0" : "var(--surface-elevated)",
-                boxShadow: isSelected
-                  ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
-                  : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
-              }}
-              aria-hidden="true"
-            >
-              {isSelected && <CheckCircle size={16} weight="fill" style={{ color: "#0a1628" }} />}
-            </span>
-          </div>
+          <span
+            className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
+            style={{
+              border: isSelected ? "2px solid #06DEC0" : "2px solid var(--text-tertiary)",
+              background: isSelected ? "#06DEC0" : "var(--surface-elevated)",
+              boxShadow: isSelected
+                ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
+                : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
+            }}
+            aria-hidden="true"
+          >
+            {isSelected && <CheckCircle size={16} weight="fill" style={{ color: "#0a1628" }} />}
+          </span>
         </div>
 
         {/* Stats row — interest paid and tenure stack on the left, monthly instalment anchors the right */}
@@ -681,8 +680,8 @@ function CustomPlanCard({ isSelected, onSelect, approvedAmount, customPlan, onCu
       style={{
         background: "var(--surface-elevated)",
         boxShadow: isSelected
-          ? "0 0 0 2px oklch(0.78 0.16 178 / 0.50), 0 4px 16px oklch(0.24 0.18 258 / 0.15)"
-          : "0 0 0 1px var(--border-subtle)",
+          ? "0 0 0 2px oklch(0.78 0.16 178 / 0.50), 0 8px 24px oklch(0.24 0.18 258 / 0.18)"
+          : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
       }}
       aria-pressed={isSelected}
     >
@@ -707,7 +706,7 @@ function CustomPlanCard({ isSelected, onSelect, approvedAmount, customPlan, onCu
             </span>
           </div>
           <span className="text-[10px] font-medium rounded-full px-2 py-0.5" style={{ background: "var(--surface-secondary)", color: "var(--text-tertiary)" }}>
-            3.29%/mo
+            3.92%/mo
           </span>
         </div>
 
