@@ -13,7 +13,26 @@ function isPendingWithLeadId(request: NextRequest): boolean {
   return Boolean(q && looksLikeLeadUuid(q));
 }
 
+function isLandingPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/foreigner" ||
+    pathname.startsWith("/foreigner/") ||
+    pathname === "/vcsa-sg" ||
+    pathname.startsWith("/vcsa-sg/")
+  );
+}
+
 export function proxy(request: NextRequest) {
+  // TEMPORARILY DISABLED — cookie resume from landings (`/` → /apply/approval etc.).
+  // Clear funnel cookies so each home visit starts a fresh apply flow for testing.
+  // Re-enable by deleting this block.
+  if (isLandingPath(request.nextUrl.pathname)) {
+    const res = NextResponse.next();
+    applyClearApplyCookiesOnResponse(res);
+    return res;
+  }
+
   const ctx = readFunnelContextFromRequest(request);
   const target = getFunnelRedirectUrl(ctx);
   const clearPendingCookies = isPendingWithLeadId(request);
