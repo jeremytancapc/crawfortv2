@@ -114,6 +114,15 @@ button:disabled,
   cursor: not-allowed;
 }
 
+/* Hide scrollbar utility — used by retail CRM filter chips and date strips */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-quicksand), system-ui, sans-serif;
 }
