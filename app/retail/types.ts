@@ -66,6 +66,55 @@ export interface StationLayoutMeta {
   col: number;
 }
 
+// ─── Loan Management — approved offer & plan override ─────────────────────────
+
+/**
+ * Pre-approved loan offer generated for each customer-care appointment.
+ * Represents the loan terms the underwriter has already cleared; staff can
+ * adjust within policy limits (or with a staff override code).
+ */
+export interface ApprovedLoanOffer {
+  customerId: string;
+  productName: string;
+  /** Randomised per customer — hard ceiling on amount; cannot go higher even with override. */
+  maxAmount: number;
+  /** Minimum permissible disbursement (≈ 30–40 % of max). */
+  minAmount: number;
+  /** Default tenure in months (6). Staff can shorten freely; lengthening requires override. */
+  defaultTenureMonths: number;
+  /** Hard ceiling for tenure (16). */
+  maxTenureMonths: number;
+  /** Default annual flat interest rate (47). Changing to alt requires override. */
+  defaultInterestRate: number;
+  /** Alternative (lower) interest rate available only with override (12). */
+  altInterestRate: number;
+  /** Default processing fee as % of principal (10). Any lower value requires override. */
+  defaultProcessingFee: number;
+  /** Minimum selectable processing fee (1). */
+  minProcessingFee: number;
+}
+
+/** Staff's final loan-plan selection for a customer, saved after confirmation. */
+export interface ConfirmedLoanPlan {
+  customerId: string;
+  amount: number;
+  tenureMonths: number;
+  interestRate: number;
+  processingFee: number;
+  confirmedAt: string; // ISO timestamp
+}
+
+/** One row in a flat-rate repayment schedule. */
+export interface RepaymentScheduleEntry {
+  month: number;
+  /** Human label, e.g. "Aug 2026" */
+  dueLabel: string;
+  installment: number;
+  principalPortion: number;
+  interestPortion: number;
+  balance: number;
+}
+
 /** Retail loan record used in the Loan Management tab */
 export interface RetailLoan {
   loanId: string;

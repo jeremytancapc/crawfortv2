@@ -1,8 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useCallback } from "react";
-import type { RetailCustomer, Station, AppointmentType } from "./types";
-import { buildInitialCustomers, buildInitialStations } from "./mock-data";
+import type { RetailCustomer, Station, AppointmentType, ApprovedLoanOffer, ConfirmedLoanPlan } from "./types";
+import {
+  buildInitialCustomers,
+  buildInitialStations,
+  buildApprovedLoanOffers,
+  seedArrivedCustomerCare,
+} from "./mock-data";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +20,10 @@ export interface RetailState {
   activeStationId: string | null;
   /** Running counters for queue ticket generation */
   queueCounters: { L: number; C: number; P: number; D: number };
+  /** Pre-approved loan offers keyed by customer ID (customer-care only) */
+  loanOffers: Record<string, ApprovedLoanOffer>;
+  /** Confirmed loan plans saved by staff, keyed by customer ID */
+  loanPlans: Record<string, ConfirmedLoanPlan>;
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -27,7 +36,8 @@ type Action =
   | { type: "COMPLETE_SERVICE"; stationId: string }
   | { type: "AUTO_ASSIGN"; customerId: string }
   | { type: "REASSIGN"; customerId: string }
-  | { type: "REGISTER_WALK_IN"; customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition"> };
+  | { type: "REGISTER_WALK_IN"; customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition"> }
+  | { type: "CONFIRM_LOAN_PLAN"; plan: ConfirmedLoanPlan };
 
 // ─── Type → station mapping ───────────────────────────────────────────────────
 
@@ -275,6 +285,12 @@ function retailReducer(state: RetailState, action: Action): RetailState {
       };
     }
 
+    case "CONFIRM_LOAN_PLAN":
+      return {
+        ...state,
+        loanPlans: { ...state.loanPlans, [action.plan.customerId]: action.plan },
+      };
+
     default:
       return state;
   }
@@ -292,12 +308,17 @@ interface RetailContextValue {
   autoAssign: (customerId: string) => void;
   reassign: (customerId: string) => void;
   registerWalkIn: (customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition">) => void;
+  confirmLoanPlan: (plan: ConfirmedLoanPlan) => void;
 }
 
 const RetailContext = createContext<RetailContextValue | null>(null);
 
 function buildInitialState(): RetailState {
   const customers = buildInitialCustomers();
+  const stations = buildInitialStations();
+
+  // Seed a few customer-care customers as already arrived for a realistic demo
+  seedArrivedCustomerCare(customers, stations);
 
   // Determine starting counters from seeded data
   const counters = { L: 0, C: 0, P: 0, D: 0 };
@@ -308,10 +329,12 @@ function buildInitialState(): RetailState {
 
   return {
     customers,
-    stations: buildInitialStations(),
+    stations,
     selectedCustomerId: null,
     activeStationId: null,
     queueCounters: counters,
+    loanOffers: buildApprovedLoanOffers(customers),
+    loanPlans: {},
   };
 }
 
@@ -327,9 +350,10 @@ export function RetailProvider({ children }: { children: React.ReactNode }) {
   const reassign         = useCallback((cId: string) => dispatch({ type: "REASSIGN", customerId: cId }), []);
   const registerWalkIn   = useCallback((c: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition">) =>
     dispatch({ type: "REGISTER_WALK_IN", customer: c }), []);
+  const confirmLoanPlan  = useCallback((plan: ConfirmedLoanPlan) => dispatch({ type: "CONFIRM_LOAN_PLAN", plan }), []);
 
   return (
-    <RetailContext.Provider value={{ state, selectCustomer, openStationSheet, assignStation, customerArrived, completeService, autoAssign, reassign, registerWalkIn }}>
+    <RetailContext.Provider value={{ state, selectCustomer, openStationSheet, assignStation, customerArrived, completeService, autoAssign, reassign, registerWalkIn, confirmLoanPlan }}>
       {children}
     </RetailContext.Provider>
   );

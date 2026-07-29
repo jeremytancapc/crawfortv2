@@ -217,10 +217,13 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
     : null;
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={[
-        "w-full text-left rounded-md border-2 px-4 py-3 transition-all duration-200",
+        "w-full text-left rounded-md border-2 px-4 py-3 transition-all duration-200 cursor-pointer",
         isSelected
           ? "border-[#0033AA] shadow-lg bg-white"
           : "border-transparent bg-white hover:border-slate-200 hover:shadow-sm",
@@ -317,7 +320,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
           </button>
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
