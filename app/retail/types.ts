@@ -1,5 +1,5 @@
 /**
- * Domain types for the Retail CRM — queue, floor plan, and loans.
+ * Domain types for the Retail CRM - queue, floor plan, and loans.
  * All data is in-memory (mock only); resets on page refresh.
  */
 
@@ -22,7 +22,7 @@ export type StationType = "kiosk" | "room" | "cashier";
 
 export type RetailTab = "queue" | "applications" | "loans";
 
-/** Ascend status — only used for loan-application appointments */
+/** Ascend status - only used for loan-application appointments */
 export type AscendStatus = "eligible" | "create";
 
 export interface RetailCustomer {
@@ -71,7 +71,7 @@ export interface StaffAlert {
   id: string;
   customerId: string;
   stationId: string;
-  /** Mock staff id — currently always the logged-in officer */
+  /** Mock staff id - currently always the logged-in officer */
   staffId: string;
   createdAt: string;
 }
@@ -84,7 +84,7 @@ export interface StationLayoutMeta {
   col: number;
 }
 
-// ─── Loan Management — approved offer & plan override ─────────────────────────
+// ─── Loan Management - approved offer & plan override ─────────────────────────
 
 /**
  * Pre-approved loan offer generated for each customer-care appointment.
@@ -94,9 +94,9 @@ export interface StationLayoutMeta {
 export interface ApprovedLoanOffer {
   customerId: string;
   productName: string;
-  /** Randomised per customer — hard ceiling on amount; cannot go higher even with override. */
+  /** Randomised per customer - hard ceiling on amount; cannot go higher even with override. */
   maxAmount: number;
-  /** Minimum permissible disbursement (≈ 30–40 % of max). */
+  /** Minimum permissible disbursement (≈ 30-40 % of max). */
   minAmount: number;
   /** Default tenure in months (6). Staff can shorten freely; lengthening requires override. */
   defaultTenureMonths: number;
@@ -157,7 +157,7 @@ export interface RetailLoan {
 }
 
 /**
- * Applications tab — customers self-register via the Crawfort website/app.
+ * Applications tab - customers self-register via the Crawfort website/app.
  * This data is read-only from the retail outlet's perspective (synced from
  * the online origination system); staff can only review it and flag entries
  * invalid, add comments, or attach supporting documents.

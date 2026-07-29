@@ -2,7 +2,7 @@
  * POST /api/aip/book
  *
  * Creates a lead + appointment for an AIP (pre-approved) customer.
- * These customers skip Singpass / manual review — they only supply their
+ * These customers skip Singpass / manual review - they only supply their
  * mobile number then book directly.
  *
  * Body: { date: "YYYY-MM-DD", time: "HH:MM" }
@@ -42,7 +42,7 @@ async function notifyAirConnect(payload: {
   const url = process.env.AIRCONNECT_APPOINTMENTS_URL;
 
   if (!apiKey || !url) {
-    console.warn(`${LOG} AirConnect env not configured — skipping notification`, {
+    console.warn(`${LOG} AirConnect env not configured - skipping notification`, {
       hasApiKey: Boolean(apiKey),
       hasUrl: Boolean(url),
     });
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Create the lead row — AIP leads skip all form steps so most fields are null.
+  // Create the lead row - AIP leads skip all form steps so most fields are null.
   const e164Phone = `+65${session.mobile}`;
 
   const { data: lead, error: leadError } = await admin
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
 
   console.info(`${LOG} appointment saved`, { appointmentId: appointment.id, date, time, cfh5Id });
 
-  // Notify AirConnect — await so serverless completes the outbound fetch before freeze.
+  // Notify AirConnect - await so serverless completes the outbound fetch before freeze.
   await notifyAirConnect({
     customerName: "AIP Lead",
     phoneNumber: e164Phone,
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     }),
   );
 
-  console.info(`${LOG} success — aip_session cleared, aip_booking_confirm set`, {
+  console.info(`${LOG} success - aip_session cleared, aip_booking_confirm set`, {
     appointmentId: appointment.id,
     cfh5Id,
     date,

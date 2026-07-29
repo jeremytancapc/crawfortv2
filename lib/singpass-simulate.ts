@@ -1,7 +1,7 @@
 /**
  * Local simulation of a Singpass/MyInfo identity check.
  *
- * The real Singpass OIDC + AWS Lambda integration has been stripped out —
+ * The real Singpass OIDC + AWS Lambda integration has been stripped out -
  * there is no external auth provider to redirect to. Instead we clone the
  * demo MyInfo fixture and shift its CPF/NOA dates to be relative to "now",
  * so the credit engine's staleness checks always pass and the simulated
@@ -33,7 +33,7 @@ export function buildSimulatedMyInfoPayload(ref: Date = new Date()): SimulatedMy
   const base = structuredClone(mockPayload) as SimulatedMyInfoPayload;
   const myinfo = base.myinfo as Record<string, unknown>;
 
-  // CPF contributions — most recent entry is last month, so `scoreCpf` always
+  // CPF contributions - most recent entry is last month, so `scoreCpf` always
   // sees data within its 2-month staleness window.
   const cpfContributions = myinfo.cpfcontributions as
     | { history?: Array<Record<string, unknown>> }
@@ -51,7 +51,7 @@ export function buildSimulatedMyInfoPayload(ref: Date = new Date()): SimulatedMy
     row.month = { value: monthKey(monthsBefore(ref, i + 1)) };
   });
 
-  // NOA history — latest year of assessment is last year, so `scoreNoa`
+  // NOA history - latest year of assessment is last year, so `scoreNoa`
   // always falls inside its [currentYear - 1, currentYear] scoring window.
   const noaHistory = myinfo.noahistory as { noas?: Array<Record<string, unknown>> } | undefined;
   noaHistory?.noas?.forEach((row, i) => {

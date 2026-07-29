@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Pre-approval lookup placeholder — always returns true for now.
+  // Pre-approval lookup placeholder - always returns true for now.
   const isPreApproved = true;
 
   if (!isPreApproved) {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.info(`${LOG} verified — setting aip_session`, { mobile: raw.slice(0, 4) + "****" });
+  console.info(`${LOG} verified - setting aip_session`, { mobile: raw.slice(0, 4) + "****" });
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(aipSessionCookieValue({ mobile: raw }));

@@ -300,7 +300,7 @@ export function LoginScreen() {
       <footer className="px-5 pb-8 text-center">
         <div className="flex items-center justify-center gap-1 text-xs text-[var(--text-tertiary)]">
           <LockKey size={13} />
-          <span>CF Money Pte. Ltd. — Licensed Moneylender</span>
+          <span>CF Money Pte. Ltd. - Licensed Moneylender</span>
         </div>
       </footer>
     </div>

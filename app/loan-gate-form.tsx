@@ -16,7 +16,7 @@ import { ArrowRight, ArrowLeft } from "@phosphor-icons/react";
 const GATE_LAST_STEP = 3;
 
 /**
- * Steps 1–3 only (loan, income, Singpass vs manual).
+ * Steps 1-3 only (loan, income, Singpass vs manual).
  * Manual and Singpass both continue on `/apply/review`.
  */
 export function LoanGateForm({

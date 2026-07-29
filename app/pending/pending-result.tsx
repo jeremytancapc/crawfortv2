@@ -48,7 +48,7 @@ const DOCUMENT_TYPES = [
   {
     icon: CurrencyDollar,
     label: "Payslip / CPF statement",
-    desc: "Latest 1–3 months",
+    desc: "Latest 1-3 months",
   },
 ];
 
@@ -208,7 +208,7 @@ export function PendingResult() {
             </span>
           </p>
           <p className="text-xs text-[var(--text-tertiary)]">
-            PDF, JPG, PNG or WebP — max 10 MB per file
+            PDF, JPG, PNG or WebP - max 10 MB per file
           </p>
         </div>
       </div>
@@ -272,7 +272,7 @@ export function PendingResult() {
           Submit Documents
         </button>
         <p className="text-center text-[10px] sm:text-xs leading-relaxed text-[var(--text-tertiary)]">
-          Your documents will be reviewed within 1–2 business days. We will
+          Your documents will be reviewed within 1-2 business days. We will
           notify you via SMS once the review is complete.
         </p>
       </div>

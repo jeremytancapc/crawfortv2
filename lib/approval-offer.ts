@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { decodeSession, encodeSession } from "@/lib/apply-session-codec";
 import type { LoanFormData } from "@/lib/loan-form";
 
-/** Persisted after eligible submit — powers /apply/approval and /apply/book for 30 days. */
+/** Persisted after eligible submit - powers /apply/approval and /apply/book for 30 days. */
 export const APPROVAL_OFFER_COOKIE = "approval_offer";
 
 /** Same TTL as `booking_confirm`. */

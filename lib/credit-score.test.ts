@@ -167,7 +167,7 @@ describe("scoreNoa", () => {
   });
 });
 
-// ─── 5. assessCredit — core scenarios ────────────────────────────────────────
+// ─── 5. assessCredit - core scenarios ────────────────────────────────────────
 
 const BASE = {
   dob: "1990-01-01",
@@ -183,7 +183,7 @@ const BASE = {
   ref: REF,
 };
 
-describe("assessCredit — income source selection", () => {
+describe("assessCredit - income source selection", () => {
   it("uses self_declared when no CPF/NOA available", () => {
     const r = assessCredit({ ...BASE, selfDeclaredMonthlyIncome: 4000 });
     expect(r.incomeSource).toBe("self_declared");
@@ -225,7 +225,7 @@ describe("assessCredit — income source selection", () => {
   });
 });
 
-describe("assessCredit — loan cap rules", () => {
+describe("assessCredit - loan cap rules", () => {
   it("caps at $3,000 when annual income ≤ $20,000", () => {
     // $1,500/month × 12 = $18,000 ≤ $20,000
     const r = assessCredit({ ...BASE, selfDeclaredMonthlyIncome: 1500, requestedLoanAmount: 10000 });
@@ -302,7 +302,7 @@ describe("assessCredit — loan cap rules", () => {
   });
 });
 
-describe("assessCredit — eligibility flags", () => {
+describe("assessCredit - eligibility flags", () => {
   it("skips age check for manual authMethod", () => {
     // No DOB → age = 0, but manual skips check
     const r = assessCredit({ ...BASE, dob: "", selfDeclaredMonthlyIncome: 5000, authMethod: "manual" });
@@ -369,7 +369,7 @@ describe("assessCredit — eligibility flags", () => {
   });
 });
 
-describe("assessCredit — all 5 payment history multipliers end-to-end", () => {
+describe("assessCredit - all 5 payment history multipliers end-to-end", () => {
   const incomeParams = {
     ...BASE,
     selfDeclaredMonthlyIncome: 5000,
@@ -407,23 +407,23 @@ describe("assessCredit — all 5 payment history multipliers end-to-end", () => 
 // ─── 6. isPlatformEmployer ───────────────────────────────────────────────────
 
 describe("isPlatformEmployer", () => {
-  it("detects full (PLATFORM) suffix — Grab", () => {
+  it("detects full (PLATFORM) suffix - Grab", () => {
     expect(isPlatformEmployer(GRAB)).toBe(true);
   });
 
-  it("detects full (PLATFORM) suffix — Gojek", () => {
+  it("detects full (PLATFORM) suffix - Gojek", () => {
     expect(isPlatformEmployer(GOJEK)).toBe(true);
   });
 
-  it("detects Singpass-truncated name via prefix — Tada", () => {
+  it("detects Singpass-truncated name via prefix - Tada", () => {
     expect(isPlatformEmployer(TADA_TRUNCATED)).toBe(true);
   });
 
-  it("detects Singpass-truncated name via prefix — Delivery Hero", () => {
+  it("detects Singpass-truncated name via prefix - Delivery Hero", () => {
     expect(isPlatformEmployer("DELIVERY HERO (SINGAPORE) (PLA")).toBe(true);
   });
 
-  it("detects Singpass-truncated name via prefix — Ryde", () => {
+  it("detects Singpass-truncated name via prefix - Ryde", () => {
     expect(isPlatformEmployer("RYDE TECHNOLOGIES PTE. LTD. (P")).toBe(true);
   });
 
@@ -439,9 +439,9 @@ describe("isPlatformEmployer", () => {
   });
 });
 
-// ─── 7. scoreCpf — platform worker detection ─────────────────────────────────
+// ─── 7. scoreCpf - platform worker detection ─────────────────────────────────
 
-describe("scoreCpf — platform worker detection", () => {
+describe("scoreCpf - platform worker detection", () => {
   it("flags isPlatformWorker when all contributions are from a platform employer", () => {
     const contributions = [
       cpfMonth("2026-04", 500, GRAB),
@@ -478,9 +478,9 @@ describe("scoreCpf — platform worker detection", () => {
   });
 });
 
-// ─── 8. scoreNoa — trade income ───────────────────────────────────────────────
+// ─── 8. scoreNoa - trade income ───────────────────────────────────────────────
 
-describe("scoreNoa — trade income for gig workers", () => {
+describe("scoreNoa - trade income for gig workers", () => {
   it("uses tradeIncome when employmentIncome is zero (pure gig worker)", () => {
     const r = scoreNoa(
       [{ yearOfAssessment: "2025", employmentIncome: 0, tradeIncome: 48000, assessableIncome: 48000, type: "", taxClearance: "", rentIncome: 0, interestIncome: 0 }],
@@ -509,9 +509,9 @@ describe("scoreNoa — trade income for gig workers", () => {
   });
 });
 
-// ─── 9. assessCredit — platform worker fallback ───────────────────────────────
+// ─── 9. assessCredit - platform worker fallback ───────────────────────────────
 
-describe("assessCredit — platform worker income fallback", () => {
+describe("assessCredit - platform worker income fallback", () => {
   it("skips both CPF and NOA for platform workers, uses self-declared even when NOA is available", () => {
     const cpf = [
       cpfMonth("2026-04", 500, GRAB),

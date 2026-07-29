@@ -230,7 +230,7 @@ function retailReducer(state: RetailState, action: Action): RetailState {
         ? clearAlertsForCustomer(state.staffAlerts, justFinished)
         : state.staffAlerts;
 
-      // Next in queue is now being called — allocate & ping staff for room/cashier
+      // Next in queue is now being called - allocate & ping staff for room/cashier
       if (nextId && needsStaff) {
         staffAlerts = [
           ...clearAlertsForCustomer(staffAlerts, nextId),
@@ -292,7 +292,7 @@ function retailReducer(state: RetailState, action: Action): RetailState {
     case "REASSIGN": {
       const customer = state.customers.find((c) => c.id === action.customerId);
       if (!customer) return state;
-      // Already available — nothing to clear
+      // Already available - nothing to clear
       if (customer.status === "scheduled") {
         return { ...state, selectedCustomerId: customer.id };
       }
@@ -330,7 +330,7 @@ function retailReducer(state: RetailState, action: Action): RetailState {
               };
             });
           } else {
-            // Was only waiting in the queue — remove them
+            // Was only waiting in the queue - remove them
             const remainingQueue = station.queuedCustomerIds.filter((id) => id !== customer.id);
             updatedStations = state.stations.map((s) => {
               if (s.id !== stationId) return s;
@@ -465,7 +465,7 @@ function buildInitialState(): RetailState {
     counters[prefix] = Math.max(counters[prefix], parseInt(c.queueNumber.slice(1), 10));
   });
 
-  // Demo: cust-5 is already "called" at room-2 — staff needs to go there now
+  // Demo: cust-5 is already "called" at room-2 - staff needs to go there now
   const staffAlerts: StaffAlert[] = [];
   const calledSeed = customers.find((c) => c.id === "cust-5" && c.status === "called");
   if (calledSeed?.assignedStationId) {

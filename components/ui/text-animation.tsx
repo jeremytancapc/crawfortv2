@@ -7,7 +7,7 @@ interface TextAnimationProps {
   /** CSS font-size value, e.g. "4rem" or "clamp(2.5rem, 8vw, 4rem)" */
   fontSize?: string;
   color?: string;
-  /** Optional glow color — defaults to same as color */
+  /** Optional glow color - defaults to same as color */
   glowColor?: string;
   animationDuration?: string;
   className?: string;

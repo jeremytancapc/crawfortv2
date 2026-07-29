@@ -28,7 +28,7 @@ type RequestBody = {
 
 type SessionWithTrace = Partial<LoanFormData> & { applyTraceId?: string };
 
-// POST — save form data and set gate cookie
+// POST - save form data and set gate cookie
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as RequestBody;
   const { formData, gate = "apply", setApplyGate = true } = body;
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
   return res;
 }
 
-// DELETE — clear all apply cookies (called on booking confirmation)
+// DELETE - clear all apply cookies (called on booking confirmation)
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
   for (const c of clearCookies()) {

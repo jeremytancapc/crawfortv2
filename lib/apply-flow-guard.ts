@@ -3,7 +3,7 @@ import type { LoanFormData } from "@/lib/loan-form";
 /** Steps 4+ (identity → submit) for both manual and Singpass. */
 export const APPLY_CONTINUE_PATH = "/apply/review";
 
-/** Singpass MyInfo was merged (activate) — not merely "user tapped Singpass". */
+/** Singpass MyInfo was merged (activate) - not merely "user tapped Singpass". */
 export function hasSingpassMyInfoMerged(
   session: Partial<LoanFormData> | null | undefined,
 ): boolean {
@@ -31,7 +31,7 @@ export function shouldRedirectToApplyContinue(
   return true;
 }
 
-/** Session for steps 1–3 on `/` — omit after submit so the form starts fresh. */
+/** Session for steps 1-3 on `/` - omit after submit so the form starts fresh. */
 export function gateInitialSession(
   session: Partial<LoanFormData> | null | undefined,
 ): Partial<LoanFormData> | undefined {

@@ -27,7 +27,7 @@ export default async function AipPage() {
           </div>
 
           <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
-            Good news — you&apos;ve been pre-approved.
+            Good news - you&apos;ve been pre-approved.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
             Book your appointment at our office to finalise your loan offer in person.
@@ -38,7 +38,7 @@ export default async function AipPage() {
           <div className="flex flex-col gap-3">
             {[
               "No credit check required at this step",
-              "No documents needed — just bring your NRIC",
+              "No documents needed - just bring your NRIC",
               "Disbursed same day upon approval",
             ].map((point) => (
               <div key={point} className="flex items-start gap-3">

@@ -46,7 +46,7 @@ export function buildMyInfoPatch(myinfo: Record<string, unknown>): Partial<LoanF
   if (myinfo.uinfin) patch.nric     = str(myinfo.uinfin);
   if (myinfo.email)  patch.email    = str(myinfo.email);
 
-  // Date of birth — used for CPF rate calculation
+  // Date of birth - used for CPF rate calculation
   if (myinfo.dob && typeof myinfo.dob === "object") {
     const dobVal = (myinfo.dob as Record<string, unknown>).value;
     if (typeof dobVal === "string" && dobVal) patch.dob = dobVal;
@@ -73,14 +73,14 @@ export function buildMyInfoPatch(myinfo: Record<string, unknown>): Partial<LoanF
     patch.idType = mapResidentialStatus(strCode(myinfo.residentialstatus));
   }
 
-  // Marital status — map MyInfo codes to form values
+  // Marital status - map MyInfo codes to form values
   if (myinfo.marital && typeof myinfo.marital === "object") {
     const code   = strCode(myinfo.marital);
     const mapped = MARITAL_CODES[code];
     if (mapped) patch.maritalStatus = mapped;
   }
 
-  // NOA history — all detailed fields per Singpass data display guidelines.
+  // NOA history - all detailed fields per Singpass data display guidelines.
   if (myinfo.noahistory && typeof myinfo.noahistory === "object") {
     const noas = (myinfo.noahistory as Record<string, unknown>).noas;
     if (Array.isArray(noas) && noas.length > 0) {
@@ -105,12 +105,12 @@ export function buildMyInfoPatch(myinfo: Record<string, unknown>): Partial<LoanF
       // Do NOT pre-fill monthlyIncome from NOA.
       // monthlyIncome is the user's self-declared figure (entered in step 2).
       // If NOA fails the scoring window, that value must not leak into the
-      // self_declared fallback inside assessCredit — which is exactly what
+      // self_declared fallback inside assessCredit - which is exactly what
       // happens when we write the NOA-derived number here.
     }
   }
 
-  // CPF contributions — employer, For Month, Paid On, Amount per Singpass guidelines.
+  // CPF contributions - employer, For Month, Paid On, Amount per Singpass guidelines.
   if (myinfo.cpfcontributions && typeof myinfo.cpfcontributions === "object") {
     const history = (myinfo.cpfcontributions as Record<string, unknown>).history;
     if (Array.isArray(history)) {

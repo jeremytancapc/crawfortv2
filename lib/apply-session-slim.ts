@@ -4,7 +4,7 @@ import type { LoanFormData } from "@/lib/loan-form";
 type SessionWithTrace = Partial<LoanFormData> & { applyTraceId?: string };
 
 /**
- * Session cookie after Singpass activate — identity + loan fields only.
+ * Session cookie after Singpass activate - identity + loan fields only.
  * Full CPF/NOA live in myinfo_profiles (keyed by draft_lead) and are hydrated
  * on /apply/review. singpassRawKey stays for short-lived auth-callback-store fallback.
  */

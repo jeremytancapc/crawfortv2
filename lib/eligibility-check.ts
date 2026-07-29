@@ -1,5 +1,5 @@
 /**
- * AirConnect eligibility check — determines if the customer already exists
+ * AirConnect eligibility check - determines if the customer already exists
  * in Crawford/lender systems before credit scoring.
  *
  * POST https://airconnect.capcfintech.com/api/leads/eligibility
@@ -49,7 +49,7 @@ export async function checkLeadEligibility(params: {
   const url = process.env.AIRCONNECT_ELIGIBILITY_URL;
 
   if (!apiKey || !url) {
-    console.warn(`${LOG} env not configured — skipping eligibility check`, {
+    console.warn(`${LOG} env not configured - skipping eligibility check`, {
       hasApiKey: Boolean(apiKey),
       hasUrl: Boolean(url),
     });
@@ -103,7 +103,7 @@ export async function checkLeadEligibility(params: {
     if (!res.ok || !responseJson) {
       return {
         status: "PENDING",
-        notes: `API error: ${res.status} — ${responseText.slice(0, 200)}`,
+        notes: `API error: ${res.status} - ${responseText.slice(0, 200)}`,
         reloanReason: null,
         raw: responseJson as Record<string, unknown> | null,
       };

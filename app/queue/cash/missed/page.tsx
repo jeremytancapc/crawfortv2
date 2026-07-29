@@ -1,6 +1,6 @@
 import { QueueStatus } from "../../queue-status";
 
-export const metadata = { title: "Queue – Cash Disbursement: Missed" };
+export const metadata = { title: "Queue - Cash Disbursement: Missed" };
 
 export default function Page() {
   return (

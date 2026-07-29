@@ -17,7 +17,7 @@ import { useRetail } from "./retail-store";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function stationLabel(stationId: string | null): string {
-  if (!stationId) return "—";
+  if (!stationId) return "-";
   return stationId
     .replace("room-", "Room ")
     .replace("kiosk-", "Kiosk ")
@@ -105,7 +105,7 @@ function RepaymentPlanModal({
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-3">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Monthly Schedule — {tenureMonths} instalments at {interestRate}% p.a.
+              Monthly Schedule - {tenureMonths} instalments at {interestRate}% p.a.
             </p>
           </div>
           <div className="px-4">
@@ -266,7 +266,7 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
                 >
                   {customer.queueNumber}
                 </span>
-                {room !== "—" && (
+                {room !== "-" && (
                   <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
                     {room}
                   </span>
@@ -283,7 +283,7 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
                     Attend to customer
                   </button>
                   <p className="text-right text-[10px] leading-snug text-slate-400">
-                    Tap this when you arrive in {room !== "—" ? room : "the room"}
+                    Tap this when you arrive in {room !== "-" ? room : "the room"}
                   </p>
                 </div>
               ) : customer.status === "serving" ? (
@@ -373,7 +373,7 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
               {/* Tenure */}
               <div>
                 <FieldLabel required>
-                  Installments (Tenure)
+                  Instalments (Tenure)
                   {tenure > offer.defaultTenureMonths && (
                     <span className="ml-2 text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full">
                       Override needed
@@ -482,7 +482,7 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
               </div>
               <div>
                 <label className="block text-xs font-bold text-orange-700 mb-1.5" htmlFor="staff-code">
-                  Staff Authorization Code
+                  Staff Authorisation Code
                 </label>
                 <input
                   id="staff-code"

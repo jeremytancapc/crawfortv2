@@ -169,7 +169,7 @@ export function QueueStatus({
           </div>
         </div>
 
-        {/* ── Cards area — 3-col grid: prev stage | big card | next stage ── */}
+        {/* ── Cards area - 3-col grid: prev stage | big card | next stage ── */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2 px-3 pt-8 sm:gap-3 sm:px-7">
 
           {/* Left: previous (completed) stage chip */}
@@ -359,14 +359,14 @@ export function QueueStatus({
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          White lower panel — always shown for counter; shown for other
+          White lower panel - always shown for counter; shown for other
           stages only when there is actionable content (missed QR or
           your-turn location row).
       ════════════════════════════════════════════════════════════════ */}
       {(stage === "counter" || isMissed) && (
         <div className={`-mx-5 sm:-mx-8 lg:mx-0 lg:rounded-b-[var(--radius-lg)] border-x border-[var(--border-subtle)] bg-white px-5 pt-7 pb-8 sm:px-8${isMissed ? "" : " border-b"}`}>
 
-          {/* QR rescan block — missed status only */}
+          {/* QR rescan block - missed status only */}
           {isMissed && (
             <div className="flex flex-col items-center gap-4 text-center">
               <div>
@@ -392,7 +392,7 @@ export function QueueStatus({
                 )}
               </div>
 
-              {/* QR image — blurred until active */}
+              {/* QR image - blurred until active */}
               <div className="relative rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
                 <img
                   src="/images/qr-placeholder.png"
@@ -477,7 +477,7 @@ export function QueueStatus({
           )}
 
 
-          {/* Upload card — counter stage only, not when missed */}
+          {/* Upload card - counter stage only, not when missed */}
           {stage === "counter" && !isMissed && <QueueUploadCard />}
         </div>
       )}

@@ -32,7 +32,7 @@ export function AxsBackButton() {
     return () => observer.disconnect();
   }, []);
 
-  // Reveal floating button only after a real scroll — never on initial mount.
+  // Reveal floating button only after a real scroll - never on initial mount.
   useEffect(() => {
     function onScroll() {
       setScrolledPast(window.scrollY > SCROLL_REVEAL_THRESHOLD);
@@ -47,7 +47,7 @@ export function AxsBackButton() {
 
   return (
     <>
-      {/* In-flow anchor — becomes the button when user reaches the bottom */}
+      {/* In-flow anchor - becomes the button when user reaches the bottom */}
       <button
         ref={anchorRef}
         type="button"
@@ -58,7 +58,7 @@ export function AxsBackButton() {
         <ArrowRight size={15} weight="bold" />
       </button>
 
-      {/* Floating copy — visible while scrolled past shopfront but anchor not yet in view */}
+      {/* Floating copy - visible while scrolled past shopfront but anchor not yet in view */}
       {showFloating && (
         <div
           className="fixed bottom-0 left-0 right-0 z-50"

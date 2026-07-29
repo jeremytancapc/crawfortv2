@@ -31,7 +31,7 @@ function mockResponse(body: object, status = 200) {
 
 describe("checkLeadEligibility", () => {
   describe("pass-through cases (ELIGIBLE)", () => {
-    it("brand new customer — not found in any lists", async () => {
+    it("brand new customer - not found in any lists", async () => {
       mockResponse({
         isEligible: true,
         notes: "not found in any lists",
@@ -44,7 +44,7 @@ describe("checkLeadEligibility", () => {
       expect(result.notes).toContain("not found in any lists");
     });
 
-    it("existing lead in system (phone exists) — still passes through", async () => {
+    it("existing lead in system (phone exists) - still passes through", async () => {
       mockResponse({
         success: true,
         phoneNumber: "+6587121544",
@@ -60,7 +60,7 @@ describe("checkLeadEligibility", () => {
       expect(result.notes).toContain("already exists in leads");
     });
 
-    it("found in CAPC lists (existing borrower) — passes through", async () => {
+    it("found in CAPC lists (existing borrower) - passes through", async () => {
       mockResponse({
         isEligible: false,
         notes: "Found in CAPC lists: Borrower",
@@ -72,7 +72,7 @@ describe("checkLeadEligibility", () => {
       expect(result.status).toBe("ELIGIBLE");
     });
 
-    it("isEligible true with exists in leads — passes through", async () => {
+    it("isEligible true with exists in leads - passes through", async () => {
       mockResponse({
         isEligible: true,
         notes: "exists in leads status APPROVED",
@@ -86,7 +86,7 @@ describe("checkLeadEligibility", () => {
   });
 
   describe("blocked cases", () => {
-    it("blacklisted borrower — blocked", async () => {
+    it("blacklisted borrower - blocked", async () => {
       mockResponse({
         isEligible: false,
         notes: "Blacklisted borrower",
@@ -99,7 +99,7 @@ describe("checkLeadEligibility", () => {
       expect(result.notes).toContain("Blacklisted");
     });
 
-    it("reloanReason set — blocked as RELOAN", async () => {
+    it("reloanReason set - blocked as RELOAN", async () => {
       mockResponse({
         isEligible: false,
         notes: "Found in Ascend as BORROWER",
@@ -112,7 +112,7 @@ describe("checkLeadEligibility", () => {
       expect(result.reloanReason).toBe("Previous loan completed");
     });
 
-    it("notes contains ascend (no reloanReason) — blocked as RELOAN", async () => {
+    it("notes contains ascend (no reloanReason) - blocked as RELOAN", async () => {
       mockResponse({
         isEligible: false,
         notes: "Found in Ascend system",
@@ -124,7 +124,7 @@ describe("checkLeadEligibility", () => {
       expect(result.status).toBe("RELOAN");
     });
 
-    it("ascend + blacklisted — blocked as NOT_ELIGIBLE (blacklist takes priority)", async () => {
+    it("ascend + blacklisted - blocked as NOT_ELIGIBLE (blacklist takes priority)", async () => {
       mockResponse({
         isEligible: false,
         notes: "Found in Ascend - Blacklisted borrower",
@@ -139,8 +139,8 @@ describe("checkLeadEligibility", () => {
     });
   });
 
-  describe("error handling (PENDING — never blocks)", () => {
-    it("API returns 500 — PENDING", async () => {
+  describe("error handling (PENDING - never blocks)", () => {
+    it("API returns 500 - PENDING", async () => {
       mockResponse({ error: "Internal server error" }, 500);
 
       const result = await checkLeadEligibility({ phoneNumber: "+6591234567" });
@@ -148,7 +148,7 @@ describe("checkLeadEligibility", () => {
       expect(result.status).toBe("PENDING");
     });
 
-    it("fetch throws network error — PENDING", async () => {
+    it("fetch throws network error - PENDING", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Connection refused"));
 
       const result = await checkLeadEligibility({ phoneNumber: "+6591234567" });
@@ -157,7 +157,7 @@ describe("checkLeadEligibility", () => {
       expect(result.notes).toContain("Connection refused");
     });
 
-    it("env vars not configured — PENDING", async () => {
+    it("env vars not configured - PENDING", async () => {
       vi.stubEnv("AIRCONNECT_ELIGIBILITY_API_KEY", "");
       vi.stubEnv("AIRCONNECT_ELIGIBILITY_URL", "");
 

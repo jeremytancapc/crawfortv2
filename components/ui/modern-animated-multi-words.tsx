@@ -112,7 +112,7 @@ export function ContainerTextFlip({
 
   return (
     <div className="relative isolate w-full flex items-center justify-center">
-      {/* Glow — scoped behind the pill via isolate + -z-10 */}
+      {/* Glow - scoped behind the pill via isolate + -z-10 */}
       <motion.div
         animate={{
           scale: isAnimating ? [1, 1.05, 1] : 1,

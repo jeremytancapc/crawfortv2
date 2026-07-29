@@ -25,7 +25,7 @@ function getRequestOrigin(request: NextRequest): string {
 /**
  * "Retrieve MyInfo with Singpass" entry point.
  *
- * The real Singpass OIDC redirect + AWS Lambda webhook has been removed —
+ * The real Singpass OIDC redirect + AWS Lambda webhook has been removed -
  * there is no external identity provider here. Instead this instantly
  * simulates a successful MyInfo retrieval (fresh CPF/NOA data) and sends the
  * browser straight to /api/apply/activate, exactly like a real callback

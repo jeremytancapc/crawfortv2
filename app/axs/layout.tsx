@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function AxsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="axs-theme min-h-[100dvh] flex flex-col bg-[var(--surface-primary)]">
-      {/* Top nav — logo is non-interactive to keep users in the flow */}
+      {/* Top nav - logo is non-interactive to keep users in the flow */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-brand-blue">
         <Image
           src="/images/cf-money-white.png"

@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Create partial lead while MyInfo data is fresh ─────────────────────────
-  // Stored in a dedicated draft_lead cookie — NOT in the session — so the
+  // Stored in a dedicated draft_lead cookie - NOT in the session - so the
   // funnel gate logic is completely unaffected.
   const hasLoanDetails =
     typeof merged.amount === "number" && merged.amount > 0 &&

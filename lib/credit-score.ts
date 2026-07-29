@@ -18,7 +18,7 @@ import type { CpfContribution, NoaRecord } from "./loan-form";
 /**
  * Known platform operator name prefixes as they appear in Singpass CPF data.
  * Singpass truncates employer names at 30 characters, so some entries like
- * "TADA MOBILITY (SINGAPORE) (PLA" never show the full "(PLATFORM)" suffix —
+ * "TADA MOBILITY (SINGAPORE) (PLA" never show the full "(PLATFORM)" suffix -
  * prefix matching is the only reliable way to catch them.
  */
 const PLATFORM_EMPLOYER_PREFIXES = [
@@ -52,16 +52,16 @@ export function moneylenderIncomeMultiplier(
   if (noLoans) return 4.5;
   switch (paymentHistory) {
     case "on_time":
-    case "very_good":   // legacy value — kept for backwards compat
+    case "very_good":   // legacy value - kept for backwards compat
       return 5.3;
     case "late_14":
-    case "good":        // legacy value — kept for backwards compat
+    case "good":        // legacy value - kept for backwards compat
       return 4.9;
     case "late_30":
-    case "average":     // legacy value — kept for backwards compat
+    case "average":     // legacy value - kept for backwards compat
       return 3.8;
     case "late_60":
-    case "poor":        // legacy value — kept for backwards compat
+    case "poor":        // legacy value - kept for backwards compat
       return 2.9;
     case "bad_debt":
       return 1.38;
@@ -124,7 +124,7 @@ export interface CpfScoringResult {
   /**
    * True when every CPF contribution is from a platform operator (Grab, Gojek etc.).
    * These workers have CPF rates well below the standard employee rate so back-calculating
-   * income from contributions gives a severe underestimate — income source is skipped.
+   * income from contributions gives a severe underestimate - income source is skipped.
    */
   isPlatformWorker: boolean;
 }
@@ -150,18 +150,18 @@ export function scoreCpf(
     return { eligible: false, latestMonth: null, monthsStale: Infinity, avgMonthlyContribution: 0, grossMonthlyIncome: 0, cpfRate: rate, ageUsed: age, isPlatformWorker: false };
   }
 
-  // Step 1 — aggregate by month
+  // Step 1 - aggregate by month
   const byMonth = new Map<string, number>();
   for (const row of contributions) {
     byMonth.set(row.month, (byMonth.get(row.month) ?? 0) + row.amount);
   }
 
-  // Step 2 — find latest month
+  // Step 2 - find latest month
   const sortedMonths = [...byMonth.keys()].sort().reverse();
   const latestMonth = sortedMonths[0];
   const latestIdx = monthIndex(latestMonth);
 
-  // Step 3 — staleness check (diff in calendar months)
+  // Step 3 - staleness check (diff in calendar months)
   const monthsStale = appMonthIdx - latestIdx;
   const eligible = monthsStale <= 2;
 
@@ -169,7 +169,7 @@ export function scoreCpf(
     return { eligible: false, latestMonth, monthsStale, avgMonthlyContribution: 0, grossMonthlyIncome: 0, cpfRate: rate, ageUsed: age, isPlatformWorker };
   }
 
-  // Step 4 — 3-month average ending at latestIdx
+  // Step 4 - 3-month average ending at latestIdx
   let total = 0;
   for (let offset = 0; offset < 3; offset++) {
     const targetIdx = latestIdx - offset;
@@ -179,7 +179,7 @@ export function scoreCpf(
   }
   const avgMonthlyContribution = total / 3;
 
-  // Step 5 — back-calculate gross income
+  // Step 5 - back-calculate gross income
   const grossMonthlyIncome = rate > 0 ? avgMonthlyContribution / rate : 0;
 
   return { eligible, latestMonth, monthsStale, avgMonthlyContribution, grossMonthlyIncome, cpfRate: rate, ageUsed: age, isPlatformWorker };
@@ -297,7 +297,7 @@ export function assessCredit(params: {
   const noa = scoreNoa(params.noaHistory, ref);
   const selfDeclared = Math.max(0, params.selfDeclaredMonthlyIncome);
 
-  // Income selection — priority: CPF (if fresh AND not a platform worker) → NOA → self-declared.
+  // Income selection - priority: CPF (if fresh AND not a platform worker) → NOA → self-declared.
   // Platform workers (Grab, Gojek etc.) skip BOTH CPF and NOA and go straight to self-declared.
   // CPF rates for platform workers are well below the standard employee rate so back-calculation
   // gives a severe underestimate. NOA trade income also lags a full year and may not reflect current
@@ -314,7 +314,7 @@ export function assessCredit(params: {
     incomeSource = "self_declared";
     verifiedMonthlyIncome = selfDeclared;
     if (isPlatformWorker) {
-      explanation = `CPF contributions are from a platform employer — income back-calculation does not apply and NOA is not used. Income will be verified at appointment. Using your declared income of S$${selfDeclared.toLocaleString()}/month.`;
+      explanation = `CPF contributions are from a platform employer - income back-calculation does not apply and NOA is not used. Income will be verified at appointment. Using your declared income of S$${selfDeclared.toLocaleString()}/month.`;
     } else {
       explanation =
         cpf.latestMonth
@@ -331,7 +331,7 @@ export function assessCredit(params: {
     explanation = `Based on your Notice of Assessment (YA ${noa.latestYa}, annual income S$${noa.annualIncome.toLocaleString()}), your monthly income is S$${Math.round(verifiedMonthlyIncome).toLocaleString()}.`;
   }
 
-  // Declared moneylender balance (stored on lead / audit — not used to reduce max loan).
+  // Declared moneylender balance (stored on lead / audit - not used to reduce max loan).
   const existingLoans =
     params.moneylenderNoLoans
       ? 0
@@ -342,13 +342,13 @@ export function assessCredit(params: {
     params.moneylenderPaymentHistory ?? "",
   );
 
-  // Eligibility checks — manual path skips verified age until DOB is collected properly.
+  // Eligibility checks - manual path skips verified age until DOB is collected properly.
   const meetsAgeRequirement =
     params.authMethod === "manual" || age >= 18;
   const foreignerMinMonthlyIncome = 40000 / 12; // ~S$3,333/month
   const meetsForeignerIncomeFloor = !isForeigner || verifiedMonthlyIncome >= foreignerMinMonthlyIncome;
 
-  // Loan cap calculation — declared O/S balance is always subtracted from the cap.
+  // Loan cap calculation - declared O/S balance is always subtracted from the cap.
   const annualIncome = verifiedMonthlyIncome * 12;
   let maxEligibleLoan: number;
   if (annualIncome <= 20000) {
@@ -359,7 +359,7 @@ export function assessCredit(params: {
 
   const moneylenderNote =
     params.moneylenderNoLoans
-      ? "No moneylender loans declared — capacity factor 4.5× monthly income."
+      ? "No moneylender loans declared - capacity factor 4.5× monthly income."
       : `Moneylender payment record: ${incomeMultiple}× monthly income; declared O/S balance S$${existingLoans.toLocaleString()} deducted from cap.`;
 
   const explanationWithCap = `${explanation} ${moneylenderNote}`;

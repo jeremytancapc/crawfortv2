@@ -71,7 +71,7 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
-/* Grain paper texture — fixed pseudo-element, pointer-events-none, GPU-composited */
+/* Grain paper texture - fixed pseudo-element, pointer-events-none, GPU-composited */
 body::before {
   content: '';
   position: fixed;
@@ -114,7 +114,7 @@ button:disabled,
   cursor: not-allowed;
 }
 
-/* Hide scrollbar utility — used by retail CRM filter chips and date strips */
+/* Hide scrollbar utility - used by retail CRM filter chips and date strips */
 .scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -245,7 +245,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* ─── Circle Loader ─────────────────────────────────────────────────── */
 /*
- * The whole .loader div spins — SVG arc + dot rotate together, so the
+ * The whole .loader div spins - SVG arc + dot rotate together, so the
  * dot is ALWAYS at the arc tip without any dashoffset-to-angle math.
  * The arc uses a fixed stroke-dasharray to create the partial-circle gap.
  */
@@ -265,7 +265,7 @@ input[type="range"]::-moz-range-thumb {
   height: 100%;
 }
 
-/* The arc track — ~78% of the circle visible, gap at the trailing edge */
+/* The arc track - ~78% of the circle visible, gap at the trailing edge */
 .loader circle.loader-arc {
   fill: none;
   stroke: var(--border-subtle);
@@ -285,7 +285,7 @@ input[type="range"]::-moz-range-thumb {
   to   { transform: rotate(360deg); }
 }
 
-/* ─── Loading screen — blur reveal (background ghost content) ─────── */
+/* ─── Loading screen - blur reveal (background ghost content) ─────── */
 
 @keyframes blur-reveal {
   0%   { opacity: 0; filter: blur(16px); transform: translateY(6px); }
@@ -296,14 +296,14 @@ input[type="range"]::-moz-range-thumb {
   animation: blur-reveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ─── Gentle pulse — for expiry / urgency indicators ────────────── */
+/* ─── Gentle pulse - for expiry / urgency indicators ────────────── */
 
 @keyframes gentle-pulse {
   0%, 100% { opacity: 0.6; }
   50%       { opacity: 1; }
 }
 
-/* ─── Clock tick — 12-step rotation simulating a ticking clock ───── */
+/* ─── Clock tick - 12-step rotation simulating a ticking clock ───── */
 
 @keyframes clock-tick {
   from { transform: rotate(0deg); }
@@ -395,7 +395,7 @@ input[type="range"]::-moz-range-thumb {
   pointer-events: none;
 }
 
-/* ─── Approval theme — Inter Tight headings, clean finance aesthetic ─── */
+/* ─── Approval theme - Inter Tight headings, clean finance aesthetic ─── */
 
 .approval-theme {
   --font-display: var(--font-inter-tight);
@@ -412,7 +412,7 @@ input[type="range"]::-moz-range-thumb {
   font-weight: 700;
 }
 
-/* ─── AXS theme — Inter Tight headings, finance-2.0 aesthetic ───── */
+/* ─── AXS theme - Inter Tight headings, finance-2.0 aesthetic ───── */
 
 .axs-theme {
   --font-display: var(--font-inter-tight);

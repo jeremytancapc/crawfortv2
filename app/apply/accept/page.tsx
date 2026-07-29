@@ -60,7 +60,7 @@ export default async function AcceptPage() {
     .eq("id", leadId)
     .maybeSingle();
 
-  // Build plan data — prefer persisted values, fall back to session/offer data
+  // Build plan data - prefer persisted values, fall back to session/offer data
   // so the page always renders even if the select-plan DB write hasn't landed yet.
   const planId = row?.selected_plan ?? "unknown";
   const amount =

@@ -1,6 +1,6 @@
 /**
  * Thin wrapper around the global gtag function injected by GA4.
- * Safe to call during SSR — no-ops if window/gtag is unavailable.
+ * Safe to call during SSR - no-ops if window/gtag is unavailable.
  */
 
 declare global {

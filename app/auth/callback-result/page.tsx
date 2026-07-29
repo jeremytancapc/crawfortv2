@@ -25,7 +25,7 @@ export default function CallbackResultPage() {
       try {
         myinfo = JSON.parse(rawJson);
       } catch {
-        setError("Invalid JSON — check your input.");
+        setError("Invalid JSON - check your input.");
         return;
       }
 

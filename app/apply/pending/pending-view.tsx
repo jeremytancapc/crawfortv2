@@ -19,7 +19,7 @@ function shortRef(leadId: string): string {
 }
 
 const NEXT_STEPS = [
-  "Our team will review your application within 1–2 business days.",
+  "Our team will review your application within 1-2 business days.",
   "We may contact you to request supporting documents.",
   "WhatsApp us if you need to follow up.",
 ];
@@ -145,7 +145,7 @@ export function PendingView({ pending }: Props) {
 
             <div className="h-px bg-[var(--border-subtle)]" />
 
-            {/* WhatsApp — official channel for follow-up */}
+            {/* WhatsApp - official channel for follow-up */}
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold text-[var(--text-primary)]">Get in touch</p>
               <a
@@ -157,14 +157,14 @@ export function PendingView({ pending }: Props) {
                 <WhatsappLogo size={22} weight="duotone" className="shrink-0 text-brand-blue" />
                 <div>
                   <p className="text-sm font-semibold text-[var(--text-primary)]">WhatsApp us</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">6011 9380 · Mon – Sat, 10:30am – 7:30pm</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">6011 9380 · Mon - Sat, 10:30am - 7:30pm</p>
                 </div>
               </a>
             </div>
 
             {/* Footer note */}
             <p className="text-xs leading-relaxed text-[var(--text-tertiary)]">
-              Office hours: Mon – Sat, 10:30am – 7:30pm. Closed on Sundays and Public Holidays.
+              Office hours: Mon - Sat, 10:30am - 7:30pm. Closed on Sundays and Public Holidays.
             </p>
 
           </div>

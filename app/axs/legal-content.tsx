@@ -1,4 +1,4 @@
-// Standalone legal content components — no external network requests.
+// Standalone legal content components - no external network requests.
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
@@ -50,7 +50,7 @@ export function TermsContent() {
         <P>Please peruse these Agreements carefully as they encompass important information about CF Money Service provided to you, the Terms, future changes to these Agreements, Privacy Information, waiver, limitation of liability, Governing Law etc.</P>
         <P>In order to use CF Money Service, you need to be (1) 18 or older, (2) have the power and capability to enter into a legally binding contract with us and not barred from doing so under any applicable laws and (3) be a resident or legally employed in Singapore.</P>
         <P>By clicking &quot;Apply Now&quot; or otherwise applying/engaging CF Money Pte. Ltd. (&quot;CF Money&quot;, the &quot;Company&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;) financial service (&quot;CF Money Service&quot; or &quot;Service&quot; or &quot;Loan&quot;), including via software application or website, you are entering into a binding contract with CF Money Pte. Ltd. (UEN No. 201406595W).</P>
-        <P>Your agreement with us includes these Terms and Conditions (&quot;Terms&quot;) and our Personal Data Protection Policy (the &quot;Privacy Policy&quot;). If you wish to review the terms of the Agreements, the latest and effective version can be found on CF Money&apos;s Website – www.cfmoney.sg. You acknowledge that you have read, understood and accept these agreements. If you don&apos;t agree with (or cannot comply with) the agreements, then you are not eligible to use CF Money service.</P>
+        <P>Your agreement with us includes these Terms and Conditions (&quot;Terms&quot;) and our Personal Data Protection Policy (the &quot;Privacy Policy&quot;). If you wish to review the terms of the Agreements, the latest and effective version can be found on CF Money&apos;s Website - www.cfmoney.sg. You acknowledge that you have read, understood and accept these agreements. If you don&apos;t agree with (or cannot comply with) the agreements, then you are not eligible to use CF Money service.</P>
         <P>By continuing to use the CF Money service, you signify that you have read, understood and agree to the collection, use, retention, disposal, handling, transfer, processing and/or disclosure of your personal data by CF Money, in accordance with these agreements.</P>
         <P>You further represent, warrant and promise that any information submitted to CF Money is true, accurate and complete to the best of your knowledge and belief. You may be held liable if information submitted is found to be false, untrue or misleading.</P>
         <P>Any information that you have provided may be corrected by contacting us at <span className="font-medium">dpo@cfmoney.sg</span>.</P>

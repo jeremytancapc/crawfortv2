@@ -87,7 +87,7 @@ function formatItemForShare(item: BringItem): string[] {
   if (item.subItems?.length) {
     return [fullTitle, ...item.subItems.map((s) => `  • ${s}`)];
   }
-  return [`• ${fullTitle}${item.sub ? ` — ${item.sub}` : ""}`];
+  return [`• ${fullTitle}${item.sub ? ` - ${item.sub}` : ""}`];
 }
 
 function formatThingsToBringForShare(idType: "sg_pr" | "foreigner"): string {
@@ -405,7 +405,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
             <Clock size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">
-                Mon &ndash; Sat &nbsp;&middot;&nbsp; 10:30am &ndash; 7:30pm
+                Mon - Sat &nbsp;&middot;&nbsp; 10:30am - 7:30pm
               </p>
               <p className="text-sm text-[var(--text-tertiary)]">
                 Closed on Sundays &amp; Public Holidays

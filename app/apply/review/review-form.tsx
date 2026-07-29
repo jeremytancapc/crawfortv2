@@ -146,7 +146,7 @@ export function ReviewForm({ initialData }: Props) {
     // Step 4 (Identity) → jump to review (8)
     if (step === 4) { navigateTo(8); scrollToTop(); return; }
     // Post-review: contact (5) → bankruptcy (7), skipping additional (6).
-    // Bankruptcy (7) is now the final step — submitApplication handles it.
+    // Bankruptcy (7) is now the final step - submitApplication handles it.
     if (step === 5 && history.includes(8)) { navigateTo(7); scrollToTop(); return; }
     navigateTo(step + 1);
     scrollToTop();
@@ -165,7 +165,7 @@ export function ReviewForm({ initialData }: Props) {
   }, [history, scrollToTop]);
 
   // Step 8 (Review) "Yes, I confirm" → create partial lead then go to contact step.
-  // The draft endpoint sets a draft_lead cookie server-side — no state update needed.
+  // The draft endpoint sets a draft_lead cookie server-side - no state update needed.
   const handleReviewConfirm = useCallback(async () => {
     try {
       await fetch("/api/apply/draft", {
@@ -174,7 +174,7 @@ export function ReviewForm({ initialData }: Props) {
         body: JSON.stringify(formData),
       });
     } catch {
-      // Non-blocking — submit falls back to INSERT if draft failed.
+      // Non-blocking - submit falls back to INSERT if draft failed.
     }
     navigateTo(5);
     scrollToTop();

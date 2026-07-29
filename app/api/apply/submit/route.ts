@@ -43,7 +43,7 @@ import { checkLeadEligibility } from "@/lib/eligibility-check";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  // Accept formData posted directly in the body (preferred — avoids cookie race
+  // Accept formData posted directly in the body (preferred - avoids cookie race
   // between the session-save and submit requests).  Fall back to the session
   // cookie so that older callers keep working.
   let bodyData: Partial<LoanFormData> = {};
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   // Body takes precedence over cookie so fresh data is always used.
   const formData = { ...initialLoanFormData, ...sessionData, ...bodyData };
   // SPA manual path: client JSON often omits or sends authMethod "" while the
-  // cookie was set at the Singpass gate — don't let the body wipe it.
+  // cookie was set at the Singpass gate - don't let the body wipe it.
   const sessionAuth = sessionData.authMethod;
   const bodyAuth = bodyData.authMethod;
   const bodyHasConcreteAuth =
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   let leadId: string;
 
   if (looksLikeLeadUuid(draftLeadId)) {
-    // Partial lead created at activate (Singpass) or draft (manual) — update it.
+    // Partial lead created at activate (Singpass) or draft (manual) - update it.
     const { error: updateError } = await admin
       .from("leads")
       .update(leadFields)
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     leadId = lead.id as string;
   }
 
-  // ── 2. MyInfo profile (Singpass) — upsert; hydrate CPF/NOA from DB if cookie was slim ─
+  // ── 2. MyInfo profile (Singpass) - upsert; hydrate CPF/NOA from DB if cookie was slim ─
   if (formData.authMethod === "singpass") {
     let cpfContributions = formData.cpfContributions;
     let noaHistory = formData.noaHistory;
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
   });
 
   // Singpass identity is simulated locally (no real Singpass/AirConnect backing it),
-  // so it must never present as "pending"/rejected — always a success outcome.
+  // so it must never present as "pending"/rejected - always a success outcome.
   const isSimulatedSingpass = formData.authMethod === "singpass";
 
   // If NOT ELIGIBLE (blacklisted) or RELOAN per AirConnect, reject but save real income data
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
     return rejectRes;
   }
 
-  // Simulated Singpass applicants always clear underwriting — clamp the
+  // Simulated Singpass applicants always clear underwriting - clamp the
   // real engine's output to a guaranteed approval instead of letting an
   // edge case (e.g. a bad moneylender declaration) send them to /apply/pending.
   const guaranteedApprovedAmount = Math.max(500, Math.floor(formData.amount / 100) * 100);
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
           isEligible: true,
           approvedLoanAmount: guaranteedApprovedAmount,
           maxEligibleLoan: Math.max(assessment.maxEligibleLoan, guaranteedApprovedAmount),
-          explanation: `${assessment.explanation} (Singpass-verified applicant — approved.)`,
+          explanation: `${assessment.explanation} (Singpass-verified applicant - approved.)`,
         }
       : assessment;
 
@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
     raw_assessment: assessment as unknown as Record<string, unknown>,
   });
 
-  // ── 5. Update session with approval result (slim cookie — no CPF/NOA blobs) ─
+  // ── 5. Update session with approval result (slim cookie - no CPF/NOA blobs) ─
   const updatedSession = buildPostSubmitSession(sessionData, leadId, {
     approvedLoanAmount: finalAssessment.approvedLoanAmount,
     verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
     reloanReason: isSimulatedSingpass ? null : eligibility.reloanReason,
   });
 
-  // Clear draft_lead cookie — no longer needed after full submit.
+  // Clear draft_lead cookie - no longer needed after full submit.
   res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
 
   if (finalAssessment.isEligible && finalAssessment.approvedLoanAmount > 0) {

@@ -3,7 +3,7 @@
 import Image from "next/image";
 
 /**
- * Sticky mobile header — static brand-blue at all scroll positions.
+ * Sticky mobile header - static brand-blue at all scroll positions.
  * Hidden on lg+ (desktop uses the sidebar logo instead).
  */
 export function MobileHeader() {

@@ -1,6 +1,6 @@
 import { QueueStatus } from "../../queue-status";
 
-export const metadata = { title: "Queue – Room: Missed" };
+export const metadata = { title: "Queue - Room: Missed" };
 
 export default function Page() {
   return (

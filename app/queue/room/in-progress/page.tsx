@@ -1,6 +1,6 @@
 import { QueueStatus } from "../../queue-status";
 
-export const metadata = { title: "Queue – Room: In Progress" };
+export const metadata = { title: "Queue - Room: In Progress" };
 
 export default function Page() {
   return (

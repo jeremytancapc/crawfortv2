@@ -548,7 +548,7 @@ export function Dashboard() {
               }
               onStatement={() => showToast("Statement download coming soon.")}
               onSupport={() =>
-                showToast("Call us at +65 6777 8080 · Mon–Fri 10am–7pm")
+                showToast("Call us at +65 6777 8080 · Mon-Fri 10am-7pm")
               }
             />
           </div>
@@ -672,13 +672,13 @@ function CFOneMarketingCard({
             </p>
             <p className="mb-3 text-sm leading-relaxed text-white/70">
               Singapore&apos;s lowest interest rate from{" "}
-              <span className="font-bold text-brand-teal">1% p.a.</span> —
+              <span className="font-bold text-brand-teal">1% p.a.</span> -
               exclusively for existing customers.
             </p>
             <button
               onClick={() =>
                 showToast(
-                  "Redirecting to eligibility check — feature coming soon!"
+                  "Redirecting to eligibility check - feature coming soon!"
                 )
               }
               className="flex items-center gap-1.5 rounded-xl bg-brand-teal px-4 py-2 text-xs font-bold text-[var(--text-primary)] transition-all hover:opacity-90 active:scale-[0.97]"
@@ -951,7 +951,7 @@ function DesktopSummaryTiles({
         label={isOverdue ? "Overdue Amount" : "Next Payment"}
         value={
           nextPaymentLoan === null
-            ? "—"
+            ? "-"
             : isOverdue
             ? formatCurrency(totalOverdue)
             : formatCurrency(nextPaymentLoan.nextPaymentAmount)
@@ -1066,7 +1066,7 @@ function DesktopQuickActions({
           iconBg="bg-amber-100 text-amber-600"
           icon={<Headset size={22} />}
           label="Contact Support"
-          sub="Mon–Fri 10am–7pm"
+          sub="Mon-Fri 10am-7pm"
           onClick={onSupport}
         />
       </div>
@@ -1086,7 +1086,7 @@ function RailSupportCard() {
             Need help?
           </p>
           <p className="text-xs text-[var(--text-tertiary)]">
-            Mon–Fri 10am–7pm · Sat 10am–3pm
+            Mon-Fri 10am-7pm · Sat 10am-3pm
           </p>
         </div>
       </div>

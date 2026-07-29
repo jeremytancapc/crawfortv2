@@ -17,7 +17,7 @@ export const COOKIE_BASE_OPTS = {
   maxAge: 60 * 60,
 } as const;
 
-/** After eligible submit — approval + book access (not the same as `/apply/review`). */
+/** After eligible submit - approval + book access (not the same as `/apply/review`). */
 export const POST_SUBMIT_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 
 function secret(): string {

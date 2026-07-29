@@ -60,7 +60,7 @@ function AlertDetailsPopup({
               Required at {station.label}
             </p>
             <p className="mt-0.5 text-xs text-white/70">
-              Customer is waiting — please attend now
+              Customer is waiting - please attend now
             </p>
           </div>
           <button
@@ -136,7 +136,7 @@ export function StaffAlertBanner() {
   const prevAlertIdRef = useRef<string | null>(null);
 
   const myAlerts = state.staffAlerts.filter((a) => a.staffId === RETAIL_STAFF.id);
-  // Newest first — staff should respond to the latest call
+  // Newest first - staff should respond to the latest call
   const activeAlert = myAlerts.length > 0 ? myAlerts[myAlerts.length - 1] : null;
   const pendingCount = myAlerts.length;
 

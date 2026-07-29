@@ -288,7 +288,7 @@ function TermsSection() {
           <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
         </div>
 
-        {/* Funds disbursement — callout */}
+        {/* Funds disbursement - callout */}
         <div
           className="rounded-[var(--radius-sm)] px-3.5 py-3.5 flex flex-col gap-2"
           style={{

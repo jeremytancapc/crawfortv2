@@ -391,7 +391,7 @@ function StepAmount({
           Total amount
         </span>
         <span className="font-display text-xl font-bold text-[var(--text-primary)]">
-          {resolvedAmount > 0 ? formatCurrency(resolvedAmount) : "—"}
+          {resolvedAmount > 0 ? formatCurrency(resolvedAmount) : "-"}
         </span>
       </div>
 
@@ -648,7 +648,7 @@ function PayNowQR({
             "Open your banking app and select PayNow.",
             'Tap "Scan QR" and scan the code above.',
             `Verify the amount: ${formatCurrency(amount)}.`,
-            "Confirm payment — funds reflect within 5 minutes.",
+            "Confirm payment - funds reflect within 5 minutes.",
             "Keep your transaction reference for records.",
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-2.5">
@@ -753,8 +753,8 @@ function CashQR({
               <p className="mb-0.5 font-semibold text-[var(--text-secondary)]">
                 Office Hours
               </p>
-              <p className="text-[var(--text-tertiary)]">Mon – Fri: 10am – 7pm</p>
-              <p className="text-[var(--text-tertiary)]">Sat: 10am – 3pm</p>
+              <p className="text-[var(--text-tertiary)]">Mon - Fri: 10am - 7pm</p>
+              <p className="text-[var(--text-tertiary)]">Sat: 10am - 3pm</p>
               <p className="text-[var(--text-tertiary)]">Sun & PH: Closed</p>
             </div>
             <div>
@@ -780,7 +780,7 @@ function CashQR({
             "Visit our office during operating hours.",
             "Show this QR code or provide your Loan ID to our cashier.",
             `Prepare ${formatCurrency(amount)} in cash.`,
-            "Our cashier will issue you a payment receipt — keep it safe.",
+            "Our cashier will issue you a payment receipt - keep it safe.",
             "Cash payment will be reflected in your account within 1 business day.",
           ].map((instruction, i) => (
             <li key={i} className="flex items-start gap-2.5">
@@ -848,7 +848,7 @@ function PaymentSummaryRail({
             Payment summary
           </p>
           <p className="mt-1 font-display text-2xl font-bold leading-none">
-            {resolvedAmount > 0 ? formatCurrency(resolvedAmount) : "—"}
+            {resolvedAmount > 0 ? formatCurrency(resolvedAmount) : "-"}
           </p>
           <p className="mt-2 text-xs opacity-80">{stepLabel[step]}</p>
         </div>

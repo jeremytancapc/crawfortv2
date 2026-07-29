@@ -286,7 +286,7 @@ export function FloorPlan() {
         </div>
         {selectedCustomer && (
           <p className="mt-1.5 text-xs font-medium text-[#0033AA] bg-blue-50 px-3 py-1.5 rounded-lg">
-            Assigning <strong>{selectedCustomer.name}</strong> — tap a compatible{" "}
+            Assigning <strong>{selectedCustomer.name}</strong> - tap a compatible{" "}
             {compatibleType === "kiosk" ? "kiosk" : compatibleType === "room" ? "room" : "cashier counter"}
           </p>
         )}
@@ -320,7 +320,7 @@ export function FloorPlan() {
                 }
           }
         >
-          {/* Dim overlay when assigning — keeps focus on compatible stations */}
+          {/* Dim overlay when assigning - keeps focus on compatible stations */}
           {selectedCustomer && (
             <div className="absolute inset-0 bg-black/50 pointer-events-none z-[1] rounded-2xl" />
           )}
@@ -391,7 +391,7 @@ export function FloorPlan() {
               ))}
             </div>
 
-            {/* Center — waiting area label */}
+            {/* Center - waiting area label */}
             <div className={["flex items-center justify-center", selectedCustomer ? "opacity-30" : ""].join(" ")}>
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto rounded-full border-2 border-dashed border-slate-400/40 bg-white/40 flex items-center justify-center mb-1">

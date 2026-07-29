@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { CircleLoader } from "@/components/ui/circle-loader";
 
 const STATUS_MESSAGES = [
-  "Analyzing your profile...",
+  "Analysing your profile...",
   "Checking eligibility...",
   "Calculating your offer...",
   "Almost there...",

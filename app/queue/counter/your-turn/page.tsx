@@ -1,6 +1,6 @@
 import { QueueStatus } from "../../queue-status";
 
-export const metadata = { title: "Queue – Counter: Your Turn" };
+export const metadata = { title: "Queue - Counter: Your Turn" };
 
 export default function Page() {
   return (

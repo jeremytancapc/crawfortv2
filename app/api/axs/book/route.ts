@@ -36,7 +36,7 @@ async function notifyAirConnect(payload: {
   const url = process.env.AIRCONNECT_APPOINTMENTS_URL;
 
   if (!apiKey || !url) {
-    console.warn(`${LOG} AirConnect env not configured — skipping notification`);
+    console.warn(`${LOG} AirConnect env not configured - skipping notification`);
     return;
   }
 

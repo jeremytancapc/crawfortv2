@@ -1,7 +1,7 @@
 /**
  * Loan offer plan math and definitions for the /apply/approval confirmation page.
  *
- * Interest rates here are specific to the offer page — the earlier funnel uses
+ * Interest rates here are specific to the offer page - the earlier funnel uses
  * ESTIMATED_MONTHLY_INTEREST_RATE (3.92%) from lib/loan-form.ts as an estimate.
  * Do not mix them up.
  */
@@ -87,7 +87,7 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
       6,
       OFFER_MONTHLY_RATE,
       {
-        badge: "Most popular — customers' top pick",
+        badge: "Most popular - customers' top pick",
         isPopular: true,
       },
     ),
