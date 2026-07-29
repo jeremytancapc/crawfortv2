@@ -342,7 +342,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* ─── Popular badge glow + shine ─────────────────────────────────── */
 
-@keyframes popular-badge-glow {
+@keyframes popular-badge-pulse {
   0%, 100% {
     box-shadow:
       0 0 0 1px oklch(0.88 0.18 95 / 0.25),
@@ -355,7 +355,7 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
-@keyframes popular-badge-shine {
+@keyframes popular-badge-shine-sweep {
   0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
   15%  { opacity: 0.85; }
   45%  { transform: translateX(220%) skewX(-18deg); opacity: 0; }
@@ -365,14 +365,16 @@ input[type="range"]::-moz-range-thumb {
 .popular-badge-glow {
   position: relative;
   overflow: hidden;
-  animation: popular-badge-glow 2s ease-in-out infinite;
+  animation: popular-badge-pulse 2s ease-in-out infinite;
   will-change: box-shadow;
 }
 
 .popular-badge-glow::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
   width: 45%;
   background: linear-gradient(
     90deg,
@@ -380,7 +382,7 @@ input[type="range"]::-moz-range-thumb {
     oklch(1 0 0 / 0.55) 50%,
     transparent 100%
   );
-  animation: popular-badge-shine 2.8s ease-in-out infinite;
+  animation: popular-badge-shine-sweep 2.8s ease-in-out infinite;
   pointer-events: none;
 }
 
