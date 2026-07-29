@@ -20,7 +20,7 @@ export type CustomerStatus =
 export type StationStatus = "free" | "calling" | "occupied";
 export type StationType = "kiosk" | "room" | "cashier";
 
-export type RetailTab = "queue" | "registration" | "loans";
+export type RetailTab = "queue" | "applications" | "loans";
 
 /** Ascend status — only used for loan-application appointments */
 export type AscendStatus = "eligible" | "create";
@@ -87,4 +87,112 @@ export interface RetailLoan {
   overdueDays?: number;
   loanPurpose: string;
   paymentSchedule: { date: string; amount: number; status: "paid" | "upcoming" | "overdue" }[];
+}
+
+/**
+ * Applications tab — customers self-register via the Crawfort website/app.
+ * This data is read-only from the retail outlet's perspective (synced from
+ * the online origination system); staff can only review it and flag entries
+ * invalid, add comments, or attach supporting documents.
+ */
+export type ApplicationStatus = "CREATE" | "VERIFIED" | "ELIGIBILITY" | "E_SIGN" | "REJECTED";
+export type BorrowerType = "BORROWER" | "APPLICANT";
+
+export interface ApplicationDocument {
+  id: string;
+  name: string;
+  sizeLabel: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
+export interface ApplicationComment {
+  id: string;
+  author: string;
+  timestamp: string;
+  text: string;
+}
+
+export interface RejectedHistoryEntry {
+  date: string;
+  applicationId: string;
+  reason: string;
+  reviewedBy: string;
+}
+
+export interface MlcbLenderRecord {
+  lender: string;
+  loanType: string;
+  outstanding: number;
+  status: "current" | "arrears" | "closed";
+}
+
+export interface RetailApplication {
+  id: string; // e.g. "3BRZBCAP"
+  customerName: string;
+  agency: string;
+  borrowerType: BorrowerType;
+  idNumberMasked: string; // e.g. "S****717B"
+  mobileMasked: string; // e.g. "****7681"
+  createdAtLabel: string; // e.g. "29/07/2026"
+  createdAtISO: string;
+  updatedAtLabel: string;
+  expectedAmount: number;
+  status: ApplicationStatus;
+  isInvalid: boolean;
+
+  createdAtTimeLabel: string; // e.g. "29/07/2026 11:04:30"
+  updatedAtTimeLabel: string;
+  registeredMobile: string;
+  secondaryMobile: string | null;
+  riskLevel: string | null;
+  creditLimit: number | null;
+
+  loanExpectation: {
+    amount: number | null;
+    product: string | null;
+    installment: number | null;
+    interestRate: string | null;
+    processingFee: string | null;
+  };
+
+  incomeInfo: {
+    documentType: string;
+    monthlyIncomes: number[];
+    averageMonthlyIncome: number;
+    annualIncome: number;
+  };
+
+  documents: ApplicationDocument[];
+  comments: ApplicationComment[];
+
+  borrowerInfo: {
+    fullName: string;
+    nric: string;
+    dateOfBirth: string;
+    gender: string;
+    nationality: string;
+    race: string;
+    maritalStatus: string;
+    email: string;
+    address: string;
+    postalCode: string;
+    residentialStatus: string;
+    employmentStatus: string;
+    employerName: string;
+    occupation: string;
+    employmentLength: string;
+    monthlyHouseholdIncome: number;
+  };
+
+  mlcb: {
+    score: number;
+    reportDate: string;
+    activeLoans: number;
+    totalOutstanding: number;
+    enquiriesLast6Months: number;
+    lenders: MlcbLenderRecord[];
+  };
+
+  rejectedHistory: RejectedHistoryEntry[];
 }

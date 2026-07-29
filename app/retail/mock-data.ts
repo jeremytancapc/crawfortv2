@@ -3,7 +3,15 @@
  * Everything resets on page refresh — no persistence.
  */
 
-import type { RetailCustomer, Station, RetailLoan, AppointmentType } from "./types";
+import type {
+  RetailCustomer,
+  Station,
+  RetailLoan,
+  AppointmentType,
+  RetailApplication,
+  ApplicationStatus,
+  BorrowerType,
+} from "./types";
 
 // ─── Time slots (matches booking component convention) ────────────────────────
 
@@ -406,6 +414,239 @@ export const RETAIL_LOANS: RetailLoan[] = [
     ],
   },
 ];
+
+// ─── Applications (Applications tab) ───────────────────────────────────────────
+// Customers self-register via the Crawfort website/app; this data simulates
+// what gets synced back to the retail outlet for staff to review.
+
+const APPLICANT_NAMES = [
+  "Rafidah Binti Rashid", "Surendran S/O Subramaniam", "Shobenraj Selvarajah",
+  "Jaya Ganesh S/O Krishnan", "Nurul Syahidah Rahman", "Junaidah Binte Rosli",
+  "Salia Binti Samat", "Nur Hidayah Siew", "Mohammad Nor Bin Yusof",
+  "Tan Chee Keong", "Lai Wen Cheng", "Mohd Hafidz Hidayat",
+  "Soh Chiow Hin", "Bavanesh Raj S/O Muniandy", "Ling Joo Chin",
+  "Ahmad Bin Sukandar", "Muhammed Khaidir Bin Zainal", "Toh Xiu Fang",
+  "Liew Yew Lian", "Isaiah Huang Yanwei", "Kamalambigai D/O Ramasamy",
+  "Farah Waheeda Binte Hamzah", "Lee Zhi Hao", "Vijayakumar S/O Muthu",
+  "Nabilah Binte Yaacob", "Goh Poh Choo", "Sharifah Nurhaliza",
+  "Karthik S/O Balasubramaniam", "Wong Li Ting", "Amirul Haziq Bin Zulkifli",
+  "Cheong Wai Keat", "Devendran S/O Palani", "Aishah Binte Salleh",
+  "Ong Hui Min", "Rosnah Binte Awang", "Sivakumar S/O Rajendran",
+  "Teo Beng Hock", "Nur Amirah Binte Rosman", "Chua Kok Wai",
+  "Priyanka D/O Suresh",
+];
+
+const AGENCIES = ["-", "-", "-", "-", "-", "-", "Straits Financial Partners", "ABC Credit Marketing", "Golden Bridge Agency"];
+
+const PRODUCTS = ["Personal Loan", "Renovation Loan", "Debt Consolidation Loan", "Medical Loan", "Business Loan"];
+const INCOME_DOC_TYPES = ["CPF", "Payslip", "Bank Statement", "Income Tax Assessment (NOA)"];
+const OCCUPATIONS = ["Retail Associate", "Delivery Rider", "Admin Executive", "F&B Crew", "Technician", "Sales Executive", "Warehouse Assistant", "Security Officer", "Freelancer", "Customer Service Officer"];
+const EMPLOYERS = ["FairPrice", "Grab", "SIA Engineering", "ST Engineering", "SATS Ltd", "NTUC Foodfare", "Shopee", "Self-Employed", "ComfortDelGro", "Prudential Assurance"];
+const RESIDENTIAL_STATUSES = ["HDB Owner", "HDB Tenant", "Private Property Owner", "Living with Family", "Condo Tenant"];
+const NATIONALITIES = ["Singaporean", "Singaporean", "Singaporean", "Singapore PR", "Malaysian"];
+const RACES = ["Chinese", "Malay", "Indian", "Others"];
+const LENDER_NAMES = ["Licensed Moneylender - Crawfort", "Licensed Moneylender - CashMax", "Bank Personal Loan", "Credit Card Revolving Balance", "Licensed Moneylender - QuickCash"];
+
+const STATUS_CYCLE: ApplicationStatus[] = [
+  "CREATE", "CREATE", "ELIGIBILITY", "ELIGIBILITY", "VERIFIED", "CREATE",
+  "ELIGIBILITY", "E_SIGN", "CREATE", "ELIGIBILITY", "VERIFIED", "REJECTED",
+];
+
+/** Deterministic pseudo-random in [0, 1), seeded so mock data is stable across renders. */
+function seededRand(seed: number): number {
+  const x = Math.sin(seed * 999.123) * 10000;
+  return x - Math.floor(x);
+}
+
+function pick<T>(arr: T[], seed: number): T {
+  return arr[Math.floor(seededRand(seed) * arr.length) % arr.length];
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function formatDateLabel(d: Date): string {
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function formatDateTimeLabel(d: Date): string {
+  return `${formatDateLabel(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+function makeApplicationId(index: number): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "";
+  let seed = index * 31 + 7;
+  for (let i = 0; i < 8; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    out += chars[seed % chars.length];
+  }
+  return out;
+}
+
+function makeMaskedNric(seed: number): string {
+  const prefix = pick(["S", "T", "F", "G"], seed);
+  const digits = String(100 + Math.floor(seededRand(seed + 0.5) * 900)).padStart(3, "0");
+  const suffix = pick(["A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P"], seed + 0.7);
+  return `${prefix}****${digits}${suffix}`;
+}
+
+function makeMaskedMobile(seed: number): string {
+  const digits = String(1000 + Math.floor(seededRand(seed + 1.3) * 9000)).padStart(4, "0");
+  return `****${digits}`;
+}
+
+/** Build a realistic, deterministic mock list of self-registered loan applications. */
+export function buildInitialApplications(count: number = 132): RetailApplication[] {
+  const applications: RetailApplication[] = [];
+  const now = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const seed = i + 1;
+    const name = pick(APPLICANT_NAMES, seed).toUpperCase();
+    const status = STATUS_CYCLE[i % STATUS_CYCLE.length];
+    const borrowerType: BorrowerType = seededRand(seed + 2.1) > 0.42 ? "BORROWER" : "APPLICANT";
+
+    // Spread creation dates across the last ~14 days, most recent first.
+    const daysAgo = Math.floor(i / 10);
+    const createdAt = new Date(now);
+    createdAt.setDate(createdAt.getDate() - daysAgo);
+    createdAt.setHours(9 + Math.floor(seededRand(seed) * 9), Math.floor(seededRand(seed + 3) * 60), Math.floor(seededRand(seed + 4) * 60), 0);
+    const updatedAt = new Date(createdAt.getTime() + Math.floor(seededRand(seed + 5) * 5) * 1000 + 2000);
+
+    const expectedAmount = Math.round((300 + seededRand(seed + 6) * 35700) / 100) * 100;
+
+    const isRejected = status === "REJECTED";
+    const hasFinalTerms = status === "E_SIGN";
+
+    const monthlyIncomes = [1, 2, 3].map((n) => Math.round(800 + seededRand(seed + 10 + n) * 3500));
+    const averageMonthlyIncome = Math.round((monthlyIncomes[0] + monthlyIncomes[1] + monthlyIncomes[2]) / 3 * 100) / 100;
+    const annualIncome = Math.round(averageMonthlyIncome * 12 * 100) / 100;
+
+    const docCount = 2 + Math.floor(seededRand(seed + 20) * 3);
+    const baseDocNames = ["NRIC Front.jpg", "NRIC Back.jpg", "CPF Statement.pdf", "Latest Payslip.pdf", "Bank Statement.pdf", "Proof of Address.pdf"];
+    const documents = Array.from({ length: docCount }, (_, di) => ({
+      id: `doc-${seed}-${di}`,
+      name: baseDocNames[di % baseDocNames.length],
+      sizeLabel: `${(120 + Math.floor(seededRand(seed + 30 + di) * 900))} KB`,
+      uploadedAt: formatDateTimeLabel(createdAt),
+      uploadedBy: "Customer (Online)",
+    }));
+
+    const hasComment = seededRand(seed + 40) > 0.55;
+    const comments = hasComment
+      ? [{
+          id: `comment-${seed}-0`,
+          author: pick(["Staff: Aminah", "Staff: Rachel Ong", "Staff: Kumar", "Staff: Wei Ting"], seed + 41),
+          timestamp: formatDateTimeLabel(new Date(updatedAt.getTime() + 3600_000)),
+          text: pick([
+            "Verified NRIC details against SingPass — matches records.",
+            "Called customer to confirm income documents; awaiting resubmission.",
+            "Employment letter looks outdated, requested a newer copy.",
+            "Customer confirmed loan purpose is for renovation.",
+          ], seed + 42),
+        }]
+      : [];
+
+    const rejectedHistoryCount = isRejected ? 1 : (seededRand(seed + 50) > 0.85 ? 1 : 0);
+    const rejectedHistory = Array.from({ length: rejectedHistoryCount }, (_, ri) => {
+      const rejDate = new Date(createdAt.getTime() - (ri + 1) * 20 * 86_400_000);
+      return {
+        date: formatDateLabel(rejDate),
+        applicationId: isRejected && ri === 0 ? makeApplicationId(i) : makeApplicationId(i + 500 + ri),
+        reason: pick([
+          "Insufficient income documentation",
+          "Debt-to-income ratio exceeds policy threshold",
+          "Unable to verify employment",
+          "Existing overdue loan with another lender",
+          "Customer withdrew application",
+        ], seed + 51 + ri),
+        reviewedBy: pick(["Aminah", "Rachel Ong", "Kumar", "Wei Ting"], seed + 52 + ri),
+      };
+    });
+
+    const activeLoansCount = Math.floor(seededRand(seed + 60) * 3);
+    const lenders: RetailApplication["mlcb"]["lenders"] = Array.from({ length: activeLoansCount + 1 }, (_, li) => ({
+      lender: LENDER_NAMES[li % LENDER_NAMES.length],
+      loanType: li === 0 ? "Personal Loan" : pick(["Renovation Loan", "Credit Line", "Term Loan"], seed + 61 + li),
+      outstanding: Math.round(seededRand(seed + 62 + li) * 8000),
+      status: seededRand(seed + 63 + li) > 0.85 ? "arrears" : (seededRand(seed + 64 + li) > 0.5 ? "current" : "closed"),
+    }));
+
+    applications.push({
+      id: makeApplicationId(i),
+      customerName: name,
+      agency: pick(AGENCIES, seed + 70),
+      borrowerType,
+      idNumberMasked: makeMaskedNric(seed),
+      mobileMasked: makeMaskedMobile(seed),
+      createdAtLabel: formatDateLabel(createdAt),
+      createdAtISO: createdAt.toISOString(),
+      updatedAtLabel: formatDateLabel(updatedAt),
+      expectedAmount,
+      status,
+      isInvalid: isRejected,
+
+      createdAtTimeLabel: formatDateTimeLabel(createdAt),
+      updatedAtTimeLabel: formatDateTimeLabel(updatedAt),
+      registeredMobile: `9${String(1000000 + Math.floor(seededRand(seed + 80) * 8999999)).slice(0, 7)}`,
+      secondaryMobile: seededRand(seed + 81) > 0.75 ? `8${String(1000000 + Math.floor(seededRand(seed + 82) * 8999999)).slice(0, 7)}` : null,
+      riskLevel: status === "CREATE" ? null : pick(["Low", "Medium", "High"], seed + 83),
+      creditLimit: status === "CREATE" ? null : Math.round(500 + seededRand(seed + 84) * 15000),
+
+      loanExpectation: {
+        amount: hasFinalTerms ? Math.round(expectedAmount * (0.8 + seededRand(seed + 90) * 0.2)) : null,
+        product: hasFinalTerms ? pick(PRODUCTS, seed + 91) : null,
+        installment: hasFinalTerms ? pick([6, 9, 12, 18, 24], seed + 92) : null,
+        interestRate: hasFinalTerms ? pick(["4% flat/month", "3.5% flat/month", "1% reducing/month"], seed + 93) : null,
+        processingFee: hasFinalTerms ? pick(["10%", "5%", "S$50 flat"], seed + 94) : null,
+      },
+
+      incomeInfo: {
+        documentType: pick(INCOME_DOC_TYPES, seed + 100),
+        monthlyIncomes,
+        averageMonthlyIncome,
+        annualIncome,
+      },
+
+      documents,
+      comments,
+
+      borrowerInfo: {
+        fullName: name,
+        nric: makeMaskedNric(seed),
+        dateOfBirth: formatDateLabel(new Date(now.getFullYear() - 21 - Math.floor(seededRand(seed + 110) * 40), Math.floor(seededRand(seed + 111) * 12), 1 + Math.floor(seededRand(seed + 112) * 27))),
+        gender: seededRand(seed + 113) > 0.5 ? "Male" : "Female",
+        nationality: pick(NATIONALITIES, seed + 114),
+        race: pick(RACES, seed + 115),
+        maritalStatus: pick(["Single", "Married", "Divorced"], seed + 116),
+        email: `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@example.com`,
+        address: `Blk ${10 + Math.floor(seededRand(seed + 117) * 500)} ${pick(["Ang Mo Kio Ave", "Tampines St", "Woodlands Dr", "Bedok North Rd", "Jurong West St", "Yishun Ring Rd"], seed + 118)} ${1 + Math.floor(seededRand(seed + 119) * 90)}, #${String(1 + Math.floor(seededRand(seed + 120) * 15)).padStart(2, "0")}-${String(1 + Math.floor(seededRand(seed + 121) * 500)).padStart(3, "0")}`,
+        postalCode: String(460000 + Math.floor(seededRand(seed + 122) * 240000)),
+        residentialStatus: pick(RESIDENTIAL_STATUSES, seed + 123),
+        employmentStatus: pick(["Full-Time", "Part-Time", "Self-Employed", "Contract"], seed + 124),
+        employerName: pick(EMPLOYERS, seed + 125),
+        occupation: pick(OCCUPATIONS, seed + 126),
+        employmentLength: pick(["<1 year", "1-2 years", "2-5 years", "5-10 years", ">10 years"], seed + 127),
+        monthlyHouseholdIncome: Math.round(averageMonthlyIncome * (1.2 + seededRand(seed + 128) * 0.6)),
+      },
+
+      mlcb: {
+        score: Math.round(300 + seededRand(seed + 130) * 550),
+        reportDate: formatDateLabel(new Date(createdAt.getTime() - 86_400_000)),
+        activeLoans: activeLoansCount,
+        totalOutstanding: lenders.filter((l) => l.status !== "closed").reduce((sum, l) => sum + l.outstanding, 0),
+        enquiriesLast6Months: Math.floor(seededRand(seed + 131) * 6),
+        lenders,
+      },
+
+      rejectedHistory,
+    });
+  }
+
+  return applications;
+}
 
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-SG", {

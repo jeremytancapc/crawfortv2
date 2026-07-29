@@ -32,7 +32,7 @@ export function QueueTab() {
           <button
             onClick={() => setMobilePanel("list")}
             className={[
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition-all duration-150",
+              "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-semibold transition-all duration-150",
               mobilePanel === "list"
                 ? "bg-[#0033AA] text-white"
                 : "bg-slate-100 text-slate-600",
@@ -44,7 +44,7 @@ export function QueueTab() {
           <button
             onClick={() => setMobilePanel("floor")}
             className={[
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition-all duration-150",
+              "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-semibold transition-all duration-150",
               mobilePanel === "floor"
                 ? "bg-[#0033AA] text-white"
                 : "bg-slate-100 text-slate-600",
