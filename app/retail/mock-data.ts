@@ -166,6 +166,7 @@ export function buildInitialCustomers(): RetailCustomer[] {
       slotTime: slot,
       status: "scheduled",
       assignedStationId: null,
+      assignedStaffId: null,
       queuePosition: null,
       queueNumber: `${prefix}${num}`,
       notes: pickNotes(type, i),
@@ -717,6 +718,7 @@ export function seedArrivedCustomerCare(
   if (c2 && room1) {
     c2.status = "serving";
     c2.assignedStationId = "room-1";
+    c2.assignedStaffId = "staff-marcus-tan"; // present & serving
     c2.queuePosition = 0;
     room1.status = "occupied";
     room1.servingCustomerId = "cust-2";
@@ -728,6 +730,7 @@ export function seedArrivedCustomerCare(
   if (c5 && room2) {
     c5.status = "called";
     c5.assignedStationId = "room-2";
+    c5.assignedStaffId = "staff-rachel-ong"; // summoned, not checked in
     c5.queuePosition = 0;
     room2.status = "calling";
     room2.servingCustomerId = "cust-5";
@@ -737,6 +740,7 @@ export function seedArrivedCustomerCare(
   const c9 = customers.find((c) => c.id === "cust-9");
   if (c9) {
     c9.status = "done";
+    c9.assignedStaffId = "staff-priya-nair";
     c9.assignedStationId = null;
     c9.queuePosition = null;
   }

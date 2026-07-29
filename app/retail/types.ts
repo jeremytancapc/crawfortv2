@@ -35,6 +35,11 @@ export interface RetailCustomer {
   slotTime: string;
   status: CustomerStatus;
   assignedStationId: string | null;
+  /**
+   * Officer allocated to attend this customer at a room/cashier.
+   * Null for kiosk (self-service) or when not yet called.
+   */
+  assignedStaffId: string | null;
   /** Position in the station's waiting queue (0 = being called/served) */
   queuePosition: number | null;
   /** Unique queue ticket for today, e.g. "L001", "C002", "P001" */
@@ -56,6 +61,19 @@ export interface Station {
   servingCustomerId: string | null;
   /** IDs of customers waiting to be called next at this station */
   queuedCustomerIds: string[];
+}
+
+/**
+ * Staff call-to-station alert. Created when a customer is assigned to a free
+ * station (status → calling) so the allocated officer knows where to go.
+ */
+export interface StaffAlert {
+  id: string;
+  customerId: string;
+  stationId: string;
+  /** Mock staff id — currently always the logged-in officer */
+  staffId: string;
+  createdAt: string;
 }
 
 /** Layout position hint for the floor plan renderer */

@@ -433,3 +433,94 @@ input[type="range"]::-moz-range-thumb {
   letter-spacing: -0.03em;
   font-weight: 700;
 }
+
+/* ─── Retail staff call-to-station alert ──────────────────────────────────── */
+
+@keyframes staff-alert-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15%      { transform: translateX(-1.5px) rotate(-6deg); }
+  30%      { transform: translateX(1.5px) rotate(5deg); }
+  45%      { transform: translateX(-1px) rotate(-3deg); }
+  60%      { transform: translateX(1px) rotate(2deg); }
+  75%      { transform: translateX(-0.5px) rotate(-1deg); }
+}
+
+@keyframes staff-alert-ping {
+  0%   { transform: scale(1); opacity: 0.55; }
+  70%  { transform: scale(1.85); opacity: 0; }
+  100% { transform: scale(1.85); opacity: 0; }
+}
+
+@keyframes staff-alert-ring {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.85 0.14 85 / 0.55); }
+  50%      { box-shadow: 0 0 0 4px oklch(0.85 0.14 85 / 0); }
+}
+
+.animate-staff-alert-shake {
+  animation: staff-alert-shake 0.7s ease-in-out infinite;
+}
+
+.animate-staff-alert-ping {
+  animation: staff-alert-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-staff-alert-ring {
+  animation: staff-alert-ring 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-staff-alert-shake,
+  .animate-staff-alert-ping,
+  .animate-staff-alert-ring {
+    animation: none;
+  }
+}
+
+/* ─── Staff presence on loan customer cards ───────────────────────────────── */
+
+@keyframes staff-presence-ping-red {
+  0%   { transform: scale(1); opacity: 0.55; }
+  70%  { transform: scale(2.1); opacity: 0; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes staff-presence-ping-green {
+  0%   { transform: scale(1); opacity: 0.5; }
+  70%  { transform: scale(2.1); opacity: 0; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes staff-presence-glow-red {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(239, 68, 68, 0.55); }
+  50%      { box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0.85); }
+}
+
+@keyframes staff-presence-glow-green {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(16, 185, 129, 0.5); }
+  50%      { box-shadow: 0 0 12px 3px rgba(16, 185, 129, 0.75); }
+}
+
+.animate-staff-presence-ping-red {
+  animation: staff-presence-ping-red 1.35s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-staff-presence-ping-green {
+  animation: staff-presence-ping-green 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-staff-presence-glow-red {
+  animation: staff-presence-glow-red 1.1s ease-in-out infinite;
+}
+
+.animate-staff-presence-glow-green {
+  animation: staff-presence-glow-green 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-staff-presence-ping-red,
+  .animate-staff-presence-ping-green,
+  .animate-staff-presence-glow-red,
+  .animate-staff-presence-glow-green {
+    animation: none;
+  }
+}

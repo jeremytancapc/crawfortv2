@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { RetailTab } from "./types";
 import { RETAIL_STAFF } from "./retail-staff";
+import { StaffAlertBanner } from "./staff-alert-banner";
 
 const TAB_LABELS: Record<RetailTab, string> = {
   queue:        "Queue",
@@ -133,7 +134,8 @@ export function RetailHeader({
           />
         )}
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex items-center gap-2">
+          <StaffAlertBanner />
           <ProfileControls
             isSettingsOpen={isSettingsOpen}
             onToggleSettings={onToggleSettings}
