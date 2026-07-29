@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Clock, Lightning, ArrowsClockwise, Plus, X } from "@phosphor-icons/react";
+import { Lightning, ArrowsClockwise, Plus, X, Crosshair } from "@phosphor-icons/react";
 import type { AppointmentType, RetailCustomer, CustomerStatus } from "./types";
 import { useRetail } from "./retail-store";
 import { TIME_SLOTS } from "./mock-data";
@@ -46,17 +46,25 @@ const APPT_CONFIGS: Record<AppointmentType, { label: string; shortLabel: string;
 const STATUS_CONFIGS: Record<CustomerStatus, { label: string; color: string }> = {
   scheduled: { label: "Scheduled",  color: "text-slate-500" },
   queued:    { label: "Queued",     color: "text-amber-600" },
-  called:    { label: "Called",     color: "text-orange-500" },
-  serving:   { label: "Serving",    color: "text-green-600"  },
-  done:      { label: "Done",       color: "text-slate-400"  },
+  called:    { label: "Called",     color: "text-orange-600" },
+  serving:   { label: "Serving",    color: "text-emerald-700" },
+  done:      { label: "Done",       color: "text-blue-500"  },
+};
+
+/** Whole-card background/border by lifecycle stage */
+const STATUS_CARD_STYLES: Record<CustomerStatus, string> = {
+  scheduled: "bg-white border-transparent hover:border-slate-200 hover:shadow-sm",
+  queued:    "bg-amber-50 border-amber-100 hover:border-amber-200",
+  called:    "bg-orange-100/70 border-orange-200 hover:border-orange-300",
+  serving:   "bg-emerald-50 border-emerald-200 hover:border-emerald-300",
+  done:      "bg-blue-50 border-blue-100 opacity-50 hover:border-blue-200",
 };
 
 type FilterType = AppointmentType | "all";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getCurrentSlot(): string | null {
-  const now = new Date();
+function getCurrentSlot(now: Date = new Date()): string | null {
   const h = now.getHours();
   const m = now.getMinutes();
   const totalMins = h * 60 + m;
@@ -68,6 +76,18 @@ function getCurrentSlot(): string | null {
     if (totalMins >= slotStart && totalMins < slotEnd) return TIME_SLOTS[i];
   }
   return null;
+}
+
+/** Progress through the current 30-min slot, 0–1. Null if outside operating hours. */
+function getSlotProgress(slot: string, now: Date = new Date()): number {
+  const [sh, sm] = slot.split(":").map(Number);
+  const slotStart = sh * 60 + sm;
+  const elapsed = now.getHours() * 60 + now.getMinutes() - slotStart;
+  return Math.min(1, Math.max(0, elapsed / 30));
+}
+
+function formatNowTime(now: Date): string {
+  return now.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
 function slotLabel(slot: string): string {
@@ -216,6 +236,8 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
         .replace("cashier-1", "Cashier")
     : null;
 
+  const statusCard = STATUS_CARD_STYLES[customer.status];
+
   return (
     <div
       role="button"
@@ -224,10 +246,8 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={[
         "w-full text-left rounded-md border-2 px-4 py-3 transition-all duration-200 cursor-pointer",
-        isSelected
-          ? "border-[#0033AA] shadow-lg bg-white"
-          : "border-transparent bg-white hover:border-slate-200 hover:shadow-sm",
-        customer.status === "done" ? "opacity-50" : "",
+        statusCard,
+        isSelected ? "border-[#0033AA] shadow-lg" : "",
       ].join(" ")}
       style={isSelected ? { boxShadow: "0 0 0 3px rgba(0,51,170,0.15), 0 4px 16px rgba(0,51,170,0.10)" } : undefined}
     >
@@ -330,8 +350,25 @@ export function AppointmentList() {
   const { state, selectCustomer, autoAssign, reassign } = useRetail();
   const [filter, setFilter] = useState<FilterType>("all");
   const [showWalkIn, setShowWalkIn] = useState(false);
-  const currentSlot = useMemo(() => getCurrentSlot(), []);
+  const [now, setNow] = useState(() => new Date());
+  const currentSlot = useMemo(() => getCurrentSlot(now), [now]);
+  /** Slot to scroll to: live slot during hours, otherwise nearest upcoming / last */
+  const scrollTargetSlot = currentSlot ?? getNearestSlot();
   const nowRef = useRef<HTMLDivElement>(null);
+
+  function scrollToNow() {
+    setNow(new Date());
+    // Defer one frame so the ref attaches if the slot just changed
+    requestAnimationFrame(() => {
+      nowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
+  // Keep the "now" line in sync with the clock
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Scroll "now" indicator into view on mount
   useEffect(() => {
@@ -369,10 +406,15 @@ export function AppointmentList() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
-              <Clock size={14} />
-              <span>{new Date().toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
-            </div>
+            <button
+              type="button"
+              onClick={scrollToNow}
+              title="Jump to current time"
+              className="flex items-center gap-1.5 bg-red-50 border-2 border-red-400 text-red-600 text-xs font-bold px-3 py-2 rounded-md hover:bg-red-100 active:scale-95 transition-all"
+            >
+              <Crosshair size={14} weight="bold" />
+              Now
+            </button>
             <button
               onClick={() => setShowWalkIn(true)}
               className="flex items-center gap-1.5 bg-[#0033AA] text-white text-xs font-bold px-3 py-2 rounded-md hover:opacity-90 active:scale-95 transition-all"
@@ -425,42 +467,45 @@ export function AppointmentList() {
         {TIME_SLOTS.map((slot) => {
           const customers = bySlot.get(slot) ?? [];
           const isNow     = slot === currentSlot;
+          const isScrollTarget = slot === scrollTargetSlot;
           const isPast    = (() => {
             const [h, m] = slot.split(":").map(Number);
-            const now = new Date();
             return now.getHours() * 60 + now.getMinutes() > h * 60 + m + 30;
           })();
+          // Place the red line after cards once we're past the midpoint of the slot
+          const showNowAfterCards = isNow && getSlotProgress(slot, now) >= 0.5;
 
           return (
             <div
               key={slot}
-              ref={isNow ? nowRef : undefined}
+              ref={isScrollTarget ? nowRef : undefined}
               className="mb-1"
             >
               {/* Slot header */}
               <div className={`flex items-center gap-2 px-1 py-1.5 ${isPast && customers.length === 0 ? "opacity-30" : ""}`}>
-                <span className={`text-xs font-bold w-16 flex-shrink-0 ${isNow ? "text-[#0033AA]" : "text-slate-400"}`}>
+                <span className={`text-xs font-bold w-16 flex-shrink-0 ${isNow ? "text-red-600" : "text-slate-400"}`}>
                   {slotLabel(slot)}
                 </span>
-                {isNow && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-px flex-1 bg-[#0033AA]/20" style={{ minWidth: "8px" }} />
-                    <span className="text-[10px] font-bold text-[#0033AA] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                      NOW
-                    </span>
-                    <div className="h-px flex-1 bg-[#0033AA]/20" style={{ minWidth: "8px" }} />
-                  </div>
-                )}
-                {!isNow && customers.length === 0 && (
-                  <div className="flex-1 h-px bg-slate-100" />
-                )}
-                {customers.length > 0 && !isNow && (
+                {!isNow && (
                   <div className="flex-1 h-px bg-slate-100" />
                 )}
                 {customers.length > 0 && (
                   <span className="text-[10px] text-slate-400 flex-shrink-0">{customers.length} apt</span>
                 )}
               </div>
+
+              {/* Thick red "now" line — early in the slot (before cards) */}
+              {isNow && !showNowAfterCards && (
+                <div className="relative flex items-center gap-2 my-1.5 pl-0" aria-label={`Current time ${formatNowTime(now)}`}>
+                  <span className="w-16 flex-shrink-0 text-right pr-1 text-[10px] font-bold text-red-600 tabular-nums">
+                    {formatNowTime(now)}
+                  </span>
+                  <div className="flex-1 flex items-center">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 ring-2 ring-red-200" />
+                    <div className="flex-1 h-[3px] bg-red-500 rounded-full" />
+                  </div>
+                </div>
+              )}
 
               {/* Customer cards */}
               {customers.length > 0 && (
@@ -477,6 +522,19 @@ export function AppointmentList() {
                       onReassign={() => reassign(c.id)}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Thick red "now" line — later in the slot (after cards) */}
+              {isNow && showNowAfterCards && (
+                <div className="relative flex items-center gap-2 my-1.5" aria-label={`Current time ${formatNowTime(now)}`}>
+                  <span className="w-16 flex-shrink-0 text-right pr-1 text-[10px] font-bold text-red-600 tabular-nums">
+                    {formatNowTime(now)}
+                  </span>
+                  <div className="flex-1 flex items-center">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 ring-2 ring-red-200" />
+                    <div className="flex-1 h-[3px] bg-red-500 rounded-full" />
+                  </div>
                 </div>
               )}
             </div>
