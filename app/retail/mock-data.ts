@@ -11,6 +11,8 @@ import type {
   RetailApplication,
   ApplicationStatus,
   BorrowerType,
+  ApprovedLoanOffer,
+  RepaymentScheduleEntry,
 } from "./types";
 
 // ─── Time slots (matches booking component convention) ────────────────────────
@@ -646,6 +648,170 @@ export function buildInitialApplications(count: number = 132): RetailApplication
   }
 
   return applications;
+}
+
+// ─── Approved loan offers (Loan Management tab) ────────────────────────────────
+
+const LOAN_PRODUCT_NAMES = [
+  "Personal Loan",
+  "Renovation Loan",
+  "Medical Loan",
+  "Debt Consolidation Loan",
+  "Education Loan",
+];
+
+/**
+ * Generate one deterministic ApprovedLoanOffer per customer-care customer.
+ * All other appointment types are ignored.
+ */
+export function buildApprovedLoanOffers(customers: RetailCustomer[]): Record<string, ApprovedLoanOffer> {
+  const offers: Record<string, ApprovedLoanOffer> = {};
+  let offerIdx = 0;
+
+  customers.forEach((c) => {
+    if (c.appointmentType !== "customer-care") return;
+
+    const seed = offerIdx + 1;
+    // Randomise max amount between $1,000 and $20,000 (rounded to nearest $100)
+    const rawMax = 1000 + Math.floor(seededRand(seed * 7.3) * 19000);
+    const maxAmount = Math.round(rawMax / 100) * 100;
+    const minFraction = 0.30 + seededRand(seed * 3.1) * 0.10; // 30–40 %
+    const minAmount = Math.round((maxAmount * minFraction) / 100) * 100;
+
+    offers[c.id] = {
+      customerId: c.id,
+      productName: pick(LOAN_PRODUCT_NAMES, seed * 2.7),
+      maxAmount,
+      minAmount,
+      defaultTenureMonths: 6,
+      maxTenureMonths: 16,
+      defaultInterestRate: 47,
+      altInterestRate: 12,
+      defaultProcessingFee: 10,
+      minProcessingFee: 1,
+    };
+
+    offerIdx++;
+  });
+
+  return offers;
+}
+
+/**
+ * Mutate the initial customers + stations arrays so that 3 of the customer-care
+ * customers already appear "arrived" on page load (for a realistic demo).
+ *
+ * Chosen customers (by their deterministic schedule order):
+ *   cust-2  → serving  @ room-1  (station occupied)
+ *   cust-5  → called   @ room-2  (station calling)
+ *   cust-9  → done     (station freed, so they still appear in the arrived list
+ *                        but room column shows "—")
+ */
+export function seedArrivedCustomerCare(
+  customers: RetailCustomer[],
+  stations: Station[],
+): void {
+  // ── cust-2: serving at room-1 ────────────────────────────────────────────
+  const c2 = customers.find((c) => c.id === "cust-2");
+  const room1 = stations.find((s) => s.id === "room-1");
+  if (c2 && room1) {
+    c2.status = "serving";
+    c2.assignedStationId = "room-1";
+    c2.queuePosition = 0;
+    room1.status = "occupied";
+    room1.servingCustomerId = "cust-2";
+  }
+
+  // ── cust-5: called at room-2 ─────────────────────────────────────────────
+  const c5 = customers.find((c) => c.id === "cust-5");
+  const room2 = stations.find((s) => s.id === "room-2");
+  if (c5 && room2) {
+    c5.status = "called";
+    c5.assignedStationId = "room-2";
+    c5.queuePosition = 0;
+    room2.status = "calling";
+    room2.servingCustomerId = "cust-5";
+  }
+
+  // ── cust-9: done (station already freed) ────────────────────────────────
+  const c9 = customers.find((c) => c.id === "cust-9");
+  if (c9) {
+    c9.status = "done";
+    c9.assignedStationId = null;
+    c9.queuePosition = null;
+  }
+}
+
+// ─── Repayment plan calculator ─────────────────────────────────────────────────
+
+export interface RepaymentPlanResult {
+  principal: number;
+  totalInterest: number;
+  totalRepayable: number;
+  monthlyInstallment: number;
+  processingFeeAmount: number;
+  netDisbursement: number;
+  schedule: RepaymentScheduleEntry[];
+}
+
+/**
+ * Flat-rate amortisation used in the Repayment Plan Preview.
+ *
+ * @param principal     Loan amount in SGD
+ * @param tenureMonths  Number of monthly instalments
+ * @param annualRatePct Annual flat interest rate (e.g. 47 for 47%)
+ * @param processingFeePct Processing fee as % of principal (e.g. 10 for 10%)
+ */
+export function computeRepaymentPlan(
+  principal: number,
+  tenureMonths: number,
+  annualRatePct: number,
+  processingFeePct: number,
+): RepaymentPlanResult {
+  const totalInterest = principal * (annualRatePct / 100) * (tenureMonths / 12);
+  const totalRepayable = principal + totalInterest;
+  const monthlyInstallment = totalRepayable / tenureMonths;
+
+  const processingFeeAmount = principal * (processingFeePct / 100);
+  const netDisbursement = principal - processingFeeAmount;
+
+  // Equal principal + interest portions per instalment (flat rate)
+  const principalPortion = principal / tenureMonths;
+  const interestPortion = totalInterest / tenureMonths;
+
+  // Build schedule starting the month after today
+  const startDate = new Date();
+  startDate.setDate(1); // align to 1st of month
+  startDate.setMonth(startDate.getMonth() + 1);
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const schedule: RepaymentScheduleEntry[] = [];
+
+  for (let i = 0; i < tenureMonths; i++) {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + i);
+    const dueLabel = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const balance = Math.max(0, principal - principalPortion * (i + 1));
+
+    schedule.push({
+      month: i + 1,
+      dueLabel,
+      installment: monthlyInstallment,
+      principalPortion,
+      interestPortion,
+      balance,
+    });
+  }
+
+  return {
+    principal,
+    totalInterest,
+    totalRepayable,
+    monthlyInstallment,
+    processingFeeAmount,
+    netDisbursement,
+    schedule,
+  };
 }
 
 export function formatCurrency(amount: number): string {
