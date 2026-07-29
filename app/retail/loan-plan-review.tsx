@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import type { RetailCustomer, ApprovedLoanOffer, ConfirmedLoanPlan } from "./types";
 import { computeRepaymentPlan, formatCurrency } from "./mock-data";
+import { useRetail } from "./retail-store";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,7 @@ interface LoanPlanReviewProps {
 }
 
 export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfirm }: LoanPlanReviewProps) {
+  const { state, attendCustomer, customerArrived } = useRetail();
   const [amount, setAmount]          = useState<number>(existingPlan?.amount ?? offer.maxAmount);
   const [tenure, setTenure]          = useState<number>(existingPlan?.tenureMonths ?? offer.defaultTenureMonths);
   const [interest, setInterest]      = useState<number>(existingPlan?.interestRate ?? offer.defaultInterestRate);
@@ -182,6 +184,21 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
   const [staffCode, setStaffCode]    = useState("");
   const [codeError, setCodeError]    = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  const pendingAlert = state.staffAlerts.find((a) => a.customerId === customer.id);
+  const canAttend =
+    Boolean(pendingAlert) ||
+    (customer.status === "called" && Boolean(customer.assignedStationId));
+
+  function handleAttend() {
+    if (pendingAlert) {
+      attendCustomer(pendingAlert.id);
+      return;
+    }
+    if (customer.assignedStationId && customer.status === "called") {
+      customerArrived(customer.assignedStationId);
+    }
+  }
 
   // Which fields are outside their default-safe boundary?
   const requiresOverride =
@@ -192,7 +209,8 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
   const overrideUnlocked = !requiresOverride || staffCode.length >= 4;
 
   const amountValid = amount >= offer.minAmount && amount <= offer.maxAmount && amount > 0;
-  const canConfirm  = amountValid && overrideUnlocked;
+  // Must check in via Attend (header or notification) before confirming a plan
+  const canConfirm  = amountValid && overrideUnlocked && !canAttend;
 
   const tenureOptions: number[] = Array.from({ length: offer.maxTenureMonths }, (_, i) => i + 1);
 
@@ -202,6 +220,7 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
   }
 
   function handleConfirm() {
+    if (canAttend) return;
     if (requiresOverride && staffCode.length < 4) {
       setCodeError(true);
       return;
@@ -239,18 +258,43 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
                 {customer.nricLast4} · {customer.mobile}
               </p>
             </div>
-            <div className="flex-shrink-0 flex flex-col items-end gap-1">
-              <span
-                className="inline-block text-xs font-bold px-2.5 py-1 rounded-full text-white"
-                style={{ background: "var(--brand-blue-hex)" }}
-              >
-                {customer.queueNumber}
-              </span>
-              {room !== "—" && (
-                <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                  {room}
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="flex flex-col items-end gap-1">
+                <span
+                  className="inline-block text-xs font-bold px-2.5 py-1 rounded-full text-white"
+                  style={{ background: "var(--brand-blue-hex)" }}
+                >
+                  {customer.queueNumber}
                 </span>
-              )}
+                {room !== "—" && (
+                  <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                    {room}
+                  </span>
+                )}
+              </div>
+              {canAttend ? (
+                <div className="flex max-w-[10.5rem] flex-col items-end gap-1">
+                  <button
+                    type="button"
+                    onClick={handleAttend}
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-emerald-800 px-3 py-2 text-xs font-bold text-white transition-all hover:bg-emerald-900 active:scale-[0.98]"
+                  >
+                    <CheckCircle size={14} weight="bold" />
+                    Attend to customer
+                  </button>
+                  <p className="text-right text-[10px] leading-snug text-slate-400">
+                    Tap this when you arrive in {room !== "—" ? room : "the room"}
+                  </p>
+                </div>
+              ) : customer.status === "serving" ? (
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-xs font-semibold text-emerald-800">
+                  <span className="relative inline-flex h-3 w-3 items-center justify-center">
+                    <span className="absolute inset-0 rounded-full bg-emerald-400/45 animate-staff-presence-ping-green" />
+                    <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                  Present
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -474,21 +518,28 @@ export function LoanPlanReview({ customer, offer, existingPlan, onBack, onConfir
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────── */}
-        <div className="flex-shrink-0 border-t border-slate-200 bg-white px-4 py-3 flex gap-3">
-          <button
-            onClick={onBack}
-            className="flex-1 py-3.5 rounded-md border-2 border-slate-300 text-slate-700 font-bold text-sm hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] transition-all"
-          >
-            Back
-          </button>
-          <button
-            disabled={!canConfirm}
-            onClick={handleConfirm}
-            className="flex-[2] py-3.5 rounded-md font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: "var(--brand-blue-hex)" }}
-          >
-            Confirm
-          </button>
+        <div className="flex-shrink-0 border-t border-slate-200 bg-white px-4 py-3">
+          {canAttend && (
+            <p className="mb-2 text-center text-[11px] text-amber-700">
+              Attend to the customer first before confirming the loan plan.
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={onBack}
+              className="flex-1 py-3.5 rounded-md border-2 border-slate-300 text-slate-700 font-bold text-sm hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] transition-all"
+            >
+              Back
+            </button>
+            <button
+              disabled={!canConfirm}
+              onClick={handleConfirm}
+              className="flex-[2] py-3.5 rounded-md font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "var(--brand-blue-hex)" }}
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </div>
 

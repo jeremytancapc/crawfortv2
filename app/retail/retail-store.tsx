@@ -1,13 +1,21 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useCallback } from "react";
-import type { RetailCustomer, Station, AppointmentType, ApprovedLoanOffer, ConfirmedLoanPlan } from "./types";
+import type {
+  RetailCustomer,
+  Station,
+  AppointmentType,
+  ApprovedLoanOffer,
+  ConfirmedLoanPlan,
+  StaffAlert,
+} from "./types";
 import {
   buildInitialCustomers,
   buildInitialStations,
   buildApprovedLoanOffers,
   seedArrivedCustomerCare,
 } from "./mock-data";
+import { RETAIL_STAFF, stationRequiresStaff } from "./retail-staff";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +32,8 @@ export interface RetailState {
   loanOffers: Record<string, ApprovedLoanOffer>;
   /** Confirmed loan plans saved by staff, keyed by customer ID */
   loanPlans: Record<string, ConfirmedLoanPlan>;
+  /** Pending call-to-station alerts for the allocated staff member */
+  staffAlerts: StaffAlert[];
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -36,8 +46,24 @@ type Action =
   | { type: "COMPLETE_SERVICE"; stationId: string }
   | { type: "AUTO_ASSIGN"; customerId: string }
   | { type: "REASSIGN"; customerId: string }
-  | { type: "REGISTER_WALK_IN"; customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition"> }
-  | { type: "CONFIRM_LOAN_PLAN"; plan: ConfirmedLoanPlan };
+  | { type: "REGISTER_WALK_IN"; customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "assignedStaffId" | "queuePosition"> }
+  | { type: "CONFIRM_LOAN_PLAN"; plan: ConfirmedLoanPlan }
+  | { type: "ATTEND_CUSTOMER"; alertId: string };
+
+function createStaffAlert(customerId: string, stationId: string): StaffAlert {
+  return {
+    id: `alert-${customerId}-${stationId}-${Date.now()}`,
+    customerId,
+    stationId,
+    staffId: RETAIL_STAFF.id,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/** Drop any pending alerts for a customer (reassign / already attended). */
+function clearAlertsForCustomer(alerts: StaffAlert[], customerId: string): StaffAlert[] {
+  return alerts.filter((a) => a.customerId !== customerId);
+}
 
 // ─── Type → station mapping ───────────────────────────────────────────────────
 
@@ -86,6 +112,10 @@ function retailReducer(state: RetailState, action: Action): RetailState {
       });
 
       const queuePos = isFree ? 0 : station.queuedCustomerIds.length + 1;
+      const needsStaff = stationRequiresStaff(station.type);
+      // Allocate logged-in officer when a staffed station starts calling
+      const allocatedStaffId =
+        isFree && needsStaff ? RETAIL_STAFF.id : null;
 
       const updatedCustomers = state.customers.map((c) => {
         if (c.id !== customerId) return c;
@@ -93,15 +123,26 @@ function retailReducer(state: RetailState, action: Action): RetailState {
           ...c,
           status: isFree ? ("called" as const) : ("queued" as const),
           assignedStationId: stationId,
+          assignedStaffId: isFree ? allocatedStaffId : null,
           queuePosition: queuePos,
         };
       });
+
+      // Free staffed station → ping the allocated officer
+      const staffAlerts =
+        isFree && needsStaff
+          ? [
+              ...clearAlertsForCustomer(state.staffAlerts, customerId),
+              createStaffAlert(customerId, stationId),
+            ]
+          : clearAlertsForCustomer(state.staffAlerts, customerId);
 
       return {
         ...state,
         customers: updatedCustomers,
         stations: updatedStations,
         selectedCustomerId: null,
+        staffAlerts,
       };
     }
 
@@ -118,7 +159,18 @@ function retailReducer(state: RetailState, action: Action): RetailState {
           : c
       );
 
-      return { ...state, stations: updatedStations, customers: updatedCustomers, activeStationId: null };
+      const servingId = station.servingCustomerId;
+      const staffAlerts = servingId
+        ? clearAlertsForCustomer(state.staffAlerts, servingId)
+        : state.staffAlerts;
+
+      return {
+        ...state,
+        stations: updatedStations,
+        customers: updatedCustomers,
+        activeStationId: null,
+        staffAlerts,
+      };
     }
 
     case "COMPLETE_SERVICE": {
@@ -146,9 +198,27 @@ function retailReducer(state: RetailState, action: Action): RetailState {
         };
       });
 
+      const needsStaff = stationRequiresStaff(station.type);
+      const nextStaffId = nextId && needsStaff ? RETAIL_STAFF.id : null;
+
       const updatedCustomers = state.customers.map((c) => {
-        if (c.id === justFinished) return { ...c, status: "done" as const, assignedStationId: null, queuePosition: null };
-        if (c.id === nextId)       return { ...c, status: "called" as const, queuePosition: 0 };
+        if (c.id === justFinished) {
+          return {
+            ...c,
+            status: "done" as const,
+            assignedStationId: null,
+            queuePosition: null,
+            // Keep assignedStaffId so history shows who served
+          };
+        }
+        if (c.id === nextId) {
+          return {
+            ...c,
+            status: "called" as const,
+            queuePosition: 0,
+            assignedStaffId: nextStaffId,
+          };
+        }
         if (station.queuedCustomerIds.includes(c.id) && c.id !== nextId) {
           const newPos = remainingQueue.indexOf(c.id) + 1;
           return { ...c, queuePosition: newPos };
@@ -156,7 +226,50 @@ function retailReducer(state: RetailState, action: Action): RetailState {
         return c;
       });
 
-      return { ...state, stations: updatedStations, customers: updatedCustomers, activeStationId: null };
+      let staffAlerts = justFinished
+        ? clearAlertsForCustomer(state.staffAlerts, justFinished)
+        : state.staffAlerts;
+
+      // Next in queue is now being called — allocate & ping staff for room/cashier
+      if (nextId && needsStaff) {
+        staffAlerts = [
+          ...clearAlertsForCustomer(staffAlerts, nextId),
+          createStaffAlert(nextId, action.stationId),
+        ];
+      }
+
+      return {
+        ...state,
+        stations: updatedStations,
+        customers: updatedCustomers,
+        activeStationId: null,
+        staffAlerts,
+      };
+    }
+
+    case "ATTEND_CUSTOMER": {
+      const alert = state.staffAlerts.find((a) => a.id === action.alertId);
+      if (!alert) return state;
+
+      const withoutAlert: RetailState = {
+        ...state,
+        staffAlerts: state.staffAlerts.filter((a) => a.id !== action.alertId),
+      };
+
+      const station = withoutAlert.stations.find((s) => s.id === alert.stationId);
+      // Only advance to serving if this alert still matches the station's called customer
+      if (
+        station &&
+        station.status === "calling" &&
+        station.servingCustomerId === alert.customerId
+      ) {
+        return retailReducer(withoutAlert, {
+          type: "CUSTOMER_ARRIVED",
+          stationId: alert.stationId,
+        });
+      }
+
+      return withoutAlert;
     }
 
     case "AUTO_ASSIGN": {
@@ -186,6 +299,7 @@ function retailReducer(state: RetailState, action: Action): RetailState {
 
       const stationId = customer.assignedStationId;
       let updatedStations = state.stations;
+      let promotedCustomerId: string | null = null;
 
       if (stationId) {
         const station = state.stations.find((s) => s.id === stationId);
@@ -197,6 +311,7 @@ function retailReducer(state: RetailState, action: Action): RetailState {
           if (wasServing) {
             // Pull next from that station's queue, or free it
             const [nextId, ...remainingQueue] = station.queuedCustomerIds;
+            promotedCustomerId = nextId ?? null;
             updatedStations = state.stations.map((s) => {
               if (s.id !== stationId) return s;
               if (nextId) {
@@ -225,14 +340,19 @@ function retailReducer(state: RetailState, action: Action): RetailState {
         }
       }
 
-      const nextCalledId =
-        stationId
-          ? updatedStations.find((s) => s.id === stationId)?.servingCustomerId
-          : null;
       const remainingAtStation =
         stationId
           ? (updatedStations.find((s) => s.id === stationId)?.queuedCustomerIds ?? [])
           : [];
+
+      const promotedStation = stationId
+        ? updatedStations.find((s) => s.id === stationId)
+        : undefined;
+      const promoteNeedsStaff = promotedStation
+        ? stationRequiresStaff(promotedStation.type)
+        : false;
+      const promotedStaffId =
+        promotedCustomerId && promoteNeedsStaff ? RETAIL_STAFF.id : null;
 
       const updatedCustomers = state.customers.map((c) => {
         if (c.id === customer.id) {
@@ -240,12 +360,18 @@ function retailReducer(state: RetailState, action: Action): RetailState {
             ...c,
             status: "scheduled" as const,
             assignedStationId: null,
+            assignedStaffId: null,
             queuePosition: null,
           };
         }
         // Promote next in line if we freed a serving slot
-        if (c.id === nextCalledId && c.status === "queued") {
-          return { ...c, status: "called" as const, queuePosition: 0 };
+        if (c.id === promotedCustomerId && c.status === "queued") {
+          return {
+            ...c,
+            status: "called" as const,
+            queuePosition: 0,
+            assignedStaffId: promotedStaffId,
+          };
         }
         // Recompute queue positions for remaining waiters
         if (remainingAtStation.includes(c.id)) {
@@ -254,12 +380,22 @@ function retailReducer(state: RetailState, action: Action): RetailState {
         return c;
       });
 
+      // Clear alert for the reassigned customer; ping staff if someone was promoted
+      let staffAlerts = clearAlertsForCustomer(state.staffAlerts, customer.id);
+      if (promotedCustomerId && stationId && promoteNeedsStaff) {
+        staffAlerts = [
+          ...clearAlertsForCustomer(staffAlerts, promotedCustomerId),
+          createStaffAlert(promotedCustomerId, stationId),
+        ];
+      }
+
       return {
         ...state,
         customers: updatedCustomers,
         stations: updatedStations,
         selectedCustomerId: customer.id,
         activeStationId: null,
+        staffAlerts,
       };
     }
 
@@ -274,6 +410,7 @@ function retailReducer(state: RetailState, action: Action): RetailState {
         queueNumber: newQueueNumber,
         status: "scheduled",
         assignedStationId: null,
+        assignedStaffId: null,
         queuePosition: null,
       };
 
@@ -307,8 +444,9 @@ interface RetailContextValue {
   completeService: (stationId: string) => void;
   autoAssign: (customerId: string) => void;
   reassign: (customerId: string) => void;
-  registerWalkIn: (customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition">) => void;
+  registerWalkIn: (customer: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "assignedStaffId" | "queuePosition">) => void;
   confirmLoanPlan: (plan: ConfirmedLoanPlan) => void;
+  attendCustomer: (alertId: string) => void;
 }
 
 const RetailContext = createContext<RetailContextValue | null>(null);
@@ -327,6 +465,19 @@ function buildInitialState(): RetailState {
     counters[prefix] = Math.max(counters[prefix], parseInt(c.queueNumber.slice(1), 10));
   });
 
+  // Demo: cust-5 is already "called" at room-2 — staff needs to go there now
+  const staffAlerts: StaffAlert[] = [];
+  const calledSeed = customers.find((c) => c.id === "cust-5" && c.status === "called");
+  if (calledSeed?.assignedStationId) {
+    staffAlerts.push({
+      id: "alert-seed-cust-5",
+      customerId: calledSeed.id,
+      stationId: calledSeed.assignedStationId,
+      staffId: RETAIL_STAFF.id,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   return {
     customers,
     stations,
@@ -335,6 +486,7 @@ function buildInitialState(): RetailState {
     queueCounters: counters,
     loanOffers: buildApprovedLoanOffers(customers),
     loanPlans: {},
+    staffAlerts,
   };
 }
 
@@ -348,12 +500,13 @@ export function RetailProvider({ children }: { children: React.ReactNode }) {
   const completeService  = useCallback((sId: string) => dispatch({ type: "COMPLETE_SERVICE", stationId: sId }), []);
   const autoAssign       = useCallback((cId: string) => dispatch({ type: "AUTO_ASSIGN", customerId: cId }), []);
   const reassign         = useCallback((cId: string) => dispatch({ type: "REASSIGN", customerId: cId }), []);
-  const registerWalkIn   = useCallback((c: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "queuePosition">) =>
+  const registerWalkIn   = useCallback((c: Omit<RetailCustomer, "id" | "queueNumber" | "status" | "assignedStationId" | "assignedStaffId" | "queuePosition">) =>
     dispatch({ type: "REGISTER_WALK_IN", customer: c }), []);
   const confirmLoanPlan  = useCallback((plan: ConfirmedLoanPlan) => dispatch({ type: "CONFIRM_LOAN_PLAN", plan }), []);
+  const attendCustomer   = useCallback((alertId: string) => dispatch({ type: "ATTEND_CUSTOMER", alertId }), []);
 
   return (
-    <RetailContext.Provider value={{ state, selectCustomer, openStationSheet, assignStation, customerArrived, completeService, autoAssign, reassign, registerWalkIn, confirmLoanPlan }}>
+    <RetailContext.Provider value={{ state, selectCustomer, openStationSheet, assignStation, customerArrived, completeService, autoAssign, reassign, registerWalkIn, confirmLoanPlan, attendCustomer }}>
       {children}
     </RetailContext.Provider>
   );

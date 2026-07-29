@@ -9,11 +9,18 @@ import {
   CheckCircle,
   X,
   ArrowRight,
+  DesktopTower,
+  CashRegister,
 } from "@phosphor-icons/react";
-import type { RetailCustomer, ConfirmedLoanPlan } from "./types";
+import type { RetailCustomer, ConfirmedLoanPlan, StationType } from "./types";
 import { useRetail } from "./retail-store";
 import { LoanPlanReview } from "./loan-plan-review";
 import { formatCurrency } from "./mock-data";
+import {
+  getStaffById,
+  stationRequiresStaff,
+  stationTypeFromId,
+} from "./retail-staff";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +37,7 @@ function stationLabel(stationId: string | null): string {
 const STATUS_DOT: Record<string, string> = {
   queued:  "bg-amber-400",
   called:  "bg-orange-400",
-  serving: "bg-red-400",
+  serving: "bg-emerald-500",
   done:    "bg-slate-400",
 };
 
@@ -40,6 +47,51 @@ const STATUS_LABEL: Record<string, string> = {
   serving: "Serving",
   done:    "Done",
 };
+
+type StaffPresence = "summoned" | "present" | "idle";
+
+function StationTypeIcon({ type }: { type: StationType | null }) {
+  if (type === "kiosk") return <DesktopTower size={11} />;
+  if (type === "cashier") return <CashRegister size={11} />;
+  return <Door size={11} />;
+}
+
+function StaffPresenceIcon({ presence }: { presence: StaffPresence }) {
+  if (presence === "summoned") {
+    return (
+      <span
+        className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center"
+        title="Staff summoned — not checked in"
+        aria-label="Staff summoned"
+      >
+        <span className="absolute inset-0 rounded-full bg-red-400/50 animate-staff-presence-ping-red" />
+        <span className="relative h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_2px_rgba(239,68,68,0.65)] animate-staff-presence-glow-red" />
+      </span>
+    );
+  }
+
+  if (presence === "present") {
+    return (
+      <span
+        className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center"
+        title="Staff present and serving"
+        aria-label="Staff present"
+      >
+        <span className="absolute inset-0 rounded-full bg-emerald-400/45 animate-staff-presence-ping-green" />
+        <span className="relative h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.6)] animate-staff-presence-glow-green" />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
+      aria-hidden
+    >
+      <span className="h-2 w-2 rounded-full bg-slate-300" />
+    </span>
+  );
+}
 
 // ─── Confirmation popup ───────────────────────────────────────────────────────
 
@@ -125,13 +177,23 @@ function ConfirmationPopup({ customerName, plan, onGoToQueue, onClose }: Confirm
 interface CustomerRowProps {
   customer: RetailCustomer;
   isConfirmed: boolean;
+  isStaffSummoned: boolean;
   onClick: () => void;
 }
 
-function CustomerRow({ customer, isConfirmed, onClick }: CustomerRowProps) {
+function CustomerRow({ customer, isConfirmed, isStaffSummoned, onClick }: CustomerRowProps) {
   const dot   = STATUS_DOT[customer.status]   ?? "bg-slate-400";
   const label = STATUS_LABEL[customer.status] ?? customer.status;
-  const room  = stationLabel(customer.assignedStationId);
+  const stationType = stationTypeFromId(customer.assignedStationId);
+  const station = stationLabel(customer.assignedStationId);
+  const staff = getStaffById(customer.assignedStaffId);
+  const needsStaff = stationType ? stationRequiresStaff(stationType) : false;
+
+  let presence: StaffPresence = "idle";
+  if (needsStaff && staff) {
+    if (isStaffSummoned || customer.status === "called") presence = "summoned";
+    else if (customer.status === "serving") presence = "present";
+  }
 
   return (
     <button
@@ -164,14 +226,44 @@ function CustomerRow({ customer, isConfirmed, onClick }: CustomerRowProps) {
             {customer.nricLast4}
           </span>
         </div>
+
+        {/* Staff / self-service line */}
+        <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
+          {stationType === "kiosk" ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+              <DesktopTower size={12} className="text-slate-400" />
+              Self-service · No staff required
+            </span>
+          ) : needsStaff ? (
+            <>
+              <StaffPresenceIcon presence={presence} />
+              {staff ? (
+                <span className="min-w-0 truncate text-[11px] text-slate-600">
+                  <span className="font-semibold text-slate-800">{staff.name}</span>
+                  <span className="text-slate-400"> · {staff.role}</span>
+                  {presence === "summoned" && (
+                    <span className="ml-1 font-semibold text-red-600">Summoned</span>
+                  )}
+                  {presence === "present" && (
+                    <span className="ml-1 font-semibold text-emerald-600">Present</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-400">Staff not allocated yet</span>
+              )}
+            </>
+          ) : (
+            <span className="text-[11px] text-slate-400">No station assigned</span>
+          )}
+        </div>
       </div>
 
-      {/* Queue # + Room */}
+      {/* Queue # + Station */}
       <div className="flex-shrink-0 flex flex-col items-end gap-1 mr-3">
         <span className="text-xs font-bold font-mono text-[#0033AA]">{customer.queueNumber}</span>
         <span className="flex items-center gap-1 text-[11px] text-slate-500">
-          <Door size={11} />
-          {room}
+          <StationTypeIcon type={stationType} />
+          {station}
         </span>
       </div>
 
@@ -275,7 +367,7 @@ export function LoansTab({ onNavigateToQueue }: LoansTabProps) {
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-slate-100 bg-white">
-        <h2 className="text-base font-bold text-slate-800 mb-3">Customer Service — Today</h2>
+        <h2 className="text-base font-bold text-slate-800 mb-3">Customers Servicing Now</h2>
 
         {/* Summary chips */}
         <div className="grid grid-cols-3 gap-2">
@@ -302,9 +394,9 @@ export function LoansTab({ onNavigateToQueue }: LoansTabProps) {
         {/* Column headers — tablet+ */}
         <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] items-center px-4 py-2 bg-slate-50 border-b border-slate-200 sticky top-0 gap-3">
           <div className="w-8" />
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer / Staff</p>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Queue #</p>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Room</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Station</p>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</p>
         </div>
 
@@ -316,6 +408,7 @@ export function LoansTab({ onNavigateToQueue }: LoansTabProps) {
               key={c.id}
               customer={c}
               isConfirmed={!!state.loanPlans[c.id]}
+              isStaffSummoned={state.staffAlerts.some((a) => a.customerId === c.id)}
               onClick={() => setSelectedId(c.id)}
             />
           ))
