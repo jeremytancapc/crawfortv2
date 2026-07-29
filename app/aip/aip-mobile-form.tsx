@@ -45,7 +45,7 @@ export function AipMobileForm() {
         return;
       }
 
-      console.info(`${LOG} verified — navigating to /aip/book`);
+      console.info(`${LOG} verified - navigating to /aip/book`);
       trackEvent("aip_step1_mobile_submitted");
       router.push("/aip/book");
     } catch {

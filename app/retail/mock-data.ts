@@ -1,6 +1,6 @@
 /**
  * Seeded mock data for the Retail CRM.
- * Everything resets on page refresh — no persistence.
+ * Everything resets on page refresh - no persistence.
  */
 
 import type {
@@ -79,7 +79,7 @@ const SG_NAMES = [
 const NOTES_BY_TYPE: Record<AppointmentType, string[]> = {
   "loan-application": [
     "New loan enquiry, first-time borrower",
-    "Reloan — existing customer",
+    "Reloan - existing customer",
     "SingPass verified, docs ready",
     "Referred by friend, needs assessment",
     "",
@@ -94,13 +94,13 @@ const NOTES_BY_TYPE: Record<AppointmentType, string[]> = {
   "cash-repayment": [
     "Monthly instalment payment",
     "Partial settlement",
-    "Cash payment — bring receipt",
+    "Cash payment - bring receipt",
     "",
   ],
   "cash-disbursement": [
     "Loan disbursement pickup",
     "Approved loan cash release",
-    "Disbursement — ID required",
+    "Disbursement - ID required",
     "",
   ],
 };
@@ -124,7 +124,7 @@ export function buildInitialCustomers(): RetailCustomer[] {
   const customers: RetailCustomer[] = [];
   const counters: Record<string, number> = { L: 0, C: 0, P: 0, D: 0 };
 
-  // Assign 1–3 customers per slot, mixed types
+  // Assign 1-3 customers per slot, mixed types
   const schedule: Array<{ slot: string; type: AppointmentType; nameIdx: number }> = [
     { slot: "10:30", type: "loan-application",   nameIdx: 0  },
     { slot: "10:30", type: "customer-care",       nameIdx: 1  },
@@ -355,7 +355,7 @@ export const RETAIL_LOANS: RetailLoan[] = [
     interestRate: 4,
     tenure: 12,
     startDate: "5 Mar 2023",
-    nextPaymentDate: "—",
+    nextPaymentDate: "-",
     nextPaymentAmount: 0,
     paymentsCompleted: 12,
     totalPayments: 12,
@@ -374,7 +374,7 @@ export const RETAIL_LOANS: RetailLoan[] = [
     interestRate: 4,
     tenure: 10,
     startDate: "12 Jan 2022",
-    nextPaymentDate: "—",
+    nextPaymentDate: "-",
     nextPaymentAmount: 0,
     paymentsCompleted: 10,
     totalPayments: 10,
@@ -544,7 +544,7 @@ export function buildInitialApplications(count: number = 132): RetailApplication
           author: pick(["Staff: Aminah", "Staff: Rachel Ong", "Staff: Kumar", "Staff: Wei Ting"], seed + 41),
           timestamp: formatDateTimeLabel(new Date(updatedAt.getTime() + 3600_000)),
           text: pick([
-            "Verified NRIC details against SingPass — matches records.",
+            "Verified NRIC details against SingPass - matches records.",
             "Called customer to confirm income documents; awaiting resubmission.",
             "Employment letter looks outdated, requested a newer copy.",
             "Customer confirmed loan purpose is for renovation.",
@@ -676,7 +676,7 @@ export function buildApprovedLoanOffers(customers: RetailCustomer[]): Record<str
     // Randomise max amount between $1,000 and $20,000 (rounded to nearest $100)
     const rawMax = 1000 + Math.floor(seededRand(seed * 7.3) * 19000);
     const maxAmount = Math.round(rawMax / 100) * 100;
-    const minFraction = 0.30 + seededRand(seed * 3.1) * 0.10; // 30–40 %
+    const minFraction = 0.30 + seededRand(seed * 3.1) * 0.10; // 30-40 %
     const minAmount = Math.round((maxAmount * minFraction) / 100) * 100;
 
     offers[c.id] = {
@@ -706,7 +706,7 @@ export function buildApprovedLoanOffers(customers: RetailCustomer[]): Record<str
  *   cust-2  → serving  @ room-1  (station occupied)
  *   cust-5  → called   @ room-2  (station calling)
  *   cust-9  → done     (station freed, so they still appear in the arrived list
- *                        but room column shows "—")
+ *                        but room column shows "-")
  */
 export function seedArrivedCustomerCare(
   customers: RetailCustomer[],

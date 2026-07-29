@@ -83,7 +83,7 @@ function MoneylenderStep({
 
   return (
     <div className="animate-slide-in">
-      {/* Intro context — only on step 1 */}
+      {/* Intro context - only on step 1 */}
       <div className="mb-8">
         <h1
           className="text-4xl font-bold text-[var(--text-primary)] leading-tight mb-2"
@@ -147,7 +147,7 @@ function MoneylenderStep({
           </div>
         </div>
 
-        {/* Payment history — revealed 1.5 s after a valid amount is entered */}
+        {/* Payment history - revealed 1.5 s after a valid amount is entered */}
         {showPaymentHistory && (
           <div className="animate-slide-in">
             <label className="mb-3 block text-sm font-medium text-[var(--text-primary)]">

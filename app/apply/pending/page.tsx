@@ -21,7 +21,7 @@ function pickLeadQuery(raw: string | string[] | undefined): string | undefined {
 
 /**
  * Pending confirmation (like /apply/booked): survives reload via ?leadId= only.
- * Apply cookies are cleared in middleware + submit response (not here — RSC cannot mutate cookies).
+ * Apply cookies are cleared in middleware + submit response (not here - RSC cannot mutate cookies).
  */
 export default async function PendingPage({ searchParams }: PageProps) {
   const sp = await searchParams;

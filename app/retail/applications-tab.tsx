@@ -60,7 +60,7 @@ function formatBytes(bytes: number): string {
 function ReadonlyField({
   label,
   value,
-  placeholder = "—",
+  placeholder = "-",
   required = false,
   trailing,
 }: {
@@ -189,7 +189,7 @@ function DocumentUploader({
         <p className="text-sm font-semibold text-slate-700">
           Click to add, or drag documents here
         </p>
-        <p className="text-xs text-slate-400">PDF, JPG or PNG — max 10MB per file</p>
+        <p className="text-xs text-slate-400">PDF, JPG or PNG - max 10MB per file</p>
       </div>
 
       {documents.length > 0 && (
@@ -265,9 +265,9 @@ function GeneralTab({
             <InfoRow label="Updated at" value={app.updatedAtTimeLabel} />
             <InfoRow label="Borrower" value={app.customerName} />
             <InfoRow label="Registered Mobile Number" value={app.registeredMobile} />
-            <InfoRow label="Secondary Mobile Number" value={app.secondaryMobile ?? "—"} />
-            <InfoRow label="Risk Level" value={app.riskLevel ?? "—"} />
-            <InfoRow label="Credit Limit" value={app.creditLimit != null ? formatCurrency(app.creditLimit) : "—"} />
+            <InfoRow label="Secondary Mobile Number" value={app.secondaryMobile ?? "-"} />
+            <InfoRow label="Risk Level" value={app.riskLevel ?? "-"} />
+            <InfoRow label="Credit Limit" value={app.creditLimit != null ? formatCurrency(app.creditLimit) : "-"} />
           </div>
         </div>
 
@@ -283,7 +283,7 @@ function GeneralTab({
             />
             <ReadonlyField label="Product" required value={app.loanExpectation.product} placeholder="Not yet selected" />
             <ReadonlyField
-              label="Installment"
+              label="Instalment"
               required
               value={app.loanExpectation.installment != null ? `${app.loanExpectation.installment} months` : null}
               placeholder="Not yet selected"

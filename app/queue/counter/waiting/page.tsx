@@ -1,6 +1,6 @@
 import { QueueStatus } from "../../queue-status";
 
-export const metadata = { title: "Queue – Counter: Waiting" };
+export const metadata = { title: "Queue - Counter: Waiting" };
 
 export default function Page() {
   return (

@@ -5,7 +5,7 @@ interface CircleLoaderProps {
 }
 
 /**
- * Spinning arc loader — the entire SVG rotates so the teal dot is always
+ * Spinning arc loader - the entire SVG rotates so the teal dot is always
  * at the arc's leading edge (no dashoffset-to-angle sync required).
  *
  * SVG coords: viewBox 0 0 80 80, circle r=32 cx=40 cy=40

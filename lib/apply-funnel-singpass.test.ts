@@ -39,7 +39,7 @@ const MANUAL_REVIEW_SESSION: Partial<LoanFormData> = {
 };
 
 describe("Singpass / manual review funnel", () => {
-  describe("post-MyInfo Singpass — must stay on review", () => {
+  describe("post-MyInfo Singpass - must stay on review", () => {
     const reviewCtx = ctx({
       session: SINGPASS_REVIEW_SESSION,
       hasApplyGate: true,
@@ -75,7 +75,7 @@ describe("Singpass / manual review funnel", () => {
     });
   });
 
-  describe("pre-MyInfo Singpass tap — must NOT reach review", () => {
+  describe("pre-MyInfo Singpass tap - must NOT reach review", () => {
     const preMyinfo: Partial<LoanFormData> = {
       authMethod: "singpass",
       amount: 4000,
@@ -104,7 +104,7 @@ describe("Singpass / manual review funnel", () => {
     });
   });
 
-  describe("cookie lost after activate — simulates oversized session drop", () => {
+  describe("cookie lost after activate - simulates oversized session drop", () => {
     it("apply_gate set but session missing MyInfo → bounced from review to home", () => {
       const preOnly: Partial<LoanFormData> = {
         authMethod: "singpass",

@@ -1,8 +1,8 @@
 export interface CpfContribution {
-  month: string;     // "YYYY-MM" — For Month
+  month: string;     // "YYYY-MM" - For Month
   amount: number;    // SGD
   employer: string;  // employer name
-  paidOn: string;    // "YYYY-MM-DD" — Paid On date
+  paidOn: string;    // "YYYY-MM-DD" - Paid On date
 }
 
 export interface NoaRecord {
@@ -52,7 +52,7 @@ export interface LoanFormData {
   // the session cookie (they would exceed the 4 KB browser limit).
   singpassRawKey: string;
 
-  // Populated by /api/apply/submit — carried in session to approval + booking pages
+  // Populated by /api/apply/submit - carried in session to approval + booking pages
   leadId: string;
   approvedLoanAmount: number;
   verifiedMonthlyIncome: number;
@@ -83,7 +83,7 @@ export const initialLoanFormData: LoanFormData = {
   maritalStatus: "Single",
   email: "",
   moneylenderLoanAmount: "",
-  // Moneylender step was removed from the funnel — default to "no loans declared"
+  // Moneylender step was removed from the funnel - default to "no loans declared"
   // (same assumption already used by the AXS flow, which never asks this either).
   moneylenderNoLoans: true,
   moneylenderPaymentHistory: "",

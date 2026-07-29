@@ -6,7 +6,7 @@ import { AppointmentList } from "./appointment-list";
 import { FloorPlan } from "./floor-plan";
 
 /**
- * Queue tab — two-panel on iPad landscape, toggled panels on mobile/portrait.
+ * Queue tab - two-panel on iPad landscape, toggled panels on mobile/portrait.
  */
 export function QueueTab() {
   const [mobilePanel, setMobilePanel] = useState<"list" | "floor">("list");

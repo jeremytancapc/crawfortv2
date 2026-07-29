@@ -99,7 +99,7 @@ export function logExternalApi(log: ExternalApiLog): void {
     ].join("\n"),
   );
 
-  // Persist to memory store — fire-and-forget (don't block the response)
+  // Persist to memory store - fire-and-forget (don't block the response)
   persistToDb(log).catch((err) => {
     console.error(`${log.tag} Failed to persist api_log to DB`, err);
   });
@@ -133,7 +133,7 @@ async function persistToDb(log: ExternalApiLog): Promise<void> {
       console.info(`[api-logger] Persisted to api_logs`, { tag: log.tag, leadId: log.leadId ?? null });
     }
   } catch (err) {
-    // Swallow — we never want DB logging to crash the main flow
+    // Swallow - we never want DB logging to crash the main flow
     console.error(`[api-logger] DB insert failed`, err);
   }
 }

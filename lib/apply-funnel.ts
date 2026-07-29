@@ -33,7 +33,7 @@ export type ApplyFunnelContext = {
   pathname: string;
   session: Partial<LoanFormData> | null;
   hasApplyGate: boolean;
-  /** Set after eligible submit — allows /apply/book (not the review page). */
+  /** Set after eligible submit - allows /apply/book (not the review page). */
   hasReviewGate: boolean;
   approvalOffer: StoredApprovalOffer | null;
   hasBookingConfirm: boolean;
@@ -79,7 +79,7 @@ function isApproved(ctx: ApplyFunnelContext): boolean {
   return Number(ctx.approvalOffer?.approvedLoanAmount) > 0;
 }
 
-/** User may enter steps 4–9 on /apply/review. */
+/** User may enter steps 4-9 on /apply/review. */
 export function canEnterReview(session: Partial<LoanFormData> | null): boolean {
   if (!session || !hasValidApplyAuthMethod(session)) return false;
   const income = session.monthlyIncome?.trim() ?? "";

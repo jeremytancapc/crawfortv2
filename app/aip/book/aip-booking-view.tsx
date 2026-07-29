@@ -34,7 +34,7 @@ export function AipBookingView() {
     }
 
     const json = (await res.json()) as BookingConfirmation;
-    console.info(`${LOG} success — redirecting to /aip/booked`, {
+    console.info(`${LOG} success - redirecting to /aip/booked`, {
       appointmentId: json.appointmentId,
       cfh5Id: json.cfh5Id,
       date: json.date,

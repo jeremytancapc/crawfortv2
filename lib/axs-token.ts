@@ -1,5 +1,5 @@
 /**
- * AXS booking token — signed HMAC token containing the leadId.
+ * AXS booking token - signed HMAC token containing the leadId.
  * Used to generate secure one-time booking links for AXS customers.
  *
  * Token format: base64url(JSON payload) + "." + base64url(HMAC-SHA256 signature)

@@ -24,7 +24,7 @@ function isLandingPath(pathname: string): boolean {
 }
 
 export function proxy(request: NextRequest) {
-  // TEMPORARILY DISABLED — cookie resume from landings (`/` → /apply/approval etc.).
+  // TEMPORARILY DISABLED - cookie resume from landings (`/` → /apply/approval etc.).
   // Clear funnel cookies so each home visit starts a fresh apply flow for testing.
   // Re-enable by deleting this block.
   if (isLandingPath(request.nextUrl.pathname)) {

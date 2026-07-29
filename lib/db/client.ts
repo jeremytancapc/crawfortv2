@@ -1,6 +1,6 @@
 /**
  * In-memory data client with a Supabase-like query surface.
- * No external database — data lives in process memory (seeded with dummy rows).
+ * No external database - data lives in process memory (seeded with dummy rows).
  */
 
 import {
@@ -222,7 +222,7 @@ export type AdminClient = {
   from: (table: TableName) => QueryBuilder;
 };
 
-/** Server-side data client — in-memory store, no external DB. */
+/** Server-side data client - in-memory store, no external DB. */
 export function createAdminClient(): AdminClient {
   return {
     from(table: TableName) {

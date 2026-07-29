@@ -126,7 +126,7 @@ export function QueueUploadCard() {
             Click to upload files
           </p>
           <p className="text-xs text-[var(--text-tertiary)]">
-            PDF, JPG, PNG &mdash; max 10 MB
+            PDF, JPG, PNG - max 10 MB
           </p>
         </div>
       </div>

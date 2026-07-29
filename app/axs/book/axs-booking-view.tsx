@@ -42,7 +42,7 @@ export function AxsBookingView({ leadId, axsRef, approvedAmount, tenure, token }
     }
 
     const json = (await res.json()) as BookingConfirmation;
-    console.info(`${LOG} success — redirecting to /axs/booked`, {
+    console.info(`${LOG} success - redirecting to /axs/booked`, {
       appointmentId: json.appointmentId,
       cfh5Id: json.cfh5Id,
       date: json.date,

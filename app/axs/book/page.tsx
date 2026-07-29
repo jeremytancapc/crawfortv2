@@ -4,7 +4,7 @@ import { verifyAxsToken } from "@/lib/axs-token";
 import { AxsBookingView } from "./axs-booking-view";
 
 export const metadata: Metadata = {
-  title: "Book Your Appointment — CF Money",
+  title: "Book Your Appointment - CF Money",
   robots: { index: false, follow: false },
 };
 

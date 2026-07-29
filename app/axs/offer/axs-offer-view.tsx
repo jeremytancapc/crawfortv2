@@ -197,7 +197,7 @@ function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
               <CardLogo />
             </div>
 
-            {/* Amount — centre-bottom of card face */}
+            {/* Amount - centre-bottom of card face */}
             <div>
               <p
                 className="text-[11px] font-medium tracking-[0.14em] uppercase mb-1"
@@ -408,7 +408,7 @@ export function AxsOfferView() {
         entered={stage >= 2}
       />
 
-      {/* Disclaimer — fades in first after the card, before the terms below */}
+      {/* Disclaimer - fades in first after the card, before the terms below */}
       <motion.p
         className="text-[10px] leading-relaxed -mt-4"
         style={{ color: "var(--text-tertiary)", opacity: 0.75 }}

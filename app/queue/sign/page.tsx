@@ -1,6 +1,6 @@
 import { QueueStatus } from "../queue-status";
 
-export const metadata = { title: "Queue – Sign with Singpass" };
+export const metadata = { title: "Queue - Sign with Singpass" };
 
 export default function Page() {
   return (

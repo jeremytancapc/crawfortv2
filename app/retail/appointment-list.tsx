@@ -78,7 +78,7 @@ function getCurrentSlot(now: Date = new Date()): string | null {
   return null;
 }
 
-/** Progress through the current 30-min slot, 0–1. Null if outside operating hours. */
+/** Progress through the current 30-min slot, 0-1. Null if outside operating hours. */
 function getSlotProgress(slot: string, now: Date = new Date()): number {
   const [sh, sm] = slot.split(":").map(Number);
   const slotStart = sh * 60 + sm;
@@ -252,7 +252,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
       style={isSelected ? { boxShadow: "0 0 0 3px rgba(0,51,170,0.15), 0 4px 16px rgba(0,51,170,0.10)" } : undefined}
     >
       <div className="flex items-start gap-3">
-        {/* Queue number — colored by appointment type */}
+        {/* Queue number - colored by appointment type */}
         <div
           className={`flex-shrink-0 w-11 h-11 rounded-md flex items-center justify-center text-xs font-bold text-white ${cfg.badge}`}
         >
@@ -296,10 +296,10 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
             {customer.status === "scheduled"
               ? "Tap a compatible station on the floor plan, or auto-assign."
               : customer.status === "queued"
-              ? `In queue at ${stationLabel ?? "station"} — re-assign to move them.`
+              ? `In queue at ${stationLabel ?? "station"} - re-assign to move them.`
               : customer.status === "called"
-              ? `Called to ${stationLabel ?? "station"} — re-assign to move them.`
-              : `Serving at ${stationLabel ?? "station"} — re-assign to move them.`}
+              ? `Called to ${stationLabel ?? "station"} - re-assign to move them.`
+              : `Serving at ${stationLabel ?? "station"} - re-assign to move them.`}
           </p>
           <div className="flex items-center gap-2 flex-shrink-0">
             {(customer.status === "queued" || customer.status === "called" || customer.status === "serving") && (
@@ -329,7 +329,7 @@ function CustomerCard({ customer, isSelected, onSelect, onAutoAssign, onReassign
           onClick={(e) => e.stopPropagation()}
         >
           <p className="text-xs text-slate-500 font-medium">
-            Service completed — re-assign to put them back in the queue.
+            Service completed - re-assign to put them back in the queue.
           </p>
           <button
             onClick={onReassign}
@@ -428,7 +428,7 @@ export function AppointmentList() {
           </div>
         </div>
 
-        {/* Filter chips — All Types on its own row, categories below */}
+        {/* Filter chips - All Types on its own row, categories below */}
         <div className="flex flex-col gap-1.5">
           <button
             onClick={() => setFilter("all")}
@@ -497,7 +497,7 @@ export function AppointmentList() {
                 )}
               </div>
 
-              {/* Thick red "now" line — early in the slot (before cards) */}
+              {/* Thick red "now" line - early in the slot (before cards) */}
               {isNow && !showNowAfterCards && (
                 <div className="relative flex items-center gap-2 my-1.5 pl-0" aria-label={`Current time ${formatNowTime(now)}`}>
                   <span className="w-16 flex-shrink-0 text-right pr-1 text-[10px] font-bold text-red-600 tabular-nums">
@@ -528,7 +528,7 @@ export function AppointmentList() {
                 </div>
               )}
 
-              {/* Thick red "now" line — later in the slot (after cards) */}
+              {/* Thick red "now" line - later in the slot (after cards) */}
               {isNow && showNowAfterCards && (
                 <div className="relative flex items-center gap-2 my-1.5" aria-label={`Current time ${formatNowTime(now)}`}>
                   <span className="w-16 flex-shrink-0 text-right pr-1 text-[10px] font-bold text-red-600 tabular-nums">

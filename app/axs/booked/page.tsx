@@ -4,7 +4,7 @@ import { BookingConfirmedView } from "@/app/booking-confirmed-view";
 import { AxsBackButton } from "./axs-back-button";
 
 export const metadata: Metadata = {
-  title: "Appointment Confirmed — CF Money",
+  title: "Appointment Confirmed - CF Money",
 };
 
 interface Props {

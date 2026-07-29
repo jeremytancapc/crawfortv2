@@ -28,12 +28,12 @@ const LOG = "[apply/book]";
 
 type Body = { date: string; time: string; idNumber?: string };
 
-/** Same convention as the pending UI — last 8 chars of lead UUID, uppercased. */
+/** Same convention as the pending UI - last 8 chars of lead UUID, uppercased. */
 function cfh5ApplicationRef(leadId: string): string {
   return `CFH5-${leadId.slice(-8).toUpperCase()}`;
 }
 
-/** Outbound AirConnect call — must be awaited before returning the HTTP response.
+/** Outbound AirConnect call - must be awaited before returning the HTTP response.
  * If left fire-and-forget, serverless often freezes right after `return res` and the
  * fetch never completes, so upstream never sees the request and you won't get OK/error logs. */
 async function notifyAirConnect(payload: {
@@ -49,7 +49,7 @@ async function notifyAirConnect(payload: {
   const url = process.env.AIRCONNECT_APPOINTMENTS_URL;
 
   if (!apiKey || !url) {
-    console.warn(`${LOG} AirConnect env not configured — skipping notification`, {
+    console.warn(`${LOG} AirConnect env not configured - skipping notification`, {
       hasApiKey: Boolean(apiKey),
       hasUrl: Boolean(url),
     });
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Notify AirConnect — await so serverless completes the outbound fetch before freeze.
+  // Notify AirConnect - await so serverless completes the outbound fetch before freeze.
   // Booking still succeeds in DB even if AirConnect fails (errors logged above).
   await notifyAirConnect({
     customerName: lead?.full_name ?? "",
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
     }),
   );
 
-  console.info(`${LOG} success — apply cookies cleared, booking_confirm set`, {
+  console.info(`${LOG} success - apply cookies cleared, booking_confirm set`, {
     appointmentId: appointment.id,
     cfh5Id,
     date,

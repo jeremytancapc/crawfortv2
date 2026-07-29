@@ -40,7 +40,7 @@ import {
   Check,
 } from "@phosphor-icons/react";
 
-/** 1–2: loan + income · 3: Singpass vs manual · 4: identity · 8: review · 5: contact · 7: bankruptcy · 9: moneylender loans */
+/** 1-2: loan + income · 3: Singpass vs manual · 4: identity · 8: review · 5: contact · 7: bankruptcy · 9: moneylender loans */
 const TOTAL_STEPS = 8; // review is still at internal step 8
 
 const MAX_LOAN_TENURE_MONTHS = 18;
@@ -109,9 +109,9 @@ const POSITION_OPTIONS = [
 
 const EMPLOYMENT_DURATION_OPTIONS = [
   { value: "less_1y", label: "Less than 1 year" },
-  { value: "1_3y", label: "1 – 3 years" },
-  { value: "4_7y", label: "4 – 7 years" },
-  { value: "8_10y", label: "8 – 10 years" },
+  { value: "1_3y", label: "1 - 3 years" },
+  { value: "4_7y", label: "4 - 7 years" },
+  { value: "8_10y", label: "8 - 10 years" },
   { value: "10y_plus", label: "10 years and above" },
 ] as const;
 
@@ -343,7 +343,7 @@ function SelectableChip({
   );
 }
 
-/** Landing pages: steps 1–3 only. Steps 4+ run on `/apply/review`. */
+/** Landing pages: steps 1-3 only. Steps 4+ run on `/apply/review`. */
 export function LoanApplicationForm({
   reminderItems: _reminderItems = [],
   thingsToBring: _thingsToBring = [],
@@ -632,15 +632,15 @@ export function Step2_SelfDeclaredIncome({
           tooltip={
             <ol className="space-y-2.5">
               <li className="text-sm leading-snug text-white/70">
-                <span className="font-semibold text-white">Employed Full-time — </span>
+                <span className="font-semibold text-white">Employed Full-time - </span>
                 Gross monthly salary before CPF deduction
               </li>
               <li className="text-sm leading-snug text-white/70">
-                <span className="font-semibold text-white">PHV drivers — </span>
+                <span className="font-semibold text-white">PHV drivers - </span>
                 Gross monthly salary after deducting vehicle rental fees
               </li>
               <li className="text-sm leading-snug text-white/70">
-                <span className="font-semibold text-white">Own business — </span>
+                <span className="font-semibold text-white">Own business - </span>
                 Monthly salary based on latest year Notice of Assessment or monthly bank statement
               </li>
             </ol>
@@ -867,7 +867,7 @@ function Step5_Employment({
   const declared =
     formData.monthlyIncome.trim() !== ""
       ? formatCurrency(parseInt(formData.monthlyIncome, 10) || 0)
-      : "—";
+      : "-";
 
   return (
     <div>
@@ -1167,7 +1167,7 @@ function Step9_EmploymentDeclaration({
 
   // exitingCard tracks which card is currently flying off-screen.
   // Setting activeCard and exitingCard simultaneously means both cards
-  // animate in parallel — zero pause between exit and entrance.
+  // animate in parallel - zero pause between exit and entrance.
   const [exitingCard, setExitingCard] = useState<number | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1211,7 +1211,7 @@ function Step9_EmploymentDeclaration({
 
     if (index === exitingCard) {
       return {
-        // No rotate — rotation causes the card's bounding box to extend below the
+        // No rotate - rotation causes the card's bounding box to extend below the
         // container, which expands Android Chrome's scroll area and leaves a
         // permanent white gap below the footer.
         transform: "translateX(115%)",
@@ -1233,7 +1233,7 @@ function Step9_EmploymentDeclaration({
     }
 
     if (index < activeCard) {
-      // Already-answered — off-screen right, no transition (instant)
+      // Already-answered - off-screen right, no transition (instant)
       return {
         transform: "translateX(115%)",
         opacity: 0,
@@ -1243,7 +1243,7 @@ function Step9_EmploymentDeclaration({
       };
     }
 
-    // Cards behind (index > activeCard) — stacked depth effect
+    // Cards behind (index > activeCard) - stacked depth effect
     const depth = index - activeCard;
     return {
       transform: `translateY(${depth * 8}px) scale(${1 - depth * 0.04})`,
@@ -1270,7 +1270,7 @@ function Step9_EmploymentDeclaration({
         ].join(", "),
       };
     }
-    // Behind cards — neutral, same fixed height so none peek out
+    // Behind cards - neutral, same fixed height so none peek out
     return {
       background: "var(--surface-elevated)",
       borderColor: "var(--border-subtle)",
@@ -1488,11 +1488,11 @@ function Step9_EmploymentDeclaration({
                     {isBankruptcyClearSelected && <CheckCircle size={14} weight="fill" color="white" />}
                   </span>
                   <span className="text-sm font-semibold" style={{ color: isBankruptcyClearSelected ? "oklch(0.95 0.06 145)" : "white" }}>
-                    Yes, I confirm — I am not bankrupt, under DRS, or self-excluded as of this application.
+                    Yes, I confirm - I am not bankrupt, under DRS, or self-excluded as of this application.
                   </span>
                 </button>
 
-                {/* Discharged bankrupt — green */}
+                {/* Discharged bankrupt - green */}
                 <button
                   type="button"
                   disabled={activeCard !== 3}
@@ -1517,7 +1517,7 @@ function Step9_EmploymentDeclaration({
                   </span>
                 </button>
 
-                {/* Active bankruptcy / DRS — red */}
+                {/* Active bankruptcy / DRS - red */}
                 <button
                   type="button"
                   disabled={activeCard !== 3}
@@ -1672,7 +1672,7 @@ We only collect personal data from our customers to enable us to understand thei
 3. To conduct online searches via web portals such as DP Information Network Pte Ltd, Credit Bureau (Singapore) Pte Ltd.
 4. Understanding our customer's financial needs and to assist in customising loan packages.
 5. Assessing our customer's loan application and to comply with the laws of Singapore.
-6. For debt recovery purposes — to engage law firms, third-party debt collection agencies or approved debt collectors.
+6. For debt recovery purposes - to engage law firms, third-party debt collection agencies or approved debt collectors.
 
 **6.1.2 Type of Personal Data Collected**
 
@@ -1863,7 +1863,7 @@ export function Step7_BankruptcyDeclaration({
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {/* Not bankrupt option — green when selected */}
+            {/* Not bankrupt option - green when selected */}
             <button
               type="button"
               onClick={() => {
@@ -1893,7 +1893,7 @@ export function Step7_BankruptcyDeclaration({
               </span>
             </button>
 
-            {/* Discharged bankrupt option — blue when selected */}
+            {/* Discharged bankrupt option - blue when selected */}
             <button
               type="button"
               onClick={() => updateField("bankruptcyDeclaration", "discharged_lt5")}
@@ -2021,7 +2021,7 @@ function EditableReviewRow({
         ) : (
           <>
             <span className="font-medium text-[var(--text-primary)] text-right max-w-[180px] truncate">
-              {value || "—"}
+              {value || "-"}
             </span>
             <button
               type="button"
@@ -2066,22 +2066,22 @@ export function Step8_Review({
       ? "Singpass (Myinfo)"
       : formData.authMethod === "manual"
         ? "Manual form"
-        : "—";
+        : "-";
 
   const loanRows = [
     { label: "Amount", value: formatCurrency(formData.amount) },
     { label: "Tenure", value: `${formData.tenure} months` },
     { label: "Monthly instalment (est.)", value: `${formatCurrency(monthlyRepayment)}*` },
-    { label: "Urgency", value: URGENCY_OPTIONS.find((o) => o.value === formData.urgency)?.label ?? "—" },
-    { label: "Monthly income", value: formData.monthlyIncome ? formatCurrency(parseInt(formData.monthlyIncome, 10) || 0) : "—" },
+    { label: "Urgency", value: URGENCY_OPTIONS.find((o) => o.value === formData.urgency)?.label ?? "-" },
+    { label: "Monthly income", value: formData.monthlyIncome ? formatCurrency(parseInt(formData.monthlyIncome, 10) || 0) : "-" },
     { label: "Verification", value: authLabel },
   ];
 
   const personalStaticRows = [
-    { label: "ID Type", value: ID_TYPE_OPTIONS.find((o) => o.value === formData.idType)?.label ?? "—" },
-    { label: "Name", value: formData.fullName || "—" },
-    { label: "NRIC / FIN", value: formData.nric ? `${formData.nric.slice(0, 1)}****${formData.nric.slice(-1)}` : "—" },
-    { label: "Mobile", value: formData.mobile ? `+65 ${formData.mobile}` : "—" },
+    { label: "ID Type", value: ID_TYPE_OPTIONS.find((o) => o.value === formData.idType)?.label ?? "-" },
+    { label: "Name", value: formData.fullName || "-" },
+    { label: "NRIC / FIN", value: formData.nric ? `${formData.nric.slice(0, 1)}****${formData.nric.slice(-1)}` : "-" },
+    { label: "Mobile", value: formData.mobile ? `+65 ${formData.mobile}` : "-" },
     ...(formData.address ? [{ label: "Address", value: formData.address }] : []),
     ...(formData.postalCode ? [{ label: "Postal Code", value: formData.postalCode }] : []),
   ];
@@ -2115,7 +2115,7 @@ export function Step8_Review({
           </p>
         </div>
 
-        {/* Personal Info — with editable Marital Status + Email */}
+        {/* Personal Info - with editable Marital Status + Email */}
         <div>
           <div className="mb-2 flex items-center gap-2">
             <User size={16} weight="duotone" className="text-brand-blue" />
@@ -2141,7 +2141,7 @@ export function Step8_Review({
           </div>
         </div>
 
-        {/* NOA — Singpass data display guidelines: show all detailed fields per YA */}
+        {/* NOA - Singpass data display guidelines: show all detailed fields per YA */}
         {formData.authMethod === "singpass" && formData.noaHistory.length > 0 && (
           <div>
             <div className="mb-2 flex items-center gap-2">
@@ -2185,7 +2185,7 @@ export function Step8_Review({
           </div>
         )}
 
-        {/* CPF — Singpass guidelines: Employer / For Month / Paid On / Amount, ascending */}
+        {/* CPF - Singpass guidelines: Employer / For Month / Paid On / Amount, ascending */}
         {formData.authMethod === "singpass" && formData.cpfContributions.length > 0 && (
           <div>
             <div className="mb-2 flex items-center gap-2">
@@ -2201,7 +2201,7 @@ export function Step8_Review({
                 <span className="text-right">Paid On</span>
                 <span className="text-right">Amount</span>
               </div>
-              {/* Rows — sorted ascending by paidOn then month (oldest first) */}
+              {/* Rows - sorted ascending by paidOn then month (oldest first) */}
               {[...formData.cpfContributions]
                 .sort((a, b) => {
                   const d = a.paidOn.localeCompare(b.paidOn);
@@ -2212,9 +2212,9 @@ export function Step8_Review({
                     key={`${c.paidOn}-${c.month}`}
                     className={`grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2.5 ${i > 0 ? "border-t border-[var(--border-subtle)]" : ""}`}
                   >
-                    <span className="truncate text-[var(--text-secondary)] text-xs">{c.employer || "—"}</span>
+                    <span className="truncate text-[var(--text-secondary)] text-xs">{c.employer || "-"}</span>
                     <span className="text-right tabular-nums text-[var(--text-primary)]">{c.month}</span>
-                    <span className="text-right tabular-nums text-[var(--text-tertiary)]">{c.paidOn || "—"}</span>
+                    <span className="text-right tabular-nums text-[var(--text-tertiary)]">{c.paidOn || "-"}</span>
                     <span className="text-right tabular-nums font-medium text-[var(--text-primary)]">{formatCurrency(c.amount)}</span>
                   </div>
                 ))}

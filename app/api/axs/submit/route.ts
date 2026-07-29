@@ -105,7 +105,7 @@ function extractCpfContributions(history: AxsMyInfoPayload["cpfcontributions"]):
 
 function extractNoaHistory(noa: AxsMyInfoPayload["noa-basic"]): NoaRecord[] {
   if (!noa?.amount?.value) return [];
-  // noa-basic.yearofassessment.value might be "2,024.00" — parse it
+  // noa-basic.yearofassessment.value might be "2,024.00" - parse it
   const yaRaw = String(noa.yearofassessment?.value ?? "").replace(/,/g, "");
   const ya = String(Math.round(parseFloat(yaRaw) || 0));
   return [{
@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
       raw_assessment: { eligibility: eligibility.raw, assessment } as unknown as Record<string, unknown>,
     });
 
-    // Still generate booking URL — rejected customers can still book
+    // Still generate booking URL - rejected customers can still book
     const token = createAxsToken({ leadId, axsRef, approvedAmount: requestedLoanAmount, tenure: requestedTenure });
     const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL ?? "https://apply.crawfort.com";
     const bookingUrl = `${baseUrl}/axs/book?token=${token}`;
@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
     status: assessment.isEligible ? "approved" : "rejected",
   }).eq("id", leadId);
 
-  // Always generate a booking token — all customers can book regardless of decision
+  // Always generate a booking token - all customers can book regardless of decision
   const token = createAxsToken({
     leadId,
     axsRef,

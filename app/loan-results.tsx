@@ -563,7 +563,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           </span>
         </div>
 
-        {/* Stats row — interest paid and tenure stack on the left, monthly instalment anchors the right */}
+        {/* Stats row - interest paid and tenure stack on the left, monthly instalment anchors the right */}
         <div
           className="flex items-stretch gap-3 rounded-[var(--radius-sm)] px-3 py-2.5"
           style={{
@@ -664,7 +664,7 @@ function CustomPlanCard({ isSelected, onSelect, approvedAmount, customPlan, onCu
 
   const tenureError =
     customPlan.tenure && (tenureNum < MIN_OFFER_TENURE || tenureNum > MAX_OFFER_TENURE)
-      ? `Between ${MIN_OFFER_TENURE}–${MAX_OFFER_TENURE} months`
+      ? `Between ${MIN_OFFER_TENURE}-${MAX_OFFER_TENURE} months`
       : null;
 
   const previewInstalment =
@@ -751,7 +751,7 @@ function CustomPlanCard({ isSelected, onSelect, approvedAmount, customPlan, onCu
                   max={MAX_OFFER_TENURE}
                   value={customPlan.tenure}
                   onChange={(e) => onCustomPlanChange({ ...customPlan, tenure: e.target.value })}
-                  placeholder="1–12"
+                  placeholder="1-12"
                   className="w-full rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-semibold tabular-nums outline-none transition-colors duration-150"
                   style={{
                     background: "var(--surface-secondary)",
@@ -882,7 +882,7 @@ function ReconsiderModal({
     setStep("final");
   };
 
-  // suppress unused warning — selectedReason is set for tracking purposes
+  // suppress unused warning - selectedReason is set for tracking purposes
   void selectedReason;
 
   return (
@@ -1143,7 +1143,7 @@ export function LoanResults({
           body: JSON.stringify({ leadId: formData.leadId, ...payload }),
         });
       } catch {
-        // Graceful fallback — booking proceeds regardless
+        // Graceful fallback - booking proceeds regardless
       } finally {
         setIsSavingPlan(false);
       }

@@ -86,7 +86,7 @@ export function snapshotSession(data: Partial<LoanFormData> | null | undefined):
   };
 }
 
-/** Mirrors app/page.tsx resumeSingpassReview — logged for diagnosis, not as the fix. */
+/** Mirrors app/page.tsx resumeSingpassReview - logged for diagnosis, not as the fix. */
 export function computeResumeWouldPass(
   session: Partial<LoanFormData>,
   hasApplyGate: boolean,
@@ -117,7 +117,7 @@ function runtimeMeta() {
 }
 
 /**
- * Insert one diagnostic row. Never throws — failures are console-only so redirects are not blocked.
+ * Insert one diagnostic row. Never throws - failures are console-only so redirects are not blocked.
  */
 export async function logApplyFlowEvent(input: ApplyFlowLogInput): Promise<void> {
   try {

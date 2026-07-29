@@ -57,7 +57,7 @@ function toISODate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Seeded PRNG (LCG) — deterministic stream from a date string seed. */
+/** Seeded PRNG (LCG) - deterministic stream from a date string seed. */
 function makePrng(date: string) {
   let seed = 0;
   for (let i = 0; i < date.length; i++) {
@@ -69,7 +69,7 @@ function makePrng(date: string) {
   };
 }
 
-/** 3–5 scattered "limited spots" indices per day, never the fully-booked slot. */
+/** 3-5 scattered "limited spots" indices per day, never the fully-booked slot. */
 function limitedSlotIndices(date: string, bookedIdx: number): Set<number> {
   const rand = makePrng(date + "limited");
   const count = 3 + Math.floor(rand() * 3); // 3, 4 or 5
@@ -82,7 +82,7 @@ function limitedSlotIndices(date: string, bookedIdx: number): Set<number> {
   return indices;
 }
 
-/** One slot per day is fully booked — deterministic but varies each day. */
+/** One slot per day is fully booked - deterministic but varies each day. */
 function fullyBookedIndex(date: string): number {
   const rand = makePrng(date + "booked");
   return Math.floor(rand() * TIME_SLOTS.length);
@@ -112,12 +112,12 @@ function addToCalendar(date: Date, timeSlot: string) {
   const d  = String(date.getDate()).padStart(2, "0");
   // Navigating to this endpoint serves Content-Type: text/calendar with
   // Content-Disposition: inline, which triggers the native "Add to Calendar"
-  // dialog on iOS Safari and the OS calendar handler on Android — no UA
+  // dialog on iOS Safari and the OS calendar handler on Android - no UA
   // sniffing, no share sheets, no blob URLs.
   window.location.href = `/api/apply/calendar?date=${y}-${mo}-${d}&time=${encodeURIComponent(timeSlot)}`;
 }
 
-/** Returned by POST /api/apply/book — shown on the confirmation step. */
+/** Returned by POST /api/apply/book - shown on the confirmation step. */
 export type BookingConfirmation = {
   appointmentId: string;
   cfh5Id: string;
@@ -139,11 +139,11 @@ const WHAT_TO_BRING = {
   sg_pr: [
     "NRIC (Original / Singpass)",
     "Singpass on your phone",
-    "Latest 1–3 months payslip or bank statement (Not required if you have regular CPF/NOA record, unless your salary is above the CPF monthly cap)",
+    "Latest 1-3 months payslip or bank statement (Not required if you have regular CPF/NOA record, unless your salary is above the CPF monthly cap)",
   ],
   foreigner: [
     "Work Pass (WP / SP / EP / LTVP) with at least 3 months validity",
-    "Latest 1–3 months payslip",
+    "Latest 1-3 months payslip",
     "SingPass on your phone",
     "Latest month proof of residence with your name and SG address (bank statement / utility bill / mobile bill)",
   ],
@@ -178,7 +178,7 @@ function WhatToBring({ idType }: { idType: string }) {
         ))}
       </div>
 
-      {/* Checklist — 2-col on sm+ */}
+      {/* Checklist - 2-col on sm+ */}
       <ul className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
         {items.map((item) => (
           <li key={item} className="flex items-start gap-2">
@@ -259,7 +259,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
     };
   }, [timeDropdownOpen, calendarOpen]);
 
-  // Calendar month state — 1st of the displayed month
+  // Calendar month state - 1st of the displayed month
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
     const d = new Date();
     d.setDate(1);
@@ -371,7 +371,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
         {/* ── What to bring ───────────────────────────────────────── */}
         <WhatToBring idType={formData.idType} />
 
-        {/* Office details — hidden on desktop (shown in sidebar) */}
+        {/* Office details - hidden on desktop (shown in sidebar) */}
         <div className="flex flex-col gap-4 text-left lg:hidden">
           {/* Landscape shopfront image */}
           <div className="relative h-44 w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
@@ -410,7 +410,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
               <Clock size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
               <div>
                 <p className="text-sm font-medium text-[var(--text-primary)]">
-                  Mon &ndash; Sat &nbsp;&middot;&nbsp; 10:30am &ndash; 7:30pm
+                  Mon - Sat &nbsp;&middot;&nbsp; 10:30am - 7:30pm
                 </p>
                 <p className="text-sm text-[var(--text-tertiary)]">
                   Closed on Sundays &amp; Public Holidays
@@ -578,7 +578,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
               )}
             </button>
 
-            {/* Calendar popup — portalled into body to escape transform stacking contexts */}
+            {/* Calendar popup - portalled into body to escape transform stacking contexts */}
             {calendarOpen && calendarPos && createPortal(
               <>
                 <div className="fixed inset-0 z-[9998]" onClick={() => setCalendarOpen(false)} />
@@ -752,7 +752,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                 />
               </button>
 
-              {/* Time dropdown — portalled into body to escape transform stacking contexts */}
+              {/* Time dropdown - portalled into body to escape transform stacking contexts */}
               {timeDropdownOpen && timePos && createPortal(
                 <>
                   <div className="fixed inset-0 z-[9998]" onClick={() => setTimeDropdownOpen(false)} />
@@ -866,18 +866,18 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             </div>
           )}
 
-          {/* Hours hint — changes once a date is chosen */}
+          {/* Hours hint - changes once a date is chosen */}
           <p className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-tertiary)]">
             <Clock size={12} className="shrink-0" />
             {selectedDate
-              ? "Appointment slots open from 10:30am – 7pm"
-              : "Open Mondays – Saturdays"}
+              ? "Appointment slots open from 10:30am - 7pm"
+              : "Open Mondays - Saturdays"}
           </p>
 
         </div>
       </div>
 
-      {/* ── Office location — hidden on desktop (shown in sidebar) */}
+      {/* ── Office location - hidden on desktop (shown in sidebar) */}
       <div
         className="hidden"
         style={{
@@ -888,7 +888,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
         {/* Mobile: image on top, details below. sm+: side-by-side row */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-4">
 
-          {/* Landscape image — full width on mobile, fixed sidebar on sm+ */}
+          {/* Landscape image - full width on mobile, fixed sidebar on sm+ */}
           <div className="flex flex-col gap-2 sm:shrink-0">
             <div className="relative h-44 w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] sm:h-52 sm:w-52">
               <img
@@ -938,7 +938,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
               />
               <div>
                 <p className="text-sm font-medium text-[var(--text-primary)]">
-                  Mon &ndash; Sat &nbsp;&middot;&nbsp; 10:30am &ndash; 7:30pm
+                  Mon - Sat &nbsp;&middot;&nbsp; 10:30am - 7:30pm
                 </p>
                 <p className="text-sm text-[var(--text-tertiary)]">
                   Closed on Sundays &amp; Public Holidays
