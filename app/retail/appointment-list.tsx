@@ -393,9 +393,8 @@ export function AppointmentList() {
 
   // Upcoming = everyone still in today's flow (not yet done)
   const totalUpcoming = state.customers.filter((c) => c.status !== "done").length;
-  const totalQueueingKiosk = state.customers.filter(
-    (c) => c.status === "queued" && c.assignedStationId?.startsWith("kiosk-"),
-  ).length;
+  // Queueing = waiting in any station queue (kiosk, room, or cashier)
+  const totalQueueing = state.customers.filter((c) => c.status === "queued").length;
   const totalServing = state.customers.filter((c) => c.status === "serving" || c.status === "called").length;
 
   return (
@@ -406,7 +405,7 @@ export function AppointmentList() {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-slate-800">Today&apos;s Queue</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              {totalUpcoming} Upcoming · {totalQueueingKiosk} Queueing · {totalServing} serving now
+              {totalUpcoming} Upcoming · {totalQueueing} Queueing · {totalServing} serving now
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
