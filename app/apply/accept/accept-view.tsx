@@ -57,9 +57,9 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
       className="relative w-full rounded-[var(--radius-lg)] overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse at 20% 50%, oklch(0.34 0.18 262) 0%, transparent 70%), linear-gradient(145deg, oklch(0.28 0.16 262) 0%, oklch(0.22 0.16 258) 100%)",
+          "radial-gradient(ellipse at 20% 50%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(145deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)",
         boxShadow:
-          "0 0 0 2px #06DEC0, 0 16px 48px oklch(0.24 0.18 258 / 0.40), inset 0 1px 0 oklch(1 0 0 / 0.10)",
+          "0 0 0 2px var(--brand-teal-hex), 0 14px 40px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)",
       }}
     >
       {/* Shine */}
@@ -77,7 +77,7 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <SealCheck size={15} weight="fill" style={{ color: "#06DEC0" }} />
+              <SealCheck size={15} weight="fill" style={{ color: "var(--offer-accent)" }} />
               <span
                 className="text-[10px] font-bold tracking-[0.16em] uppercase"
                 style={{ color: "oklch(1 0 0 / 0.50)" }}
@@ -99,7 +99,7 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
 
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5"
-            style={{ background: "#06DEC0" }}
+            style={{ background: "var(--brand-teal-hex)" }}
             aria-hidden="true"
           >
             <CheckCircle size={18} weight="fill" style={{ color: "#0a1628" }} />
@@ -145,7 +145,7 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
               className="text-lg font-extrabold tabular-nums leading-none"
               style={{
                 fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: "#06DEC0",
+                color: "var(--brand-teal-hex)",
                 letterSpacing: "-0.03em",
               }}
             >

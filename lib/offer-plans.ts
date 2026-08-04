@@ -9,17 +9,14 @@
 /** Standard offer rate: 3.92% per month. */
 export const OFFER_MONTHLY_RATE = 0.0392;
 
-/** Preferential rate for the "Lowest interest paid" plan: 1% per month. */
-export const LOWEST_INTEREST_MONTHLY_RATE = 0.01;
-
 export const MAX_OFFER_TENURE = 12;
 export const MIN_OFFER_TENURE = 1;
 
 /** Display name for each plan id, used on the acceptance page. */
 export const PLAN_TITLES: Record<string, string> = {
-  lowest_interest: "Lowest Interest Plan",
-  average: "Balanced plan",
-  lowest_instalment: "Lowest Monthly Instalment Plan",
+  lowest_interest: "SuperSaver Plan",
+  average: "ValuePro Plan",
+  lowest_instalment: "FlexiPay Plan",
   custom: "Custom plan",
 };
 
@@ -75,14 +72,14 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
   return [
     make(
       "lowest_interest",
-      "Lowest Interest Plan",
-      "3 months at our lowest 1% rate",
+      "SuperSaver Plan",
+      "Shortest tenure - least interest paid",
       3,
-      LOWEST_INTEREST_MONTHLY_RATE,
+      OFFER_MONTHLY_RATE,
     ),
     make(
       "average",
-      "Balanced plan",
+      "ValuePro Plan",
       "Even split of payments and interest",
       6,
       OFFER_MONTHLY_RATE,
@@ -93,8 +90,8 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
     ),
     make(
       "lowest_instalment",
-      "Lowest Monthly Instalment Plan",
-      "Smallest payment, spread over 12 months",
+      "FlexiPay Plan",
+      "Smallest monthly payment, spread out longer",
       MAX_OFFER_TENURE,
       OFFER_MONTHLY_RATE,
     ),

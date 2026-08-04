@@ -48,6 +48,7 @@ export function ApprovalView({ formData }: Props) {
           <div className="w-full max-w-[520px]">
             <LoanResults
               formData={displayData}
+              creditLimit={formData.amount}
               monthlyRepayment={0}
               onAccept={() => router.push("/apply/accept")}
             />
