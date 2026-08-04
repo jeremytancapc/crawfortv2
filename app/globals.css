@@ -399,6 +399,16 @@ input[type="range"]::-moz-range-thumb {
 
 .approval-theme {
   --font-display: var(--font-inter-tight);
+
+  /* Softened accent for offer/plan cards - replaces the vivid #06DEC0 / oklch(0.78 0.16 178) teal in this scope only */
+  --offer-accent: oklch(0.66 0.10 176);
+  --offer-accent-ring: oklch(0.66 0.10 176 / 0.22);
+
+  /* Softened navy for the selected-plan card - replaces the near-black oklch(0.22-0.34 0.16-0.18 258-262) gradient */
+  --offer-navy-glow: oklch(0.42 0.08 262);
+  --offer-navy-start: oklch(0.36 0.07 262);
+  --offer-navy-end: oklch(0.30 0.07 258);
+  --offer-navy-shadow: oklch(0.34 0.07 258 / 0.20);
 }
 
 .approval-theme h1,

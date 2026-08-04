@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ArrowRight,
   ArrowDown,
+  ArrowUp,
   Warning,
   Clock,
   ArrowLeft,
@@ -12,15 +13,12 @@ import {
   CheckCircle,
   Sparkle,
   SealCheck,
+  Lock,
 } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildOfferPlans,
-  calculateInstalment,
-  OFFER_MONTHLY_RATE,
-  MAX_OFFER_TENURE,
-  MIN_OFFER_TENURE,
   OFFER_CONFIRMATION_DISCLAIMER,
   type OfferPlan,
 } from "@/lib/offer-plans";
@@ -421,11 +419,58 @@ function DeadlineStrip() {
 interface OfferCardProps {
   formData: FormData;
   revealStage: number;
+  creditLimit?: number;
+  planHintRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-function OfferHeader({ formData, revealStage }: OfferCardProps) {
+/** Segmented meter: filled = available today, striped = reserved for later. */
+function CreditLineMeter({
+  limit,
+  available,
+  revealStage,
+}: {
+  limit: number;
+  available: number;
+  revealStage: number;
+}) {
+  const pct = limit > 0 ? Math.max(0, Math.min(1, available / limit)) : 0;
+
+  return (
+    <div
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={limit}
+      aria-valuenow={available}
+      aria-label={`${formatCurrency(available)} available to withdraw today out of a ${formatCurrency(limit)} credit line`}
+      className="relative h-2.5 w-full overflow-hidden rounded-full"
+      style={{
+        background:
+          "repeating-linear-gradient(135deg, oklch(0.55 0.03 260 / 0.14) 0px, oklch(0.55 0.03 260 / 0.14) 3px, transparent 3px, transparent 7px), var(--surface-secondary)",
+        boxShadow: "inset 0 1px 2px oklch(0 0 0 / 0.08)",
+      }}
+    >
+      <motion.div
+        className="absolute inset-y-0 left-0 rounded-full"
+        style={{
+          background: "linear-gradient(90deg, var(--offer-accent) 0%, var(--brand-teal-hex) 100%)",
+          boxShadow: "0 0 0 1px oklch(1 0 0 / 0.25) inset",
+        }}
+        initial={{ width: "0%" }}
+        animate={{ width: revealStage >= 1 ? `${pct * 100}%` : "0%" }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+      />
+    </div>
+  );
+}
+
+function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferCardProps) {
   const today = new Date();
   const dateLabel = `${today.getDate()} ${FULL_MONTHS[today.getMonth()].slice(0, 3)} ${today.getFullYear()}`;
+  const [preApprovedTipOpen, setPreApprovedTipOpen] = useState(false);
+
+  const available = formData.amount;
+  const hasCreditLine = !!creditLimit && creditLimit > available;
+  const reserved = hasCreditLine ? creditLimit! - available : 0;
 
   return (
     <motion.div
@@ -435,13 +480,70 @@ function OfferHeader({ formData, revealStage }: OfferCardProps) {
       className="flex flex-col items-center gap-1.5 py-2 text-center"
     >
       <div className="flex items-center gap-2">
-        <SealCheck size={18} weight="fill" style={{ color: "#06DEC0" }} />
-        <span
-          className="text-[11px] font-bold tracking-[0.18em] uppercase"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Loan offer confirmed · {dateLabel}
-        </span>
+        <SealCheck size={18} weight="fill" style={{ color: "var(--offer-accent)" }} />
+        {hasCreditLine ? (
+          <span
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Credit line{" "}
+            <span className="relative inline-flex items-center pr-3.5">
+              pre-approved
+              <span className="absolute -right-0.5 -top-2.5 inline-flex normal-case tracking-normal">
+                <button
+                  type="button"
+                  aria-label="What does pre-approved mean?"
+                  aria-expanded={preApprovedTipOpen}
+                  onClick={() => setPreApprovedTipOpen((v) => !v)}
+                  onMouseEnter={() => setPreApprovedTipOpen(true)}
+                  onMouseLeave={() => setPreApprovedTipOpen(false)}
+                  className="flex h-3 w-3 items-center justify-center rounded-full border text-[8px] font-bold leading-none transition-colors duration-150"
+                  style={{
+                    borderColor: "var(--border-medium)",
+                    color: "var(--text-tertiary)",
+                    background: "var(--surface-primary)",
+                  }}
+                >
+                  ?
+                </button>
+                {preApprovedTipOpen && (
+                  <div
+                    role="tooltip"
+                    className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[260px] -translate-x-1/2 rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
+                    style={{
+                      background: "var(--surface-elevated)",
+                      boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
+                    }}
+                  >
+                    <p
+                      className="text-[11px] font-medium leading-relaxed normal-case tracking-normal"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Pre-approved means your full credit limit looks like a strong fit for you.
+                      For now, you&apos;re ready to take{" "}
+                      <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                        {formatCurrency(available)}
+                      </span>{" "}
+                      today — the rest of your line is reserved and unlocks automatically over time.
+                    </p>
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
+                      style={{ borderBottomColor: "var(--border-subtle)" }}
+                    />
+                  </div>
+                )}
+              </span>
+            </span>
+          </span>
+        ) : (
+          <span
+            className="text-[11px] font-bold tracking-[0.18em] uppercase"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Loan offer confirmed · {dateLabel}
+          </span>
+        )}
       </div>
 
       <p
@@ -451,24 +553,94 @@ function OfferHeader({ formData, revealStage }: OfferCardProps) {
           fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
           fontWeight: 800,
           letterSpacing: "-0.04em",
-          background: "linear-gradient(120deg, oklch(0.32 0.16 262) 20%, oklch(0.55 0.13 190) 80%)",
+          background: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
           color: "transparent",
         }}
       >
-        {formatCurrency(formData.amount)}
+        {formatCurrency(hasCreditLine ? creditLimit! : formData.amount)}
       </p>
 
       <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-        Approved and ready for disbursement
+        {hasCreditLine ? "Your total credit limit" : "Approved and ready for disbursement"}
       </p>
 
+      {hasCreditLine && (
+        <div className="mt-3 flex w-full flex-col gap-2.5">
+          <CreditLineMeter limit={creditLimit!} available={available} revealStage={revealStage} />
+
+          <div className="grid grid-cols-2 gap-3 text-left">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: "var(--brand-teal-hex)" }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="text-[9px] font-bold tracking-[0.1em] uppercase"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Withdraw today
+                </span>
+              </div>
+              <span
+                className="tabular-nums leading-none"
+                style={{
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  fontSize: "1.375rem",
+                  fontWeight: 800,
+                  letterSpacing: "-0.03em",
+                  color: "var(--text-primary)",
+                }}
+              >
+                {formatCurrency(available)}
+              </span>
+              <span className="text-[10px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
+                Instant disbursement
+              </span>
+            </div>
+
+            <div className="flex flex-col items-end gap-1 text-right">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="text-[9px] font-bold tracking-[0.1em] uppercase"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Reserved for you
+                </span>
+                <Lock size={10} weight="fill" style={{ color: "#E0B000" }} />
+              </div>
+              <span
+                className="tabular-nums leading-none"
+                style={{
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  fontSize: "1.375rem",
+                  fontWeight: 800,
+                  letterSpacing: "-0.03em",
+                  color: "#E0B000",
+                }}
+              >
+                +{formatCurrency(reserved)}
+              </span>
+              <span className="text-[10px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
+                Already in your credit line
+                <br />
+                · unlocks automatically over time
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Divider with centred hint */}
-      <div className="mt-3 flex w-full items-center gap-3" aria-hidden="true">
+      <div ref={planHintRef} className="mt-3 flex w-full items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
         <span className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-          Now pick your plan
+          {hasCreditLine
+            ? `Pick your plan for your ${formatCurrency(available)} today`
+            : "Now pick your plan"}
         </span>
         <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
       </div>
@@ -492,10 +664,10 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       className="relative w-full text-left rounded-[var(--radius-lg)] overflow-hidden transition-all duration-200 focus:outline-none"
       style={{
         background: isSelected
-          ? `radial-gradient(ellipse at 20% 50%, oklch(0.34 0.18 262) 0%, transparent 70%), linear-gradient(145deg, oklch(0.28 0.16 262) 0%, oklch(0.22 0.16 258) 100%)`
+          ? `radial-gradient(ellipse at 20% 50%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(145deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`
           : "var(--surface-elevated)",
         boxShadow: isSelected
-          ? "0 0 0 2px #06DEC0, 0 12px 40px oklch(0.24 0.18 258 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.10)"
+          ? "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)"
           : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
         transform: isSelected ? "scale(1.01)" : "scale(1)",
       }}
@@ -551,8 +723,8 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           <span
             className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
             style={{
-              border: isSelected ? "2px solid #06DEC0" : "2px solid var(--text-tertiary)",
-              background: isSelected ? "#06DEC0" : "var(--surface-elevated)",
+              border: isSelected ? "2px solid var(--brand-teal-hex)" : "2px solid var(--text-tertiary)",
+              background: isSelected ? "var(--brand-teal-hex)" : "var(--surface-elevated)",
               boxShadow: isSelected
                 ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
                 : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
@@ -563,65 +735,42 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           </span>
         </div>
 
-        {/* Stats row - interest paid and tenure stack on the left, monthly instalment anchors the right */}
+        {/* Stats row - monthly instalment is the primary hook, tenure is secondary */}
         <div
-          className="flex items-stretch gap-3 rounded-[var(--radius-sm)] px-3 py-2.5"
+          className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] px-3 py-3"
           style={{
             background: isSelected ? "oklch(1 0 0 / 0.06)" : "var(--surface-secondary)",
           }}
         >
-          <div className="flex flex-col justify-center gap-2 flex-1 min-w-0">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.45)" : "var(--text-tertiary)" }}>
-                Interest paid
-              </span>
-              <span
-                className="text-xl font-extrabold tabular-nums leading-none"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  color: isSelected ? "#ffffff" : "var(--text-primary)",
-                  letterSpacing: "-0.03em",
-                }}
-              >
-                {formatCurrency(plan.totalInterest)}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.45)" : "var(--text-tertiary)" }}>
-                Tenure
-              </span>
-              <span
-                className="text-xl font-extrabold tabular-nums leading-none"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  color: isSelected ? "#ffffff" : "var(--text-primary)",
-                  letterSpacing: "-0.03em",
-                }}
-              >
-                {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
-              </span>
-            </div>
-          </div>
-
-          <div
-            className="w-px self-stretch shrink-0"
-            style={{ background: isSelected ? "oklch(1 0 0 / 0.12)" : "var(--border-subtle)" }}
-            aria-hidden="true"
-          />
-
-          <div className="flex flex-col items-end text-right justify-center gap-0.5 flex-[1.2] min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}>
               Monthly instalment
             </span>
             <span
-              className="text-xl font-extrabold tabular-nums leading-none"
+              className="text-[1.75rem] font-extrabold tabular-nums leading-none"
               style={{
                 fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: isSelected ? "#06DEC0" : "var(--text-primary)",
+                color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
                 letterSpacing: "-0.03em",
               }}
             >
               {formatCurrency(plan.monthlyInstalment)}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-end text-right gap-0.5 shrink-0">
+            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.45)" : "var(--text-tertiary)" }}>
+              Tenure
+            </span>
+            <span
+              className="text-sm font-bold tabular-nums leading-none"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-secondary)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
             </span>
           </div>
         </div>
@@ -638,162 +787,95 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
   );
 }
 
-interface CustomPlanState {
-  amount: string;
-  tenure: string;
+function RequestCheckbox({
+  checked,
+  onToggle,
+  label,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer select-none">
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        onClick={onToggle}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all duration-150"
+        style={{
+          border: checked ? "2px solid var(--offer-accent)" : "2px solid var(--border-medium)",
+          background: checked ? "var(--offer-accent)" : "transparent",
+        }}
+      >
+        {checked && (
+          <svg width="11" height="8" viewBox="0 0 11 8" fill="none" aria-hidden="true">
+            <path
+              d="M1 4L4 7L10 1"
+              stroke="#0a1628"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </button>
+      <span className="text-sm font-medium leading-snug" style={{ color: "var(--text-primary)" }}>
+        {label}
+      </span>
+    </label>
+  );
 }
 
-interface CustomPlanCardProps {
-  isSelected: boolean;
-  onSelect: () => void;
-  approvedAmount: number;
-  customPlan: CustomPlanState;
-  onCustomPlanChange: (v: CustomPlanState) => void;
-}
-
-function CustomPlanCard({ isSelected, onSelect, approvedAmount, customPlan, onCustomPlanChange }: CustomPlanCardProps) {
-  const amountNum = parseFloat(customPlan.amount.replace(/[^0-9.]/g, "")) || 0;
-  const tenureNum = parseInt(customPlan.tenure, 10) || 0;
-
-  const amountError =
-    customPlan.amount && (amountNum < 500 || amountNum > approvedAmount)
-      ? amountNum < 500
-        ? "Minimum $500"
-        : `Maximum ${formatCurrency(approvedAmount)}`
-      : null;
-
-  const tenureError =
-    customPlan.tenure && (tenureNum < MIN_OFFER_TENURE || tenureNum > MAX_OFFER_TENURE)
-      ? `Between ${MIN_OFFER_TENURE}-${MAX_OFFER_TENURE} months`
-      : null;
-
-  const previewInstalment =
-    amountNum >= 500 && amountNum <= approvedAmount && tenureNum >= MIN_OFFER_TENURE && tenureNum <= MAX_OFFER_TENURE
-      ? Math.ceil(calculateInstalment(amountNum, tenureNum, OFFER_MONTHLY_RATE))
-      : null;
+function AdditionalRequestsCard() {
+  const [longerTenure, setLongerTenure] = useState(false);
+  const [higherAmount, setHigherAmount] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="relative w-full text-left rounded-[var(--radius-lg)] overflow-hidden transition-all duration-200 focus:outline-none"
+    <div
+      className="rounded-[var(--radius-lg)] p-4"
       style={{
-        background: "var(--surface-elevated)",
-        boxShadow: isSelected
-          ? "0 0 0 2px oklch(0.78 0.16 178 / 0.50), 0 8px 24px oklch(0.24 0.18 258 / 0.18)"
-          : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
+        background: "var(--surface-secondary)",
+        boxShadow: "0 0 0 1px var(--border-subtle)",
       }}
-      aria-pressed={isSelected}
     >
-      <div className="relative p-4">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
-              style={{
-                border: isSelected ? "2px solid #06DEC0" : "2px solid var(--text-tertiary)",
-                background: isSelected ? "#06DEC0" : "var(--surface-elevated)",
-                boxShadow: isSelected
-                  ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
-                  : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
-              }}
-              aria-hidden="true"
-            >
-              {isSelected && <CheckCircle size={16} weight="fill" style={{ color: "#0a1628" }} />}
-            </span>
-            <span className="text-sm font-bold" style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
-              Request a custom plan
-            </span>
-          </div>
-          <span className="text-[10px] font-medium rounded-full px-2 py-0.5" style={{ background: "var(--surface-secondary)", color: "var(--text-tertiary)" }}>
-            3.92%/mo
-          </span>
+      <div className="flex flex-col gap-3">
+        <span
+          className="text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          Additional requests
+        </span>
+
+        <div className="flex flex-col gap-2.5">
+          <RequestCheckbox
+            checked={longerTenure}
+            onToggle={() => setLongerTenure((v) => !v)}
+            label="Request for a longer tenure"
+          />
+          <RequestCheckbox
+            checked={higherAmount}
+            onToggle={() => setHigherAmount((v) => !v)}
+            label="Request for a higher loan amount"
+          />
         </div>
 
-        {isSelected && (
-          <div
-            className="flex flex-col gap-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex gap-3">
-              <div className="flex flex-col gap-1 flex-1">
-                <label className="text-[10px] font-semibold tracking-[0.12em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                  Loan amount
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: "var(--text-tertiary)" }}>$</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={500}
-                    max={approvedAmount}
-                    value={customPlan.amount}
-                    onChange={(e) => onCustomPlanChange({ ...customPlan, amount: e.target.value })}
-                    placeholder="e.g. 3000"
-                    className="w-full rounded-[var(--radius-sm)] pl-6 pr-3 py-2.5 text-sm font-semibold tabular-nums outline-none transition-colors duration-150"
-                    style={{
-                      background: "var(--surface-secondary)",
-                      border: `1px solid ${amountError ? "#dc2626" : "var(--border-subtle)"}`,
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                </div>
-                {amountError && <span className="text-[10px]" style={{ color: "#dc2626" }}>{amountError}</span>}
-              </div>
-              <div className="flex flex-col gap-1 flex-1">
-                <label className="text-[10px] font-semibold tracking-[0.12em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                  Tenure (months)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={MIN_OFFER_TENURE}
-                  max={MAX_OFFER_TENURE}
-                  value={customPlan.tenure}
-                  onChange={(e) => onCustomPlanChange({ ...customPlan, tenure: e.target.value })}
-                  placeholder="1-12"
-                  className="w-full rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-semibold tabular-nums outline-none transition-colors duration-150"
-                  style={{
-                    background: "var(--surface-secondary)",
-                    border: `1px solid ${tenureError ? "#dc2626" : "var(--border-subtle)"}`,
-                    color: "var(--text-primary)",
-                  }}
-                />
-                {tenureError && <span className="text-[10px]" style={{ color: "#dc2626" }}>{tenureError}</span>}
-              </div>
-            </div>
-
-            {previewInstalment !== null && (
-              <div
-                className="flex items-center justify-between rounded-[var(--radius-sm)] px-3 py-2.5"
-                style={{ background: "oklch(0.32 0.14 260 / 0.07)", border: "1px solid oklch(0.32 0.14 260 / 0.12)" }}
-              >
-                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Estimated monthly instalment</span>
-                <span
-                  className="text-sm font-bold tabular-nums"
-                  style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)", letterSpacing: "-0.02em" }}
-                >
-                  {formatCurrency(previewInstalment)}/mo
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
+          Requests will be noted and subject to further assessment (up to 3 working days).
+        </p>
       </div>
-    </button>
+    </div>
   );
 }
 
 interface PlanPickerProps {
-  approvedAmount: number;
-  selectedPlanId: OfferPlan["id"] | "custom" | null;
-  onPlanSelect: (id: OfferPlan["id"] | "custom") => void;
-  customPlan: CustomPlanState;
-  onCustomPlanChange: (v: CustomPlanState) => void;
+  selectedPlanId: OfferPlan["id"] | null;
+  onPlanSelect: (id: OfferPlan["id"]) => void;
   plans: OfferPlan[];
 }
 
-function PlanPicker({ approvedAmount, selectedPlanId, onPlanSelect, customPlan, onCustomPlanChange, plans }: PlanPickerProps) {
+function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
   return (
     <div className="flex flex-col gap-3">
       {plans.map((plan) => (
@@ -804,13 +886,7 @@ function PlanPicker({ approvedAmount, selectedPlanId, onPlanSelect, customPlan, 
           onSelect={() => onPlanSelect(plan.id)}
         />
       ))}
-      <CustomPlanCard
-        isSelected={selectedPlanId === "custom"}
-        onSelect={() => onPlanSelect("custom")}
-        approvedAmount={approvedAmount}
-        customPlan={customPlan}
-        onCustomPlanChange={onCustomPlanChange}
-      />
+      <AdditionalRequestsCard />
     </div>
   );
 }
@@ -1059,11 +1135,15 @@ interface LoanResultsProps {
   monthlyRepayment: number;
   onAccept: () => void;
   reminderItems?: string[];
+  /** Originally requested amount. When greater than `formData.amount`, the header
+   *  presents `formData.amount` as "available today" against this as the credit limit. */
+  creditLimit?: number;
 }
 
 export function LoanResults({
   formData,
   onAccept,
+  creditLimit,
 }: LoanResultsProps) {
   const [showModal, setShowModal] = useState(false);
   const { parts: expiryParts } = useCountdownParts();
@@ -1071,7 +1151,13 @@ export function LoanResults({
 
   const ctaRef = useRef<HTMLDivElement>(null);
   const ctaButtonRef = useRef<HTMLButtonElement>(null);
+  const planHintRef = useRef<HTMLDivElement>(null);
   const [isCtaVisible, setIsCtaVisible] = useState(false);
+
+  const plans = buildOfferPlans(formData.amount);
+  const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | null>(null);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const hasNoSelection = selectedPlanId === null;
 
   useEffect(() => {
     const el = ctaButtonRef.current;
@@ -1084,11 +1170,12 @@ export function LoanResults({
     return () => observer.disconnect();
   }, []);
 
-  const scrollToCta = useCallback(() => {
-    const el = ctaRef.current;
+  /** Sticky CTA: nudge to plan picker if nothing selected; otherwise scroll to the bottom CTA. */
+  const scrollToStickyTarget = useCallback(() => {
+    const el = hasNoSelection ? planHintRef.current : ctaRef.current;
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, []);
+    el.scrollIntoView({ behavior: "smooth", block: hasNoSelection ? "start" : "center" });
+  }, [hasNoSelection]);
 
   const [revealStage, setRevealStage] = useState(0);
 
@@ -1100,26 +1187,8 @@ export function LoanResults({
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []);
 
-  const plans = buildOfferPlans(formData.amount);
-  const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | "custom" | null>(null);
-  const [customPlan, setCustomPlan] = useState<CustomPlanState>({ amount: "", tenure: "" });
-  const [isSavingPlan, setIsSavingPlan] = useState(false);
-
   const getSelectedPlanPayload = useCallback(() => {
     if (selectedPlanId === null) return null;
-    if (selectedPlanId === "custom") {
-      const amountNum = parseFloat(customPlan.amount.replace(/[^0-9.]/g, "")) || 0;
-      const tenureNum = parseInt(customPlan.tenure, 10) || 0;
-      const isValid = amountNum >= 500 && amountNum <= formData.amount && tenureNum >= MIN_OFFER_TENURE && tenureNum <= MAX_OFFER_TENURE;
-      if (!isValid) return null;
-      return {
-        planId: "custom" as const,
-        tenure: tenureNum,
-        amount: amountNum,
-        monthlyRate: OFFER_MONTHLY_RATE,
-        monthlyInstalment: Math.ceil(calculateInstalment(amountNum, tenureNum, OFFER_MONTHLY_RATE)),
-      };
-    }
     const plan = plans.find((p) => p.id === selectedPlanId);
     if (!plan) return null;
     return {
@@ -1129,7 +1198,7 @@ export function LoanResults({
       monthlyRate: plan.monthlyRate,
       monthlyInstalment: plan.monthlyInstalment,
     };
-  }, [selectedPlanId, customPlan, formData.amount, plans]);
+  }, [selectedPlanId, formData.amount, plans]);
 
   const handleAccept = useCallback(async () => {
     trackEvent("step_10_offer_accepted", { planId: selectedPlanId });
@@ -1150,9 +1219,6 @@ export function LoanResults({
     }
     onAccept();
   }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept]);
-
-  const hasNoSelection = selectedPlanId === null;
-  const isCustomInvalid = selectedPlanId === "custom" && getSelectedPlanPayload() === null;
 
   return (
     <>
@@ -1190,6 +1256,8 @@ export function LoanResults({
           <OfferHeader
             formData={formData}
             revealStage={revealStage}
+            creditLimit={creditLimit}
+            planHintRef={planHintRef}
           />
         </div>
 
@@ -1202,11 +1270,8 @@ export function LoanResults({
             style={{ pointerEvents: revealStage >= 2 ? "auto" : "none" }}
           >
             <PlanPicker
-              approvedAmount={formData.amount}
               selectedPlanId={selectedPlanId}
               onPlanSelect={setSelectedPlanId}
-              customPlan={customPlan}
-              onCustomPlanChange={setCustomPlan}
               plans={plans}
             />
           </motion.div>
@@ -1257,20 +1322,15 @@ export function LoanResults({
                 ref={ctaButtonRef}
                 type="button"
                 onClick={handleAccept}
-                disabled={hasNoSelection || isCustomInvalid || isSavingPlan}
+                disabled={hasNoSelection || isSavingPlan}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
-                {isSavingPlan ? "Saving plan…" : "Continue"}
+                {isSavingPlan ? "Saving plan…" : "Review Offer"}
                 {!isSavingPlan && <ArrowRight size={16} weight="bold" />}
               </button>
               {hasNoSelection && (
                 <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
                   Select a repayment plan above to continue.
-                </p>
-              )}
-              {isCustomInvalid && (
-                <p className="text-center text-[11px]" style={{ color: "#dc2626" }}>
-                  Please enter a valid loan amount and tenure to continue.
                 </p>
               )}
               <button
@@ -1301,11 +1361,15 @@ export function LoanResults({
           ) : (
             <button
               type="button"
-              onClick={scrollToCta}
+              onClick={scrollToStickyTarget}
               className="flex h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal px-12 text-sm font-semibold text-[var(--text-primary)] shadow-lg shadow-brand-teal/30 transition-all duration-200 hover:brightness-110 active:scale-[0.98] whitespace-nowrap"
             >
-              Secure Offer
-              <ArrowDown size={16} weight="bold" />
+              Review Offer
+              {hasNoSelection ? (
+                <ArrowUp size={16} weight="bold" />
+              ) : (
+                <ArrowDown size={16} weight="bold" />
+              )}
             </button>
           )}
         </div>
