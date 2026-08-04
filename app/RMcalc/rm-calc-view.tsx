@@ -537,13 +537,13 @@ export function RmCalcView() {
                       </td>
                       {showDetails && (
                         <>
-                          <td className="px-4 py-3 text-gray-700 text-right tabular-nums">
+                          <td className="px-4 py-3 text-gray-900 font-semibold text-right tabular-nums">
                             {formatCurrency(row.principal)}
                           </td>
-                          <td className="px-4 py-3 text-gray-500 text-right tabular-nums">
+                          <td className="px-4 py-3 text-gray-900 font-semibold text-right tabular-nums">
                             {formatCurrency(row.interest)}
                           </td>
-                          <td className="px-4 py-3 text-gray-500 text-right tabular-nums">
+                          <td className="px-4 py-3 text-gray-900 font-semibold text-right tabular-nums">
                             {formatCurrency(row.balance)}
                           </td>
                         </>
@@ -558,7 +558,7 @@ export function RmCalcView() {
             <div className="border-t border-gray-100">
               <button
                 onClick={() => setShowDetails((s) => !s)}
-                className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-end gap-2 px-5 py-3 text-sm font-semibold text-blue-950 bg-blue-300 hover:bg-blue-400 active:bg-blue-400/90 transition-colors"
               >
                 <span>{showDetails ? "Hide details" : "More details"}</span>
                 <svg
