@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowRight,
+  CaretDown,
   SealCheck,
   CheckCircle,
   Warning,
@@ -38,12 +39,13 @@ const DISBURSEMENT_NOTICE =
   "Funds are disbursed via PayNow on the spot at your appointment. Please ensure your PayNow is linked to your NRIC (we will PayNow using your linked NRIC instead of mobile number). Cash disbursement is strongly discouraged.";
 
 const TC_ITEMS = [
-  "This loan is granted by CF Money Pte Ltd, a licensed moneylender (Licence No. 86/2025) under the Moneylenders Act (Cap. 188).",
+  "This loan is granted by CF Money Pte Ltd, a licensed moneylender (Licence No. 86/2026) under the Moneylenders Act (Cap. 188).",
   "Repayment is in equal monthly instalments. Interest is charged at your agreed monthly rate on a reducing-balance basis.",
   "Late payments incur late interest (up to 4%/month) and a late fee of $60 per month. Repayments are applied to late charges first, then interest, then principal.",
   "If you default, the full outstanding balance becomes immediately payable and all recovery costs (including legal costs) are borne by you.",
   "No partial early redemption is allowed. Full early settlement may incur one month's interest at the moneylender's discretion.",
   "You authorise CF Money Pte Ltd to conduct credit checks and disclose your loan information to the Moneylenders Credit Bureau, Credit Bureau (Singapore), and related regulatory agencies.",
+  "Additional loan amount and loan tenure requests in previous screen will be discussed with you physically during the loan assessment appointment at our office.",
 ];
 
 const TC_CLOSING =
@@ -130,7 +132,7 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
 
         {/* Stats grid */}
         <div
-          className="grid grid-cols-3 gap-3 rounded-[var(--radius-sm)] px-4 py-3"
+          className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] px-4 py-3"
           style={{ background: "oklch(1 0 0 / 0.07)" }}
         >
           {/* Monthly instalment */}
@@ -154,7 +156,7 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
           </div>
 
           {/* Tenure */}
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col items-end gap-0.5 text-right">
             <span
               className="text-[9px] font-semibold tracking-[0.12em] uppercase"
               style={{ color: "oklch(1 0 0 / 0.50)" }}
@@ -170,26 +172,6 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
               }}
             >
               {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
-            </span>
-          </div>
-
-          {/* Interest paid */}
-          <div className="flex flex-col gap-0.5">
-            <span
-              className="text-[9px] font-semibold tracking-[0.12em] uppercase"
-              style={{ color: "oklch(1 0 0 / 0.50)" }}
-            >
-              Interest paid
-            </span>
-            <span
-              className="text-lg font-extrabold tabular-nums leading-none"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: "#ffffff",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              {formatCurrency(plan.totalInterest)}
             </span>
           </div>
         </div>
@@ -210,6 +192,8 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
 // ── Terms section ─────────────────────────────────────────────────────────────
 
 function TermsSection() {
+  const [open, setOpen] = useState(false);
+
   return (
     <div
       className="w-full rounded-[var(--radius-lg)] overflow-hidden"
@@ -218,102 +202,161 @@ function TermsSection() {
         boxShadow: "0 0 0 1px var(--border-subtle)",
       }}
     >
-      <div className="px-5 pt-5 pb-4 flex flex-col gap-4">
-        {/* Section header */}
-        <div className="flex items-center gap-2">
-          <span
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: "oklch(0.32 0.14 260 / 0.08)" }}
-          >
-            <Warning size={14} weight="duotone" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
-          </span>
-          <span
-            className="text-[10px] font-bold tracking-[0.16em] uppercase"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Loan acceptance terms
-          </span>
-        </div>
-
-        {/* Drawdown notice */}
-        <div
-          className="rounded-[var(--radius-sm)] px-3.5 py-3"
-          style={{
-            background: "oklch(0.97 0.03 85)",
-            boxShadow: "0 0 0 1px oklch(0.88 0.06 85)",
-          }}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="loan-terms-content"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-5 py-4 text-left"
+      >
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: "oklch(0.32 0.14 260 / 0.08)" }}
         >
-          <p
-            className="text-[11px] leading-relaxed font-medium"
-            style={{ color: "#78350f" }}
-          >
-            {DRAWDOWN_NOTICE}
-          </p>
-        </div>
-
-        {/* Contract digest */}
-        <ul className="flex flex-col gap-3">
-          {TC_ITEMS.map((item, i) => (
-            <li key={i} className="flex items-start gap-2.5">
-              <span
-                className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-                style={{
-                  background: "var(--surface-secondary)",
-                  color: "var(--text-tertiary)",
-                }}
-                aria-hidden="true"
-              >
-                {i + 1}
-              </span>
-              <p
-                className="text-[11px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {item}
-              </p>
-            </li>
-          ))}
-        </ul>
-
-        {/* Closing note */}
-        <p
-          className="text-[11px] leading-relaxed italic"
+          <Warning size={14} weight="duotone" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+        </span>
+        <span
+          className="flex-1 text-[10px] font-bold tracking-[0.16em] uppercase"
           style={{ color: "var(--text-tertiary)" }}
         >
-          {TC_CLOSING}
-        </p>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3" aria-hidden="true">
-          <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
-        </div>
-
-        {/* Funds disbursement - callout */}
-        <div
-          className="rounded-[var(--radius-sm)] px-3.5 py-3.5 flex flex-col gap-2"
+          Loan acceptance terms
+        </span>
+        <CaretDown
+          size={14}
+          weight="bold"
           style={{
-            background: "oklch(0.96 0.04 190)",
-            boxShadow: "0 0 0 1.5px oklch(0.78 0.16 178 / 0.45)",
+            color: "var(--text-tertiary)",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 200ms ease",
           }}
-        >
-          <div className="flex items-center gap-2">
-            <CurrencyCircleDollar size={15} weight="fill" style={{ color: "#0d9488" }} />
-            <span
-              className="text-[10px] font-bold tracking-[0.14em] uppercase"
-              style={{ color: "#0f766e" }}
-            >
-              Funds disbursement method
-            </span>
-          </div>
-          <p
-            className="text-[12px] leading-relaxed font-semibold"
-            style={{ color: "#115e59" }}
+        />
+      </button>
+
+      {open && (
+        <div id="loan-terms-content" className="px-5 pb-4 flex flex-col gap-4">
+          {/* Drawdown notice */}
+          <div
+            className="rounded-[var(--radius-sm)] px-3.5 py-3"
+            style={{
+              background: "oklch(0.97 0.03 85)",
+              boxShadow: "0 0 0 1px oklch(0.88 0.06 85)",
+            }}
           >
-            {DISBURSEMENT_NOTICE}
+            <p
+              className="text-[13px] leading-relaxed font-semibold"
+              style={{ color: "#78350f" }}
+            >
+              {DRAWDOWN_NOTICE}
+            </p>
+          </div>
+
+          {/* Contract digest */}
+          <ul className="flex flex-col gap-3">
+            {TC_ITEMS.map((item, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span
+                  className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                  style={{
+                    background: "var(--surface-secondary)",
+                    color: "var(--text-secondary)",
+                  }}
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                <p
+                  className="text-[13px] leading-relaxed font-medium"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {item}
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          {/* Closing note */}
+          <p
+            className="text-[13px] leading-relaxed font-medium"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {TC_CLOSING}
           </p>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3" aria-hidden="true">
+            <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+          </div>
+
+          {/* Funds disbursement - callout */}
+          <div
+            className="rounded-[var(--radius-sm)] px-3.5 py-3.5 flex flex-col gap-2"
+            style={{
+              background: "oklch(0.96 0.04 190)",
+              boxShadow: "0 0 0 1.5px oklch(0.78 0.16 178 / 0.45)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <CurrencyCircleDollar size={15} weight="fill" style={{ color: "#0d9488" }} />
+              <span
+                className="text-[10px] font-bold tracking-[0.14em] uppercase"
+                style={{ color: "#0f766e" }}
+              >
+                Funds disbursement method
+              </span>
+            </div>
+            <p
+              className="text-[13px] leading-relaxed font-semibold"
+              style={{ color: "#115e59" }}
+            >
+              {DISBURSEMENT_NOTICE}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+// ── Agree checkbox ────────────────────────────────────────────────────────────
+
+function AgreeCheckbox({
+  checked,
+  onToggle,
+  label,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer select-none">
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        onClick={onToggle}
+        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all duration-150"
+        style={{
+          border: checked ? "2px solid #06DEC0" : "2px solid var(--border-medium)",
+          background: checked ? "#06DEC0" : "transparent",
+        }}
+      >
+        {checked && (
+          <svg width="11" height="8" viewBox="0 0 11 8" fill="none" aria-hidden="true">
+            <path
+              d="M1 4L4 7L10 1"
+              stroke="#0a1628"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </button>
+      <span className="text-sm leading-snug" style={{ color: "var(--text-primary)" }}>
+        {label}
+      </span>
+    </label>
   );
 }
 
@@ -325,7 +368,16 @@ interface AcceptViewProps {
 
 export function AcceptView({ plan }: AcceptViewProps) {
   const router = useRouter();
-  const [agreed, setAgreed] = useState(false);
+  const [checks, setChecks] = useState({
+    readTerms: false,
+    repaySchedule: false,
+    paynowNric: false,
+  });
+  const allChecked = checks.readTerms && checks.repaySchedule && checks.paynowNric;
+
+  function toggleCheck(key: keyof typeof checks) {
+    setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   return (
     <div className="approval-theme flex flex-col lg:flex-row min-h-dvh">
@@ -386,64 +438,42 @@ export function AcceptView({ plan }: AcceptViewProps) {
             {/* Terms */}
             <TermsSection />
 
-            {/* Agree checkbox */}
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={agreed}
-                onClick={() => setAgreed((v) => !v)}
-                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all duration-150"
-                style={{
-                  border: agreed
-                    ? "2px solid #06DEC0"
-                    : "2px solid var(--border-medium)",
-                  background: agreed ? "#06DEC0" : "transparent",
-                }}
-              >
-                {agreed && (
-                  <svg
-                    width="11"
-                    height="8"
-                    viewBox="0 0 11 8"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M1 4L4 7L10 1"
-                      stroke="#0a1628"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </button>
-              <span
-                className="text-sm leading-snug"
-                style={{ color: "var(--text-primary)" }}
-              >
-                I have read and agree to all the terms above
-              </span>
-            </label>
+            {/* Agree checkboxes */}
+            <div className="flex flex-col gap-3">
+              <AgreeCheckbox
+                checked={checks.readTerms}
+                onToggle={() => toggleCheck("readTerms")}
+                label="I have read the terms above and accept this offer"
+              />
+              <AgreeCheckbox
+                checked={checks.repaySchedule}
+                onToggle={() => toggleCheck("repaySchedule")}
+                label="I agree to repay as per the payment schedule stated above"
+              />
+              <AgreeCheckbox
+                checked={checks.paynowNric}
+                onToggle={() => toggleCheck("paynowNric")}
+                label="I acknowledge that my paynow is linked to my NRIC number to have the funds disbursed to me"
+              />
+            </div>
 
             {/* CTA */}
             <button
               type="button"
-              disabled={!agreed}
+              disabled={!allChecked}
               onClick={() => router.push("/apply/book")}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
             >
-              Secure My Offer Now
+              Next: Get your funds
               <ArrowRight size={16} weight="bold" />
             </button>
 
-            {!agreed && (
+            {!allChecked && (
               <p
                 className="text-center text-[11px] -mt-2"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Please agree to the terms above to continue.
+                Please tick all three acknowledgements above to continue.
               </p>
             )}
           </div>

@@ -123,6 +123,32 @@ button:disabled,
   display: none;
 }
 
+/* Always-visible thin scrollbar - used by appointment timeslot picker */
+.scrollbar-thin {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: oklch(0.62 0.02 260) oklch(0.92 0.008 260);
+}
+.scrollbar-thin::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 10px;
+  background: oklch(0.92 0.008 260);
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: oklch(0.92 0.008 260);
+  border-left: 1px solid oklch(0.88 0.008 260);
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: oklch(0.62 0.02 260);
+  border-radius: 999px;
+  border: 2px solid oklch(0.92 0.008 260);
+  min-height: 36px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.48 0.03 260);
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-quicksand), system-ui, sans-serif;
 }
