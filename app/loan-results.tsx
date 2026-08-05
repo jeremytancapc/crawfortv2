@@ -449,10 +449,9 @@ function CreditLineMeter({
       }}
     >
       <motion.div
-        className="absolute inset-y-0 left-0 rounded-full"
+        className="credit-meter-fill absolute inset-y-0 left-0 rounded-full"
         style={{
           background: "linear-gradient(90deg, var(--offer-accent) 0%, var(--brand-teal-hex) 100%)",
-          boxShadow: "0 0 0 1px oklch(1 0 0 / 0.25) inset",
         }}
         initial={{ width: "0%" }}
         animate={{ width: revealStage >= 1 ? `${pct * 100}%` : "0%" }}
@@ -1382,6 +1381,7 @@ export function LoanResults({
         </motion.div>
       </div>
 
+      {/* Temporarily hidden — floating sticky Review Offer CTA on mobile.
       {revealStage >= 4 && !isCtaVisible && (
         <div
           className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
@@ -1411,6 +1411,7 @@ export function LoanResults({
           )}
         </div>
       )}
+      */}
 
       {showModal && (
         <ReconsiderModal
