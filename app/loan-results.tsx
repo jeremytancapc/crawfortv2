@@ -677,7 +677,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       <div className="flex h-5 w-full shrink-0 items-center justify-center">
         {isPopular && (
           <div
-            className="popular-badge-glow flex h-full w-full items-center justify-center rounded-t-[var(--radius-lg)]"
+            className="popular-badge-glow flex h-full w-full items-center justify-center rounded-t-[6px]"
             style={{ background: "#F5C518" }}
           >
             <span
@@ -693,9 +693,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       <div
         className="relative flex w-full flex-1 flex-col overflow-hidden"
         style={{
-          borderRadius: isPopular
-            ? "0 0 var(--radius-lg) var(--radius-lg)"
-            : "var(--radius-lg)",
+          borderRadius: isPopular ? "0 0 6px 6px" : "6px",
           background: isSelected
             ? `radial-gradient(ellipse at 50% 0%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(165deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`
             : "var(--surface-elevated)",
@@ -729,7 +727,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
             }}
           />
           <span
-            className="relative min-w-0 max-w-full truncate text-[13px] font-bold leading-snug text-white"
+            className="relative min-w-0 max-w-full truncate text-[14px] font-extrabold leading-snug text-white"
             style={{
               fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
               letterSpacing: "-0.02em",
@@ -739,50 +737,77 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           </span>
         </div>
 
-        <div className="relative flex flex-1 flex-col items-center gap-2 px-2 py-3">
-          <div className="flex flex-1 flex-col items-center justify-center gap-0.5">
+        <div className="relative flex flex-1 flex-col items-center gap-3.5 px-2.5 py-4 sm:gap-4 sm:px-3 sm:py-5">
+          {/* Fixed top block - same height on every card so feature lists share one baseline */}
+          <div className="flex w-full shrink-0 flex-col items-center gap-2.5 sm:gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <span
+                className="text-[11px] font-bold tracking-[0.1em] uppercase"
+                style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
+              >
+                Monthly
+              </span>
+              <span
+                className="tabular-nums leading-none"
+                style={{
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  fontSize: "1.5rem",
+                  fontWeight: 800,
+                  color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                {formatCurrency(plan.monthlyInstalment)}
+              </span>
+            </div>
+
             <span
-              className="text-[9px] font-semibold tracking-[0.1em] uppercase"
-              style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
-            >
-              Monthly
-            </span>
-            <span
-              className="tabular-nums leading-none"
+              className="rounded-full px-2.5 py-1 text-[12px] font-extrabold tabular-nums leading-none"
               style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                fontSize: "1.375rem",
-                fontWeight: 800,
-                color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
-                letterSpacing: "-0.03em",
+                background: isSelected ? "oklch(1 0 0 / 0.10)" : "var(--surface-secondary)",
+                color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-secondary)",
               }}
             >
-              {formatCurrency(plan.monthlyInstalment)}
+              {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
             </span>
           </div>
 
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums leading-none"
-            style={{
-              background: isSelected ? "oklch(1 0 0 / 0.10)" : "var(--surface-secondary)",
-              color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-secondary)",
-            }}
-          >
-            {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
-          </span>
+          {/* Fixed row heights so feature N lines up across all three cards even when copy wraps */}
+          <ul className="grid w-full flex-1 grid-rows-[4.75rem_1.25rem_2.5rem] gap-2.5 text-left sm:gap-3">
+            {[
+              plan.tagline,
+              `${formatRate(plan.monthlyRate)}/month`,
+              `Total ${formatCurrency(plan.totalRepayment)}`,
+            ].map((feature) => (
+              <li key={feature} className="flex min-h-0 items-start gap-1.5">
+                <CheckCircle
+                  size={14}
+                  weight="fill"
+                  className="mt-0.5 shrink-0"
+                  style={{ color: isSelected ? "var(--brand-teal-hex)" : "#22c55e" }}
+                />
+                <span
+                  className="text-[12px] font-semibold leading-snug"
+                  style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
+                >
+                  {feature}
+                </span>
+              </li>
+            ))}
+          </ul>
 
           {/* Pick-this-plan footer doubles as the selection indicator */}
           <span
-            className="mt-1 flex w-full items-center justify-center gap-1 rounded-full py-1.5 text-[10px] font-bold leading-none transition-all duration-200"
+            className="mt-1 flex w-full shrink-0 items-center justify-center gap-1 rounded-full py-2.5 text-[12px] font-extrabold leading-none transition-all duration-200"
             style={{
               background: isSelected ? "var(--brand-teal-hex)" : "transparent",
-              color: isSelected ? "#0a1628" : "var(--text-tertiary)",
+              color: isSelected ? "#0a1628" : "var(--text-secondary)",
               border: isSelected ? "none" : "1.5px solid var(--border-medium)",
             }}
           >
             {isSelected ? (
               <>
-                <CheckCircle size={12} weight="fill" />
+                <CheckCircle size={14} weight="fill" />
                 Selected
               </>
             ) : (
@@ -792,41 +817,6 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
         </div>
       </div>
     </button>
-  );
-}
-
-/** Shows the full details of the selected plan (tagline, rate, total repayment) since
- *  the compact cards in the grid above only have room for name, price, and tenure. */
-function PlanSummaryStrip({ plan }: { plan: OfferPlan | null }) {
-  return (
-    <div
-      className="flex min-h-[52px] items-center justify-center rounded-[var(--radius-md)] px-4 py-2.5 text-center"
-      style={{
-        background: "var(--surface-secondary)",
-        boxShadow: "0 0 0 1px var(--border-subtle)",
-      }}
-    >
-      {plan ? (
-        <motion.div
-          key={plan.id}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: EASE }}
-          className="flex flex-col gap-0.5"
-        >
-          <span className="text-xs font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
-            {plan.tagline}
-          </span>
-          <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            {formatRate(plan.monthlyRate)}/month · Total repayment {formatCurrency(plan.totalRepayment)}
-          </span>
-        </motion.div>
-      ) : (
-        <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>
-          Select a plan above to see full details
-        </span>
-      )}
-    </div>
   );
 }
 
@@ -919,8 +909,6 @@ interface PlanPickerProps {
 }
 
 function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
-  const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
-
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2 sm:gap-3 items-stretch">
@@ -933,7 +921,6 @@ function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
           />
         ))}
       </div>
-      <PlanSummaryStrip plan={selectedPlan} />
       <AdditionalRequestsCard />
     </div>
   );
