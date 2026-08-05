@@ -13,8 +13,13 @@ interface Props {
 export function ApprovalView({ formData }: Props) {
   const router = useRouter();
 
-  // Show the approved amount (not the requested amount) in the results screen.
-  const displayData = { ...formData, amount: formData.approvedLoanAmount };
+  // Demo-only figures: derive the offer straight from the self-declared monthly
+  // income captured at step 2/8, rather than the real underwriting output.
+  const monthlyIncome = parseInt(formData.monthlyIncome, 10) || 0;
+  const withdrawToday = monthlyIncome * 3;
+  const maxCreditLimit = monthlyIncome * 6;
+
+  const displayData = { ...formData, amount: withdrawToday };
 
   return (
     <div className="approval-theme flex flex-col lg:flex-row min-h-dvh">
@@ -48,7 +53,7 @@ export function ApprovalView({ formData }: Props) {
           <div className="w-full max-w-[520px]">
             <LoanResults
               formData={displayData}
-              creditLimit={formData.amount}
+              creditLimit={maxCreditLimit}
               monthlyRepayment={0}
               onAccept={() => router.push("/apply/accept")}
             />
