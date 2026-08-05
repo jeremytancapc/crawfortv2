@@ -464,13 +464,12 @@ function CreditLineMeter({
 }
 
 function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferCardProps) {
-  const today = new Date();
-  const dateLabel = `${today.getDate()} ${FULL_MONTHS[today.getMonth()].slice(0, 3)} ${today.getFullYear()}`;
   const [preApprovedTipOpen, setPreApprovedTipOpen] = useState(false);
 
   const available = formData.amount;
-  const hasCreditLine = !!creditLimit && creditLimit > available;
-  const reserved = hasCreditLine ? creditLimit! - available : 0;
+  const limit = creditLimit && creditLimit > available ? creditLimit : available;
+  const reserved = Math.max(0, limit - available);
+  const hasReserved = reserved > 0;
 
   return (
     <motion.div
@@ -481,69 +480,72 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
     >
       <div className="flex items-center gap-2">
         <SealCheck size={18} weight="fill" style={{ color: "var(--offer-accent)" }} />
-        {hasCreditLine ? (
-          <span
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Credit line{" "}
-            <span className="relative inline-flex items-center pr-3.5">
-              pre-approved
-              <span className="absolute -right-0.5 -top-2.5 inline-flex normal-case tracking-normal">
-                <button
-                  type="button"
-                  aria-label="What does pre-approved mean?"
-                  aria-expanded={preApprovedTipOpen}
-                  onClick={() => setPreApprovedTipOpen((v) => !v)}
-                  onMouseEnter={() => setPreApprovedTipOpen(true)}
-                  onMouseLeave={() => setPreApprovedTipOpen(false)}
-                  className="flex h-3 w-3 items-center justify-center rounded-full border text-[8px] font-bold leading-none transition-colors duration-150"
+        <span
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          Credit line{" "}
+          <span className="relative inline-flex items-center pr-3.5">
+            pre-approved
+            <span className="absolute -right-0.5 -top-2.5 inline-flex normal-case tracking-normal">
+              <button
+                type="button"
+                aria-label="What does pre-approved mean?"
+                aria-expanded={preApprovedTipOpen}
+                onClick={() => setPreApprovedTipOpen((v) => !v)}
+                onMouseEnter={() => setPreApprovedTipOpen(true)}
+                onMouseLeave={() => setPreApprovedTipOpen(false)}
+                className="flex h-3 w-3 items-center justify-center rounded-full border text-[8px] font-bold leading-none transition-colors duration-150"
+                style={{
+                  borderColor: "var(--border-medium)",
+                  color: "var(--text-tertiary)",
+                  background: "var(--surface-primary)",
+                }}
+              >
+                ?
+              </button>
+              {preApprovedTipOpen && (
+                <div
+                  role="tooltip"
+                  className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[260px] -translate-x-1/2 rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
                   style={{
-                    borderColor: "var(--border-medium)",
-                    color: "var(--text-tertiary)",
-                    background: "var(--surface-primary)",
+                    background: "var(--surface-elevated)",
+                    boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
                   }}
                 >
-                  ?
-                </button>
-                {preApprovedTipOpen && (
-                  <div
-                    role="tooltip"
-                    className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[260px] -translate-x-1/2 rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
-                    style={{
-                      background: "var(--surface-elevated)",
-                      boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
-                    }}
+                  <p
+                    className="text-[11px] font-medium leading-relaxed normal-case tracking-normal"
+                    style={{ color: "var(--text-secondary)" }}
                   >
-                    <p
-                      className="text-[11px] font-medium leading-relaxed normal-case tracking-normal"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      Pre-approved means your full credit limit looks like a strong fit for you.
-                      For now, you&apos;re ready to take{" "}
-                      <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                        {formatCurrency(available)}
-                      </span>{" "}
-                      today — the rest of your line is reserved and unlocks automatically over time.
-                    </p>
-                    <span
-                      aria-hidden="true"
-                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
-                      style={{ borderBottomColor: "var(--border-subtle)" }}
-                    />
-                  </div>
-                )}
-              </span>
+                    {hasReserved ? (
+                      <>
+                        Pre-approved means your full credit limit looks like a strong fit for you.
+                        For now, you&apos;re ready to take{" "}
+                        <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                          {formatCurrency(available)}
+                        </span>{" "}
+                        today — the rest of your line is reserved and unlocks automatically over time.
+                      </>
+                    ) : (
+                      <>
+                        Pre-approved means this credit line is confirmed and ready. Your full{" "}
+                        <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                          {formatCurrency(available)}
+                        </span>{" "}
+                        is approved and available for instant disbursement.
+                      </>
+                    )}
+                  </p>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
+                    style={{ borderBottomColor: "var(--border-subtle)" }}
+                  />
+                </div>
+              )}
             </span>
           </span>
-        ) : (
-          <span
-            className="text-[11px] font-bold tracking-[0.18em] uppercase"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Loan offer confirmed · {dateLabel}
-          </span>
-        )}
+        </span>
       </div>
 
       <p
@@ -553,22 +555,22 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
           fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
           fontWeight: 800,
           letterSpacing: "-0.04em",
-          background: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
+          backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
           color: "transparent",
         }}
       >
-        {formatCurrency(hasCreditLine ? creditLimit! : formData.amount)}
+        {formatCurrency(limit)}
       </p>
 
       <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-        {hasCreditLine ? "Your total credit limit" : "Approved and ready for disbursement"}
+        Your total credit limit
       </p>
 
-      {hasCreditLine && (
+      {hasReserved && (
         <div className="mt-3 flex w-full flex-col gap-2.5">
-          <CreditLineMeter limit={creditLimit!} available={available} revealStage={revealStage} />
+          <CreditLineMeter limit={limit} available={available} revealStage={revealStage} />
 
           <div className="grid grid-cols-2 gap-3 text-left">
             <div className="flex flex-col gap-1">
@@ -638,9 +640,7 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
       <div ref={planHintRef} className="mt-3 flex w-full items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
         <span className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-          {hasCreditLine
-            ? `Pick your plan for your ${formatCurrency(available)} today`
-            : "Now pick your plan"}
+          {`Pick your plan for your ${formatCurrency(available)} today`}
         </span>
         <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
       </div>
