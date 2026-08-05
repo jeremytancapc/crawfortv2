@@ -11,7 +11,6 @@ import {
   X,
   TrendUp,
   CheckCircle,
-  Sparkle,
   SealCheck,
   Lock,
 } from "@phosphor-icons/react";
@@ -656,100 +655,104 @@ interface PlanCardProps {
   onSelect: () => void;
 }
 
+/** Card labels are space-constrained in the 3-up grid, so drop the trailing "Plan" suffix. */
+function shortPlanName(title: string): string {
+  return title.replace(/\s+Plan$/i, "");
+}
+
 function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
+  const isPopular = Boolean(plan.badge);
+
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="relative w-full text-left rounded-[var(--radius-lg)] overflow-hidden transition-all duration-200 focus:outline-none"
+      className="relative flex h-full w-full flex-col text-center transition-all duration-200 focus:outline-none"
       style={{
-        background: isSelected
-          ? `radial-gradient(ellipse at 20% 50%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(145deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`
-          : "var(--surface-elevated)",
-        boxShadow: isSelected
-          ? "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)"
-          : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
-        transform: isSelected ? "scale(1.01)" : "scale(1)",
+        transform: isSelected ? "scale(1.02)" : "scale(1)",
       }}
       aria-pressed={isSelected}
     >
-      {/* Shine sweep on selected */}
-      {isSelected && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: "linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.04) 50%, transparent 65%)",
-          }}
-        />
-      )}
-
-      <div className="relative p-4">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span
-                className="text-lg font-bold leading-snug"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  color: isSelected ? "#ffffff" : "var(--text-primary)",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {plan.title}
-              </span>
-              {plan.badge && (
-                <span
-                  className="popular-badge-glow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide shrink-0"
-                  style={{
-                    background: "#F5C518",
-                    color: "#0a1628",
-                  }}
-                >
-                  <Sparkle size={10} weight="fill" className="relative z-[1]" />
-                  <span className="relative z-[1]">Most Popular</span>
-                </span>
-              )}
-            </div>
+      {/* Reserved ribbon slot - keeps blue headers aligned across all three cards */}
+      <div className="flex h-5 w-full shrink-0 items-center justify-center">
+        {isPopular && (
+          <div
+            className="popular-badge-glow flex h-full w-full items-center justify-center rounded-t-[var(--radius-lg)]"
+            style={{ background: "#F5C518" }}
+          >
             <span
-              className="text-xs font-medium leading-snug"
-              style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
+              className="relative z-[1] text-[8px] font-bold uppercase tracking-wide"
+              style={{ color: "#0a1628" }}
             >
-              {plan.tagline}
+              Popular
             </span>
           </div>
+        )}
+      </div>
 
-          <span
-            className="flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-200"
-            style={{
-              border: isSelected ? "2px solid var(--brand-teal-hex)" : "2px solid var(--text-tertiary)",
-              background: isSelected ? "var(--brand-teal-hex)" : "var(--surface-elevated)",
-              boxShadow: isSelected
-                ? "0 0 0 4px oklch(0.78 0.16 178 / 0.25)"
-                : "inset 0 1px 2px oklch(0 0 0 / 0.06)",
-            }}
+      <div
+        className="relative flex w-full flex-1 flex-col overflow-hidden"
+        style={{
+          borderRadius: isPopular
+            ? "0 0 var(--radius-lg) var(--radius-lg)"
+            : "var(--radius-lg)",
+          background: isSelected
+            ? `radial-gradient(ellipse at 50% 0%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(165deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`
+            : "var(--surface-elevated)",
+          boxShadow: isSelected
+            ? "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)"
+            : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
+        }}
+      >
+        {/* Shine sweep on selected */}
+        {isSelected && (
+          <div
             aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.04) 50%, transparent 65%)",
+            }}
+          />
+        )}
+
+        {/* Header - plan name with shiny overlay */}
+        <div
+          className="relative flex h-9 w-full shrink-0 items-center justify-center overflow-hidden px-1.5"
+          style={{ background: "var(--brand-blue-hex)" }}
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(115deg, transparent 20%, oklch(1 0 0 / 0.22) 45%, oklch(1 0 0 / 0.08) 55%, transparent 75%)",
+            }}
+          />
+          <span
+            className="relative min-w-0 max-w-full truncate text-[13px] font-bold leading-snug text-white"
+            style={{
+              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+              letterSpacing: "-0.02em",
+            }}
           >
-            {isSelected && <CheckCircle size={16} weight="fill" style={{ color: "#0a1628" }} />}
+            {shortPlanName(plan.title)}
           </span>
         </div>
 
-        {/* Stats row - monthly instalment is the primary hook, tenure is secondary */}
-        <div
-          className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] px-3 py-3"
-          style={{
-            background: isSelected ? "oklch(1 0 0 / 0.06)" : "var(--surface-secondary)",
-          }}
-        >
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}>
-              Monthly instalment
+        <div className="relative flex flex-1 flex-col items-center gap-2 px-2 py-3">
+          <div className="flex flex-1 flex-col items-center justify-center gap-0.5">
+            <span
+              className="text-[9px] font-semibold tracking-[0.1em] uppercase"
+              style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
+            >
+              Monthly
             </span>
             <span
-              className="text-[1.75rem] font-extrabold tabular-nums leading-none"
+              className="tabular-nums leading-none"
               style={{
                 fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                fontSize: "1.375rem",
+                fontWeight: 800,
                 color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
                 letterSpacing: "-0.03em",
               }}
@@ -758,32 +761,72 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
             </span>
           </div>
 
-          <div className="flex flex-col items-end text-right gap-0.5 shrink-0">
-            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase" style={{ color: isSelected ? "oklch(1 0 0 / 0.45)" : "var(--text-tertiary)" }}>
-              Tenure
-            </span>
-            <span
-              className="text-sm font-bold tabular-nums leading-none"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-secondary)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
-            </span>
-          </div>
-        </div>
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums leading-none"
+            style={{
+              background: isSelected ? "oklch(1 0 0 / 0.10)" : "var(--surface-secondary)",
+              color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-secondary)",
+            }}
+          >
+            {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
+          </span>
 
-        {/* Rate caption */}
-        <p
-          className="mt-2 text-[10px]"
-          style={{ color: isSelected ? "oklch(1 0 0 / 0.35)" : "var(--text-tertiary)" }}
-        >
-          {formatRate(plan.monthlyRate)}/month · Total repayment {formatCurrency(plan.totalRepayment)}
-        </p>
+          {/* Pick-this-plan footer doubles as the selection indicator */}
+          <span
+            className="mt-1 flex w-full items-center justify-center gap-1 rounded-full py-1.5 text-[10px] font-bold leading-none transition-all duration-200"
+            style={{
+              background: isSelected ? "var(--brand-teal-hex)" : "transparent",
+              color: isSelected ? "#0a1628" : "var(--text-tertiary)",
+              border: isSelected ? "none" : "1.5px solid var(--border-medium)",
+            }}
+          >
+            {isSelected ? (
+              <>
+                <CheckCircle size={12} weight="fill" />
+                Selected
+              </>
+            ) : (
+              "Pick this plan"
+            )}
+          </span>
+        </div>
       </div>
     </button>
+  );
+}
+
+/** Shows the full details of the selected plan (tagline, rate, total repayment) since
+ *  the compact cards in the grid above only have room for name, price, and tenure. */
+function PlanSummaryStrip({ plan }: { plan: OfferPlan | null }) {
+  return (
+    <div
+      className="flex min-h-[52px] items-center justify-center rounded-[var(--radius-md)] px-4 py-2.5 text-center"
+      style={{
+        background: "var(--surface-secondary)",
+        boxShadow: "0 0 0 1px var(--border-subtle)",
+      }}
+    >
+      {plan ? (
+        <motion.div
+          key={plan.id}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="flex flex-col gap-0.5"
+        >
+          <span className="text-xs font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
+            {plan.tagline}
+          </span>
+          <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+            {formatRate(plan.monthlyRate)}/month · Total repayment {formatCurrency(plan.totalRepayment)}
+          </span>
+        </motion.div>
+      ) : (
+        <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>
+          Select a plan above to see full details
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -805,8 +848,8 @@ function RequestCheckbox({
         onClick={onToggle}
         className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all duration-150"
         style={{
-          border: checked ? "2px solid var(--offer-accent)" : "2px solid var(--border-medium)",
-          background: checked ? "var(--offer-accent)" : "transparent",
+          border: checked ? "2px solid var(--brand-teal-hex)" : "2px solid var(--border-medium)",
+          background: checked ? "var(--brand-teal-hex)" : "transparent",
         }}
       >
         {checked && (
@@ -862,7 +905,7 @@ function AdditionalRequestsCard() {
         </div>
 
         <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
-          Requests will be noted and subject to further assessment (up to 3 working days).
+          Your requests will be noted and subject to further assessment (up to 3 working days).
         </p>
       </div>
     </div>
@@ -876,16 +919,21 @@ interface PlanPickerProps {
 }
 
 function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
+
   return (
     <div className="flex flex-col gap-3">
-      {plans.map((plan) => (
-        <PlanCard
-          key={plan.id}
-          plan={plan}
-          isSelected={selectedPlanId === plan.id}
-          onSelect={() => onPlanSelect(plan.id)}
-        />
-      ))}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 items-stretch">
+        {plans.map((plan) => (
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            isSelected={selectedPlanId === plan.id}
+            onSelect={() => onPlanSelect(plan.id)}
+          />
+        ))}
+      </div>
+      <PlanSummaryStrip plan={selectedPlan} />
       <AdditionalRequestsCard />
     </div>
   );
@@ -1037,11 +1085,11 @@ function ReconsiderModal({
             <div className="flex flex-col gap-3">
               <button
                 type="button"
-                onClick={onAccept}
+                onClick={onClose}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
               >
                 <ArrowLeft size={16} weight="bold" />
-                Accept the offer now
+                Back to offer
               </button>
               <button
                 type="button"
@@ -1333,6 +1381,7 @@ export function LoanResults({
                   Select a repayment plan above to continue.
                 </p>
               )}
+              {/* Temporarily hidden — restore to re-enable the reconsider modal entry point.
               <button
                 type="button"
                 onClick={() => setShowModal(true)}
@@ -1340,6 +1389,7 @@ export function LoanResults({
               >
                 I need to think about it
               </button>
+              */}
             </>
           )}
         </motion.div>
