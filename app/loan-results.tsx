@@ -736,7 +736,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           </span>
         </div>
 
-        <div className="relative flex flex-1 flex-col items-center gap-3.5 px-2.5 py-4 sm:gap-4 sm:px-3 sm:py-5">
+        <div className="relative flex flex-1 flex-col items-center gap-5 px-2.5 py-4 sm:gap-6 sm:px-3 sm:py-5">
           {/* Fixed top block - same height on every card so feature lists share one baseline */}
           <div className="flex w-full shrink-0 flex-col items-center gap-2.5 sm:gap-3">
             <div className="flex flex-col items-center gap-1">
@@ -771,25 +771,28 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
             </span>
           </div>
 
-          {/* Fixed row heights so feature N lines up across all three cards even when copy wraps */}
-          <ul className="grid w-full flex-1 grid-rows-[4.75rem_1.25rem_2.5rem] gap-2.5 text-left sm:gap-3">
+          {/* Fixed row heights so feature N lines up across all three cards even when copy wraps.
+              Tagline row is top-aligned so all three cards share the same baseline. */}
+          <ul className="grid w-full flex-1 grid-rows-[3.5rem_1.25rem_2.5rem] gap-2.5 text-left sm:gap-3">
             {[
               plan.tagline,
               `${formatRate(plan.monthlyRate)}/month`,
               `Total ${formatCurrency(plan.totalRepayment)}`,
             ].map((feature) => (
-              <li key={feature} className="flex min-h-0 items-start gap-1.5">
-                <CheckCircle
-                  size={14}
-                  weight="fill"
-                  className="mt-0.5 shrink-0"
-                  style={{ color: isSelected ? "var(--brand-teal-hex)" : "#22c55e" }}
-                />
-                <span
-                  className="text-[12px] font-semibold leading-snug"
-                  style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
-                >
-                  {feature}
+              <li key={feature} className="flex min-h-0 items-start">
+                <span className="flex items-start gap-1.5">
+                  <CheckCircle
+                    size={14}
+                    weight="fill"
+                    className="mt-0.5 shrink-0"
+                    style={{ color: isSelected ? "var(--brand-teal-hex)" : "#22c55e" }}
+                  />
+                  <span
+                    className="text-[12px] font-semibold leading-snug"
+                    style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
+                  >
+                    {feature}
+                  </span>
                 </span>
               </li>
             ))}
