@@ -203,6 +203,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
   const [locationTooltip, setLocationTooltip] = useState(false);
+  const [timeListCanScrollMore, setTimeListCanScrollMore] = useState(true);
 
   type PopupPos = { top: number; left: number; width: number };
   const [calendarPos, setCalendarPos] = useState<PopupPos | null>(null);
@@ -210,7 +211,15 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
 
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
   const timeTriggerRef = useRef<HTMLButtonElement>(null);
+  const timeListRef = useRef<HTMLDivElement>(null);
   const confirmBtnRef = useRef<HTMLDivElement>(null);
+
+  const updateTimeListScrollHint = useCallback(() => {
+    const el = timeListRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setTimeListCanScrollMore(remaining > 8);
+  }, []);
 
   const CALENDAR_HEIGHT_EST = 370;
   const TIME_HEIGHT_EST = 280;
@@ -470,7 +479,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           Pick a time to collect your funds
         </h2>
         <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
-          We'll have your funds ready for same-day disbursement.
+          A physical visit is required for KYC and AML under local regulations.
         </p>
       </div>
 
@@ -504,7 +513,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           <p className="text-base font-bold text-[var(--text-primary)]">Location</p>
           <div className="text-sm font-medium text-[var(--text-primary)]">
             <span className="inline-flex items-center gap-1.5">
-              High Street Centre
+              High Street Centre, #01-35, Singapore 179094
               {/* Tooltip trigger */}
               <span className="relative inline-flex">
                 <button
@@ -525,8 +534,16 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                 )}
               </span>
             </span>
-            <br />
-            <span className="font-normal text-[var(--text-secondary)]">(City Hall MRT / Clarke Quay MRT)</span>
+            <ul className="mt-1.5 flex flex-col gap-1 font-normal text-[var(--text-secondary)]">
+              <li className="flex items-start gap-1.5">
+                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>5–7 mins walk from City Hall MRT or Clarke Quay MRT</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>Parking available on site</span>
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -641,7 +658,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                   </div>
 
                   {/* Day grid */}
-                  <div className="grid grid-cols-7 p-2 gap-1">
+                  <div className="grid grid-cols-7 p-2 gap-1.5">
                     {(() => {
                       const year = calendarMonth.getFullYear();
                       const month = calendarMonth.getMonth();
@@ -675,15 +692,30 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                               setSelectedTime(null);
                               setCalendarOpen(false);
                             }}
-                            className="relative flex aspect-square items-center justify-center rounded-[var(--radius-sm)] text-sm font-medium transition-all duration-150 active:scale-[0.93]"
+                            className={`relative flex aspect-square items-center justify-center rounded-[var(--radius-sm)] text-sm font-medium transition-all duration-150 active:scale-[0.93] ${
+                              disabled
+                                ? "cursor-not-allowed"
+                                : isSelected
+                                  ? "cursor-pointer"
+                                  : "cursor-pointer hover:border-[var(--border-medium)] hover:bg-[var(--surface-secondary)]"
+                            }`}
                             style={{
-                              background: isSelected ? "var(--brand-blue-hex)" : "transparent",
+                              background: isSelected
+                                ? "var(--brand-blue-hex)"
+                                : disabled
+                                  ? "var(--surface-secondary)"
+                                  : "var(--surface-elevated)",
+                              border: isSelected
+                                ? "1px solid var(--brand-blue-hex)"
+                                : disabled
+                                  ? "1px solid transparent"
+                                  : "1px solid var(--border-subtle)",
                               color: isSelected
                                 ? "#fff"
                                 : disabled
                                   ? "var(--text-tertiary)"
                                   : "var(--text-primary)",
-                              opacity: disabled && !inWindow ? 0.2 : disabled ? 0.35 : 1,
+                              opacity: disabled && !inWindow ? 0.45 : disabled ? 0.6 : 1,
                               pointerEvents: disabled ? "none" : "auto",
                               fontWeight: isToday ? 800 : 500,
                             }}
@@ -691,14 +723,14 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                             {day}
                             {isToday && !isSelected && (
                               <span
-                                className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-                                style={{ background: "var(--brand-teal-hex)" }}
+                                className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
+                                style={{ background: "#10b981", boxShadow: "0 0 0 1.5px var(--surface-elevated)" }}
                               />
                             )}
                             {showRedDot && (
                               <span
-                                className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-                                style={{ background: "#ef4444" }}
+                                className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
+                                style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px var(--surface-secondary)" }}
                               />
                             )}
                           </button>
@@ -711,11 +743,11 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                   {/* Legend */}
                   <div className="flex items-center gap-3 border-t border-[var(--border-subtle)] px-4 py-2.5">
                     <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-tertiary)]">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--brand-teal-hex)" }} />
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#10b981" }} />
                       Today
                     </span>
                     <span className="flex items-center gap-1.5 text-[10px]" style={{ color: "#ef4444" }}>
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-400" />
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#ef4444" }} />
                       Sundays &amp; public holidays unavailable
                     </span>
                   </div>
@@ -757,9 +789,29 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                 <>
                   <div className="fixed inset-0 z-[9998]" onClick={() => setTimeDropdownOpen(false)} />
                   <div
-                    className="fixed z-[9999] overflow-hidden overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-xl"
-                    style={{ top: timePos.top, left: timePos.left, width: timePos.width, maxHeight: 280, overscrollBehavior: "contain" }}
+                    className="fixed z-[9999] flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-xl"
+                    style={{ top: timePos.top, left: timePos.left, width: timePos.width, maxHeight: 280 }}
                   >
+                    {/* Header */}
+                    <div
+                      className="shrink-0 px-4 py-3"
+                      style={{ background: "var(--brand-blue-hex)" }}
+                    >
+                      <p className="text-sm font-semibold text-white">Choose a timeslot</p>
+                    </div>
+
+                    <div className="relative min-h-0 flex-1">
+                    <div
+                      className="scrollbar-thin max-h-full"
+                      style={{ overscrollBehavior: "contain", maxHeight: 232 }}
+                      onScroll={updateTimeListScrollHint}
+                      ref={(node) => {
+                        timeListRef.current = node;
+                        if (node) {
+                          requestAnimationFrame(updateTimeListScrollHint);
+                        }
+                      }}
+                    >
                     {(() => {
                       const bookedIdx = fullyBookedIndex(selectedDate);
                       const limitedSet = limitedSlotIndices(selectedDate, bookedIdx);
@@ -859,6 +911,33 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                         );
                       });
                     })()}
+                    </div>
+                    {/* Persistent scroll affordance — visible even when OS hides overlay scrollbars */}
+                    {timeListCanScrollMore && (
+                      <>
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-x-0 bottom-0 h-10"
+                          style={{
+                            background:
+                              "linear-gradient(to top, var(--surface-elevated) 20%, transparent)",
+                          }}
+                        />
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute bottom-1.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                          style={{
+                            background: "var(--surface-secondary)",
+                            color: "var(--text-tertiary)",
+                            boxShadow: "0 0 0 1px var(--border-subtle)",
+                          }}
+                        >
+                          <CaretDown size={10} weight="bold" />
+                          More
+                        </div>
+                      </>
+                    )}
+                    </div>
                   </div>
                 </>,
                 document.body
