@@ -13,6 +13,7 @@ import {
   CheckCircle,
   SealCheck,
   Lock,
+  PencilSimple,
 } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
@@ -433,7 +434,6 @@ interface OfferCardProps {
   formData: FormData;
   revealStage: number;
   creditLimit?: number;
-  planHintRef?: React.RefObject<HTMLDivElement | null>;
   withdrawAmount: number;
   onWithdrawAmountChange: (amount: number) => void;
 }
@@ -481,13 +481,13 @@ function OfferHeader({
   formData,
   revealStage,
   creditLimit,
-  planHintRef,
   withdrawAmount,
   onWithdrawAmountChange,
 }: OfferCardProps) {
   const [preApprovedTipOpen, setPreApprovedTipOpen] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const maxWithdraw = formData.amount;
   const minWithdraw = Math.min(MIN_WITHDRAW_AMOUNT, maxWithdraw);
@@ -506,6 +506,12 @@ function OfferHeader({
     setAmountRaw(String(clamped));
   };
 
+  const focusAmountInput = () => {
+    if (!canAdjust) return;
+    amountInputRef.current?.focus();
+    amountInputRef.current?.select();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -513,89 +519,125 @@ function OfferHeader({
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col items-center gap-1.5 py-2 text-center"
     >
-      <div className="flex items-center gap-2">
-        <SealCheck size={18} weight="fill" style={{ color: "var(--offer-accent)" }} />
-        <span
-          className="inline-flex items-center gap-1.5 text-[12px] font-bold tracking-[0.18em] uppercase"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Credit line{" "}
-          <span className="relative inline-flex items-center pr-3.5">
-            pre-approved
-            <span className="absolute -right-0.5 -top-2.5 inline-flex normal-case tracking-normal">
-              <button
-                type="button"
-                aria-label="What does pre-approved mean?"
-                aria-expanded={preApprovedTipOpen}
-                onClick={() => setPreApprovedTipOpen((v) => !v)}
-                onMouseEnter={() => setPreApprovedTipOpen(true)}
-                onMouseLeave={() => setPreApprovedTipOpen(false)}
-                className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
-                style={{
-                  borderColor: "var(--border-medium)",
-                  color: "var(--text-tertiary)",
-                  background: "var(--surface-primary)",
-                }}
-              >
-                ?
-              </button>
-              {preApprovedTipOpen && (
-                <div
-                  role="tooltip"
-                  className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[260px] -translate-x-1/2 rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
-                  style={{
-                    background: "var(--surface-elevated)",
-                    boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
-                  }}
-                >
-                  <p
-                    className="text-[12px] font-medium leading-relaxed normal-case tracking-normal"
-                    style={{ color: "var(--text-secondary)" }}
+      {/* Credit line summary card — status, limit, and (if applicable) the
+          available/reserved meter all live in one bordered, tinted object so
+          this context reads as a distinct "status card" rather than loose text. */}
+      <div
+        className="w-full rounded-[var(--radius-lg)] px-4 py-3.5 text-left"
+        style={{
+          background: "oklch(0.96 0.025 176 / 0.4)",
+          border: "1px solid oklch(0.72 0.08 176 / 0.35)",
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-1.5 pt-0.5">
+            <SealCheck size={16} weight="fill" className="shrink-0" style={{ color: "var(--offer-accent)" }} />
+            <span
+              className="inline-flex min-w-0 flex-col items-start gap-0.5 text-[12px] font-bold tracking-[0.08em] uppercase sm:flex-row sm:items-center sm:gap-1"
+              style={{ color: "var(--text-primary)" }}
+            >
+              <span className="whitespace-nowrap">Credit line</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                pre-approved
+                <span className="relative inline-flex shrink-0 normal-case tracking-normal">
+                  <button
+                    type="button"
+                    aria-label="What does pre-approved mean?"
+                    aria-expanded={preApprovedTipOpen}
+                    onClick={() => setPreApprovedTipOpen((v) => !v)}
+                    onMouseEnter={() => setPreApprovedTipOpen(true)}
+                    onMouseLeave={() => setPreApprovedTipOpen(false)}
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
+                    style={{
+                      borderColor: "var(--border-medium)",
+                      color: "var(--text-tertiary)",
+                      background: "var(--surface-primary)",
+                    }}
                   >
-                    {hasStructuralReserve ? (
-                      <>
-                        Pre-approved means your full credit limit looks like a strong fit for you.
-                        For now, you&apos;re ready to take up to{" "}
-                        <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                          {formatCurrency(maxWithdraw)}
-                        </span>{" "}
-                        today — the rest of your line is reserved and unlocks automatically over time.
-                      </>
-                    ) : (
-                      <>
-                        Pre-approved means this credit line is confirmed and ready. Your full{" "}
-                        <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                          {formatCurrency(maxWithdraw)}
-                        </span>{" "}
-                        is approved and available for instant disbursement.
-                      </>
-                    )}
-                  </p>
-                  <span
-                    aria-hidden="true"
-                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
-                    style={{ borderBottomColor: "var(--border-subtle)" }}
-                  />
-                </div>
-              )}
+                    ?
+                  </button>
+                  {preApprovedTipOpen && (
+                    <div
+                      role="tooltip"
+                      className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[min(260px,70vw)] -translate-x-1/2 whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
+                      style={{
+                        background: "var(--surface-elevated)",
+                        boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
+                      }}
+                    >
+                      <p
+                        className="text-[12px] font-medium leading-relaxed normal-case tracking-normal"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {hasStructuralReserve ? (
+                          <>
+                            Pre-approved means your full credit limit looks like a strong fit for you.
+                            For now, you&apos;re ready to take up to{" "}
+                            <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                              {formatCurrency(maxWithdraw)}
+                            </span>{" "}
+                            today — the rest of your line is reserved and unlocks automatically over time.
+                          </>
+                        ) : (
+                          <>
+                            Pre-approved means this credit line is confirmed and ready. Your full{" "}
+                            <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                              {formatCurrency(maxWithdraw)}
+                            </span>{" "}
+                            is approved and available for instant disbursement.
+                          </>
+                        )}
+                      </p>
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
+                        style={{ borderBottomColor: "var(--border-subtle)" }}
+                      />
+                    </div>
+                  )}
+                </span>
+              </span>
             </span>
-          </span>
-        </span>
-      </div>
+          </div>
+          <div className="shrink-0 text-right leading-none">
+            <div
+              className="tabular-nums text-[1.35rem] font-extrabold"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                letterSpacing: "-0.03em",
+                color: "var(--text-primary)",
+              }}
+            >
+              {formatCurrency(limit)}
+            </div>
+            <div className="mt-1 text-[10px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
+              Total credit limit
+            </div>
+          </div>
+        </div>
 
-      {/* Total credit limit — demoted, structural context only */}
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <span className="text-[13px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-          {formatCurrency(limit)} total credit limit
-        </span>
         {hasStructuralReserve && (
-          <span
-            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold leading-none"
-            style={{ background: "oklch(0.94 0.05 85)", color: "#78350f" }}
-          >
-            <Lock size={9} weight="fill" style={{ color: "#E0B000" }} />
-            +{formatCurrency(structuralReserve)} unlocks over time
-          </span>
+          <>
+            <div className="mt-2.5">
+              <CreditLineMeter limit={limit} available={maxWithdraw} revealStage={revealStage} />
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--brand-teal-hex)" }} />
+                {formatCurrency(maxWithdraw)} available today
+              </span>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold leading-none"
+                style={{ background: "oklch(0.94 0.05 85)", color: "#78350f" }}
+              >
+                <Lock size={9} weight="fill" style={{ color: "#E0B000" }} />
+                +{formatCurrency(structuralReserve)} unlocks over time
+              </span>
+            </div>
+          </>
         )}
       </div>
 
@@ -608,84 +650,102 @@ function OfferHeader({
           Withdraw today
         </span>
 
-        <div className="flex items-baseline leading-none">
-          <span
-            aria-hidden="true"
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            $
-          </span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
-            onFocus={() => {
-              setAmountFocused(true);
-              setAmountRaw(String(withdrawAmount));
-            }}
-            onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
-            onBlur={() => {
-              setAmountFocused(false);
-              commitAmount(parseInt(amountRaw, 10));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-            }}
-            disabled={!canAdjust}
-            aria-label="Amount to withdraw today"
-            className="tabular-nums border-0 bg-transparent text-center outline-none disabled:opacity-100"
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-              caretColor: "var(--offer-accent)",
-              width: `${Math.max((amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")).length, 2)}ch`,
-            }}
-          />
+        {/* Amount stays optically centred under the label; pencil is docked to
+            the right of the $amount group so it doesn't shove the figure off-centre. */}
+        <div className="flex justify-center">
+          <div className="relative flex items-baseline leading-none">
+            <span
+              aria-hidden="true"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+                fontWeight: 800,
+                letterSpacing: "-0.04em",
+                backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+              }}
+            >
+              $
+            </span>
+            <input
+              ref={amountInputRef}
+              type="text"
+              inputMode="numeric"
+              value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
+              onFocus={() => {
+                setAmountFocused(true);
+                setAmountRaw(String(withdrawAmount));
+              }}
+              onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
+              onBlur={() => {
+                setAmountFocused(false);
+                commitAmount(parseInt(amountRaw, 10));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+              disabled={!canAdjust}
+              aria-label="Amount to withdraw today"
+              className="tabular-nums border-0 bg-transparent text-center outline-none disabled:opacity-100"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+                fontWeight: 800,
+                letterSpacing: "-0.04em",
+                backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                caretColor: "var(--offer-accent)",
+                fieldSizing: "content",
+                width: "auto",
+                minWidth: "2ch",
+              }}
+            />
+            {canAdjust && (
+              <button
+                type="button"
+                onClick={focusAmountInput}
+                aria-label="Edit withdrawal amount"
+                className="absolute top-1/2 left-[calc(100%+0.35rem)] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-150"
+                style={{
+                  background: amountFocused ? "oklch(0.9 0.07 176 / 0.45)" : "var(--surface-secondary)",
+                  color: "var(--offer-accent)",
+                }}
+              >
+                <PencilSimple size={16} weight="bold" />
+              </button>
+            )}
+          </div>
         </div>
 
         <span className="text-[12px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-          Instant disbursement{canAdjust ? " · tap the amount to edit" : ""}
+          Instant disbursement{canAdjust ? " · edit or drag to adjust" : ""}
         </span>
       </div>
 
-      {/* Amount adjuster — slide or type a lower amount; defaults to the maximum available today */}
+      {/* Amount adjuster — standard range control; defaults to the maximum available today */}
       {canAdjust && (
         <div className="mt-4 w-full">
-          <div className="relative">
-            <div
-              className="pointer-events-none absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full"
-              style={{ width: `${sliderPct}%`, background: "var(--brand-teal-hex)" }}
-            />
-            <input
-              type="range"
-              className="withdraw-slider relative z-10 w-full"
-              min={minWithdraw}
-              max={maxWithdraw}
-              step={WITHDRAW_STEP}
-              value={withdrawAmount}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                onWithdrawAmountChange(val);
-                setAmountRaw(String(val));
-              }}
-              aria-label="Slide to choose a lower withdrawal amount"
-            />
-          </div>
+          <input
+            type="range"
+            className="withdraw-slider w-full"
+            min={minWithdraw}
+            max={maxWithdraw}
+            step={WITHDRAW_STEP}
+            value={withdrawAmount}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              onWithdrawAmountChange(val);
+              setAmountRaw(String(val));
+            }}
+            aria-label="Slide to choose a lower withdrawal amount"
+            style={{
+              background: `linear-gradient(to right, var(--brand-teal-hex) 0%, var(--brand-teal-hex) ${sliderPct}%, var(--border-medium) ${sliderPct}%, var(--border-medium) 100%)`,
+            }}
+          />
           <div className="mt-1.5 flex items-center justify-between">
             <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
               {formatCurrency(minWithdraw)}
@@ -705,21 +765,6 @@ function OfferHeader({
           </div>
         </div>
       )}
-
-      {hasStructuralReserve && (
-        <div className="mt-3 w-full">
-          <CreditLineMeter limit={limit} available={withdrawAmount} revealStage={revealStage} />
-        </div>
-      )}
-
-      {/* Divider with centred hint */}
-      <div ref={planHintRef} className="mt-3 flex w-full items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
-        <span className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-          {`Pick your plan for your ${formatCurrency(withdrawAmount)} today`}
-        </span>
-        <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
-      </div>
     </motion.div>
   );
 }
@@ -1367,12 +1412,11 @@ export function LoanResults({
           >
             {isExpired ? "Your offer has expired." : "Your loan offer is confirmed."}
           </h1>
-          <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            {isExpired
-              ? "This loan offer is no longer valid. Start a new application to get a fresh offer."
-              : <>Choose the repayment plan that suits you best, then book a quick appointment to collect your funds.</>
-            }
-          </p>
+          {isExpired && (
+            <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              This loan offer is no longer valid. Start a new application to get a fresh offer.
+            </p>
+          )}
         </motion.div>
 
         {/* Confirmed offer header */}
@@ -1381,20 +1425,34 @@ export function LoanResults({
             formData={formData}
             revealStage={revealStage}
             creditLimit={creditLimit}
-            planHintRef={planHintRef}
             withdrawAmount={withdrawAmount}
             onWithdrawAmountChange={setWithdrawAmount}
           />
         </div>
 
-        {/* Plan picker */}
+        {/* Plan picker — its own section, with the intro copy that used to live
+            in the hero now anchoring this section instead of a divider banner. */}
         {!isExpired && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={revealStage >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
             transition={{ duration: 0.45, ease: EASE }}
             style={{ pointerEvents: revealStage >= 2 ? "auto" : "none" }}
+            className="flex flex-col gap-3"
           >
+            <div ref={planHintRef} className="flex flex-col gap-3">
+              <div
+                aria-hidden="true"
+                className="h-px w-full"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, var(--border-medium) 12%, var(--border-medium) 88%, transparent 100%)",
+                }}
+              />
+              <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                Choose the repayment plan that suits you best, then book a quick appointment to collect your funds.
+              </p>
+            </div>
             <PlanPicker
               selectedPlanId={selectedPlanId}
               onPlanSelect={setSelectedPlanId}
