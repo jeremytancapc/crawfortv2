@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CaretDown,
   SealCheck,
-  CheckCircle,
   Warning,
   CurrencyCircleDollar,
 } from "@phosphor-icons/react";
@@ -29,6 +28,23 @@ function formatCurrency(value: number): string {
 
 function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`;
+}
+
+/** e.g. "22 December 2025 22:30" - matches the reference receipt's plain, formal timestamp. */
+function formatReceiptDateTime(isoDate: string): string {
+  const date = new Date(isoDate);
+  const day = date.getDate();
+  const month = date.toLocaleString("en-SG", { month: "long" });
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${day} ${month} ${year} ${hours}:${minutes}`;
+}
+
+/** Derives a stable, receipt-style reference number from the lead's UUID. */
+function formatReferenceId(leadId: string): string {
+  const alphanumeric = leadId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return `ID${alphanumeric.slice(0, 9)}`;
 }
 
 // ── T&C content ───────────────────────────────────────────────────────────────
@@ -54,168 +70,166 @@ const TC_CLOSING =
 
 // ── Plan summary card ─────────────────────────────────────────────────────────
 
-function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
+/** Hairline rule rendered as short dashes, echoing a printed receipt's tear-off perforation. */
+function DashedDivider() {
   return (
     <div
-      className="relative w-full rounded-[var(--radius-lg)] overflow-hidden"
+      aria-hidden="true"
+      className="h-px w-full shrink-0"
       style={{
-        background:
-          "radial-gradient(ellipse at 20% 50%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(145deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)",
+        backgroundImage:
+          "repeating-linear-gradient(to right, var(--border-medium) 0, var(--border-medium) 5px, transparent 5px, transparent 11px)",
+      }}
+    />
+  );
+}
+
+function ReceiptRow({
+  label,
+  value,
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span
+        className={emphasize ? "text-[13.5px] font-bold" : "text-[13.5px] font-medium"}
+        style={{ color: emphasize ? "var(--text-primary)" : "var(--text-tertiary)" }}
+      >
+        {label}
+      </span>
+      <span
+        className={
+          emphasize
+            ? "text-[15px] font-extrabold tabular-nums text-right"
+            : "text-[13.5px] font-bold tabular-nums text-right"
+        }
+        style={{ color: "var(--text-primary)" }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PlanSummaryCard({
+  plan,
+  leadId,
+  acceptedAt,
+}: {
+  plan: SelectedPlanData;
+  leadId: string;
+  acceptedAt: string;
+}) {
+  const referenceId = formatReferenceId(leadId);
+  const dateTimeLabel = formatReceiptDateTime(acceptedAt);
+
+  return (
+    <div
+      className="w-full rounded-[var(--radius-lg)] overflow-hidden"
+      style={{
+        background: "var(--surface-elevated)",
         boxShadow:
-          "0 0 0 2px var(--brand-teal-hex), 0 14px 40px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)",
+          "0 0 0 1px var(--border-subtle), 0 8px 28px oklch(0.24 0.06 260 / 0.07)",
       }}
     >
-      {/* Shine */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.04) 50%, transparent 65%)",
-        }}
-      />
+      {/* Approval header */}
+      <div className="flex flex-col items-center gap-2.5 px-6 pt-9 pb-6 text-center">
+        <span
+          className="flex h-14 w-14 items-center justify-center rounded-full"
+          style={{ background: "oklch(0.94 0.06 152)" }}
+          aria-hidden="true"
+        >
+          <SealCheck size={28} weight="fill" style={{ color: "#16a34a" }} />
+        </span>
+        <h2 className="text-[19px] font-extrabold leading-snug" style={{ color: "var(--text-primary)" }}>
+          Your Loan Is Approved
+        </h2>
+        <p
+          className="text-[13px] leading-relaxed max-w-[300px]"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Review your plan details and accept the terms below to proceed.
+        </p>
+      </div>
 
-      <div className="relative px-5 pt-5 pb-6 flex flex-col gap-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <SealCheck size={15} weight="fill" style={{ color: "var(--offer-accent)" }} />
-              <span
-                className="text-[10px] font-bold tracking-[0.16em] uppercase"
-                style={{ color: "oklch(1 0 0 / 0.50)" }}
-              >
-                Selected plan
-              </span>
-            </div>
-            <span
-              className="text-2xl font-extrabold leading-tight"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: "#ffffff",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              {plan.planTitle}
-            </span>
-          </div>
-
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5"
-            style={{ background: "var(--brand-teal-hex)" }}
-            aria-hidden="true"
-          >
-            <CheckCircle size={18} weight="fill" style={{ color: "#0a1628" }} />
+      <div className="px-5 pb-6 flex flex-col gap-4">
+        {/* Meta row */}
+        <div
+          className="flex items-center justify-between text-[12px] font-medium"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <span>{dateTimeLabel}</span>
+          <span className="font-semibold tabular-nums" style={{ color: "var(--text-secondary)" }}>
+            {referenceId}
           </span>
         </div>
 
-        {/* Approved amount */}
-        <div className="flex flex-col gap-0.5">
-          <span
-            className="text-[10px] font-semibold tracking-[0.14em] uppercase"
-            style={{ color: "oklch(1 0 0 / 0.45)" }}
-          >
-            Approved loan amount
+        {/* Loan amount highlight */}
+        <div
+          className="flex items-center justify-between rounded-[var(--radius-sm)] px-4 py-3.5"
+          style={{ background: "oklch(0.95 0.025 258)" }}
+        >
+          <span className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>
+            Loan amount
           </span>
           <span
-            className="leading-none tabular-nums"
+            className="text-[18px] font-extrabold tabular-nums"
             style={{
               fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              fontSize: "clamp(2rem, 9vw, 2.75rem)",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              color: "#ffffff",
+              color: "var(--text-primary)",
+              letterSpacing: "-0.02em",
             }}
           >
             {formatCurrency(plan.amount)}
           </span>
         </div>
 
-        {/* Stats grid */}
-        <div
-          className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] px-4 py-3"
-          style={{ background: "oklch(1 0 0 / 0.07)" }}
-        >
-          {/* Monthly instalment */}
-          <div className="flex flex-col gap-0.5">
-            <span
-              className="text-[9px] font-semibold tracking-[0.12em] uppercase"
-              style={{ color: "oklch(1 0 0 / 0.50)" }}
-            >
-              Monthly
-            </span>
-            <span
-              className="text-lg font-extrabold tabular-nums leading-none"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: "var(--brand-teal-hex)",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              {formatCurrency(plan.monthlyInstalment)}
-            </span>
-          </div>
+        <DashedDivider />
 
-          {/* Tenure */}
-          <div className="flex flex-col items-end gap-0.5 text-right">
-            <span
-              className="text-[9px] font-semibold tracking-[0.12em] uppercase"
-              style={{ color: "oklch(1 0 0 / 0.50)" }}
-            >
-              Tenure
-            </span>
-            <span
-              className="text-lg font-extrabold tabular-nums leading-none"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: "#ffffff",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
-            </span>
-          </div>
+        {/* Key-value breakdown */}
+        <div className="flex flex-col gap-3">
+          <ReceiptRow label="Plan" value={plan.planTitle} />
+          <ReceiptRow
+            label="Loan term"
+            value={`${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}`}
+          />
+          <ReceiptRow label="Monthly rate" value={`${formatRate(plan.monthlyRate)}/month`} />
+          <ReceiptRow
+            label="Total amount you'll pay"
+            value={formatCurrency(plan.totalRepayment)}
+          />
+          {plan.additionalRequests.length > 0 && (
+            <ReceiptRow
+              label="Additional requests"
+              value={plan.additionalRequests.join(", ")}
+            />
+          )}
+          <ReceiptRow
+            label="Monthly payment (fixed)"
+            value={formatCurrency(plan.monthlyInstalment)}
+            emphasize
+          />
         </div>
 
-        {/* Rate / total caption */}
-        <p
-          className="text-[10px] -mt-2"
-          style={{ color: "oklch(1 0 0 / 0.35)" }}
-        >
-          {formatRate(plan.monthlyRate)}/month · Total repayment{" "}
-          {formatCurrency(plan.totalRepayment)}
-        </p>
+        <DashedDivider />
 
-        {plan.additionalRequests.length > 0 && (
-          <div
-            className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] px-3.5 py-3 -mt-1"
-            style={{ background: "oklch(1 0 0 / 0.07)" }}
+        {/* Next steps */}
+        <div className="flex flex-col gap-1.5">
+          <span
+            className="text-[11px] font-bold tracking-[0.12em] uppercase"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <span
-              className="text-[9px] font-bold tracking-[0.14em] uppercase"
-              style={{ color: "oklch(1 0 0 / 0.50)" }}
-            >
-              Additional requests
-            </span>
-            <ul className="flex flex-col gap-1">
-              {plan.additionalRequests.map((label) => (
-                <li
-                  key={label}
-                  className="flex items-center gap-1.5 text-[12px] font-semibold"
-                  style={{ color: "oklch(1 0 0 / 0.88)" }}
-                >
-                  <CheckCircle
-                    size={13}
-                    weight="fill"
-                    className="shrink-0"
-                    style={{ color: "var(--brand-teal-hex)" }}
-                  />
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+            Next steps
+          </span>
+          <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            Complete the acknowledgements and signature below, then book an
+            appointment to collect your funds in person.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -378,15 +392,15 @@ function AgreeCheckbox({
         onClick={onToggle}
         className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all duration-150"
         style={{
-          border: checked ? "2px solid #06DEC0" : "2px solid var(--border-medium)",
-          background: checked ? "#06DEC0" : "transparent",
+          border: checked ? "2px solid #16a34a" : "2px solid var(--border-medium)",
+          background: checked ? "#16a34a" : "transparent",
         }}
       >
         {checked && (
           <svg width="11" height="8" viewBox="0 0 11 8" fill="none" aria-hidden="true">
             <path
               d="M1 4L4 7L10 1"
-              stroke="#0a1628"
+              stroke="#ffffff"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -405,9 +419,12 @@ function AgreeCheckbox({
 
 interface AcceptViewProps {
   plan: SelectedPlanData;
+  leadId: string;
+  /** ISO timestamp captured server-side so SSR and hydration render identical text. */
+  acceptedAt: string;
 }
 
-export function AcceptView({ plan }: AcceptViewProps) {
+export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const router = useRouter();
   const [checks, setChecks] = useState({
     readTerms: false,
@@ -423,16 +440,19 @@ export function AcceptView({ plan }: AcceptViewProps) {
   }
 
   return (
-    <div className="approval-theme flex flex-col lg:flex-row min-h-dvh">
+    <div className="theme-fresh approval-theme flex flex-col lg:flex-row min-h-dvh bg-[var(--surface-primary)]">
       {/* Sidebar */}
-      <aside className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden bg-brand-blue p-12 xl:p-16">
+      <aside
+        className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
+        style={{ background: "var(--hero-blue-hex)" }}
+      >
         <div className="relative z-10">
           <div className="mb-16">
             <Image
-              src="/images/cf-money-white.png"
-              alt="CF Money"
-              width={160}
-              height={48}
+              src="/images/crawfort-white.png"
+              alt="Crawfort"
+              width={151}
+              height={20}
               className="h-6 w-auto"
               priority
             />
@@ -453,30 +473,8 @@ export function AcceptView({ plan }: AcceptViewProps) {
 
         <div className="flex flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
           <div className="w-full max-w-[520px] flex flex-col gap-5">
-            {/* Page heading */}
-            <div className="flex flex-col gap-1.5">
-              <h2
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  fontSize: "clamp(1.35rem, 4.5vw, 1.75rem)",
-                  fontWeight: 800,
-                  letterSpacing: "-0.04em",
-                  lineHeight: 1.1,
-                  color: "var(--text-primary)",
-                }}
-              >
-                Review &amp; accept your loan
-              </h2>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Confirm your plan details and agree to the terms below.
-              </p>
-            </div>
-
-            {/* Plan summary card */}
-            <PlanSummaryCard plan={plan} />
+            {/* Plan summary card - carries the page's heading and subtitle */}
+            <PlanSummaryCard plan={plan} leadId={leadId} acceptedAt={acceptedAt} />
 
             {/* Terms */}
             <TermsSection />
@@ -512,7 +510,7 @@ export function AcceptView({ plan }: AcceptViewProps) {
               type="button"
               disabled={!canProceed}
               onClick={() => router.push("/apply/book")}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-blue text-sm font-bold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
             >
               Next: Get your funds
               <ArrowRight size={16} weight="bold" />

@@ -65,11 +65,14 @@ export function BookingView({ formData }: Props) {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-dvh">
-      <aside className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden bg-brand-blue p-12 xl:p-16">
+    <div className="theme-fresh flex flex-col lg:flex-row min-h-dvh bg-[var(--surface-primary)]">
+      <aside
+        className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
+        style={{ background: "var(--hero-blue-hex)" }}
+      >
         <div className="relative z-10">
           <div className="mb-16">
-            <Image src="/images/cf-money-white.png" alt="CF Money" width={160} height={48} className="h-6 w-auto" priority />
+            <Image src="/images/crawfort-white.png" alt="Crawfort" width={151} height={20} className="h-6 w-auto" priority />
           </div>
           <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             Book your appointment

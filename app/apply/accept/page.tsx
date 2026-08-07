@@ -104,5 +104,9 @@ export default async function AcceptPage() {
     additionalRequests,
   };
 
-  return <AcceptView plan={plan} />;
+  // Computed server-side (rather than `new Date()` in the client component)
+  // so the SSR and hydration passes render the exact same timestamp.
+  const acceptedAt = new Date().toISOString();
+
+  return <AcceptView plan={plan} leadId={leadId} acceptedAt={acceptedAt} />;
 }

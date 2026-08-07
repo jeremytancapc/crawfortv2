@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { RejectedResult } from "./rejected-result";
 import { SidebarTrustFeatures } from "../sidebar-trust-features";
+import { MobileHeader } from "../mobile-header";
 
 export const metadata = {
   title: "Application Rejected",
@@ -8,15 +9,18 @@ export const metadata = {
 
 export default function RejectedPage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col lg:flex-row">
-      <aside className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden bg-brand-blue p-12 xl:p-16">
+    <div className="theme-fresh flex min-h-[100dvh] flex-col lg:flex-row bg-[var(--surface-primary)]">
+      <aside
+        className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
+        style={{ background: "var(--hero-blue-hex)" }}
+      >
         <div className="relative z-10">
           <div className="mb-16">
             <Image
-              src="/images/cf-money-white.png"
-              alt="CF Money"
-              width={160}
-              height={48}
+              src="/images/crawfort-white.png"
+              alt="Crawfort"
+              width={151}
+              height={20}
               className="h-6 w-auto"
               priority
             />
@@ -51,18 +55,7 @@ export default function RejectedPage() {
       </aside>
 
       <main className="flex flex-1 flex-col">
-        <div className="flex items-center px-6 pb-4 pt-8 lg:hidden">
-          <a href="/">
-            <Image
-              src="/images/cf-money-full-color.png"
-              alt="CF Money"
-              width={120}
-              height={36}
-              className="h-4 w-auto"
-              priority
-            />
-          </a>
-        </div>
+        <MobileHeader />
 
         <div className="flex flex-1 flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 sm:pt-6 sm:pb-8 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
           <div className="w-full max-w-[520px]">
@@ -70,12 +63,12 @@ export default function RejectedPage() {
           </div>
         </div>
 
-        <footer className="lg:hidden bg-brand-blue px-5 pb-10 pt-12 text-[var(--text-on-brand)]">
+        <footer className="lg:hidden px-5 pb-10 pt-12 text-[var(--text-on-brand)]" style={{ background: "var(--hero-blue-hex)" }}>
           <Image
-            src="/images/cf-money-white.png"
-            alt="CF Money"
-            width={160}
-            height={48}
+            src="/images/crawfort-white.png"
+            alt="Crawfort"
+            width={151}
+            height={20}
             className="mb-4 h-5 w-auto"
           />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium">

@@ -1,4 +1,4 @@
-import { Quicksand, Manrope, Inter_Tight } from "next/font/google";
+import { Quicksand, Manrope, Inter_Tight, Inter } from "next/font/google";
 
 export const quicksand = Quicksand({
   subsets: ["latin"],
@@ -19,4 +19,11 @@ export const interTight = Inter_Tight({
   display: "swap",
   variable: "--font-inter-tight",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+export const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
 });

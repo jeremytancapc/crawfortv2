@@ -3,14 +3,15 @@
 import Image from "next/image";
 
 /**
- * Sticky mobile header - static brand-blue at all scroll positions.
- * Hidden on lg+ (desktop uses the sidebar logo instead).
+ * Sticky mobile header - static hero-blue at all scroll positions, matching
+ * the home page's theme-fresh chrome. Hidden on lg+ (desktop uses the
+ * sidebar logo instead).
  */
 export function MobileHeader() {
   return (
     <div
       className="sticky top-0 z-50 flex items-center px-6 py-4 lg:hidden"
-      style={{ background: "var(--brand-blue-hex)" }}
+      style={{ background: "var(--hero-blue-hex, #2E4FE8)" }}
     >
       <a href="/">
         <Image
