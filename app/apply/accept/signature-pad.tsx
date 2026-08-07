@@ -239,11 +239,11 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
             ? {
                 boxShadow: [
                   "0 0 0 1px var(--border-subtle)",
-                  "0 0 0 2px var(--brand-teal-hex), 0 0 24px oklch(0.78 0.16 178 / 0.35)",
-                  "0 0 0 1.5px var(--brand-teal-hex)",
+                  "0 0 0 2px #16a34a, 0 0 24px oklch(0.7 0.17 145 / 0.35)",
+                  "0 0 0 1.5px #16a34a",
                 ],
               }
-            : { boxShadow: isSigned ? "0 0 0 1.5px var(--brand-teal-hex)" : "0 0 0 1px var(--border-subtle)" }
+            : { boxShadow: isSigned ? "0 0 0 1.5px #16a34a" : "0 0 0 1px var(--border-subtle)" }
         }
         transition={{ duration: SIGNING_CEREMONY_MS / 1000, ease: "easeOut" }}
       >
@@ -393,8 +393,8 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
                 disabled={isEmpty || isSigning}
                 className="rounded-[var(--radius-sm)] px-3.5 py-1.5 text-[11px] font-bold tracking-wide transition-all duration-150 disabled:opacity-30"
                 style={{
-                  background: "var(--brand-teal-hex)",
-                  color: "#0a1628",
+                  background: "var(--brand-blue-hex)",
+                  color: "#ffffff",
                 }}
               >
                 {isSigning ? "Signing…" : "Confirm signature"}

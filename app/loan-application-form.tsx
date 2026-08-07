@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   CheckCircle,
   ShieldCheck,
-  Info,
   CurrencyDollar,
   User,
   Briefcase,
@@ -47,8 +46,8 @@ const MAX_LOAN_TENURE_MONTHS = 18;
 const TENURE_OPTIONS = [1, 3, 6, 9, 12, 18];
 
 const URGENCY_OPTIONS = [
-  { value: "today", label: "Today", emoji: "⚡" },
-  { value: "this_week", label: "This Week", emoji: "📅" },
+  { value: "today", label: "Within 24 hours", emoji: "⚡" },
+  { value: "this_week", label: "Within 7 days", emoji: "📅" },
   { value: "not_sure", label: "Flexible", emoji: "🔄" },
 ] as const;
 
@@ -185,6 +184,32 @@ function StepHeader({
         {subtitle}
       </p>
     </div>
+  );
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setOpen(false)}
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--border-medium)] text-[9px] font-bold leading-none text-[var(--text-tertiary)] focus:outline-none"
+        aria-label="More information"
+      >
+        i
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-1/2 top-full z-30 mt-2 w-56 -translate-x-1/2 rounded-[var(--radius-sm)] bg-gray-900 p-2.5 text-[11px] leading-snug text-white shadow-xl"
+        >
+          {text}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -410,42 +435,61 @@ export function Step1_LoanDetails({
 
   return (
     <div>
-      <StepHeader
-        icon={CurrencyDollar}
-        title="How much do you need?"
-        subtitle="Your personalised limit is confirmed on the next step."
-      />
+      <div className="hidden lg:block">
+        <StepHeader
+          icon={CurrencyDollar}
+          title="How much do you need?"
+          subtitle="Your personalised limit is confirmed on the next step."
+        />
+      </div>
 
-      <div className="flex flex-col gap-5 sm:gap-6">
+      <div className="flex flex-col gap-7 sm:gap-8">
         <div>
-          <div className="mb-1 flex justify-between items-center">
-            <label className="text-sm font-medium text-[var(--text-primary)]">Loan Amount</label>
-            <div
-              className="flex items-baseline gap-0.5 border-b-2 pb-0.5 transition-colors duration-150"
-              style={{ borderColor: amountFocused ? "var(--brand-blue-hex)" : "var(--border-medium)" }}
+          <div className="flex items-center justify-between">
+            <label className="text-base font-medium text-[var(--text-secondary)]">
+              Loan Amount
+            </label>
+            <label
+              className="flex cursor-pointer items-center gap-1.5"
+              htmlFor="loan-amount-input"
             >
-              <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-brand-blue">$</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountFocused ? amountRaw : `${formData.amount.toLocaleString("en-SG")}${formData.amount >= 20000 ? "+" : ""}`}
-                onFocus={() => { setAmountFocused(true); setAmountRaw(String(formData.amount)); }}
-                onBlur={handleAmountBlur}
-                onChange={handleAmountChange}
-                className="min-w-0 border-0 bg-transparent text-right font-display text-xl sm:text-2xl font-bold tracking-tight text-brand-blue tabular-nums outline-none"
-                style={{ width: `${Math.max(amountFocused ? amountRaw.length : formData.amount.toLocaleString("en-SG").length, 3)}ch` }}
-                aria-label="Loan amount"
+              <div
+                className="flex items-center gap-0.5 transition-[box-shadow] duration-150"
+                style={{
+                  boxShadow: amountFocused
+                    ? "0 2px 0 0 var(--brand-blue-hex)"
+                    : "0 2px 0 0 transparent",
+                }}
+              >
+                <span className="text-base font-semibold leading-none text-brand-blue">$</span>
+                <input
+                  id="loan-amount-input"
+                  type="text"
+                  inputMode="numeric"
+                  value={amountFocused ? amountRaw : `${formData.amount.toLocaleString("en-SG")}${formData.amount >= 20000 ? "+" : ""}`}
+                  onFocus={() => { setAmountFocused(true); setAmountRaw(String(formData.amount)); }}
+                  onBlur={handleAmountBlur}
+                  onChange={handleAmountChange}
+                  className="min-w-0 border-0 bg-transparent text-right text-base font-semibold leading-none text-brand-blue tabular-nums outline-none"
+                  style={{ width: `${Math.max(amountFocused ? amountRaw.length : formData.amount.toLocaleString("en-SG").length, 3)}ch` }}
+                  aria-label="Loan amount"
+                />
+              </div>
+              <PencilSimple
+                size={16}
+                weight="bold"
+                className="shrink-0 text-brand-blue"
+                aria-hidden
               />
-            </div>
+            </label>
           </div>
-          <div className="relative">
-            <div
-              className="absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full"
-              style={{
-                width: `${sliderPercentage}%`,
-                background: "var(--brand-blue-hex)",
-              }}
-            />
+          <div
+            className="fresh-slider-wrap mt-4"
+            style={{ ["--slider-pct" as string]: `${sliderPercentage}%` }}
+          >
+            <div className="fresh-slider-track" aria-hidden="true">
+              <div className="fresh-slider-fill" />
+            </div>
             <input
               type="range"
               min={500}
@@ -457,49 +501,57 @@ export function Step1_LoanDetails({
                 updateField("amount", val);
                 setAmountRaw(String(val));
               }}
-              className="relative z-10 w-full cursor-pointer"
+              className="fresh-slider w-full cursor-pointer"
             />
           </div>
-          <div className="mt-2 flex justify-between text-xs text-[var(--text-primary)]">
+          <div className="mt-2 flex justify-between text-xs text-[var(--text-tertiary)]">
             <span>$500</span>
             <span>$20,000+</span>
           </div>
         </div>
 
         <div>
-          <div className="mb-1 flex items-end justify-between">
-            <label className="text-sm font-medium text-[var(--text-primary)]">
+          <div className="flex items-center justify-between">
+            <label className="text-base font-medium text-[var(--text-secondary)]">
               Loan Tenure
             </label>
-            <div
-              className="flex items-baseline gap-1.5 border-b-2 pb-0.5 transition-colors duration-150"
-              style={{ borderColor: tenureFocused ? "var(--brand-blue-hex)" : "var(--border-medium)" }}
-            >
-              <input
-                type="text"
-                inputMode="numeric"
-                value={tenureFocused ? tenureRaw : String(Math.min(formData.tenure, MAX_LOAN_TENURE_MONTHS))}
-                onFocus={() => { setTenureFocused(true); setTenureRaw(String(formData.tenure)); }}
-                onBlur={handleTenureBlur}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^0-9]/g, "");
-                  setTenureRaw(raw);
+            <div className="flex items-center gap-1.5">
+              <div
+                className="flex items-center gap-1 transition-[box-shadow] duration-150"
+                style={{
+                  boxShadow: tenureFocused
+                    ? "0 2px 0 0 var(--brand-blue-hex)"
+                    : "0 2px 0 0 transparent",
                 }}
-                className="min-w-0 border-0 bg-transparent text-right font-display text-xl sm:text-2xl font-bold tracking-tight text-brand-blue tabular-nums outline-none"
-                style={{ width: `${Math.max((tenureFocused ? tenureRaw : String(formData.tenure)).length, 2)}ch` }}
-                aria-label="Loan tenure in months"
-              />
-              <span className="text-base sm:text-lg font-semibold text-brand-blue">months*</span>
+              >
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={tenureFocused ? tenureRaw : String(Math.min(formData.tenure, MAX_LOAN_TENURE_MONTHS))}
+                  onFocus={() => { setTenureFocused(true); setTenureRaw(String(formData.tenure)); }}
+                  onBlur={handleTenureBlur}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    setTenureRaw(raw);
+                  }}
+                  className="min-w-0 border-0 bg-transparent text-right text-base font-semibold leading-none text-brand-blue tabular-nums outline-none"
+                  style={{ width: `${Math.max((tenureFocused ? tenureRaw : String(formData.tenure)).length, 2)}ch` }}
+                  aria-label="Loan tenure in months"
+                />
+                <span className="text-base font-semibold leading-none text-brand-blue">months</span>
+              </div>
+              <InfoTooltip text="Longer terms subject to good credit standing." />
             </div>
           </div>
-          <div className="relative">
-            <div
-              className="absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full"
-              style={{
-                width: `${((Math.min(formData.tenure, MAX_LOAN_TENURE_MONTHS) - 1) / (MAX_LOAN_TENURE_MONTHS - 1)) * 100}%`,
-                background: "var(--brand-blue-hex)",
-              }}
-            />
+          <div
+            className="fresh-slider-wrap mt-4"
+            style={{
+              ["--slider-pct" as string]: `${((Math.min(formData.tenure, MAX_LOAN_TENURE_MONTHS) - 1) / (MAX_LOAN_TENURE_MONTHS - 1)) * 100}%`,
+            }}
+          >
+            <div className="fresh-slider-track" aria-hidden="true">
+              <div className="fresh-slider-fill" />
+            </div>
             <input
               type="range"
               min={1}
@@ -511,47 +563,34 @@ export function Step1_LoanDetails({
                 updateField("tenure", val);
                 setTenureRaw(String(val));
               }}
-              className="relative z-10 w-full cursor-pointer"
+              className="fresh-slider w-full cursor-pointer"
             />
           </div>
-          <div className="mt-2 flex justify-between text-xs text-[var(--text-primary)]">
+          <div className="mt-2 flex justify-between text-xs text-[var(--text-tertiary)]">
             <span>1 month</span>
             <span>18 months</span>
           </div>
-          <p className="mt-1.5 text-right text-xs text-[var(--text-tertiary)]">
-            *Longer terms subject to good credit standing
-          </p>
         </div>
 
-        <div
-          className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] flex flex-col overflow-hidden"
-          style={{ boxShadow: "3px 3px 0px 0px var(--brand-blue-hex)" }}
-        >
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-primary)]">
-              Monthly repayment
-            </span>
-            <div className="flex items-baseline gap-0.5 shrink-0">
-              <span className="font-display text-xl font-bold tracking-tight text-brand-blue tabular-nums">
-                {formatCurrency(monthlyRepayment)}
-              </span>
-              <span className="text-xs text-[var(--text-tertiary)]">/mo</span>
-            </div>
+        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-[var(--text-secondary)]">Monthly repayment</span>
+            <InfoTooltip text={MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER} />
           </div>
-          <div className="border-t border-[var(--border-subtle)] flex items-start gap-2 px-4 py-2.5">
-            <Info size={13} weight="duotone" className="mt-px shrink-0 text-[var(--text-tertiary)]" />
-            <p className="text-[11px] leading-snug text-[var(--text-tertiary)]">
-              {MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER}
-            </p>
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-lg font-semibold tracking-tight text-brand-blue tabular-nums">
+              {formatCurrency(monthlyRepayment)}
+            </span>
+            <span className="text-xs text-[var(--text-tertiary)]">/mo</span>
           </div>
         </div>
 
         <div>
-          <label className="mb-3 block text-sm font-medium text-[var(--text-primary)]">
+          <label className="mb-3 block text-sm font-medium text-[var(--text-secondary)]">
             When do you need the funds?
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {URGENCY_OPTIONS.map(({ value, label, emoji }) => {
+            {URGENCY_OPTIONS.map(({ value, label }) => {
               const isSelected = formData.urgency === value;
               return (
                 <button
@@ -561,27 +600,20 @@ export function Step1_LoanDetails({
                     updateField("urgency", value);
                     onUrgencySelect?.();
                   }}
-                  className="flex flex-col items-center gap-1.5 rounded-[var(--radius-md)] border py-2.5 sm:py-4 transition-all duration-200 active:scale-[0.96]"
+                  className="flex items-center justify-center rounded-[var(--radius-md)] border px-1.5 py-3 text-center text-xs font-medium leading-snug transition-all duration-200 active:scale-[0.97] sm:text-sm"
                   style={{
                     borderColor: isSelected
                       ? "var(--brand-blue-hex)"
                       : "var(--border-subtle)",
                     background: isSelected
                       ? "var(--brand-blue-hex)"
-                      : "transparent",
+                      : "var(--surface-elevated)",
+                    color: isSelected
+                      ? "var(--text-on-brand)"
+                      : "var(--text-secondary)",
                   }}
                 >
-                  <span className="text-[22px] leading-none" aria-hidden="true">{emoji}</span>
-                  <span
-                    className="text-xs font-medium"
-                    style={{
-                      color: isSelected
-                        ? "var(--text-on-brand)"
-                        : "var(--text-secondary)",
-                    }}
-                  >
-                    {label}
-                  </span>
+                  {label}
                 </button>
               );
             })}
@@ -614,11 +646,13 @@ export function Step2_SelfDeclaredIncome({
 
   return (
     <div>
-      <StepHeader
-        icon={Coins}
-        title="What is your monthly income?"
-        subtitle="This helps us confirm the loan is within your budget."
-      />
+      <div className="hidden lg:block">
+        <StepHeader
+          icon={Coins}
+          title="What is your monthly income?"
+          subtitle="This helps us confirm the loan is within your budget."
+        />
+      </div>
       <div className="flex flex-col gap-5">
         <InputField
           label="Estimated Gross Monthly Income"
@@ -722,14 +756,16 @@ export function Step3_SingpassGate({
 
   return (
     <div className="py-4 sm:py-6">
-      <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">
-        Get Approved Quicker ⚡
-      </h2>
-      <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-        Verify with Singpass for higher approval rates and faster processing.
-      </p>
+      <div className="hidden lg:block">
+        <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
+          Get Approved Quicker ⚡
+        </h2>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+          Verify with Singpass for higher approval rates and faster processing.
+        </p>
+      </div>
 
-      <ul className="mt-7 flex flex-col gap-3.5">
+      <ul className="mt-2 lg:mt-7 flex flex-col gap-3.5">
         {benefits.map((text) => (
           <li key={text} className="flex items-start gap-2.5">
             <CheckCircle
@@ -750,7 +786,7 @@ export function Step3_SingpassGate({
         aria-label="Retrieve Myinfo with Singpass"
       >
         {redirectPending ? (
-          <div className="flex h-12 w-[320px] items-center justify-center gap-2 rounded-[var(--radius-md)]" style={{ backgroundColor: "#F4333D" }}>
+          <div className="flex h-11 w-full max-w-[318px] items-center justify-center gap-2 rounded-[var(--radius-md)] sm:h-12" style={{ backgroundColor: "#F4333D" }}>
             <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
             <span className="text-sm font-medium text-white">Please wait…</span>
           </div>
@@ -758,9 +794,10 @@ export function Step3_SingpassGate({
           <Image
             src="/images/singpass-myinfo-red.png"
             alt="Retrieve Myinfo with Singpass"
-            width={320}
-            height={56}
-            className="h-12 w-auto rounded-[var(--radius-md)]"
+            width={1272}
+            height={192}
+            className="h-11 w-auto max-w-full object-contain sm:h-12"
+            sizes="(max-width: 520px) 100vw, 318px"
             priority
           />
         )}
@@ -771,7 +808,7 @@ export function Step3_SingpassGate({
           <div className="w-full border-t border-[var(--border-subtle)]" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-[var(--surface-primary)] px-3 text-xs font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
+          <span className="bg-[var(--surface-elevated)] px-3 text-xs font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
             or
           </span>
         </div>

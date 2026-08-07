@@ -560,6 +560,123 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
   font-weight: 700;
 }
 
+/* ─── Fresh theme - Inter/Inter Tight typography, bright blue hero + floating white card ─── */
+
+.theme-fresh {
+  --font-display: var(--font-inter-tight);
+  --hero-blue-hex: #2E4FE8;
+  --surface-primary: #F4F6FC;
+  --surface-canvas: #F4F6FC;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 400;
+}
+
+.theme-fresh h1,
+.theme-fresh h2,
+.theme-fresh h3,
+.theme-fresh h4,
+.theme-fresh h5,
+.theme-fresh h6 {
+  font-family: var(--font-inter-tight), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+/* Fresh theme slider — visual 4px track is absolutely centered; native track is
+   invisible and exactly thumb-height so WebKit places the thumb on the midline
+   with margin-top: 0 (no fragile offset math). */
+.fresh-slider-wrap {
+  --slider-pct: 0%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 24px;
+}
+
+.fresh-slider-wrap .fresh-slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--border-subtle);
+  pointer-events: none;
+}
+
+.fresh-slider-wrap .fresh-slider-fill {
+  height: 100%;
+  width: var(--slider-pct);
+  border-radius: 999px;
+  background: var(--brand-blue-hex);
+}
+
+input[type="range"].fresh-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  /* Must equal thumb height so margin-top: 0 keeps the thumb centered */
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+input[type="range"].fresh-slider::-webkit-slider-runnable-track {
+  height: 20px;
+  background: transparent;
+}
+
+input[type="range"].fresh-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  margin-top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--brand-blue-hex);
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px oklch(0.32 0.14 260 / 0.25);
+  transition: transform 0.15s ease-out;
+}
+
+input[type="range"].fresh-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+input[type="range"].fresh-slider::-webkit-slider-thumb:active {
+  transform: scale(0.92);
+}
+
+input[type="range"].fresh-slider::-moz-range-track {
+  height: 20px;
+  border: none;
+  background: transparent;
+}
+
+input[type="range"].fresh-slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--brand-blue-hex);
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px oklch(0.32 0.14 260 / 0.25);
+}
+
+/* Clean, noise-free surfaces for the fresh theme */
+body:has(.theme-fresh)::before {
+  display: none;
+}
+
 /* ─── Retail staff call-to-station alert ──────────────────────────────────── */
 
 @keyframes staff-alert-shake {

@@ -186,7 +186,7 @@ export function ReviewForm({ initialData }: Props) {
   const displayStep = history.length + 3; // offset: apply page was steps 1-3
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-dvh">
+    <div className="theme-fresh flex flex-col lg:flex-row min-h-dvh bg-[var(--surface-primary)]">
       {submitOverlay ? (
         <LoanLoadingScreen
           key={submitOverlay.key}
@@ -202,10 +202,13 @@ export function ReviewForm({ initialData }: Props) {
         />
       ) : null}
 
-      <aside className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden bg-brand-blue p-12 xl:p-16">
+      <aside
+        className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
+        style={{ background: "var(--hero-blue-hex)" }}
+      >
         <div className="relative z-10">
           <div className="mb-16">
-            <Image src="/images/cf-money-white.png" alt="CF Money" width={160} height={48} className="h-6 w-auto" priority />
+            <Image src="/images/crawfort-white.png" alt="Crawfort" width={151} height={20} className="h-6 w-auto" priority />
           </div>
           <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             Almost there…
@@ -278,7 +281,7 @@ export function ReviewForm({ initialData }: Props) {
                   type="button"
                   onClick={() => { void handleReviewConfirm(); }}
                   disabled={mounted && !canProceed}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
                 >
                   Yes, I confirm
                 </button>
@@ -287,7 +290,7 @@ export function ReviewForm({ initialData }: Props) {
                   type="button"
                   onClick={submitApplication}
                   disabled={(mounted && !canProceed) || !!submitOverlay}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
                 >
                   {submitOverlay ? "Submitting…" : "Submit Application"}
                 </button>
