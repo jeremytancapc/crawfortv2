@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { MobileHeader } from "@/app/mobile-header";
+import { MobileLegalFooter } from "@/app/mobile-legal-footer";
 import {
   Step4_Identity,
   Step6_Contact,
@@ -24,6 +25,29 @@ interface Props {
 
 // Internal step numbers (same as original form)
 // 4=Identity, 5=Contact, 6=Additional, 7=Bankruptcy (final step), 8=Review
+
+const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
+  4: {
+    title: "Tell us about yourself",
+    subtitle: "We need this to verify your identity and eligibility.",
+  },
+  5: {
+    title: "How can we reach you?",
+    subtitle: "We'll contact you regarding your loan status and details.",
+  },
+  6: {
+    title: "A few more details",
+    subtitle: "Almost done. This helps us finalise your application.",
+  },
+  7: {
+    title: "A Quick Check",
+    subtitle: "Help us confirm your financial standing to move forward.",
+  },
+  8: {
+    title: "Review your application",
+    subtitle: "Please confirm everything is correct before submitting.",
+  },
+};
 
 export function ReviewForm({ initialData }: Props) {
   const router = useRouter();
@@ -184,6 +208,7 @@ export function ReviewForm({ initialData }: Props) {
   const singpassFlow = formData.authMethod === "singpass";
   const totalDisplay = singpassFlow ? 6 : 7;
   const displayStep = history.length + 3; // offset: apply page was steps 1-3
+  const stepMeta = REVIEW_STEP_META[step];
 
   return (
     <div className="theme-fresh flex flex-col lg:flex-row min-h-dvh bg-[var(--surface-primary)]">
@@ -209,7 +234,7 @@ export function ReviewForm({ initialData }: Props) {
           <div className="mb-16">
             <Image src="/images/crawfort-white.png" alt="Crawfort" width={151} height={20} className="h-6 w-auto" priority />
           </div>
-          <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             Almost there…
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
@@ -221,91 +246,143 @@ export function ReviewForm({ initialData }: Props) {
       <main className="flex flex-col flex-1 overflow-x-clip">
         <MobileHeader />
 
-        <div className="flex flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
-          <div className="w-full max-w-[520px]">
-            <StepIndicator current={displayStep} total={totalDisplay} />
+        {/* Match home gate: full-bleed blue hero on mobile + floating white card.
+            Outer wrapper drops horizontal padding on mobile so the hero can bleed. */}
+        <div className="flex flex-col items-center justify-start pb-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
+          <div className="flex w-full min-h-[max(42.5rem,calc(100svh-3.25rem))] flex-col lg:min-h-0 lg:max-w-[520px]">
+            {/* Mobile/tablet blue hero band */}
+            <div className="relative w-full lg:hidden">
+              <div
+                aria-hidden
+                className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
+              />
+              <div className="relative mx-auto w-full max-w-[520px] px-5 pt-5 pb-16 sm:px-8">
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: totalDisplay }, (_, i) => {
+                    const s = i + 1;
+                    const filled = s <= displayStep;
+                    const active = s === displayStep;
+                    return (
+                      <span
+                        key={s}
+                        className="h-1 rounded-full transition-all duration-300"
+                        style={{
+                          width: active ? 22 : 8,
+                          background: filled ? "#fff" : "rgba(255,255,255,0.3)",
+                        }}
+                      />
+                    );
+                  })}
+                  <span className="ml-auto text-xs font-medium text-white/70 tabular-nums">
+                    {displayStep} / {totalDisplay}
+                  </span>
+                </div>
 
-            <div key={step} className="animate-slide-in">
-              {step === 4 && (
-                <Step4_Identity formData={formData} updateField={updateField} />
-              )}
-              {step === 5 && (
-                <Step6_Contact formData={formData} updateField={updateField} />
-              )}
-              {step === 6 && (
-                <Step7_Additional formData={formData} updateField={updateField} />
-              )}
-              {step === 7 && (
-                <Step7_BankruptcyDeclaration
-                  formData={formData}
-                  updateField={updateField}
-                  onClear={scrollToBottomCta}
-                />
-              )}
-              {step === 8 && (
-                <Step8_Review
-                  formData={formData}
-                  updateField={updateField}
-                  monthlyRepayment={monthlyRepayment}
-                  onModalOpenChange={setIsLegalModalOpen}
-                />
-              )}
+                {stepMeta && (
+                  <div className="mt-6">
+                    <h2 className="font-display text-[26px] font-semibold leading-tight tracking-tight text-white">
+                      {stepMeta.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-white/75 max-w-[36ch]">
+                      {stepMeta.subtitle}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Floating scroll-to-CTA for review step */}
-            {step === 8 && !isBottomCtaVisible && !isLegalModalOpen && (
-              <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2.5rem)] max-w-sm">
-                <button
-                  type="button"
-                  onClick={scrollToBottomCta}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] shadow-lg shadow-brand-blue/30"
-                >
-                  Continue
-                </button>
+            {/* Floating white card — overlaps hero on mobile */}
+            <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col px-5 sm:px-8 lg:px-0">
+              <div className="-mt-10 lg:mt-0 rounded-[28px] bg-[var(--surface-elevated)] p-5 sm:p-7 lg:p-8 shadow-[0_20px_40px_-24px_rgba(20,30,70,0.25),0_2px_10px_-2px_rgba(20,30,70,0.08)] lg:shadow-[0_1px_3px_rgba(16,24,64,0.06)] lg:border lg:border-[var(--border-subtle)]">
+                <div className="hidden lg:block">
+                  <StepIndicator current={displayStep} total={totalDisplay} />
+                </div>
+
+                <div key={step} className="animate-slide-in">
+                  {step === 4 && (
+                    <Step4_Identity formData={formData} updateField={updateField} />
+                  )}
+                  {step === 5 && (
+                    <Step6_Contact formData={formData} updateField={updateField} />
+                  )}
+                  {step === 6 && (
+                    <Step7_Additional formData={formData} updateField={updateField} />
+                  )}
+                  {step === 7 && (
+                    <Step7_BankruptcyDeclaration
+                      formData={formData}
+                      updateField={updateField}
+                      onClear={scrollToBottomCta}
+                    />
+                  )}
+                  {step === 8 && (
+                    <Step8_Review
+                      formData={formData}
+                      updateField={updateField}
+                      monthlyRepayment={monthlyRepayment}
+                      onModalOpenChange={setIsLegalModalOpen}
+                    />
+                  )}
+                </div>
+
+                {/* Floating scroll-to-CTA for review step */}
+                {step === 8 && !isBottomCtaVisible && !isLegalModalOpen && (
+                  <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2.5rem)] max-w-sm">
+                    <button
+                      type="button"
+                      onClick={scrollToBottomCta}
+                      className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] shadow-lg shadow-brand-blue/30"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                )}
+
+                {/* CTA buttons */}
+                <div ref={bottomCtaRef} className="mt-8 flex items-center gap-3 relative z-20">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="flex h-14 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-6 text-sm font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] active:scale-[0.98]"
+                  >
+                    Back
+                  </button>
+
+                  {step === 8 ? (
+                    <button
+                      type="button"
+                      onClick={() => { void handleReviewConfirm(); }}
+                      disabled={mounted && !canProceed}
+                      className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      Yes, I confirm
+                    </button>
+                  ) : step === 7 ? (
+                    <button
+                      type="button"
+                      onClick={submitApplication}
+                      disabled={(mounted && !canProceed) || !!submitOverlay}
+                      className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      {submitOverlay ? "Submitting…" : "Submit Application"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      disabled={mounted && !canProceed}
+                      className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      Continue
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-
-            {/* CTA buttons */}
-            <div ref={bottomCtaRef} className="mt-10 sm:mt-8 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="flex h-12 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-5 text-sm font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] active:scale-[0.98]"
-              >
-                Back
-              </button>
-
-              {step === 8 ? (
-                <button
-                  type="button"
-                  onClick={() => { void handleReviewConfirm(); }}
-                  disabled={mounted && !canProceed}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  Yes, I confirm
-                </button>
-              ) : step === 7 ? (
-                <button
-                  type="button"
-                  onClick={submitApplication}
-                  disabled={(mounted && !canProceed) || !!submitOverlay}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  {submitOverlay ? "Submitting…" : "Submit Application"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={mounted && !canProceed}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  Continue
-                </button>
-              )}
             </div>
           </div>
         </div>
+
+        <MobileLegalFooter />
       </main>
     </div>
   );

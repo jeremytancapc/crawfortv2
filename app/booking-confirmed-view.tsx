@@ -318,7 +318,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
           </span>
         </div>
         <div>
-          <p className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
+          <p className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
             {formatDisplayDate(booking.date)}
           </p>
           <p className="mt-1 text-lg font-semibold text-brand-blue">
@@ -343,7 +343,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
       <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-4 text-left">
         <p className="text-xs text-[var(--text-tertiary)]">Application reference</p>
         <div className="mt-0.5 flex items-center gap-2.5">
-          <p className="font-display text-lg font-bold tracking-tight text-[var(--text-primary)]">
+          <p className="font-display text-lg font-semibold tracking-tight text-[var(--text-primary)]">
             {booking.cfh5Id}
           </p>
           <button
@@ -375,7 +375,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
 
         <div className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]">
+            <h3 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">
               Our office
             </h3>
             <a

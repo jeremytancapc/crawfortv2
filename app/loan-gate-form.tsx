@@ -184,7 +184,10 @@ export function LoanGateForm({
   const stepMeta = GATE_STEP_META[step];
 
   return (
-    <div>
+    /* On mobile, keep every gate step as tall as step 1 (~680px form) so the
+       legal footer stays below the fold instead of climbing up under short
+       steps (income / Singpass). Desktop is unaffected (sidebar layout). */
+    <div className="flex min-h-[max(42.5rem,calc(100svh-3.25rem))] flex-col lg:min-h-0">
       {/* Full-bleed blue hero band on mobile/tablet.
           Absolute w-screen layer guarantees edge-to-edge even if a parent
           ever re-constrains width; content stays in a centered 520px column. */}
@@ -228,8 +231,10 @@ export function LoanGateForm({
         </div>
       </div>
 
-      {/* Floating white card - overlaps the band on mobile, plain card on desktop */}
-      <div className="relative z-10 mx-auto w-full max-w-[520px] px-5 sm:px-8 lg:px-0">
+      {/* Floating white card - overlaps the band on mobile, plain card on desktop.
+          flex-1 absorbs leftover min-height below the card so short steps keep
+          the same page rhythm as step 1 without stretching the card itself. */}
+      <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col px-5 sm:px-8 lg:px-0">
         <div className="-mt-10 lg:mt-0 rounded-[28px] bg-[var(--surface-elevated)] p-5 sm:p-7 lg:p-8 shadow-[0_20px_40px_-24px_rgba(20,30,70,0.25),0_2px_10px_-2px_rgba(20,30,70,0.08)] lg:shadow-[0_1px_3px_rgba(16,24,64,0.06)] lg:border lg:border-[var(--border-subtle)]">
           <div key={step} className="animate-slide-in">
             {step === 1 && (
@@ -276,7 +281,7 @@ export function LoanGateForm({
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="flex h-14 items-center gap-2 rounded-full border border-[var(--border-subtle)] px-6 text-sm font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] active:scale-[0.98]"
+                  className="flex h-14 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-6 text-sm font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] active:scale-[0.98]"
                 >
                   <ArrowLeft size={16} weight="bold" />
                   Back
@@ -286,7 +291,7 @@ export function LoanGateForm({
                 type="button"
                 onClick={handleNext}
                 disabled={mounted && !canProceed}
-                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
                 Continue
                 <ArrowRight size={16} weight="bold" />

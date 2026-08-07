@@ -601,7 +601,7 @@ function OfferHeader({
           </div>
           <div className="shrink-0 text-right leading-none">
             <div
-              className="tabular-nums text-[1.35rem] font-extrabold"
+              className="tabular-nums text-[1.35rem] font-semibold"
               style={{
                 fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
                 letterSpacing: "-0.03em",
@@ -659,8 +659,8 @@ function OfferHeader({
               style={{
                 fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
                 fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-                fontWeight: 800,
-                letterSpacing: "-0.04em",
+                fontWeight: 600,
+                letterSpacing: "-0.02em",
                 backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
@@ -692,8 +692,8 @@ function OfferHeader({
               style={{
                 fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
                 fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-                fontWeight: 800,
-                letterSpacing: "-0.04em",
+                fontWeight: 600,
+                letterSpacing: "-0.02em",
                 backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
@@ -722,7 +722,7 @@ function OfferHeader({
         </div>
 
         <span className="text-[12px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-          Instant disbursement{canAdjust ? " · edit or drag to adjust" : ""}
+          Instant disbursement
         </span>
       </div>
 
@@ -851,7 +851,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
             }}
           />
           <span
-            className="relative min-w-0 max-w-full truncate text-[15px] font-extrabold leading-snug text-white"
+            className="relative min-w-0 max-w-full truncate text-[15px] font-semibold leading-snug text-white"
             style={{
               fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
               letterSpacing: "-0.02em",
@@ -886,9 +886,9 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
                 className="tabular-nums text-[1.25rem] leading-none sm:text-[1.875rem]"
                 style={{
                   fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  fontWeight: 800,
+                  fontWeight: 600,
                   color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
-                  letterSpacing: "-0.03em",
+                  letterSpacing: "-0.02em",
                 }}
               >
                 {formatCurrency(plan.monthlyInstalment)}
@@ -927,7 +927,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
 
           {/* Pick-this-plan footer doubles as the selection indicator */}
           <span
-            className="mt-auto flex w-full shrink-0 items-center justify-center gap-1 rounded-full px-1 py-2 text-[10px] font-extrabold leading-none transition-all duration-200 sm:py-2.5 sm:text-[12px]"
+            className="mt-auto flex w-full shrink-0 items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-2 text-[10px] font-semibold leading-none transition-all duration-200 sm:py-2.5 sm:text-[12px]"
             style={{
               background: isSelected ? "var(--brand-teal-hex)" : "transparent",
               color: isSelected ? "#0a1628" : "var(--text-secondary)",
@@ -1283,10 +1283,7 @@ function ReconsiderModal({
               style={{ animation: "fade-up 0.35s cubic-bezier(0.16,1,0.3,1) both" }}
             >
               <span className="text-4xl">⚡</span>
-              <p
-                className="text-2xl font-black tracking-tight text-brand-blue"
-                style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.04em" }}
-              >
+              <p className="font-display text-2xl font-semibold tracking-tight text-brand-blue">
                 Final Chance!
               </p>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[320px]">
@@ -1417,22 +1414,19 @@ export function LoanResults({
     <>
       <div className="relative z-[1] flex flex-col gap-5">
 
-        {/* Heading */}
+        {/* Heading - hidden on mobile when not expired, since the parent page
+            shows the equivalent heading in its blue hero band instead. The
+            expiry warning always renders here (mobile included) since it's
+            dynamic and can't live in the static hero. */}
         <motion.div
-          className="flex flex-col gap-2"
+          className={isExpired ? "flex flex-col gap-2" : "hidden flex-col gap-2 lg:flex"}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: EASE }}
         >
           <h1
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              fontSize: "clamp(1.65rem, 5.5vw, 2.1rem)",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              lineHeight: 1.1,
-              color: isExpired ? "#7f1d1d" : "var(--text-primary)",
-            }}
+            className="font-display text-[26px] sm:text-3xl font-semibold leading-tight tracking-tight"
+            style={{ color: isExpired ? "#7f1d1d" : "var(--text-primary)" }}
           >
             {isExpired ? "Your offer has expired." : "Your loan offer is confirmed."}
           </h1>
@@ -1475,12 +1469,8 @@ export function LoanResults({
               />
               <div className="flex flex-col gap-1">
                 <h2
-                  className="text-[1.25rem] font-extrabold leading-tight tracking-tight"
-                  style={{
-                    fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                    letterSpacing: "-0.03em",
-                    color: "var(--text-primary)",
-                  }}
+                  className="font-display text-xl sm:text-2xl font-semibold leading-tight tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
                 >
                   Choose your repayment plan
                 </h2>
@@ -1535,7 +1525,7 @@ export function LoanResults({
             <a
               ref={ctaButtonRef as unknown as React.RefObject<HTMLAnchorElement>}
               href="/"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
             >
               Start a New Application
               <ArrowRight size={16} weight="bold" />
@@ -1547,7 +1537,7 @@ export function LoanResults({
                 type="button"
                 onClick={handleAccept}
                 disabled={hasNoSelection || isSavingPlan}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
                 {isSavingPlan ? "Saving plan…" : "Review Offer"}
                 {!isSavingPlan && <ArrowRight size={16} weight="bold" />}

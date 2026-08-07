@@ -33,7 +33,7 @@ export default async function ForeignerPage() {
             />
           </div>
 
-          <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             Get the funds you need, in 8 minutes
           </h1>
 
