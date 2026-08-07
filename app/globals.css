@@ -195,14 +195,34 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 2px 8px oklch(0.32 0.14 260 / 0.3);
 }
 
-/* Teal thumb for the approval page's withdraw-today amount slider, to match its accent color */
+/* Standard-looking withdraw-today slider: plain track + familiar white thumb */
+input[type="range"].withdraw-slider {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-medium);
+}
+
 input[type="range"].withdraw-slider::-webkit-slider-thumb {
-  background: var(--brand-teal-hex);
-  box-shadow: 0 2px 8px oklch(0.75 0.15 176 / 0.4);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--brand-teal-hex);
+  background: #fff;
+  box-shadow: 0 1px 3px oklch(0.3 0.02 260 / 0.18);
+  transition: none;
+}
+
+input[type="range"].withdraw-slider::-webkit-slider-thumb:hover,
+input[type="range"].withdraw-slider::-webkit-slider-thumb:active {
+  transform: none;
+  box-shadow: 0 1px 3px oklch(0.3 0.02 260 / 0.18);
 }
 
 input[type="range"].withdraw-slider::-moz-range-thumb {
-  background: var(--brand-teal-hex);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--brand-teal-hex);
+  background: #fff;
+  box-shadow: 0 1px 3px oklch(0.3 0.02 260 / 0.18);
 }
 
 @keyframes fade-up {
