@@ -191,8 +191,7 @@ export function LoanGateForm({
       <div className="lg:hidden relative w-full">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
-          style={{ background: "var(--hero-blue-hex)" }}
+          className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
         />
         <div className="relative mx-auto w-full max-w-[520px] px-5 pt-5 pb-16 sm:px-8">
           <div className="flex items-center gap-1.5">

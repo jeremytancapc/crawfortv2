@@ -36,8 +36,7 @@ export function PendingView({ pending }: Props) {
     <div className="theme-fresh flex flex-col lg:flex-row min-h-dvh bg-[var(--surface-primary)]">
       {/* Sidebar */}
       <aside
-        className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
-        style={{ background: "var(--hero-blue-hex)" }}
+        className="hero-chrome relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
       >
         <div className="relative z-10">
           <div className="mb-16">

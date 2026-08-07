@@ -19,7 +19,7 @@ function ApplyLandingLayout({
 }) {
   return (
     <div className="theme-fresh flex flex-col lg:flex-row min-h-[100dvh] bg-[var(--surface-primary)]">
-      <aside className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16" style={{ background: "var(--hero-blue-hex)" }}>
+      <aside className="hero-chrome relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16">
         <div className="relative z-10">
           <div className="mb-16">
             <Image
@@ -61,10 +61,7 @@ function ApplyLandingLayout({
       </aside>
 
       <main className="flex flex-col flex-1 overflow-x-clip">
-        <div
-          className="sticky top-0 z-50 flex items-center px-6 py-4 lg:hidden"
-          style={{ background: "var(--hero-blue-hex)" }}
-        >
+        <div className="hero-chrome sticky top-0 z-50 flex items-center px-6 py-4 lg:hidden">
           <a href="/">
             <Image
               src="/images/crawfort-white.png"
@@ -85,7 +82,7 @@ function ApplyLandingLayout({
           </div>
         </div>
 
-        <footer className="lg:hidden px-5 pb-10 pt-12 text-[var(--text-on-brand)]" style={{ background: "var(--hero-blue-hex)" }}>
+        <footer className="hero-chrome lg:hidden px-5 pb-10 pt-12 text-[var(--text-on-brand)]">
           <Image
             src="/images/crawfort-white.png"
             alt="Crawfort"
