@@ -50,7 +50,7 @@ export function ApprovalView({ formData }: Props) {
         <MobileHeader />
 
         <div className="flex flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
-          <div className="w-full max-w-[520px]">
+          <div className="w-full max-w-[520px] lg:max-w-[720px]">
             <LoanResults
               formData={displayData}
               creditLimit={maxCreditLimit}

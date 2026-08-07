@@ -118,6 +118,20 @@ function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`;
 }
 
+// ── Withdraw-today amount adjuster ────────────────────────────────────────────
+
+const MIN_WITHDRAW_AMOUNT = 500;
+const WITHDRAW_STEP = 100;
+
+/** Clamp a user-entered/dragged amount to [min(500, max), max], snapped to the nearest $100. */
+function clampWithdrawAmount(raw: number, max: number): number {
+  const safeMax = Math.max(max, 0);
+  const floor = Math.min(MIN_WITHDRAW_AMOUNT, safeMax);
+  if (!Number.isFinite(raw)) return safeMax;
+  const snapped = Math.round(raw / WITHDRAW_STEP) * WITHDRAW_STEP;
+  return Math.min(Math.max(snapped, floor), safeMax);
+}
+
 // ── Deadline strip (airport flip-clock) ──────────────────────────────────────
 
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -420,6 +434,8 @@ interface OfferCardProps {
   revealStage: number;
   creditLimit?: number;
   planHintRef?: React.RefObject<HTMLDivElement | null>;
+  withdrawAmount: number;
+  onWithdrawAmountChange: (amount: number) => void;
 }
 
 /** Segmented meter: filled = available today, striped = reserved for later. */
@@ -461,13 +477,34 @@ function CreditLineMeter({
   );
 }
 
-function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferCardProps) {
+function OfferHeader({
+  formData,
+  revealStage,
+  creditLimit,
+  planHintRef,
+  withdrawAmount,
+  onWithdrawAmountChange,
+}: OfferCardProps) {
   const [preApprovedTipOpen, setPreApprovedTipOpen] = useState(false);
+  const [amountFocused, setAmountFocused] = useState(false);
+  const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
 
-  const available = formData.amount;
-  const limit = creditLimit && creditLimit > available ? creditLimit : available;
-  const reserved = Math.max(0, limit - available);
-  const hasReserved = reserved > 0;
+  const maxWithdraw = formData.amount;
+  const minWithdraw = Math.min(MIN_WITHDRAW_AMOUNT, maxWithdraw);
+  const limit = creditLimit && creditLimit > maxWithdraw ? creditLimit : maxWithdraw;
+  const structuralReserve = Math.max(0, limit - maxWithdraw);
+  const hasStructuralReserve = structuralReserve > 0;
+  const isAtMax = withdrawAmount >= maxWithdraw;
+  const canAdjust = maxWithdraw > minWithdraw;
+  const sliderPct = canAdjust
+    ? ((withdrawAmount - minWithdraw) / (maxWithdraw - minWithdraw)) * 100
+    : 100;
+
+  const commitAmount = (raw: number) => {
+    const clamped = clampWithdrawAmount(raw, maxWithdraw);
+    onWithdrawAmountChange(clamped);
+    setAmountRaw(String(clamped));
+  };
 
   return (
     <motion.div
@@ -479,7 +516,7 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
       <div className="flex items-center gap-2">
         <SealCheck size={18} weight="fill" style={{ color: "var(--offer-accent)" }} />
         <span
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase"
+          className="inline-flex items-center gap-1.5 text-[12px] font-bold tracking-[0.18em] uppercase"
           style={{ color: "var(--text-tertiary)" }}
         >
           Credit line{" "}
@@ -493,7 +530,7 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
                 onClick={() => setPreApprovedTipOpen((v) => !v)}
                 onMouseEnter={() => setPreApprovedTipOpen(true)}
                 onMouseLeave={() => setPreApprovedTipOpen(false)}
-                className="flex h-3 w-3 items-center justify-center rounded-full border text-[8px] font-bold leading-none transition-colors duration-150"
+                className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
                 style={{
                   borderColor: "var(--border-medium)",
                   color: "var(--text-tertiary)",
@@ -512,15 +549,15 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
                   }}
                 >
                   <p
-                    className="text-[11px] font-medium leading-relaxed normal-case tracking-normal"
+                    className="text-[12px] font-medium leading-relaxed normal-case tracking-normal"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {hasReserved ? (
+                    {hasStructuralReserve ? (
                       <>
                         Pre-approved means your full credit limit looks like a strong fit for you.
-                        For now, you&apos;re ready to take{" "}
+                        For now, you&apos;re ready to take up to{" "}
                         <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                          {formatCurrency(available)}
+                          {formatCurrency(maxWithdraw)}
                         </span>{" "}
                         today — the rest of your line is reserved and unlocks automatically over time.
                       </>
@@ -528,7 +565,7 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
                       <>
                         Pre-approved means this credit line is confirmed and ready. Your full{" "}
                         <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                          {formatCurrency(available)}
+                          {formatCurrency(maxWithdraw)}
                         </span>{" "}
                         is approved and available for instant disbursement.
                       </>
@@ -546,99 +583,140 @@ function OfferHeader({ formData, revealStage, creditLimit, planHintRef }: OfferC
         </span>
       </div>
 
-      <p
-        className="tabular-nums leading-none"
-        style={{
-          fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-          fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-          fontWeight: 800,
-          letterSpacing: "-0.04em",
-          backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          color: "transparent",
-        }}
-      >
-        {formatCurrency(limit)}
-      </p>
+      {/* Total credit limit — demoted, structural context only */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <span className="text-[13px] font-semibold" style={{ color: "var(--text-secondary)" }}>
+          {formatCurrency(limit)} total credit limit
+        </span>
+        {hasStructuralReserve && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold leading-none"
+            style={{ background: "oklch(0.94 0.05 85)", color: "#78350f" }}
+          >
+            <Lock size={9} weight="fill" style={{ color: "#E0B000" }} />
+            +{formatCurrency(structuralReserve)} unlocks over time
+          </span>
+        )}
+      </div>
 
-      <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-        Your total credit limit
-      </p>
+      {/* Hero: withdraw-today amount — the number the user is actually acting on */}
+      <div className="mt-3 flex flex-col items-center gap-1.5">
+        <span
+          className="text-[12px] font-bold tracking-[0.16em] uppercase"
+          style={{ color: "var(--offer-accent)" }}
+        >
+          Withdraw today
+        </span>
 
-      {hasReserved && (
-        <div className="mt-3 flex w-full flex-col gap-2.5">
-          <CreditLineMeter limit={limit} available={available} revealStage={revealStage} />
+        <div className="flex items-baseline leading-none">
+          <span
+            aria-hidden="true"
+            style={{
+              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+              fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            $
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
+            onFocus={() => {
+              setAmountFocused(true);
+              setAmountRaw(String(withdrawAmount));
+            }}
+            onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
+            onBlur={() => {
+              setAmountFocused(false);
+              commitAmount(parseInt(amountRaw, 10));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            disabled={!canAdjust}
+            aria-label="Amount to withdraw today"
+            className="tabular-nums border-0 bg-transparent text-center outline-none disabled:opacity-100"
+            style={{
+              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+              fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              caretColor: "var(--offer-accent)",
+              width: `${Math.max((amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")).length, 2)}ch`,
+            }}
+          />
+        </div>
 
-          <div className="grid grid-cols-2 gap-3 text-left">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: "var(--brand-teal-hex)" }}
-                  aria-hidden="true"
-                />
-                <span
-                  className="text-[9px] font-bold tracking-[0.1em] uppercase"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Withdraw today
-                </span>
-              </div>
-              <span
-                className="tabular-nums leading-none"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  fontSize: "1.375rem",
-                  fontWeight: 800,
-                  letterSpacing: "-0.03em",
-                  color: "var(--text-primary)",
-                }}
-              >
-                {formatCurrency(available)}
-              </span>
-              <span className="text-[10px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-                Instant disbursement
-              </span>
-            </div>
+        <span className="text-[12px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
+          Instant disbursement{canAdjust ? " · tap the amount to edit" : ""}
+        </span>
+      </div>
 
-            <div className="flex flex-col items-end gap-1 text-right">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="text-[9px] font-bold tracking-[0.1em] uppercase"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Reserved for you
-                </span>
-                <Lock size={10} weight="fill" style={{ color: "#E0B000" }} />
-              </div>
-              <span
-                className="tabular-nums leading-none"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  fontSize: "1.375rem",
-                  fontWeight: 800,
-                  letterSpacing: "-0.03em",
-                  color: "#E0B000",
-                }}
-              >
-                +{formatCurrency(reserved)}
-              </span>
-              <span className="text-[10px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-                Already in your credit line
-                <br />
-                · unlocks automatically over time
-              </span>
-            </div>
+      {/* Amount adjuster — slide or type a lower amount; defaults to the maximum available today */}
+      {canAdjust && (
+        <div className="mt-4 w-full">
+          <div className="relative">
+            <div
+              className="pointer-events-none absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full"
+              style={{ width: `${sliderPct}%`, background: "var(--brand-teal-hex)" }}
+            />
+            <input
+              type="range"
+              className="withdraw-slider relative z-10 w-full"
+              min={minWithdraw}
+              max={maxWithdraw}
+              step={WITHDRAW_STEP}
+              value={withdrawAmount}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                onWithdrawAmountChange(val);
+                setAmountRaw(String(val));
+              }}
+              aria-label="Slide to choose a lower withdrawal amount"
+            />
           </div>
+          <div className="mt-1.5 flex items-center justify-between">
+            <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              {formatCurrency(minWithdraw)}
+            </span>
+            <button
+              type="button"
+              onClick={() => commitAmount(maxWithdraw)}
+              disabled={isAtMax}
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold leading-none transition-colors duration-150 disabled:cursor-default"
+              style={{
+                background: isAtMax ? "var(--surface-secondary)" : "oklch(0.9 0.07 176 / 0.35)",
+                color: isAtMax ? "var(--text-tertiary)" : "var(--offer-accent)",
+              }}
+            >
+              {isAtMax ? "At maximum" : `Use max · ${formatCurrency(maxWithdraw)}`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {hasStructuralReserve && (
+        <div className="mt-3 w-full">
+          <CreditLineMeter limit={limit} available={withdrawAmount} revealStage={revealStage} />
         </div>
       )}
 
       {/* Divider with centred hint */}
       <div ref={planHintRef} className="mt-3 flex w-full items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
-        <span className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-          {`Pick your plan for your ${formatCurrency(available)} today`}
+        <span className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--text-tertiary)" }}>
+          {`Pick your plan for your ${formatCurrency(withdrawAmount)} today`}
         </span>
         <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
       </div>
@@ -712,21 +790,23 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           />
         )}
 
-        {/* Header - plan name with shiny overlay */}
+        {/* Header - plan name + tenure, with shiny overlay */}
         <div
-          className="relative flex h-9 w-full shrink-0 items-center justify-center overflow-hidden px-1.5"
+          className="relative flex w-full shrink-0 flex-col items-center justify-center gap-1 overflow-hidden px-1.5 py-2"
           style={{ background: "var(--brand-blue-hex)" }}
         >
+          {/* Corner sheen - kept off the centred text (which now spans two lines) by
+              sitting in the top-left and bottom-right corners rather than a middle sweep. */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "linear-gradient(115deg, transparent 20%, oklch(1 0 0 / 0.22) 45%, oklch(1 0 0 / 0.08) 55%, transparent 75%)",
+                "radial-gradient(130% 70% at 0% 0%, oklch(1 0 0 / 0.24) 0%, transparent 55%), radial-gradient(130% 70% at 100% 100%, oklch(1 0 0 / 0.14) 0%, transparent 55%)",
             }}
           />
           <span
-            className="relative min-w-0 max-w-full truncate text-[14px] font-extrabold leading-snug text-white"
+            className="relative min-w-0 max-w-full truncate text-[15px] font-extrabold leading-snug text-white"
             style={{
               fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
               letterSpacing: "-0.02em",
@@ -734,73 +814,79 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           >
             {shortPlanName(plan.title)}
           </span>
+          <span
+            className="relative inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-white"
+            style={{ background: "oklch(1 0 0 / 0.18)" }}
+          >
+            {plan.tenure} {plan.tenure === 1 ? "month" : "months"} tenure
+          </span>
         </div>
 
-        <div className="relative flex flex-1 flex-col items-center gap-5 px-2.5 py-4 sm:gap-6 sm:px-3 sm:py-5">
-          {/* Fixed top block - same height on every card so feature lists share one baseline */}
-          <div className="flex w-full shrink-0 flex-col items-center gap-2.5 sm:gap-3">
-            <div className="flex flex-col items-center gap-1">
+        <div className="relative flex flex-1 flex-col gap-4 px-4 py-4 sm:items-center sm:gap-6 sm:px-3 sm:py-5">
+          {/* Mobile: price block + features sit side by side in a compact row.
+              Desktop (sm+): reverts to the original centered vertical stack. */}
+          <div className="flex w-full flex-row items-start gap-4 sm:flex-col sm:items-center sm:gap-3">
+            {/* Price block - same width on every card so feature lists share one baseline on desktop.
+                Tenure now lives in the header above, so this column is free to give the
+                monthly figure - the number that matters most - more visual weight. */}
+            <div className="flex w-[130px] shrink-0 flex-col items-start gap-1.5 sm:w-auto sm:items-center">
               <span
-                className="text-[11px] font-bold tracking-[0.1em] uppercase"
+                className="text-[12px] font-bold tracking-[0.1em] uppercase sm:text-[11px]"
                 style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
               >
                 Monthly
               </span>
-              <span
-                className="tabular-nums leading-none"
+              <motion.span
+                key={plan.monthlyInstalment}
+                initial={{ opacity: 0.3 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                className="tabular-nums text-[2.1rem] leading-none sm:text-[1.875rem]"
                 style={{
                   fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  fontSize: "1.5rem",
                   fontWeight: 800,
                   color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
                   letterSpacing: "-0.03em",
                 }}
               >
                 {formatCurrency(plan.monthlyInstalment)}
-              </span>
+              </motion.span>
             </div>
 
-            <span
-              className="rounded-full px-2.5 py-1 text-[12px] font-extrabold tabular-nums leading-none"
-              style={{
-                background: isSelected ? "oklch(1 0 0 / 0.10)" : "var(--surface-secondary)",
-                color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-secondary)",
-              }}
-            >
-              {plan.tenure} {plan.tenure === 1 ? "month" : "months"}
-            </span>
-          </div>
-
-          {/* Fixed row heights so feature N lines up across all three cards even when copy wraps.
-              Tagline row is top-aligned so all three cards share the same baseline. */}
-          <ul className="grid w-full flex-1 grid-rows-[3.5rem_1.25rem_2.5rem] gap-2.5 text-left sm:gap-3">
-            {[
-              plan.tagline,
-              `${formatRate(plan.monthlyRate)}/month`,
-              `Total ${formatCurrency(plan.totalRepayment)}`,
-            ].map((feature) => (
-              <li key={feature} className="flex min-h-0 items-start">
-                <span className="flex items-start gap-1.5">
-                  <CheckCircle
-                    size={14}
-                    weight="fill"
-                    className="mt-0.5 shrink-0"
-                    style={{ color: isSelected ? "var(--brand-teal-hex)" : "#22c55e" }}
-                  />
-                  <span
-                    className="text-[12px] font-semibold leading-snug"
-                    style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
-                  >
-                    {feature}
+            {/* Fixed row heights on desktop so feature N lines up across all three cards even when copy wraps.
+                Tagline row is top-aligned so all three cards share the same baseline. */}
+            <ul className="flex flex-1 flex-col gap-2 text-left sm:grid sm:w-full sm:grid-rows-[3.5rem_1.25rem] sm:gap-3">
+              {[
+                plan.tagline,
+                `${formatRate(plan.monthlyRate)}/month`,
+              ].map((feature) => (
+                <li key={feature} className="flex min-h-0 items-start">
+                  <span className="flex items-start gap-1.5">
+                    <CheckCircle
+                      size={15}
+                      weight="fill"
+                      className="mt-0.5 shrink-0"
+                      style={{ color: isSelected ? "var(--brand-teal-hex)" : "#22c55e" }}
+                    />
+                    <motion.span
+                      key={feature}
+                      initial={{ opacity: 0.3 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.25, ease: EASE }}
+                      className="text-[14px] font-semibold leading-snug sm:text-[13px]"
+                      style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
+                    >
+                      {feature}
+                    </motion.span>
                   </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           {/* Pick-this-plan footer doubles as the selection indicator */}
           <span
-            className="mt-1 flex w-full shrink-0 items-center justify-center gap-1 rounded-full py-2.5 text-[12px] font-extrabold leading-none transition-all duration-200"
+            className="mt-1 flex w-full shrink-0 items-center justify-center gap-1 rounded-full py-2.5 text-[13px] font-extrabold leading-none transition-all duration-200 sm:text-[12px]"
             style={{
               background: isSelected ? "var(--brand-teal-hex)" : "transparent",
               color: isSelected ? "#0a1628" : "var(--text-secondary)",
@@ -877,7 +963,7 @@ function AdditionalRequestsCard() {
     >
       <div className="flex flex-col gap-3">
         <span
-          className="text-[10px] font-bold tracking-[0.14em] uppercase"
+          className="text-[11px] font-bold tracking-[0.14em] uppercase"
           style={{ color: "var(--text-tertiary)" }}
         >
           Additional requests
@@ -896,7 +982,7 @@ function AdditionalRequestsCard() {
           />
         </div>
 
-        <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
           Your requests will be noted and subject to further assessment (up to 3 working days).
         </p>
       </div>
@@ -913,7 +999,7 @@ interface PlanPickerProps {
 function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 items-stretch">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {plans.map((plan) => (
           <PlanCard
             key={plan.id}
@@ -1191,7 +1277,8 @@ export function LoanResults({
   const planHintRef = useRef<HTMLDivElement>(null);
   const [isCtaVisible, setIsCtaVisible] = useState(false);
 
-  const plans = buildOfferPlans(formData.amount);
+  const [withdrawAmount, setWithdrawAmount] = useState(formData.amount);
+  const plans = buildOfferPlans(withdrawAmount);
   const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | null>(null);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const hasNoSelection = selectedPlanId === null;
@@ -1231,11 +1318,11 @@ export function LoanResults({
     return {
       planId: plan.id,
       tenure: plan.tenure,
-      amount: formData.amount,
+      amount: withdrawAmount,
       monthlyRate: plan.monthlyRate,
       monthlyInstalment: plan.monthlyInstalment,
     };
-  }, [selectedPlanId, formData.amount, plans]);
+  }, [selectedPlanId, withdrawAmount, plans]);
 
   const handleAccept = useCallback(async () => {
     trackEvent("step_10_offer_accepted", { planId: selectedPlanId });
@@ -1271,7 +1358,7 @@ export function LoanResults({
           <h1
             style={{
               fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              fontSize: "clamp(1.5rem, 5vw, 1.9rem)",
+              fontSize: "clamp(1.65rem, 5.5vw, 2.1rem)",
               fontWeight: 800,
               letterSpacing: "-0.04em",
               lineHeight: 1.1,
@@ -1280,7 +1367,7 @@ export function LoanResults({
           >
             {isExpired ? "Your offer has expired." : "Your loan offer is confirmed."}
           </h1>
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {isExpired
               ? "This loan offer is no longer valid. Start a new application to get a fresh offer."
               : <>Choose the repayment plan that suits you best, then book a quick appointment to collect your funds.</>
@@ -1295,6 +1382,8 @@ export function LoanResults({
             revealStage={revealStage}
             creditLimit={creditLimit}
             planHintRef={planHintRef}
+            withdrawAmount={withdrawAmount}
+            onWithdrawAmountChange={setWithdrawAmount}
           />
         </div>
 
@@ -1326,7 +1415,7 @@ export function LoanResults({
 
         {/* Offer validity disclaimer */}
         <motion.p
-          className="text-[10px] leading-relaxed -mt-2"
+          className="text-[11px] leading-relaxed -mt-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: revealStage >= 3 ? 1 : 0 }}
           transition={{ duration: 0.4, delay: revealStage >= 3 ? 0.2 : 0 }}
