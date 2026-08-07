@@ -1438,9 +1438,9 @@ export function LoanResults({
             animate={revealStage >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
             transition={{ duration: 0.45, ease: EASE }}
             style={{ pointerEvents: revealStage >= 2 ? "auto" : "none" }}
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-2 sm:gap-5"
           >
-            <div ref={planHintRef} className="flex flex-col gap-3">
+            <div ref={planHintRef} className="flex flex-col gap-2.5 sm:gap-3">
               <div
                 aria-hidden="true"
                 className="h-px w-full"
@@ -1449,9 +1449,21 @@ export function LoanResults({
                     "linear-gradient(90deg, transparent 0%, var(--border-medium) 12%, var(--border-medium) 88%, transparent 100%)",
                 }}
               />
-              <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                Choose the repayment plan that suits you best, then book a quick appointment to collect your funds.
-              </p>
+              <div className="flex flex-col gap-1">
+                <h2
+                  className="text-[1.25rem] font-extrabold leading-tight tracking-tight"
+                  style={{
+                    fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                    letterSpacing: "-0.03em",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Choose your repayment plan
+                </h2>
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  Pick from our 3 best-selling plans for your loan.
+                </p>
+              </div>
             </div>
             <PlanPicker
               selectedPlanId={selectedPlanId}
