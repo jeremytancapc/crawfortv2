@@ -994,10 +994,17 @@ function RequestCheckbox({
   );
 }
 
-function AdditionalRequestsCard() {
-  const [longerTenure, setLongerTenure] = useState(false);
-  const [higherAmount, setHigherAmount] = useState(false);
-
+function AdditionalRequestsCard({
+  longerTenure,
+  higherAmount,
+  onLongerTenureToggle,
+  onHigherAmountToggle,
+}: {
+  longerTenure: boolean;
+  higherAmount: boolean;
+  onLongerTenureToggle: () => void;
+  onHigherAmountToggle: () => void;
+}) {
   return (
     <div
       className="rounded-[var(--radius-lg)] p-4"
@@ -1017,12 +1024,12 @@ function AdditionalRequestsCard() {
         <div className="flex flex-col gap-2.5">
           <RequestCheckbox
             checked={longerTenure}
-            onToggle={() => setLongerTenure((v) => !v)}
+            onToggle={onLongerTenureToggle}
             label="Request for a longer tenure"
           />
           <RequestCheckbox
             checked={higherAmount}
-            onToggle={() => setHigherAmount((v) => !v)}
+            onToggle={onHigherAmountToggle}
             label="Request for a higher loan amount"
           />
         </div>
@@ -1039,9 +1046,21 @@ interface PlanPickerProps {
   selectedPlanId: OfferPlan["id"] | null;
   onPlanSelect: (id: OfferPlan["id"]) => void;
   plans: OfferPlan[];
+  requestLongerTenure: boolean;
+  requestHigherAmount: boolean;
+  onRequestLongerTenureToggle: () => void;
+  onRequestHigherAmountToggle: () => void;
 }
 
-function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
+function PlanPicker({
+  selectedPlanId,
+  onPlanSelect,
+  plans,
+  requestLongerTenure,
+  requestHigherAmount,
+  onRequestLongerTenureToggle,
+  onRequestHigherAmountToggle,
+}: PlanPickerProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
@@ -1054,7 +1073,12 @@ function PlanPicker({ selectedPlanId, onPlanSelect, plans }: PlanPickerProps) {
           />
         ))}
       </div>
-      <AdditionalRequestsCard />
+      <AdditionalRequestsCard
+        longerTenure={requestLongerTenure}
+        higherAmount={requestHigherAmount}
+        onLongerTenureToggle={onRequestLongerTenureToggle}
+        onHigherAmountToggle={onRequestHigherAmountToggle}
+      />
     </div>
   );
 }
@@ -1325,6 +1349,8 @@ export function LoanResults({
   const [withdrawAmount, setWithdrawAmount] = useState(formData.amount);
   const plans = buildOfferPlans(withdrawAmount);
   const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | null>(null);
+  const [requestLongerTenure, setRequestLongerTenure] = useState(false);
+  const [requestHigherAmount, setRequestHigherAmount] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const hasNoSelection = selectedPlanId === null;
 
@@ -1366,8 +1392,10 @@ export function LoanResults({
       amount: withdrawAmount,
       monthlyRate: plan.monthlyRate,
       monthlyInstalment: plan.monthlyInstalment,
+      requestLongerTenure,
+      requestHigherAmount,
     };
-  }, [selectedPlanId, withdrawAmount, plans]);
+  }, [selectedPlanId, withdrawAmount, plans, requestLongerTenure, requestHigherAmount]);
 
   const handleAccept = useCallback(async () => {
     trackEvent("step_10_offer_accepted", { planId: selectedPlanId });
@@ -1469,6 +1497,10 @@ export function LoanResults({
               selectedPlanId={selectedPlanId}
               onPlanSelect={setSelectedPlanId}
               plans={plans}
+              requestLongerTenure={requestLongerTenure}
+              requestHigherAmount={requestHigherAmount}
+              onRequestLongerTenureToggle={() => setRequestLongerTenure((v) => !v)}
+              onRequestHigherAmountToggle={() => setRequestHigherAmount((v) => !v)}
             />
           </motion.div>
         )}

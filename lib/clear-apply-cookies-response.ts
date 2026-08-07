@@ -2,6 +2,7 @@ import type { NextResponse } from "next/server";
 
 import { clearApprovalOfferCookie } from "@/lib/approval-offer";
 import { clearCookies } from "@/lib/apply-session-codec";
+import { clearPlanAdditionalRequestsCookie } from "@/lib/plan-additional-requests";
 
 /** Set expired apply funnel cookies on a Route Handler / middleware response. */
 export function applyClearApplyCookiesOnResponse<T extends NextResponse>(res: T): T {
@@ -9,5 +10,6 @@ export function applyClearApplyCookiesOnResponse<T extends NextResponse>(res: T)
     res.cookies.set(c);
   }
   res.cookies.set(clearApprovalOfferCookie());
+  res.cookies.set(clearPlanAdditionalRequestsCookie());
   return res;
 }
