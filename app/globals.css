@@ -569,6 +569,18 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
   --surface-canvas: #F4F6FC;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-weight: 400;
+
+  /* Keep --hero-blue-hex from being stripped when only referenced via
+     .hero-chrome / keep-alive. Without a CSS var() consumer, production
+     builds drop the token and chrome goes transparent over #F4F6FC. */
+  --_theme-fresh-keep-alive: var(--hero-blue-hex);
+}
+
+/* Shared chrome fill for aside / mobile header / footer / mobile hero band.
+   Prefer this class over inline styles so the token stays referenced in CSS.
+   Fallback covers callers that mount before/outside .theme-fresh. */
+.hero-chrome {
+  background: var(--hero-blue-hex, #2E4FE8);
 }
 
 .theme-fresh h1,

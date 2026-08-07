@@ -9,10 +9,7 @@ import Image from "next/image";
  */
 export function MobileHeader() {
   return (
-    <div
-      className="sticky top-0 z-50 flex items-center px-6 py-4 lg:hidden"
-      style={{ background: "var(--hero-blue-hex, #2E4FE8)" }}
-    >
+    <div className="hero-chrome sticky top-0 z-50 flex items-center px-6 py-4 lg:hidden">
       <a href="/">
         <Image
           src="/images/crawfort-white.png"
