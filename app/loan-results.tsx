@@ -124,11 +124,19 @@ function formatRate(rate: number): string {
 const MIN_WITHDRAW_AMOUNT = 500;
 const WITHDRAW_STEP = 100;
 
-/** Clamp a user-entered/dragged amount to [min(500, max), max], snapped to the nearest $100. */
+/** Clamp a user-entered/dragged amount to [min(500, max), max], snapped to the nearest $100.
+ *  The true max is always reachable even when it isn't a $100 boundary (e.g. $9,393). */
 function clampWithdrawAmount(raw: number, max: number): number {
   const safeMax = Math.max(max, 0);
   const floor = Math.min(MIN_WITHDRAW_AMOUNT, safeMax);
   if (!Number.isFinite(raw)) return safeMax;
+  if (raw >= safeMax) return safeMax;
+
+  // Max often isn't on a step boundary. Once the drag/input crosses the last
+  // stepped value below max, jump to the exact maximum so the thumb can finish.
+  const lastStep = Math.floor(safeMax / WITHDRAW_STEP) * WITHDRAW_STEP;
+  if (lastStep < safeMax && raw > lastStep) return safeMax;
+
   const snapped = Math.round(raw / WITHDRAW_STEP) * WITHDRAW_STEP;
   return Math.min(Math.max(snapped, floor), safeMax);
 }
@@ -645,7 +653,7 @@ function OfferHeader({
       <div className="mt-3 flex flex-col items-center gap-1.5">
         <span
           className="text-[12px] font-bold tracking-[0.16em] uppercase"
-          style={{ color: "var(--offer-accent)" }}
+          style={{ color: "var(--text-primary)" }}
         >
           Withdraw today
         </span>
@@ -661,10 +669,7 @@ function OfferHeader({
                 fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
                 fontWeight: 600,
                 letterSpacing: "-0.02em",
-                backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
+                color: "var(--brand-blue-hex)",
               }}
             >
               $
@@ -694,10 +699,7 @@ function OfferHeader({
                 fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
                 fontWeight: 600,
                 letterSpacing: "-0.02em",
-                backgroundImage: "linear-gradient(120deg, var(--offer-navy-start) 20%, var(--offer-accent) 80%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
+                color: "var(--brand-blue-hex)",
                 caretColor: "var(--offer-accent)",
                 fieldSizing: "content",
                 width: "auto",
@@ -712,7 +714,7 @@ function OfferHeader({
                 className="absolute top-1/2 left-[calc(100%+0.35rem)] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-150"
                 style={{
                   background: amountFocused ? "oklch(0.9 0.07 176 / 0.45)" : "var(--surface-secondary)",
-                  color: "var(--offer-accent)",
+                  color: "var(--brand-blue-hex)",
                 }}
               >
                 <PencilSimple size={16} weight="bold" />
@@ -734,10 +736,10 @@ function OfferHeader({
             className="withdraw-slider w-full"
             min={minWithdraw}
             max={maxWithdraw}
-            step={WITHDRAW_STEP}
+            step={1}
             value={withdrawAmount}
             onChange={(e) => {
-              const val = parseInt(e.target.value, 10);
+              const val = clampWithdrawAmount(parseInt(e.target.value, 10), maxWithdraw);
               onWithdrawAmountChange(val);
               setAmountRaw(String(val));
             }}
