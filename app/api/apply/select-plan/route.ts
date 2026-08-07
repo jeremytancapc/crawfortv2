@@ -23,6 +23,11 @@ import {
   decodeApprovalOffer,
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
+import {
+  formatPlanAdditionalRequestsLabel,
+  planAdditionalRequestsCookieValue,
+  type PlanAdditionalRequests,
+} from "@/lib/plan-additional-requests";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +40,18 @@ type Body = {
   amount?: number;
   monthlyRate?: number;
   monthlyInstalment?: number;
+  requestLongerTenure?: boolean;
+  requestHigherAmount?: boolean;
 };
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Partial<Body>;
     const { planId, tenure, amount, monthlyRate, monthlyInstalment } = body;
+    const additionalRequests: PlanAdditionalRequests = {
+      longerTenure: Boolean(body.requestLongerTenure),
+      higherAmount: Boolean(body.requestHigherAmount),
+    };
 
     // Resolve leadId: prefer body, fall back to session/offer cookies
     let leadId = typeof body.leadId === "string" && body.leadId ? body.leadId : null;
@@ -76,16 +87,31 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // For custom plans also update loan_amount so AirConnect gets the right figure.
+    // Persist the chosen withdraw amount so /apply/accept shows the same figure.
     const update: Record<string, unknown> = {
       loan_tenure: tenure,
+      loan_amount: amount,
       selected_plan: planId,
       plan_monthly_rate: monthlyRate ?? null,
       plan_monthly_instalment: monthlyInstalment ?? null,
     };
 
-    if (planId === "custom") {
-      update.loan_amount = amount;
+    // Append a short ops-facing note when the customer ticked additional requests.
+    const requestLabels = formatPlanAdditionalRequestsLabel(additionalRequests);
+    if (requestLabels.length > 0) {
+      const { data: existing } = await admin
+        .from("leads")
+        .select("notes")
+        .eq("id", leadId)
+        .maybeSingle();
+      const previousNotes = typeof existing?.notes === "string" ? existing.notes.trim() : "";
+      const requestNote = `Additional requests: ${requestLabels.join("; ")}`;
+      const stripped = previousNotes
+        .split("\n")
+        .filter((line: string) => !line.startsWith("Additional requests:"))
+        .join("\n")
+        .trim();
+      update.notes = stripped ? `${stripped}\n${requestNote}` : requestNote;
     }
 
     const { error } = await admin.from("leads").update(update).eq("id", leadId);
@@ -95,8 +121,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to save plan" }, { status: 500 });
     }
 
-    console.info(`${LOG} plan saved`, { leadId, planId, tenure, amount });
-    return NextResponse.json({ ok: true });
+    console.info(`${LOG} plan saved`, { leadId, planId, tenure, amount, additionalRequests });
+
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(planAdditionalRequestsCookieValue(additionalRequests));
+    return res;
   } catch (err) {
     console.error(`${LOG}`, err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

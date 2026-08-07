@@ -13,6 +13,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { MobileHeader } from "@/app/mobile-header";
+import { SignaturePad } from "./signature-pad";
 import type { SelectedPlanData } from "./page";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -184,6 +185,37 @@ function PlanSummaryCard({ plan }: { plan: SelectedPlanData }) {
           {formatRate(plan.monthlyRate)}/month · Total repayment{" "}
           {formatCurrency(plan.totalRepayment)}
         </p>
+
+        {plan.additionalRequests.length > 0 && (
+          <div
+            className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] px-3.5 py-3 -mt-1"
+            style={{ background: "oklch(1 0 0 / 0.07)" }}
+          >
+            <span
+              className="text-[9px] font-bold tracking-[0.14em] uppercase"
+              style={{ color: "oklch(1 0 0 / 0.50)" }}
+            >
+              Additional requests
+            </span>
+            <ul className="flex flex-col gap-1">
+              {plan.additionalRequests.map((label) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-1.5 text-[12px] font-semibold"
+                  style={{ color: "oklch(1 0 0 / 0.88)" }}
+                >
+                  <CheckCircle
+                    size={13}
+                    weight="fill"
+                    className="shrink-0"
+                    style={{ color: "var(--brand-teal-hex)" }}
+                  />
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -207,23 +239,35 @@ function TermsSection() {
         aria-expanded={open}
         aria-controls="loan-terms-content"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-5 py-4 text-left"
+        className="flex w-full items-start gap-3 px-5 py-4 text-left"
       >
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg mt-0.5"
           style={{ background: "oklch(0.32 0.14 260 / 0.08)" }}
         >
-          <Warning size={14} weight="duotone" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+          <Warning size={16} weight="duotone" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
         </span>
-        <span
-          className="flex-1 text-[10px] font-bold tracking-[0.16em] uppercase"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Loan acceptance terms
+        <span className="flex-1 flex flex-col gap-0.5">
+          <span
+            className="text-sm font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Loan acceptance terms
+          </span>
+          <span
+            className="text-[12.5px] leading-snug"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Fees, repayment and disbursement info —{" "}
+            <span className="font-semibold" style={{ color: "var(--brand-blue-hex, #0033AA)" }}>
+              {open ? "hide details" : "tap to read in full"}
+            </span>
+          </span>
         </span>
         <CaretDown
-          size={14}
+          size={16}
           weight="bold"
+          className="mt-1.5 shrink-0"
           style={{
             color: "var(--text-tertiary)",
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
@@ -373,7 +417,9 @@ export function AcceptView({ plan }: AcceptViewProps) {
     repaySchedule: false,
     paynowNric: false,
   });
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const allChecked = checks.readTerms && checks.repaySchedule && checks.paynowNric;
+  const canProceed = allChecked && signatureDataUrl !== null;
 
   function toggleCheck(key: keyof typeof checks) {
     setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -457,10 +503,17 @@ export function AcceptView({ plan }: AcceptViewProps) {
               />
             </div>
 
+            {/* Signature — the closing act of the contract, unlocked once all boxes are ticked */}
+            <SignaturePad
+              disabled={!allChecked}
+              onSigned={(dataUrl) => setSignatureDataUrl(dataUrl)}
+              onCleared={() => setSignatureDataUrl(null)}
+            />
+
             {/* CTA */}
             <button
               type="button"
-              disabled={!allChecked}
+              disabled={!canProceed}
               onClick={() => router.push("/apply/book")}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
             >
@@ -468,12 +521,14 @@ export function AcceptView({ plan }: AcceptViewProps) {
               <ArrowRight size={16} weight="bold" />
             </button>
 
-            {!allChecked && (
+            {!canProceed && (
               <p
                 className="text-center text-[11px] -mt-2"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Please tick all three acknowledgements above to continue.
+                {allChecked
+                  ? "Please sign above to continue."
+                  : "Please tick all three acknowledgements and sign above to continue."}
               </p>
             )}
           </div>

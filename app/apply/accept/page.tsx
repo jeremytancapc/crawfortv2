@@ -13,6 +13,10 @@ import {
   OFFER_MONTHLY_RATE,
   calculateInstalment,
 } from "@/lib/offer-plans";
+import {
+  formatPlanAdditionalRequestsLabel,
+  getPlanAdditionalRequests,
+} from "@/lib/plan-additional-requests";
 
 import { AcceptView } from "./accept-view";
 
@@ -27,6 +31,8 @@ export interface SelectedPlanData {
   monthlyRate: number;
   totalRepayment: number;
   totalInterest: number;
+  /** Labels for optional requests ticked on the approval page, e.g. "Longer tenure". */
+  additionalRequests: string[];
 }
 
 export default async function AcceptPage() {
@@ -82,6 +88,10 @@ export default async function AcceptPage() {
   const totalRepayment = monthlyInstalment * tenure;
   const totalInterest = Math.max(0, totalRepayment - amount);
 
+  const additionalRequests = formatPlanAdditionalRequestsLabel(
+    await getPlanAdditionalRequests(),
+  );
+
   const plan: SelectedPlanData = {
     planId,
     planTitle: PLAN_TITLES[planId] ?? "Selected plan",
@@ -91,6 +101,7 @@ export default async function AcceptPage() {
     monthlyRate,
     totalRepayment,
     totalInterest,
+    additionalRequests,
   };
 
   return <AcceptView plan={plan} />;
