@@ -163,20 +163,23 @@ function StepHeader({
   icon: Icon,
   title,
   subtitle,
+  desktopOnly = false,
 }: {
   icon: React.ComponentType<{ size?: number; weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone"; className?: string }>;
   title: string;
   subtitle: string;
+  /** When true, hide on mobile — title lives in the blue hero band instead. */
+  desktopOnly?: boolean;
 }) {
   return (
-    <div className="mb-6 sm:mb-8">
+    <div className={desktopOnly ? "mb-6 sm:mb-8 hidden lg:block" : "mb-6 sm:mb-8"}>
       {/* Mobile: icon inline with heading */}
       <div className="flex items-center gap-3 sm:block">
         <div className="shrink-0 flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-[var(--radius-md)] bg-brand-blue/[0.06] sm:mb-3">
           <Icon size={18} weight="duotone" className="text-brand-blue sm:hidden" />
           <Icon size={22} weight="duotone" className="text-brand-blue hidden sm:block" />
         </div>
-        <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">
+        <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
           {title}
         </h2>
       </div>
@@ -755,7 +758,7 @@ export function Step3_SingpassGate({
   ];
 
   return (
-    <div className="py-4 sm:py-6">
+    <div className="pt-1 pb-2 lg:py-6">
       <div className="hidden lg:block">
         <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
           Get Approved Quicker ⚡
@@ -765,7 +768,11 @@ export function Step3_SingpassGate({
         </p>
       </div>
 
-      <ul className="mt-2 lg:mt-7 flex flex-col gap-3.5">
+      <p className="mb-3 font-display text-lg font-semibold tracking-tight text-[var(--text-primary)] lg:hidden">
+        Apply with Singpass
+      </p>
+
+      <ul className="flex flex-col gap-3.5 lg:mt-7">
         {benefits.map((text) => (
           <li key={text} className="flex items-start gap-2.5">
             <CheckCircle
@@ -851,6 +858,7 @@ export function Step4_Identity({
         icon={IdentificationCard}
         title="Tell us about yourself"
         subtitle="We need this to verify your identity and eligibility."
+        desktopOnly
       />
 
       <div className="flex flex-col gap-3 sm:gap-5">
@@ -965,6 +973,7 @@ export function Step6_Contact({
         icon={Phone}
         title="How can we reach you?"
         subtitle="We'll contact you regarding your loan status and details."
+        desktopOnly
       />
 
       <div className="flex flex-col gap-5">
@@ -1017,6 +1026,7 @@ export function Step7_Additional({
         icon={Buildings}
         title="A few more details"
         subtitle="Almost done. This helps us finalise your application."
+        desktopOnly
       />
 
       <div className="flex flex-col gap-5">
@@ -1889,13 +1899,14 @@ export function Step7_BankruptcyDeclaration({
         icon={ShieldCheck}
         title="A Quick Check"
         subtitle="Help us confirm your financial standing to move forward."
+        desktopOnly
       />
 
       <div className="flex flex-col gap-5">
         <div>
           <div className="mb-3">
             <label className="block w-full text-base font-medium text-[var(--text-primary)]">
-              Which of the following applies to you at this time?
+              Choose the one that applies to you
             </label>
           </div>
 
@@ -2130,6 +2141,7 @@ export function Step8_Review({
         icon={ShieldCheck}
         title="Review your application"
         subtitle="Please confirm everything is correct before submitting."
+        desktopOnly
       />
 
       <div className="flex flex-col gap-5">

@@ -527,6 +527,8 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
     var(--offer-navy-shadow);
 }
 
+/* Match theme-fresh heading metrics so nested approval-theme does not
+   re-bold Inter Tight titles in the consumer funnel. */
 .approval-theme h1,
 .approval-theme h2,
 .approval-theme h3,
@@ -534,8 +536,8 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
 .approval-theme h5,
 .approval-theme h6 {
   font-family: var(--font-inter-tight), system-ui, sans-serif;
-  letter-spacing: -0.03em;
-  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-weight: 600;
 }
 
 /* ─── AXS theme - Inter Tight headings, finance-2.0 aesthetic ───── */
@@ -574,6 +576,13 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
      .hero-chrome / keep-alive. Without a CSS var() consumer, production
      builds drop the token and chrome goes transparent over #F4F6FC. */
   --_theme-fresh-keep-alive: var(--hero-blue-hex);
+}
+
+/* Tailwind compiles `.font-display` to `font-family: var(--font-quicksand)`
+   (from @theme), so setting --font-display above has no effect on the utility.
+   Force Inter Tight for every font-display usage inside the consumer funnel. */
+.theme-fresh .font-display {
+  font-family: var(--font-inter-tight), system-ui, sans-serif;
 }
 
 /* Shared chrome fill for aside / mobile header / footer / mobile hero band.

@@ -49,7 +49,7 @@ export function PendingView({ pending }: Props) {
               priority
             />
           </div>
-          <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             Application received
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
@@ -80,7 +80,7 @@ export function PendingView({ pending }: Props) {
 
             {/* Heading */}
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+              <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
                 {firstName ? `Thank you, ${firstName}.` : "Thank you for applying."}
               </h2>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">

@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { CalendarBlank } from "@phosphor-icons/react";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import { MobileHeader } from "@/app/mobile-header";
+import { MobileLegalFooter } from "@/app/mobile-legal-footer";
 import type { LoanFormData } from "@/lib/loan-form";
 
 interface Props {
@@ -73,7 +75,7 @@ export function BookingView({ formData }: Props) {
           <div className="mb-16">
             <Image src="/images/crawfort-white.png" alt="Crawfort" width={151} height={20} className="h-6 w-auto" priority />
           </div>
-          <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             Book your appointment
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
@@ -85,16 +87,47 @@ export function BookingView({ formData }: Props) {
       <main className="flex flex-col flex-1 overflow-x-clip">
         <MobileHeader />
 
-        <div className="flex flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
-          <div className="w-full max-w-[520px]">
-            <AppointmentBooking
-              formData={formData}
-              onBack={() => router.push("/apply/approval")}
-              onConfirm={handleConfirm}
-              onBookedRedirect
-            />
+        {/* Match home page: full-bleed blue hero on mobile + floating white card. */}
+        <div className="flex flex-col items-center justify-start pb-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
+          <div className="flex w-full flex-col lg:max-w-[520px]">
+            {/* Mobile/tablet blue hero band */}
+            <div className="relative w-full lg:hidden">
+              <div
+                aria-hidden
+                className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
+              />
+              <div className="relative mx-auto flex w-full max-w-[520px] flex-col gap-2 px-5 pt-6 pb-16 sm:px-8">
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
+                  style={{ background: "rgba(255,255,255,0.16)" }}
+                  aria-hidden="true"
+                >
+                  <CalendarBlank size={18} weight="duotone" className="text-white" />
+                </span>
+                <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
+                  Pick a time to collect your funds
+                </h1>
+                <p className="text-sm leading-relaxed text-white/75 max-w-[42ch]">
+                  A physical visit is required for KYC and AML under local regulations.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative z-10 mx-auto -mt-10 flex w-full max-w-[520px] flex-1 flex-col px-5 sm:px-8 lg:mt-0 lg:px-0">
+              <div className="rounded-[28px] bg-[var(--surface-elevated)] p-5 sm:p-7 lg:rounded-none lg:bg-transparent lg:p-0 shadow-[0_20px_40px_-24px_rgba(20,30,70,0.25),0_2px_10px_-2px_rgba(20,30,70,0.08)] lg:shadow-none">
+                <AppointmentBooking
+                  formData={formData}
+                  onBack={() => router.push("/apply/approval")}
+                  onConfirm={handleConfirm}
+                  onBookedRedirect
+                  hideHeaderOnMobile
+                />
+              </div>
+            </div>
           </div>
         </div>
+
+        <MobileLegalFooter />
       </main>
     </div>
   );

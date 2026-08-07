@@ -133,6 +133,9 @@ interface AppointmentBookingProps {
   /** When set, successful booking redirects instead of showing inline confirmation. */
   onBookedRedirect?: boolean;
   thingsToBring?: string[];
+  /** Hides the icon/heading/subtitle on mobile - use when the parent page
+   * renders the equivalent heading in a full-bleed blue hero band instead. */
+  hideHeaderOnMobile?: boolean;
 }
 
 const WHAT_TO_BRING = {
@@ -195,7 +198,7 @@ function WhatToBring({ idType }: { idType: string }) {
   );
 }
 
-export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedirect = false, thingsToBring = [] }: AppointmentBookingProps) {
+export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedirect = false, thingsToBring = [], hideHeaderOnMobile = false }: AppointmentBookingProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -356,10 +359,10 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             </span>
           </div>
           <div>
-            <p className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
+            <p className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
               {formatDisplayDate(selectedDateObj)}
             </p>
-            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-brand-blue sm:text-3xl">
+            <p className="mt-1 font-display text-2xl font-semibold tracking-tight text-brand-blue sm:text-3xl">
               {formatDisplayTime(selectedTime)}
             </p>
             <p className="mt-1 text-xs text-[var(--text-tertiary)]">
@@ -394,7 +397,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           </div>
 
           <div className="flex flex-col gap-3">
-            <h3 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]">
+            <h3 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">
               Our office
             </h3>
 
@@ -467,24 +470,41 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             type="button"
             onClick={onBack}
             aria-label="Go back"
-            className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95]"
+            className={
+              hideHeaderOnMobile
+                ? "absolute right-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95] lg:flex"
+                : "absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95]"
+            }
           >
             <ArrowLeft size={14} weight="bold" />
           </button>
         )}
-        <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-brand-blue/[0.06]">
-          <CalendarBlank size={18} weight="duotone" className="text-brand-blue" />
+        {hideHeaderOnMobile && (
+          <div className="flex flex-col gap-1 lg:hidden">
+            <p className="font-display text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+              Book Appointment
+            </p>
+            <p className="text-sm leading-snug text-[var(--text-secondary)]">
+              The whole visit takes around 30 minutes.
+            </p>
+          </div>
+        )}
+        <div className={hideHeaderOnMobile ? "hidden flex-col gap-2 lg:flex" : "flex flex-col gap-2"}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-brand-blue/[0.06]">
+            <CalendarBlank size={18} weight="duotone" className="text-brand-blue" />
+          </div>
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
+            Pick a time to collect your funds
+          </h2>
+          <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
+            A physical visit is required for KYC and AML under local regulations.
+          </p>
         </div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-          Pick a time to collect your funds
-        </h2>
-        <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
-          A physical visit is required for KYC and AML under local regulations.
-        </p>
       </div>
 
       {/* ── Relationship Manager image ───────────────────────── */}
       <div
+        className={hideHeaderOnMobile ? "-mt-4 lg:mt-0" : undefined}
         style={{
           opacity: 0,
           animation: "fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 40ms both",
@@ -510,34 +530,39 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
       >
         {/* Location blurb */}
         <div className="mb-4 -mt-4">
-          <p className="text-base font-bold text-[var(--text-primary)]">Location</p>
-          <div className="text-sm font-medium text-[var(--text-primary)]">
-            <span className="inline-flex items-center gap-1.5">
-              High Street Centre, #01-35, Singapore 179094
-              {/* Tooltip trigger */}
-              <span className="relative inline-flex">
-                <button
-                  type="button"
-                  aria-label="More location details"
-                  onClick={() => setLocationTooltip((v) => !v)}
-                  onMouseEnter={() => setLocationTooltip(true)}
-                  onMouseLeave={() => setLocationTooltip(false)}
-                  className="flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border-medium)] text-[10px] font-bold text-[var(--text-tertiary)] transition-colors duration-150 hover:border-brand-blue hover:text-brand-blue"
-                >
-                  ?
-                </button>
-                {locationTooltip && (
-                  <div className="absolute left-1/2 top-[calc(100%+6px)] z-50 w-[240px] -translate-x-1/2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-2 shadow-lg">
-                    <p className="text-sm text-[var(--text-secondary)]">Near Funan IT Mall, Parliament House &amp; Boat Quay</p>
-                    <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[var(--border-subtle)]" />
-                  </div>
-                )}
-              </span>
+          <span className="inline-flex items-center gap-1.5">
+            <p className="text-base font-bold text-[var(--text-primary)]">Location</p>
+            {/* Tooltip trigger */}
+            <span className="relative inline-flex">
+              <button
+                type="button"
+                aria-label="More location details"
+                onClick={() => setLocationTooltip((v) => !v)}
+                onMouseEnter={() => setLocationTooltip(true)}
+                onMouseLeave={() => setLocationTooltip(false)}
+                className="flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border-medium)] text-[10px] font-bold text-[var(--text-tertiary)] transition-colors duration-150 hover:border-brand-blue hover:text-brand-blue"
+              >
+                ?
+              </button>
+              {locationTooltip && (
+                <div className="absolute left-1/2 top-[calc(100%+6px)] z-50 w-[240px] -translate-x-1/2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-2 shadow-lg">
+                  <p className="text-sm text-[var(--text-secondary)]">Near Funan IT Mall, Parliament House &amp; Boat Quay</p>
+                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[var(--border-subtle)]" />
+                </div>
+              )}
             </span>
-            <ul className="mt-1.5 flex flex-col gap-1 font-normal text-[var(--text-secondary)]">
+          </span>
+          <div className="mt-0.5 flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+            <p>1 North Bridge Road, #01-35</p>
+            <p>High Street Centre, Singapore 179094</p>
+            <ul className="mt-1.5 flex flex-col gap-1.5 font-normal text-[var(--text-secondary)]">
               <li className="flex items-start gap-1.5">
                 <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>5–7 mins walk from City Hall MRT or Clarke Quay MRT</span>
+                <span>
+                  5–7 mins walk from City Hall MRT (Exit B)
+                  <br />
+                  or Clarke Quay MRT (Exit E)
+                </span>
               </li>
               <li className="flex items-start gap-1.5">
                 <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
@@ -983,7 +1008,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           {/* Address + hours */}
           <div className="flex flex-1 flex-col gap-3">
             <div>
-              <h3 className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl whitespace-nowrap">
+              <h3 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl whitespace-nowrap">
                 Our office
               </h3>
             </div>
@@ -1076,7 +1101,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             }
           }}
           disabled={!canConfirm || isBooking}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
         >
           {isBooking ? (
             <>

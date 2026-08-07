@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { MobileHeader } from "@/app/mobile-header";
+import { MobileLegalFooter } from "@/app/mobile-legal-footer";
 import { SignaturePad } from "./signature-pad";
 import type { SelectedPlanData } from "./page";
 
@@ -104,8 +105,8 @@ function ReceiptRow({
       <span
         className={
           emphasize
-            ? "text-[15px] font-extrabold tabular-nums text-right"
-            : "text-[13.5px] font-bold tabular-nums text-right"
+            ? "text-[15px] font-semibold tabular-nums text-right"
+            : "text-[13.5px] font-semibold tabular-nums text-right"
         }
         style={{ color: "var(--text-primary)" }}
       >
@@ -136,8 +137,9 @@ function PlanSummaryCard({
           "0 0 0 1px var(--border-subtle), 0 8px 28px oklch(0.24 0.06 260 / 0.07)",
       }}
     >
-      {/* Approval header */}
-      <div className="flex flex-col items-center gap-2.5 px-6 pt-9 pb-6 text-center">
+      {/* Approval header - shown here on desktop only; mobile shows the
+          equivalent heading in the blue hero band above this card. */}
+      <div className="hidden lg:flex flex-col items-center gap-2.5 px-6 pt-9 pb-6 text-center">
         <span
           className="flex h-14 w-14 items-center justify-center rounded-full"
           style={{ background: "oklch(0.94 0.06 152)" }}
@@ -145,7 +147,7 @@ function PlanSummaryCard({
         >
           <SealCheck size={28} weight="fill" style={{ color: "#16a34a" }} />
         </span>
-        <h2 className="text-[19px] font-extrabold leading-snug" style={{ color: "var(--text-primary)" }}>
+        <h2 className="font-display text-xl font-semibold tracking-tight leading-snug" style={{ color: "var(--text-primary)" }}>
           Your Loan Is Approved
         </h2>
         <p
@@ -156,7 +158,7 @@ function PlanSummaryCard({
         </p>
       </div>
 
-      <div className="px-5 pb-6 flex flex-col gap-4">
+      <div className="px-5 pb-6 pt-5 lg:pt-0 flex flex-col gap-4">
         {/* Meta row */}
         <div
           className="flex items-center justify-between text-[12px] font-medium"
@@ -176,14 +178,7 @@ function PlanSummaryCard({
           <span className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>
             Loan amount
           </span>
-          <span
-            className="text-[18px] font-extrabold tabular-nums"
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              color: "var(--text-primary)",
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <span className="font-display text-lg font-semibold tracking-tight tabular-nums" style={{ color: "var(--text-primary)" }}>
             {formatCurrency(plan.amount)}
           </span>
         </div>
@@ -456,7 +451,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               priority
             />
           </div>
-          <h1 className="font-display text-4xl xl:text-5xl font-extrabold leading-[1.08] tracking-[-0.04em] text-[var(--text-on-brand)] max-w-[420px]">
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
             One last step.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
@@ -470,63 +465,91 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       <main className="flex flex-col flex-1 overflow-x-clip">
         <MobileHeader />
 
-        <div className="flex flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
-          <div className="w-full max-w-[520px] flex flex-col gap-5">
-            {/* Plan summary card - carries the page's heading and subtitle */}
-            <PlanSummaryCard plan={plan} leadId={leadId} acceptedAt={acceptedAt} />
-
-            {/* Terms */}
-            <TermsSection />
-
-            {/* Agree checkboxes */}
-            <div className="flex flex-col gap-3">
-              <AgreeCheckbox
-                checked={checks.readTerms}
-                onToggle={() => toggleCheck("readTerms")}
-                label="I have read the terms above and accept this offer"
+        {/* Match home page: full-bleed blue hero on mobile + floating white card. */}
+        <div className="flex flex-col items-center justify-start pb-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
+          <div className="flex w-full flex-col lg:max-w-[520px]">
+            {/* Mobile/tablet blue hero band */}
+            <div className="relative w-full lg:hidden">
+              <div
+                aria-hidden
+                className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
               />
-              <AgreeCheckbox
-                checked={checks.repaySchedule}
-                onToggle={() => toggleCheck("repaySchedule")}
-                label="I agree to repay as per the payment schedule stated above"
-              />
-              <AgreeCheckbox
-                checked={checks.paynowNric}
-                onToggle={() => toggleCheck("paynowNric")}
-                label="I acknowledge that my paynow is linked to my NRIC number to have the funds disbursed to me"
-              />
+              <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center gap-2.5 px-5 pt-6 pb-16 text-center sm:px-8">
+                <span
+                  className="flex h-14 w-14 items-center justify-center rounded-full"
+                  style={{ background: "rgba(255,255,255,0.16)" }}
+                  aria-hidden="true"
+                >
+                  <SealCheck size={28} weight="fill" className="text-white" />
+                </span>
+                <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
+                  Your Loan Is Approved
+                </h1>
+                <p className="text-sm leading-relaxed text-white/75 max-w-[300px]">
+                  Review your plan details and accept the terms below to proceed.
+                </p>
+              </div>
             </div>
 
-            {/* Signature — the closing act of the contract, unlocked once all boxes are ticked */}
-            <SignaturePad
-              disabled={!allChecked}
-              onSigned={(dataUrl) => setSignatureDataUrl(dataUrl)}
-              onCleared={() => setSignatureDataUrl(null)}
-            />
+            <div className="relative z-10 mx-auto -mt-10 flex w-full max-w-[520px] flex-1 flex-col gap-5 px-5 sm:px-8 lg:mt-0 lg:px-0">
+              {/* Plan summary card - carries the page's heading and subtitle */}
+              <PlanSummaryCard plan={plan} leadId={leadId} acceptedAt={acceptedAt} />
 
-            {/* CTA */}
-            <button
-              type="button"
-              disabled={!canProceed}
-              onClick={() => router.push("/apply/book")}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-blue text-sm font-bold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-            >
-              Next: Get your funds
-              <ArrowRight size={16} weight="bold" />
-            </button>
+              {/* Terms */}
+              <TermsSection />
 
-            {!canProceed && (
-              <p
-                className="text-center text-[11px] -mt-2"
-                style={{ color: "var(--text-tertiary)" }}
+              {/* Agree checkboxes */}
+              <div className="flex flex-col gap-3">
+                <AgreeCheckbox
+                  checked={checks.readTerms}
+                  onToggle={() => toggleCheck("readTerms")}
+                  label="I have read the terms above and accept this offer"
+                />
+                <AgreeCheckbox
+                  checked={checks.repaySchedule}
+                  onToggle={() => toggleCheck("repaySchedule")}
+                  label="I agree to repay as per the payment schedule stated above"
+                />
+                <AgreeCheckbox
+                  checked={checks.paynowNric}
+                  onToggle={() => toggleCheck("paynowNric")}
+                  label="I acknowledge that my paynow is linked to my NRIC number to have the funds disbursed to me"
+                />
+              </div>
+
+              {/* Signature — the closing act of the contract, unlocked once all boxes are ticked */}
+              <SignaturePad
+                disabled={!allChecked}
+                onSigned={(dataUrl) => setSignatureDataUrl(dataUrl)}
+                onCleared={() => setSignatureDataUrl(null)}
+              />
+
+              {/* CTA */}
+              <button
+                type="button"
+                disabled={!canProceed}
+                onClick={() => router.push("/apply/book")}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
-                {allChecked
-                  ? "Please sign above to continue."
-                  : "Please tick all three acknowledgements and sign above to continue."}
-              </p>
-            )}
+                Next: Get your funds
+                <ArrowRight size={16} weight="bold" />
+              </button>
+
+              {!canProceed && (
+                <p
+                  className="text-center text-[11px] -mt-2"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {allChecked
+                    ? "Please sign above to continue."
+                    : "Please tick all three acknowledgements and sign above to continue."}
+                </p>
+              )}
+            </div>
           </div>
         </div>
+
+        <MobileLegalFooter />
       </main>
     </div>
   );
