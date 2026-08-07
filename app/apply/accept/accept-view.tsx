@@ -258,10 +258,7 @@ function TermsSection() {
             className="text-[12.5px] leading-snug"
             style={{ color: "var(--text-secondary)" }}
           >
-            Fees, repayment and disbursement info —{" "}
-            <span className="font-semibold" style={{ color: "var(--brand-blue-hex, #0033AA)" }}>
-              {open ? "hide details" : "tap to read in full"}
-            </span>
+            Fees, repayment and disbursement info
           </span>
         </span>
         <CaretDown
