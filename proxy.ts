@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
-import {
-  getFunnelRedirectUrl,
-  readFunnelContextFromRequest,
-} from "@/lib/apply-funnel";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 
 function isPendingWithLeadId(request: NextRequest): boolean {
@@ -23,34 +19,25 @@ function isLandingPath(pathname: string): boolean {
   );
 }
 
+/**
+ * TEMPORARILY DISABLED funnel cookie lock for testing.
+ *
+ * - Landings (and pending?leadId=) clear apply/offer/booking cookies so a home
+ *   visit always starts a fresh flow.
+ * - Funnel redirects that bounce users to /apply/approval or /apply/booked are
+ *   skipped.
+ *
+ * Re-enable production resume redirects via git history when testing is done.
+ * Also re-enable `enforceApplyFunnel` in `lib/apply-funnel-enforce.ts`.
+ */
 export function proxy(request: NextRequest) {
-  // TEMPORARILY DISABLED - cookie resume from landings (`/` → /apply/approval etc.).
-  // Clear funnel cookies so each home visit starts a fresh apply flow for testing.
-  // Re-enable by deleting this block.
-  if (isLandingPath(request.nextUrl.pathname)) {
+  if (isLandingPath(request.nextUrl.pathname) || isPendingWithLeadId(request)) {
     const res = NextResponse.next();
     applyClearApplyCookiesOnResponse(res);
     return res;
   }
 
-  const ctx = readFunnelContextFromRequest(request);
-  const target = getFunnelRedirectUrl(ctx);
-  const clearPendingCookies = isPendingWithLeadId(request);
-
-  if (target) {
-    const url = new URL(target, request.url);
-    const res = NextResponse.redirect(url);
-    if (clearPendingCookies) {
-      applyClearApplyCookiesOnResponse(res);
-    }
-    return res;
-  }
-
-  const res = NextResponse.next();
-  if (clearPendingCookies) {
-    applyClearApplyCookiesOnResponse(res);
-  }
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {
