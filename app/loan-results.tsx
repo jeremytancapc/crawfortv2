@@ -19,7 +19,9 @@ import { motion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildOfferPlans,
+  calculateInstalment,
   OFFER_CONFIRMATION_DISCLAIMER,
+  OFFER_MONTHLY_RATE,
   type OfferPlan,
 } from "@/lib/offer-plans";
 
@@ -952,113 +954,142 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
   );
 }
 
-function RequestCheckbox({
-  checked,
-  onToggle,
-  label,
+function CustomOfferCard({
+  isSelected,
+  onSelect,
+  onDeselect,
+  amount,
+  tenure,
+  onAmountChange,
+  onTenureChange,
 }: {
-  checked: boolean;
-  onToggle: () => void;
-  label: string;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDeselect: () => void;
+  amount: string;
+  tenure: string;
+  onAmountChange: (value: string) => void;
+  onTenureChange: (value: string) => void;
 }) {
-  return (
-    <label className="flex items-center gap-3 cursor-pointer select-none">
+  if (!isSelected) {
+    return (
       <button
         type="button"
-        role="checkbox"
-        aria-checked={checked}
-        onClick={onToggle}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all duration-150"
-        style={{
-          border: checked ? "2px solid var(--brand-teal-hex)" : "2px solid var(--border-medium)",
-          background: checked ? "var(--brand-teal-hex)" : "transparent",
-        }}
+        onClick={onSelect}
+        className="group flex w-full flex-col items-center gap-3 rounded-[var(--radius-lg)] p-4 text-center transition-all duration-200 hover:bg-[var(--surface-secondary)] active:scale-[0.99]"
+        style={{ boxShadow: "0 0 0 1px var(--border-subtle)" }}
       >
-        {checked && (
-          <svg width="11" height="8" viewBox="0 0 11 8" fill="none" aria-hidden="true">
-            <path
-              d="M1 4L4 7L10 1"
-              stroke="#0a1628"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            Want a different amount or tenure?
+          </span>
+          <span className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            Build your own offer and our team will follow up to confirm the details.
+          </span>
+        </div>
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold text-white transition-all duration-200 group-hover:brightness-110 group-active:scale-[0.97]"
+          style={{ background: "var(--brand-blue-hex)" }}
+        >
+          Build a custom offer
+          <ArrowRight size={12} weight="bold" />
+        </span>
       </button>
-      <span className="text-sm font-medium leading-snug" style={{ color: "var(--text-primary)" }}>
-        {label}
-      </span>
-    </label>
-  );
-}
+    );
+  }
 
-function AdditionalRequestsCard({
-  longerTenure,
-  higherAmount,
-  onLongerTenureToggle,
-  onHigherAmountToggle,
-}: {
-  longerTenure: boolean;
-  higherAmount: boolean;
-  onLongerTenureToggle: () => void;
-  onHigherAmountToggle: () => void;
-}) {
   return (
     <div
-      className="rounded-[var(--radius-lg)] p-4"
+      className="relative flex flex-col gap-4 rounded-[var(--radius-lg)] p-4"
       style={{
-        background: "var(--surface-secondary)",
-        boxShadow: "0 0 0 1px var(--border-subtle)",
+        background: `radial-gradient(ellipse at 50% 0%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(165deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`,
+        boxShadow: "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)",
       }}
     >
-      <div className="flex flex-col gap-3">
-        <span
-          className="text-[11px] font-bold tracking-[0.14em] uppercase"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Additional requests
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold" style={{ color: "oklch(1 0 0 / 0.9)" }}>
+          Custom offer
         </span>
-
-        <div className="flex flex-col gap-2.5">
-          <RequestCheckbox
-            checked={longerTenure}
-            onToggle={onLongerTenureToggle}
-            label="Request for a longer tenure"
-          />
-          <RequestCheckbox
-            checked={higherAmount}
-            onToggle={onHigherAmountToggle}
-            label="Request for a higher loan amount"
-          />
-        </div>
-
-        <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
-          Your requests will be noted and subject to further assessment (up to 3 working days).
-        </p>
+        <button
+          type="button"
+          onClick={onDeselect}
+          className="text-[12px] font-medium underline underline-offset-2 transition-colors duration-150 hover:text-white"
+          style={{ color: "oklch(1 0 0 / 0.6)" }}
+        >
+          Use a standard plan instead
+        </button>
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+            Loan amount
+          </span>
+          <div
+            className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
+            style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
+          >
+            <span className="text-[15px] font-semibold" style={{ color: "oklch(1 0 0 / 0.6)" }}>$</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="0"
+              value={amount}
+              onChange={(e) => onAmountChange(e.target.value)}
+              className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none"
+              style={{ color: "white" }}
+            />
+          </div>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+            Tenure (months)
+          </span>
+          <div
+            className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
+            style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
+          >
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="0"
+              value={tenure}
+              onChange={(e) => onTenureChange(e.target.value)}
+              className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none"
+              style={{ color: "white" }}
+            />
+            <span className="text-[13px] font-medium" style={{ color: "oklch(1 0 0 / 0.6)" }}>mo</span>
+          </div>
+        </label>
+      </div>
+
+      <p className="text-[11px] leading-relaxed" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+        Outside our standard plans and not a final approval. Our team will call and WhatsApp you to confirm the exact terms.
+      </p>
     </div>
   );
 }
 
 interface PlanPickerProps {
   selectedPlanId: OfferPlan["id"] | null;
-  onPlanSelect: (id: OfferPlan["id"]) => void;
+  onPlanSelect: (id: OfferPlan["id"] | null) => void;
   plans: OfferPlan[];
-  requestLongerTenure: boolean;
-  requestHigherAmount: boolean;
-  onRequestLongerTenureToggle: () => void;
-  onRequestHigherAmountToggle: () => void;
+  customAmount: string;
+  customTenure: string;
+  onCustomAmountChange: (value: string) => void;
+  onCustomTenureChange: (value: string) => void;
 }
 
 function PlanPicker({
   selectedPlanId,
   onPlanSelect,
   plans,
-  requestLongerTenure,
-  requestHigherAmount,
-  onRequestLongerTenureToggle,
-  onRequestHigherAmountToggle,
+  customAmount,
+  customTenure,
+  onCustomAmountChange,
+  onCustomTenureChange,
 }: PlanPickerProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -1072,11 +1103,14 @@ function PlanPicker({
           />
         ))}
       </div>
-      <AdditionalRequestsCard
-        longerTenure={requestLongerTenure}
-        higherAmount={requestHigherAmount}
-        onLongerTenureToggle={onRequestLongerTenureToggle}
-        onHigherAmountToggle={onRequestHigherAmountToggle}
+      <CustomOfferCard
+        isSelected={selectedPlanId === "custom"}
+        onSelect={() => onPlanSelect("custom")}
+        onDeselect={() => onPlanSelect(null)}
+        amount={customAmount}
+        tenure={customTenure}
+        onAmountChange={onCustomAmountChange}
+        onTenureChange={onCustomTenureChange}
       />
     </div>
   );
@@ -1314,6 +1348,103 @@ function ReconsiderModal({
   );
 }
 
+// ── Custom offer confirm modal ────────────────────────────────────────────────
+
+function CustomOfferConfirmModal({
+  amount,
+  tenure,
+  isSubmitting,
+  onConfirm,
+  onClose,
+}: {
+  amount: number;
+  tenure: number;
+  isSubmitting: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:px-4"
+      style={{
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+        background: "oklch(0.18 0.02 260 / 0.55)",
+        animation: "fade-up 0.25s cubic-bezier(0.16,1,0.3,1) both",
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[440px] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] px-6 pb-8 pt-6 flex flex-col gap-6"
+        style={{ background: "var(--surface-elevated)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-[var(--surface-secondary)] active:scale-[0.95]"
+          aria-label="Close"
+        >
+          <X size={16} weight="bold" className="text-[var(--text-tertiary)]" />
+        </button>
+
+        <div className="flex flex-col gap-2 pr-8">
+          <p
+            className="text-xl font-bold tracking-tight text-[var(--text-primary)]"
+            style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.03em" }}
+          >
+            Confirm your custom offer request
+          </p>
+          <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+            You&apos;re requesting{" "}
+            <span className="font-semibold text-[var(--text-primary)]">{formatCurrency(amount)}</span> over{" "}
+            <span className="font-semibold text-[var(--text-primary)]">
+              {tenure} {tenure === 1 ? "month" : "months"}
+            </span>
+            , outside our standard plans.
+          </p>
+        </div>
+
+        <div
+          className="flex items-start gap-3 rounded-[var(--radius-md)] p-4"
+          style={{ background: "var(--surface-secondary)" }}
+        >
+          <Warning size={18} weight="fill" className="mt-0.5 shrink-0 text-[var(--offer-accent)]" />
+          <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+            This isn&apos;t a final approval. Our team will call and WhatsApp you to confirm the exact terms
+            before anything is signed.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
+          >
+            {isSubmitting ? "Submitting…" : "Yes, submit my request"}
+            {!isSubmitting && <ArrowRight size={16} weight="bold" />}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-center text-sm text-[var(--text-tertiary)] transition-colors duration-200 hover:text-[var(--text-secondary)]"
+          >
+            Go back and adjust
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -1322,6 +1453,9 @@ interface LoanResultsProps {
   formData: FormData;
   monthlyRepayment: number;
   onAccept: () => void;
+  /** Called instead of `onAccept` once a custom offer request has been submitted.
+   *  Falls back to `onAccept` when not provided. */
+  onCustomOfferSubmitted?: () => void;
   reminderItems?: string[];
   /** Originally requested amount. When greater than `formData.amount`, the header
    *  presents `formData.amount` as "available today" against this as the credit limit. */
@@ -1331,6 +1465,7 @@ interface LoanResultsProps {
 export function LoanResults({
   formData,
   onAccept,
+  onCustomOfferSubmitted,
   creditLimit,
 }: LoanResultsProps) {
   const [showModal, setShowModal] = useState(false);
@@ -1345,10 +1480,21 @@ export function LoanResults({
   const [withdrawAmount, setWithdrawAmount] = useState(formData.amount);
   const plans = buildOfferPlans(withdrawAmount);
   const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | null>(null);
-  const [requestLongerTenure, setRequestLongerTenure] = useState(false);
-  const [requestHigherAmount, setRequestHigherAmount] = useState(false);
+  const [customAmount, setCustomAmount] = useState("");
+  const [customTenure, setCustomTenure] = useState("");
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [isSubmittingCustom, setIsSubmittingCustom] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const hasNoSelection = selectedPlanId === null;
+  const isCustomSelected = selectedPlanId === "custom";
+  const customAmountValue = parseInt(customAmount, 10);
+  const customTenureValue = parseInt(customTenure, 10);
+  const hasInvalidCustomInput =
+    isCustomSelected &&
+    (!Number.isFinite(customAmountValue) ||
+      customAmountValue <= 0 ||
+      !Number.isFinite(customTenureValue) ||
+      customTenureValue <= 0);
 
   useEffect(() => {
     const el = ctaButtonRef.current;
@@ -1380,6 +1526,18 @@ export function LoanResults({
 
   const getSelectedPlanPayload = useCallback(() => {
     if (selectedPlanId === null) return null;
+    if (selectedPlanId === "custom") {
+      if (hasInvalidCustomInput) return null;
+      return {
+        planId: "custom" as const,
+        tenure: customTenureValue,
+        amount: customAmountValue,
+        monthlyRate: OFFER_MONTHLY_RATE,
+        monthlyInstalment: Math.ceil(
+          calculateInstalment(customAmountValue, customTenureValue, OFFER_MONTHLY_RATE),
+        ),
+      };
+    }
     const plan = plans.find((p) => p.id === selectedPlanId);
     if (!plan) return null;
     return {
@@ -1388,10 +1546,8 @@ export function LoanResults({
       amount: withdrawAmount,
       monthlyRate: plan.monthlyRate,
       monthlyInstalment: plan.monthlyInstalment,
-      requestLongerTenure,
-      requestHigherAmount,
     };
-  }, [selectedPlanId, withdrawAmount, plans, requestLongerTenure, requestHigherAmount]);
+  }, [selectedPlanId, withdrawAmount, plans, hasInvalidCustomInput, customAmountValue, customTenureValue]);
 
   const handleAccept = useCallback(async () => {
     trackEvent("step_10_offer_accepted", { planId: selectedPlanId });
@@ -1412,6 +1568,36 @@ export function LoanResults({
     }
     onAccept();
   }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept]);
+
+  /** "Review Offer" opens a confirm-and-explain modal for custom requests instead of accepting immediately. */
+  const handleReviewOfferClick = useCallback(() => {
+    if (isCustomSelected) {
+      setIsCustomModalOpen(true);
+      return;
+    }
+    void handleAccept();
+  }, [isCustomSelected, handleAccept]);
+
+  const handleCustomOfferSubmit = useCallback(async () => {
+    trackEvent("step_10_offer_accepted", { planId: "custom" });
+    const payload = getSelectedPlanPayload();
+    if (payload && formData.leadId) {
+      setIsSubmittingCustom(true);
+      try {
+        await fetch("/api/apply/select-plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ leadId: formData.leadId, ...payload }),
+        });
+      } catch {
+        // Graceful fallback - the customer still lands on the confirmation screen
+      } finally {
+        setIsSubmittingCustom(false);
+      }
+    }
+    setIsCustomModalOpen(false);
+    (onCustomOfferSubmitted ?? onAccept)();
+  }, [getSelectedPlanPayload, formData.leadId, onCustomOfferSubmitted, onAccept]);
 
   return (
     <>
@@ -1486,10 +1672,10 @@ export function LoanResults({
               selectedPlanId={selectedPlanId}
               onPlanSelect={setSelectedPlanId}
               plans={plans}
-              requestLongerTenure={requestLongerTenure}
-              requestHigherAmount={requestHigherAmount}
-              onRequestLongerTenureToggle={() => setRequestLongerTenure((v) => !v)}
-              onRequestHigherAmountToggle={() => setRequestHigherAmount((v) => !v)}
+              customAmount={customAmount}
+              customTenure={customTenure}
+              onCustomAmountChange={setCustomAmount}
+              onCustomTenureChange={setCustomTenure}
             />
           </motion.div>
         )}
@@ -1538,8 +1724,8 @@ export function LoanResults({
               <button
                 ref={ctaButtonRef}
                 type="button"
-                onClick={handleAccept}
-                disabled={hasNoSelection || isSavingPlan}
+                onClick={handleReviewOfferClick}
+                disabled={hasNoSelection || hasInvalidCustomInput || isSavingPlan}
                 className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
               >
                 {isSavingPlan ? "Saving plan…" : "Review Offer"}
@@ -1548,6 +1734,11 @@ export function LoanResults({
               {hasNoSelection && (
                 <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
                   Select a repayment plan above to continue.
+                </p>
+              )}
+              {isCustomSelected && hasInvalidCustomInput && (
+                <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                  Enter a loan amount and tenure for your custom offer.
                 </p>
               )}
               {/* Temporarily hidden — restore to re-enable the reconsider modal entry point.
@@ -1601,6 +1792,16 @@ export function LoanResults({
           onAccept={handleAccept}
           onClose={() => setShowModal(false)}
           leadId={formData.leadId ?? undefined}
+        />
+      )}
+
+      {isCustomModalOpen && (
+        <CustomOfferConfirmModal
+          amount={customAmountValue}
+          tenure={customTenureValue}
+          isSubmitting={isSubmittingCustom}
+          onConfirm={handleCustomOfferSubmit}
+          onClose={() => setIsCustomModalOpen(false)}
         />
       )}
     </>

@@ -74,9 +74,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "planId is required" }, { status: 400 });
     }
 
-    if (typeof tenure !== "number" || tenure < MIN_OFFER_TENURE || tenure > MAX_OFFER_TENURE) {
+    // Custom offers are freeform (subject to manual staff review), so only the
+    // preset plans are held to the standard tenure ceiling.
+    const isCustomPlan = planId === "custom";
+    const tenureTooLong = !isCustomPlan && (typeof tenure === "number" ? tenure > MAX_OFFER_TENURE : true);
+    if (typeof tenure !== "number" || tenure < MIN_OFFER_TENURE || tenureTooLong) {
       return NextResponse.json(
-        { error: `tenure must be between ${MIN_OFFER_TENURE} and ${MAX_OFFER_TENURE}` },
+        {
+          error: isCustomPlan
+            ? `tenure must be at least ${MIN_OFFER_TENURE}`
+            : `tenure must be between ${MIN_OFFER_TENURE} and ${MAX_OFFER_TENURE}`,
+        },
         { status: 400 },
       );
     }
@@ -96,22 +104,35 @@ export async function POST(request: NextRequest) {
       plan_monthly_instalment: monthlyInstalment ?? null,
     };
 
-    // Append a short ops-facing note when the customer ticked additional requests.
+    // Append short ops-facing notes when the customer ticked additional requests
+    // or asked for a custom (out-of-policy) offer that needs staff follow-up.
     const requestLabels = formatPlanAdditionalRequestsLabel(additionalRequests);
+    const noteLines: string[] = [];
     if (requestLabels.length > 0) {
+      noteLines.push(`Additional requests: ${requestLabels.join("; ")}`);
+    }
+    if (isCustomPlan) {
+      noteLines.push(
+        `Custom offer requested: $${amount.toLocaleString("en-SG")} over ${tenure} ${tenure === 1 ? "month" : "months"} — needs staff follow-up (call/WhatsApp)`,
+      );
+    }
+    if (noteLines.length > 0) {
       const { data: existing } = await admin
         .from("leads")
         .select("notes")
         .eq("id", leadId)
         .maybeSingle();
       const previousNotes = typeof existing?.notes === "string" ? existing.notes.trim() : "";
-      const requestNote = `Additional requests: ${requestLabels.join("; ")}`;
       const stripped = previousNotes
         .split("\n")
-        .filter((line: string) => !line.startsWith("Additional requests:"))
+        .filter(
+          (line: string) =>
+            !line.startsWith("Additional requests:") && !line.startsWith("Custom offer requested:"),
+        )
         .join("\n")
         .trim();
-      update.notes = stripped ? `${stripped}\n${requestNote}` : requestNote;
+      const freshNotes = noteLines.join("\n");
+      update.notes = stripped ? `${stripped}\n${freshNotes}` : freshNotes;
     }
 
     const { error } = await admin.from("leads").update(update).eq("id", leadId);
