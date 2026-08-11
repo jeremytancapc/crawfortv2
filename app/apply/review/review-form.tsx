@@ -256,7 +256,7 @@ export function ReviewForm({ initialData }: Props) {
                 aria-hidden
                 className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
               />
-              <div className="relative mx-auto w-full max-w-[520px] px-5 pt-5 pb-16 sm:px-8">
+              <div className="relative mx-auto w-full max-w-[520px] px-5 pt-5 pb-16 text-center sm:px-8">
                 <div className="flex items-center gap-1.5">
                   {Array.from({ length: totalDisplay }, (_, i) => {
                     const s = i + 1;
@@ -279,11 +279,11 @@ export function ReviewForm({ initialData }: Props) {
                 </div>
 
                 {stepMeta && (
-                  <div className="mt-6">
+                  <div className="mx-auto mt-6 flex max-w-[36ch] flex-col items-center">
                     <h2 className="font-display text-[26px] font-semibold leading-tight tracking-tight text-white">
                       {stepMeta.title}
                     </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-white/75 max-w-[36ch]">
+                    <p className="mt-2 text-sm leading-relaxed text-white/75">
                       {stepMeta.subtitle}
                     </p>
                   </div>
