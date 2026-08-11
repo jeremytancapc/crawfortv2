@@ -61,7 +61,7 @@ function ApplyLandingLayout({
       </aside>
 
       <main className="flex flex-col flex-1 overflow-x-clip">
-        <div className="hero-chrome sticky top-0 z-50 flex items-center px-6 py-4 lg:hidden">
+        <div className="hero-chrome sticky top-0 z-50 flex items-center justify-center px-6 py-4 lg:hidden">
           <a href="/">
             <Image
               src="/images/crawfort-white.png"

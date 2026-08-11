@@ -96,7 +96,7 @@ export function BookingView({ formData }: Props) {
                 aria-hidden
                 className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
               />
-              <div className="relative mx-auto flex w-full max-w-[520px] flex-col gap-2 px-5 pt-6 pb-16 sm:px-8">
+              <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center gap-2 px-5 pt-6 pb-16 text-center sm:px-8">
                 <span
                   className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
                   style={{ background: "rgba(255,255,255,0.16)" }}

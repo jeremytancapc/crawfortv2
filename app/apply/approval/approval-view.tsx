@@ -61,7 +61,7 @@ export function ApprovalView({ formData }: Props) {
                 aria-hidden
                 className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
               />
-              <div className="relative mx-auto w-full max-w-[520px] px-5 pt-6 pb-16 sm:px-8">
+              <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center px-5 pt-6 pb-16 text-center sm:px-8">
                 <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-white">
                   Your loan offer is confirmed.
                 </h1>
