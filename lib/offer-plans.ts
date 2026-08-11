@@ -91,7 +91,7 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
     make(
       "lowest_instalment",
       "FlexiPay Plan",
-      "Smallest monthly payment, spread out longer",
+      "Smallest payment - longer tenure",
       MAX_OFFER_TENURE,
       OFFER_MONTHLY_RATE,
     ),

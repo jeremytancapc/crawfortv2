@@ -897,14 +897,15 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
               </motion.span>
             </div>
 
-            {/* Fixed row heights so feature N lines up across all three cards even when copy wraps. */}
-            <ul className="grid w-full grid-rows-[3.25rem_1.125rem] gap-2 text-left sm:grid-rows-[3.5rem_1.25rem] sm:gap-3">
+            {/* Fixed row heights keep feature N aligned across cards; first row
+                sized for 3-line wraps on narrow 3-col mobile (~70px text). */}
+            <ul className="grid w-full grid-rows-[3.75rem_1.125rem] gap-2 text-left sm:grid-rows-[3.5rem_1.25rem] sm:gap-3">
               {[
                 plan.tagline,
                 `${formatRate(plan.monthlyRate)}/month`,
               ].map((feature) => (
-                <li key={feature} className="flex min-h-0 items-start">
-                  <span className="flex items-start gap-1 sm:gap-1.5">
+                <li key={feature} className="flex min-h-0 items-start overflow-hidden">
+                  <span className="flex min-w-0 items-start gap-1 sm:gap-1.5">
                     <CheckCircle
                       size={14}
                       weight="fill"
@@ -916,7 +917,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
                       initial={{ opacity: 0.3 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.25, ease: EASE }}
-                      className="text-[11px] font-semibold leading-snug sm:text-[13px]"
+                      className="min-w-0 text-[11px] font-semibold leading-snug sm:text-[13px]"
                       style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
                     >
                       {feature}
