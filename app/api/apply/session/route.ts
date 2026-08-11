@@ -3,7 +3,6 @@ import {
   sessionCookieValue,
   gateCookieValue,
   reviewGateCookieValue,
-  clearCookies,
   decodeSession,
   encodeSession,
   SESSION_COOKIE,
@@ -16,6 +15,7 @@ import {
   logApplyFlowEvent,
   newApplyTraceId,
 } from "@/lib/apply-flow-log";
+import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
 
 export const runtime = "nodejs";
 
@@ -89,11 +89,8 @@ export async function POST(request: NextRequest) {
   return res;
 }
 
-// DELETE - clear all apply cookies (called on booking confirmation)
+// DELETE - clear all apply cookies (session, offer, booking confirm, etc.)
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
-  for (const c of clearCookies()) {
-    res.cookies.set(c);
-  }
-  return res;
+  return applyClearApplyCookiesOnResponse(res);
 }

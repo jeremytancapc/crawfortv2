@@ -59,6 +59,10 @@ export async function getBookingConfirmation(): Promise<StoredBookingConfirmatio
   return decodeBookingConfirmation(raw);
 }
 
+export function clearBookingConfirmCookie() {
+  return { name: BOOKING_CONFIRM_COOKIE, value: "", maxAge: 0, path: "/" };
+}
+
 export async function clearBookingConfirmServer(): Promise<void> {
   const store = await cookies();
   store.delete(BOOKING_CONFIRM_COOKIE);

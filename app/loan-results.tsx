@@ -762,7 +762,7 @@ function OfferHeader({
                 color: isAtMax ? "var(--text-tertiary)" : "var(--offer-accent)",
               }}
             >
-              {isAtMax ? "At maximum" : `Use max · ${formatCurrency(maxWithdraw)}`}
+              {isAtMax ? "Max Amount" : `Use max · ${formatCurrency(maxWithdraw)}`}
             </button>
           </div>
         </div>
