@@ -78,6 +78,9 @@ export function ApprovalView({ formData }: Props) {
                   creditLimit={maxCreditLimit}
                   monthlyRepayment={0}
                   onAccept={() => router.push("/apply/accept")}
+                  onCustomOfferSubmitted={() =>
+                    router.push(`/apply/custom-received?leadId=${formData.leadId ?? ""}`)
+                  }
                 />
               </div>
             </div>
