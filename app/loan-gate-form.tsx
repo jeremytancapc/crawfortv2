@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { LoanFormData as FormData } from "@/lib/loan-form";
 import { initialLoanFormData as initialFormData, calculateMonthlyRepayment } from "@/lib/loan-form";
 import { trackDisplayStep } from "@/lib/analytics";
@@ -54,8 +54,6 @@ export function LoanGateForm({
   const [incomeConfirmed, setIncomeConfirmed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [step3RedirectPending, setStep3RedirectPending] = useState(false);
-  const bottomCtaRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -177,10 +175,6 @@ export function LoanGateForm({
     return ((formData.amount - 500) / (20000 - 500)) * 100;
   }, [formData.amount]);
 
-  const scrollToBottomCta = useCallback(() => {
-    bottomCtaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, []);
-
   const stepMeta = GATE_STEP_META[step];
 
   return (
@@ -243,7 +237,6 @@ export function LoanGateForm({
                 updateField={updateField}
                 monthlyRepayment={monthlyRepayment}
                 sliderPercentage={sliderPercentage}
-                onUrgencySelect={scrollToBottomCta}
               />
             )}
             {step === 2 && (
@@ -276,7 +269,7 @@ export function LoanGateForm({
           </div>
 
           {step !== 3 && (
-            <div ref={bottomCtaRef} className="mt-8 flex items-center gap-3 relative z-20">
+            <div className="mt-8 flex items-center gap-3 relative z-20">
               {step > 1 && (
                 <button
                   type="button"

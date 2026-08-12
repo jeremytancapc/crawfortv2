@@ -27,6 +27,34 @@ import type { SelectedPlanData } from "./page";
 const STEP_COLLAPSE_DELAY_MS = 500;
 const STEP_COLLAPSE_DURATION_MS = 300;
 const SCROLL_TO_NEXT_STEP_DELAY_MS = STEP_COLLAPSE_DELAY_MS + STEP_COLLAPSE_DURATION_MS + 50;
+// Sticky MobileHeader is py-4 (32px) + logo h-5 (20px) ≈ 52px. Leave a little
+// breathing room so the next step's header isn't clipped under it.
+const STICKY_HEADER_OFFSET_PX = 72;
+
+/**
+ * Scroll a newly unlocked step into a comfortable viewport position.
+ * Short cards are centered; tall cards (e.g. the payment schedule) are pinned
+ * just below the sticky mobile header so their top isn't hidden behind it.
+ */
+function scrollStepIntoView(el: HTMLElement | null) {
+  if (!el) return;
+
+  const rect = el.getBoundingClientRect();
+  const absoluteTop = window.scrollY + rect.top;
+  const availableHeight = window.innerHeight - STICKY_HEADER_OFFSET_PX;
+  const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+
+  let targetY: number;
+  if (!isDesktop && rect.height >= availableHeight) {
+    // Tall card on mobile: keep the top clear of the sticky header.
+    targetY = absoluteTop - STICKY_HEADER_OFFSET_PX;
+  } else {
+    // Card fits (or desktop has no sticky header): center it in the viewport.
+    targetY = absoluteTop - (window.innerHeight - rect.height) / 2;
+  }
+
+  window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -296,23 +324,36 @@ function PlanSummaryCard({
             emphasize
           />
         </div>
-
-        <DashedDivider />
-
-        {/* Next steps */}
-        <div className="flex flex-col gap-1.5">
-          <span
-            className="text-[11px] font-bold tracking-[0.12em] uppercase"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Next steps
-          </span>
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Complete the acknowledgements and signature below, then book an
-            appointment to collect your funds in person.
-          </p>
-        </div>
       </div>
+    </div>
+  );
+}
+
+// Standalone instruction shown between the receipt card and the acceptance
+// steps below. Pulled out of PlanSummaryCard (rather than sitting inside it
+// as another receipt row) so it reads as a clear call-to-action instead of
+// getting lost among the plan's line items. Framed with dashed dividers -
+// echoing the receipt card's own divider style - rather than another boxed
+// panel, since the rest of the page is already made up of boxes.
+function NextStepsBanner() {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <DashedDivider />
+      <div className="flex flex-col items-center gap-1.5 px-2">
+        <span
+          className="flex items-center gap-1.5 text-[12px] font-bold tracking-[0.1em] uppercase"
+          style={{ color: "var(--brand-blue-hex, #0033AA)" }}
+        >
+          <CaretDown size={12} weight="bold" aria-hidden="true" />
+          Next steps
+          <CaretDown size={12} weight="bold" aria-hidden="true" />
+        </span>
+        <p className="text-[13.5px] leading-relaxed font-medium" style={{ color: "var(--text-primary)" }}>
+          Complete the acknowledgements and signature below, then book an
+          appointment to collect your funds in person.
+        </p>
+      </div>
+      <DashedDivider />
     </div>
   );
 }
@@ -754,7 +795,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   useEffect(() => {
     if (!checks.readTerms) return;
     const timeout = setTimeout(
-      () => scheduleStepRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      () => scrollStepIntoView(scheduleStepRef.current),
       SCROLL_TO_NEXT_STEP_DELAY_MS,
     );
     return () => clearTimeout(timeout);
@@ -763,7 +804,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   useEffect(() => {
     if (!checks.repaySchedule) return;
     const timeout = setTimeout(
-      () => disbursementStepRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      () => scrollStepIntoView(disbursementStepRef.current),
       SCROLL_TO_NEXT_STEP_DELAY_MS,
     );
     return () => clearTimeout(timeout);
@@ -772,7 +813,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   useEffect(() => {
     if (!checks.paynowNric) return;
     const timeout = setTimeout(
-      () => signatureRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      () => scrollStepIntoView(signatureRef.current),
       SCROLL_TO_NEXT_STEP_DELAY_MS,
     );
     return () => clearTimeout(timeout);
@@ -836,6 +877,10 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
             <div className="relative z-10 mx-auto -mt-10 flex w-full max-w-[520px] flex-1 flex-col gap-5 px-5 sm:px-8 lg:mt-0 lg:px-0">
               {/* Plan summary card - carries the page's heading and subtitle */}
               <PlanSummaryCard plan={plan} leadId={leadId} acceptedAt={acceptedAt} />
+
+              {/* Next steps - standalone banner so it reads as an instruction
+                  rather than another line item inside the receipt card */}
+              <NextStepsBanner />
 
               {/* Step 1: loan terms */}
               <AcceptanceStepCard
