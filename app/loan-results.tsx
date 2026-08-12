@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   ArrowRight,
   ArrowDown,
@@ -14,6 +14,8 @@ import {
   SealCheck,
   Lock,
   PencilSimple,
+  CalendarBlank,
+  Lightning,
 } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
@@ -121,6 +123,16 @@ function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`;
 }
 
+/** "1st", "2nd", "3rd", "4th"... for human-readable renewal/expiry dates. */
+function ordinalSuffix(n: number): string {
+  const j = n % 10;
+  const k = n % 100;
+  if (j === 1 && k !== 11) return `${n}st`;
+  if (j === 2 && k !== 12) return `${n}nd`;
+  if (j === 3 && k !== 13) return `${n}rd`;
+  return `${n}th`;
+}
+
 // ── Withdraw-today amount adjuster ────────────────────────────────────────────
 
 const MIN_WITHDRAW_AMOUNT = 500;
@@ -143,300 +155,7 @@ function clampWithdrawAmount(raw: number, max: number): number {
   return Math.min(Math.max(snapped, floor), safeMax);
 }
 
-// ── Deadline strip (airport flip-clock) ──────────────────────────────────────
-
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-const FLIP_TILE_W = 34;
-const FLIP_TILE_H = 30;
-const FLIP_DURATION_MS = 250;
-
-const flipDigitStyle: React.CSSProperties = {
-  position: "absolute",
-  left: 0,
-  right: 0,
-  height: "200%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-  fontSize: "1rem",
-  fontWeight: 700,
-  letterSpacing: "0.02em",
-  color: "#ffffff",
-  fontVariantNumeric: "tabular-nums",
-};
-
-function FlipHalf({
-  pos,
-  text,
-  style,
-}: {
-  pos: "top" | "bottom";
-  text: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        top: pos === "top" ? 0 : "50%",
-        height: "50%",
-        overflow: "hidden",
-        background: pos === "top" ? "#1a1a1e" : "#0e0e11",
-        borderRadius: pos === "top" ? "4px 4px 0 0" : "0 0 4px 4px",
-        backfaceVisibility: "hidden",
-        ...style,
-      }}
-    >
-      <span style={{ ...flipDigitStyle, top: pos === "top" ? 0 : "-100%" }}>{text}</span>
-    </div>
-  );
-}
-
-function FlipTile({ value, label, labelColor }: { value: number; label: string; labelColor: string }) {
-  const display = String(value).padStart(2, "0");
-  const [shown, setShown] = useState(display);
-  const isFlipping = display !== shown;
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div
-        style={{
-          position: "relative",
-          width: FLIP_TILE_W,
-          height: FLIP_TILE_H,
-          perspective: 240,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
-          borderRadius: 4,
-        }}
-      >
-        <FlipHalf pos="top" text={isFlipping ? display : shown} />
-        <FlipHalf pos="bottom" text={shown} />
-
-        {isFlipping && (
-          <>
-            <FlipHalf
-              key={`t-${display}`}
-              pos="top"
-              text={shown}
-              style={{
-                zIndex: 2,
-                transformOrigin: "50% 100%",
-                animation: `flip-top-down ${FLIP_DURATION_MS}ms ease-in both`,
-              }}
-            />
-            <div
-              key={`b-${display}`}
-              style={{
-                position: "absolute",
-                inset: 0,
-                zIndex: 2,
-                transformOrigin: "50% 50%",
-              }}
-              onAnimationEnd={() => setShown(display)}
-            >
-              <FlipHalf
-                pos="bottom"
-                text={display}
-                style={{
-                  transformOrigin: "50% 0%",
-                  animation: `flip-bottom-up ${FLIP_DURATION_MS}ms ${FLIP_DURATION_MS}ms ease-out both`,
-                }}
-              />
-            </div>
-          </>
-        )}
-
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: 0,
-            right: 0,
-            height: 1,
-            background: "rgba(255,255,255,0.14)",
-            zIndex: 3,
-            transform: "translateY(-0.5px)",
-          }}
-        />
-      </div>
-      <span
-        className="text-[9px] font-semibold tracking-wider uppercase leading-none"
-        style={{ color: labelColor }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function DeadlineStrip() {
-  const { parts, expiry } = useCountdownParts();
-
-  const h = expiry.getHours();
-  const hour12 = ((h + 11) % 12) + 1;
-  const ampm = h >= 12 ? "PM" : "AM";
-  const expiryDate = `${expiry.getDate()} ${FULL_MONTHS[expiry.getMonth()].slice(0, 3)} ${expiry.getFullYear()}`;
-  const expiryTime = `${hour12}:${String(expiry.getMinutes()).padStart(2, "0")} ${ampm}`;
-
-  const remainingMs = parts.expired ? 0 : (
-    (parts.days * 86400 + parts.hrs * 3600 + parts.mins * 60 + parts.secs) * 1000
-  );
-  const totalWindowMs = 3 * 24 * 60 * 60 * 1000;
-  const progress = Math.max(0, Math.min(1, remainingMs / totalWindowMs));
-
-  const isUrgent = parts.days < 1 && !parts.expired;
-
-  const scheme = isUrgent
-    ? {
-        bg: "oklch(0.96 0.03 25)",
-        border: "oklch(0.85 0.06 25)",
-        leftBar: "#dc2626",
-        labelColor: "#7f1d1d",
-        dateColor: "#450a0a",
-        unitColor: "#991b1b",
-        trackBg: "oklch(0.90 0.04 25)",
-        barGradient: "linear-gradient(to right, #dc2626, #f97316)",
-      }
-    : {
-        bg: "oklch(0.97 0.03 85)",
-        border: "oklch(0.88 0.06 85)",
-        leftBar: "#f59e0b",
-        labelColor: "#78350f",
-        dateColor: "var(--text-primary)",
-        unitColor: "#92400e",
-        trackBg: "oklch(0.92 0.04 85)",
-        barGradient: "linear-gradient(to right, #f59e0b, #fbbf24)",
-      };
-
-  if (parts.expired) {
-    return (
-      <div
-        className="w-full rounded-[var(--radius-md)] overflow-hidden flex"
-        style={{
-          background: "oklch(0.96 0.03 25)",
-          boxShadow: "0 0 0 1px oklch(0.85 0.06 25)",
-        }}
-      >
-        <div className="w-1 shrink-0 self-stretch" style={{ background: "#dc2626" }} aria-hidden="true" />
-
-        <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex items-start gap-3 px-4 py-3.5">
-            <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: "oklch(0.91 0.05 25)" }}
-            >
-              <Warning size={17} weight="duotone" style={{ color: "#dc2626" }} />
-            </span>
-
-            <div className="flex flex-col gap-1 min-w-0">
-              <p
-                className="text-sm font-bold leading-snug"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  color: "#450a0a",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Offer expired
-              </p>
-              <p
-                className="text-[11px] leading-relaxed"
-                style={{ color: "#7f1d1d" }}
-              >
-                Expired {expiryDate}, {expiryTime}. Submit a new application to receive a fresh offer.
-              </p>
-            </div>
-          </div>
-
-          <div
-            className="h-[3px] w-full"
-            style={{ background: "oklch(0.90 0.04 25)" }}
-            aria-hidden="true"
-          />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="w-full rounded-[var(--radius-md)] overflow-hidden flex"
-      style={{
-        background: scheme.bg,
-        boxShadow: `0 0 0 1px ${scheme.border}`,
-      }}
-    >
-      <div
-        className="w-1 shrink-0 self-stretch"
-        style={{ background: scheme.leftBar }}
-        aria-hidden="true"
-      />
-
-      <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex flex-col gap-0.5">
-            <span
-              className="text-[10px] font-bold tracking-[0.16em] uppercase"
-              style={{ color: scheme.labelColor }}
-            >
-              Offer expires
-            </span>
-            <span
-              className="text-sm font-semibold"
-              style={{ color: scheme.dateColor }}
-            >
-              {expiryDate}, {expiryTime}
-            </span>
-          </div>
-
-          <div className="flex items-start gap-1">
-            {[
-              { value: parts.days, label: "d" },
-              { value: parts.hrs, label: "h" },
-              { value: parts.mins, label: "m" },
-              { value: parts.secs, label: "s" },
-            ].map(({ value, label }, i) => (
-              <div key={label} className="flex items-start gap-1">
-                {i > 0 && (
-                  <span
-                    className="text-[10px] font-bold"
-                    style={{
-                      color: scheme.unitColor,
-                      opacity: 0.5,
-                      lineHeight: `${FLIP_TILE_H}px`,
-                    }}
-                  >
-                    :
-                  </span>
-                )}
-                <FlipTile value={value} label={label} labelColor={scheme.unitColor} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div
-          className="h-[3px] w-full"
-          style={{ background: scheme.trackBg }}
-          aria-hidden="true"
-        >
-          <div
-            className="h-full transition-none"
-            style={{
-              width: `${(progress * 100).toFixed(2)}%`,
-              background: scheme.barGradient,
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Term-sheet confirmed offer card ───────────────────────────────────────────
 
@@ -467,11 +186,10 @@ function CreditLineMeter({
       aria-valuemax={limit}
       aria-valuenow={available}
       aria-label={`${formatCurrency(available)} available to withdraw today out of a ${formatCurrency(limit)} credit line`}
-      className="relative h-2.5 w-full overflow-hidden rounded-full"
+      className="relative h-3 w-full overflow-hidden rounded-full"
       style={{
-        background:
-          "repeating-linear-gradient(135deg, oklch(0.55 0.03 260 / 0.14) 0px, oklch(0.55 0.03 260 / 0.14) 3px, transparent 3px, transparent 7px), var(--surface-secondary)",
-        boxShadow: "inset 0 1px 2px oklch(0 0 0 / 0.08)",
+        background: "oklch(0.93 0.045 176 / 0.6)",
+        boxShadow: "inset 0 1px 2px oklch(0 0 0 / 0.06)",
       }}
     >
       <motion.div
@@ -495,6 +213,7 @@ function OfferHeader({
   onWithdrawAmountChange,
 }: OfferCardProps) {
   const [preApprovedTipOpen, setPreApprovedTipOpen] = useState(false);
+  const [unlocksTipOpen, setUnlocksTipOpen] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -509,6 +228,10 @@ function OfferHeader({
   const sliderPct = canAdjust
     ? ((withdrawAmount - minWithdraw) / (maxWithdraw - minWithdraw)) * 100
     : 100;
+
+  // Offer expiry date for the footer meta strip (static label, not a live clock).
+  const renewalDate = useMemo(() => computeExpiry(new Date()), []);
+  const renewalLabel = `${ordinalSuffix(renewalDate.getDate())} ${FULL_MONTHS[renewalDate.getMonth()]} ${renewalDate.getFullYear()}`;
 
   const commitAmount = (raw: number) => {
     const clamped = clampWithdrawAmount(raw, maxWithdraw);
@@ -527,248 +250,329 @@ function OfferHeader({
       initial={{ opacity: 0, y: 14 }}
       animate={revealStage >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="flex flex-col items-center gap-1.5 py-2 text-center"
+      className="flex flex-col items-center py-2 text-center"
     >
-      {/* Credit line summary card — status, limit, and (if applicable) the
-          available/reserved meter all live in one bordered, tinted object so
-          this context reads as a distinct "status card" rather than loose text. */}
+      {/* Account overview — a single clean card: limit summary, availability
+          meter, the withdraw-today amount, and a footer meta strip. Replaces
+          the previous split tinted-box + hero layout with one unified object. */}
       <div
-        className="w-full rounded-[var(--radius-lg)] px-4 py-3.5 text-left"
+        className="w-full overflow-hidden rounded-[var(--radius-lg)] text-left"
         style={{
-          background: "oklch(0.96 0.025 176 / 0.4)",
-          border: "1px solid oklch(0.72 0.08 176 / 0.35)",
+          background: "var(--surface-elevated)",
+          boxShadow:
+            "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
         }}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-1.5 pt-0.5">
-            <SealCheck size={16} weight="fill" className="shrink-0" style={{ color: "var(--offer-accent)" }} />
-            <span
-              className="inline-flex min-w-0 flex-col items-start gap-0.5 text-[12px] font-bold tracking-[0.08em] uppercase sm:flex-row sm:items-center sm:gap-1"
-              style={{ color: "var(--text-primary)" }}
-            >
-              <span className="whitespace-nowrap">Credit line</span>
-              <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                pre-approved
-                <span className="relative inline-flex shrink-0 normal-case tracking-normal">
-                  <button
-                    type="button"
-                    aria-label="What does pre-approved mean?"
-                    aria-expanded={preApprovedTipOpen}
-                    onClick={() => setPreApprovedTipOpen((v) => !v)}
-                    onMouseEnter={() => setPreApprovedTipOpen(true)}
-                    onMouseLeave={() => setPreApprovedTipOpen(false)}
-                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
-                    style={{
-                      borderColor: "var(--border-medium)",
-                      color: "var(--text-tertiary)",
-                      background: "var(--surface-primary)",
-                    }}
-                  >
-                    ?
-                  </button>
-                  {preApprovedTipOpen && (
-                    <div
-                      role="tooltip"
-                      className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[min(260px,70vw)] -translate-x-1/2 whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
+        <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5">
+          {/* Limit summary row */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-1.5 pt-0.5">
+              <SealCheck size={16} weight="fill" className="shrink-0" style={{ color: "var(--offer-accent)" }} />
+              <span
+                className="inline-flex min-w-0 flex-col items-start gap-0.5 text-[12px] font-bold tracking-[0.08em] uppercase sm:flex-row sm:items-center sm:gap-1"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span className="whitespace-nowrap">Credit line</span>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  pre-approved
+                  <span className="relative inline-flex shrink-0 normal-case tracking-normal">
+                    <button
+                      type="button"
+                      aria-label="What does pre-approved mean?"
+                      aria-expanded={preApprovedTipOpen}
+                      onClick={() => setPreApprovedTipOpen((v) => !v)}
+                      onMouseEnter={() => setPreApprovedTipOpen(true)}
+                      onMouseLeave={() => setPreApprovedTipOpen(false)}
+                      className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
                       style={{
-                        background: "var(--surface-elevated)",
-                        boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
+                        borderColor: "var(--border-medium)",
+                        color: "var(--text-tertiary)",
+                        background: "var(--surface-primary)",
                       }}
                     >
-                      <p
-                        className="text-[12px] font-medium leading-relaxed normal-case tracking-normal"
-                        style={{ color: "var(--text-secondary)" }}
+                      ?
+                    </button>
+                    {preApprovedTipOpen && (
+                      <div
+                        role="tooltip"
+                        className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[min(260px,70vw)] -translate-x-1/2 whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
+                        style={{
+                          background: "var(--surface-elevated)",
+                          boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
+                        }}
                       >
-                        {hasStructuralReserve ? (
-                          <>
-                            Pre-approved means your full credit limit looks like a strong fit for you.
-                            For now, you&apos;re ready to take up to{" "}
-                            <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                              {formatCurrency(maxWithdraw)}
-                            </span>{" "}
-                            today — the rest of your line is reserved and unlocks automatically over time.
-                          </>
-                        ) : (
-                          <>
-                            Pre-approved means this credit line is confirmed and ready. Your full{" "}
-                            <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                              {formatCurrency(maxWithdraw)}
-                            </span>{" "}
-                            is approved and available for instant disbursement.
-                          </>
-                        )}
-                      </p>
-                      <span
-                        aria-hidden="true"
-                        className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
-                        style={{ borderBottomColor: "var(--border-subtle)" }}
-                      />
-                    </div>
-                  )}
+                        <p
+                          className="text-[12px] font-medium leading-relaxed normal-case tracking-normal"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          {hasStructuralReserve ? (
+                            <>
+                              Pre-approved means your full credit limit looks like a strong fit for you.
+                              For now, you&apos;re ready to take up to{" "}
+                              <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                                {formatCurrency(maxWithdraw)}
+                              </span>{" "}
+                              today. The rest of your line is reserved and unlocks automatically over time.
+                            </>
+                          ) : (
+                            <>
+                              Pre-approved means this credit line is confirmed and ready. Your full{" "}
+                              <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                                {formatCurrency(maxWithdraw)}
+                              </span>{" "}
+                              is approved and available for instant disbursement.
+                            </>
+                          )}
+                        </p>
+                        <span
+                          aria-hidden="true"
+                          className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
+                          style={{ borderBottomColor: "var(--border-subtle)" }}
+                        />
+                      </div>
+                    )}
+                  </span>
                 </span>
               </span>
-            </span>
-          </div>
-          <div className="shrink-0 text-right leading-none">
-            <div
-              className="tabular-nums text-[1.35rem] font-semibold"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                letterSpacing: "-0.03em",
-                color: "var(--text-primary)",
-              }}
-            >
-              {formatCurrency(limit)}
             </div>
-            <div className="mt-1 text-[10px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-              Total credit limit
-            </div>
-          </div>
-        </div>
-
-        {hasStructuralReserve && (
-          <>
-            <div className="mt-2.5">
-              <CreditLineMeter limit={limit} available={maxWithdraw} revealStage={revealStage} />
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-              <span
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--brand-teal-hex)" }} />
-                {formatCurrency(maxWithdraw)} available today
-              </span>
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold leading-none"
-                style={{ background: "oklch(0.94 0.05 85)", color: "#78350f" }}
-              >
-                <Lock size={9} weight="fill" style={{ color: "#E0B000" }} />
-                +{formatCurrency(structuralReserve)} unlocks over time
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Hero: withdraw-today amount — the number the user is actually acting on */}
-      <div className="mt-3 flex flex-col items-center gap-1.5">
-        <span
-          className="text-[12px] font-bold tracking-[0.16em] uppercase"
-          style={{ color: "var(--text-primary)" }}
-        >
-          Withdraw today
-        </span>
-
-        {/* Amount stays optically centred under the label; pencil is docked to
-            the right of the $amount group so it doesn't shove the figure off-centre. */}
-        <div className="flex justify-center">
-          <div className="relative flex items-baseline leading-none">
-            <span
-              aria-hidden="true"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-                fontWeight: 600,
-                letterSpacing: "-0.02em",
-                color: "var(--brand-blue-hex)",
-              }}
-            >
-              $
-            </span>
-            <input
-              ref={amountInputRef}
-              type="text"
-              inputMode="numeric"
-              value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
-              onFocus={() => {
-                setAmountFocused(true);
-                setAmountRaw(String(withdrawAmount));
-              }}
-              onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
-              onBlur={() => {
-                setAmountFocused(false);
-                commitAmount(parseInt(amountRaw, 10));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-              }}
-              disabled={!canAdjust}
-              aria-label="Amount to withdraw today"
-              className="tabular-nums border-0 bg-transparent text-center outline-none disabled:opacity-100"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-                fontWeight: 600,
-                letterSpacing: "-0.02em",
-                color: "var(--brand-blue-hex)",
-                caretColor: "var(--offer-accent)",
-                fieldSizing: "content",
-                width: "auto",
-                minWidth: "2ch",
-              }}
-            />
-            {canAdjust && (
-              <button
-                type="button"
-                onClick={focusAmountInput}
-                aria-label="Edit withdrawal amount"
-                className="absolute top-1/2 left-[calc(100%+0.35rem)] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-150"
+            <div className="shrink-0 text-right leading-none">
+              <div
+                className="tabular-nums text-[1.35rem] font-semibold"
                 style={{
-                  background: amountFocused ? "oklch(0.9 0.07 176 / 0.45)" : "var(--surface-secondary)",
-                  color: "var(--brand-blue-hex)",
+                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  letterSpacing: "-0.03em",
+                  color: "var(--text-primary)",
                 }}
               >
-                <PencilSimple size={16} weight="bold" />
-              </button>
-            )}
+                {formatCurrency(limit)}
+              </div>
+              <div className="mt-1 text-[10px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
+                Total credit limit
+              </div>
+            </div>
           </div>
-        </div>
 
-        <span className="text-[12px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-          Instant disbursement
-        </span>
-      </div>
+          {hasStructuralReserve && (
+            <div className="flex flex-col gap-2.5">
+              <CreditLineMeter limit={limit} available={maxWithdraw} revealStage={revealStage} />
 
-      {/* Amount adjuster — standard range control; defaults to the maximum available today */}
-      {canAdjust && (
-        <div className="mt-4 w-full">
-          <input
-            type="range"
-            className="withdraw-slider w-full"
-            min={minWithdraw}
-            max={maxWithdraw}
-            step={1}
-            value={withdrawAmount}
-            onChange={(e) => {
-              const val = clampWithdrawAmount(parseInt(e.target.value, 10), maxWithdraw);
-              onWithdrawAmountChange(val);
-              setAmountRaw(String(val));
-            }}
-            aria-label="Slide to choose a lower withdrawal amount"
-            style={{
-              background: `linear-gradient(to right, var(--brand-teal-hex) 0%, var(--brand-teal-hex) ${sliderPct}%, var(--border-medium) ${sliderPct}%, var(--border-medium) 100%)`,
-            }}
-          />
-          <div className="mt-1.5 flex items-center justify-between">
-            <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              {formatCurrency(minWithdraw)}
-            </span>
-            <button
-              type="button"
-              onClick={() => commitAmount(maxWithdraw)}
-              disabled={isAtMax}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold leading-none transition-colors duration-150 disabled:cursor-default"
-              style={{
-                background: isAtMax ? "var(--surface-secondary)" : "oklch(0.9 0.07 176 / 0.35)",
-                color: isAtMax ? "var(--text-tertiary)" : "var(--offer-accent)",
-              }}
+              {/* Two-column legend, mirroring "Available Credit Limit | Total Credit
+                  Utilised" from the reference design, with a thin divider between. */}
+              <div className="flex items-stretch">
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.06em] uppercase"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--brand-teal-hex)" }} />
+                    Available today
+                  </span>
+                  <span
+                    className="tabular-nums text-[15px] font-semibold"
+                    style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)" }}
+                  >
+                    {formatCurrency(maxWithdraw)}
+                  </span>
+                </div>
+                <div className="mx-3 w-px shrink-0 self-stretch" style={{ background: "var(--border-subtle)" }} aria-hidden="true" />
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.06em] uppercase"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    <Lock size={9} weight="fill" style={{ color: "#E0B000" }} />
+                    Unlocks over time
+                    <span className="relative inline-flex shrink-0 normal-case tracking-normal">
+                      <button
+                        type="button"
+                        aria-label="How do I unlock the rest of my credit line?"
+                        aria-expanded={unlocksTipOpen}
+                        onClick={() => setUnlocksTipOpen((v) => !v)}
+                        onMouseEnter={() => setUnlocksTipOpen(true)}
+                        onMouseLeave={() => setUnlocksTipOpen(false)}
+                        className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
+                        style={{
+                          borderColor: "var(--border-medium)",
+                          color: "var(--text-tertiary)",
+                          background: "var(--surface-primary)",
+                        }}
+                      >
+                        ?
+                      </button>
+                      {unlocksTipOpen && (
+                        <div
+                          role="tooltip"
+                          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(300px,82vw)] whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
+                          style={{
+                            background: "var(--surface-elevated)",
+                            boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
+                          }}
+                        >
+                          <p
+                            className="mb-1 text-[12px] font-semibold normal-case tracking-normal"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            How to unlock over time
+                          </p>
+                          <ol
+                            className="list-decimal space-y-1 pl-4 text-[12px] font-medium leading-relaxed normal-case tracking-normal"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            <li>Download and login to our mobile app</li>
+                            <li>Make loan repayments on time</li>
+                          </ol>
+                        </div>
+                      )}
+                    </span>
+                  </span>
+                  <span
+                    className="tabular-nums text-[15px] font-semibold"
+                    style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)" }}
+                  >
+                    +{formatCurrency(structuralReserve)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="h-px w-full" style={{ background: "var(--border-subtle)" }} aria-hidden="true" />
+
+          {/* Withdraw-today amount — merged into the same card as the credit summary above */}
+          <div className="flex flex-col items-center gap-1.5">
+            <span
+              className="text-[12px] font-bold tracking-[0.16em] uppercase"
+              style={{ color: "var(--text-primary)" }}
             >
-              {isAtMax ? "Max Amount" : `Use max · ${formatCurrency(maxWithdraw)}`}
-            </button>
+              Withdraw today
+            </span>
+
+            {/* Amount stays optically centred under the label; pencil is docked to
+                the right of the $amount group so it doesn't shove the figure off-centre. */}
+            <div className="flex justify-center">
+              <div className="relative flex items-baseline leading-none">
+                <span
+                  aria-hidden="true"
+                  style={{
+                    fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                    fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+                    fontWeight: 600,
+                    letterSpacing: "-0.02em",
+                    color: "var(--brand-blue-hex)",
+                  }}
+                >
+                  $
+                </span>
+                <input
+                  ref={amountInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
+                  onFocus={() => {
+                    setAmountFocused(true);
+                    setAmountRaw(String(withdrawAmount));
+                  }}
+                  onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
+                  onBlur={() => {
+                    setAmountFocused(false);
+                    commitAmount(parseInt(amountRaw, 10));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                  disabled={!canAdjust}
+                  aria-label="Amount to withdraw today"
+                  className="tabular-nums border-0 bg-transparent text-center outline-none disabled:opacity-100"
+                  style={{
+                    fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                    fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
+                    fontWeight: 600,
+                    letterSpacing: "-0.02em",
+                    color: "var(--brand-blue-hex)",
+                    caretColor: "var(--offer-accent)",
+                    fieldSizing: "content",
+                    width: "auto",
+                    minWidth: "2ch",
+                  }}
+                />
+                {canAdjust && (
+                  <button
+                    type="button"
+                    onClick={focusAmountInput}
+                    aria-label="Edit withdrawal amount"
+                    className="absolute top-1/2 left-[calc(100%+0.35rem)] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-150"
+                    style={{
+                      background: amountFocused ? "oklch(0.9 0.07 176 / 0.45)" : "var(--surface-secondary)",
+                      color: "var(--brand-blue-hex)",
+                    }}
+                  >
+                    <PencilSimple size={16} weight="bold" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <span className="text-[12px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
+              Instant disbursement
+            </span>
           </div>
+
+          {/* Amount adjuster — standard range control; defaults to the maximum available today */}
+          {canAdjust && (
+            <div className="-mt-1.5 w-full">
+              <input
+                type="range"
+                className="withdraw-slider w-full"
+                min={minWithdraw}
+                max={maxWithdraw}
+                step={1}
+                value={withdrawAmount}
+                onChange={(e) => {
+                  const val = clampWithdrawAmount(parseInt(e.target.value, 10), maxWithdraw);
+                  onWithdrawAmountChange(val);
+                  setAmountRaw(String(val));
+                }}
+                aria-label="Slide to choose a lower withdrawal amount"
+                style={{
+                  background: `linear-gradient(to right, var(--brand-teal-hex) 0%, var(--brand-teal-hex) ${sliderPct}%, var(--border-medium) ${sliderPct}%, var(--border-medium) 100%)`,
+                }}
+              />
+              <div className="mt-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  {formatCurrency(minWithdraw)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => commitAmount(maxWithdraw)}
+                  disabled={isAtMax}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold leading-none transition-colors duration-150 disabled:cursor-default"
+                  style={{
+                    background: isAtMax ? "var(--surface-secondary)" : "oklch(0.9 0.07 176 / 0.35)",
+                    color: isAtMax ? "var(--text-tertiary)" : "var(--offer-accent)",
+                  }}
+                >
+                  {isAtMax ? "Max Amount" : `Use max · ${formatCurrency(maxWithdraw)}`}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Footer meta strip */}
+        <div
+          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t px-4 py-3 sm:justify-between sm:px-5"
+          style={{ background: "var(--surface-secondary)", borderColor: "var(--border-subtle)" }}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <CalendarBlank size={13} weight="duotone" style={{ color: "#FF3B30" }} />
+            Offer Expires: {renewalLabel}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <Lightning size={13} weight="fill" style={{ color: "#E0B000" }} />
+            Instant disbursement
+          </span>
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -1111,8 +915,8 @@ function CustomOfferCard({
               className="flex h-11 w-full items-center justify-center rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
               style={{
                 background: "transparent",
-                color: "var(--text-secondary)",
-                border: "1.5px solid var(--border-medium)",
+                color: "oklch(0.62 0.17 25)",
+                border: "1.5px solid oklch(0.62 0.17 25 / 0.35)",
               }}
             >
               Cancel
@@ -1780,19 +1584,9 @@ export function LoanResults({
           </motion.div>
         )}
 
-        {/* Deadline strip */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={revealStage >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          transition={{ duration: 0.45, ease: EASE }}
-          style={{ position: "relative", zIndex: 1 }}
-        >
-          <DeadlineStrip />
-        </motion.div>
-
         {/* Offer validity disclaimer */}
         <motion.p
-          className="text-[11px] leading-relaxed -mt-2"
+          className="text-[11px] leading-relaxed"
           initial={{ opacity: 0 }}
           animate={{ opacity: revealStage >= 3 ? 1 : 0 }}
           transition={{ duration: 0.4, delay: revealStage >= 3 ? 0.2 : 0 }}

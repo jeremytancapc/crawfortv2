@@ -12,7 +12,7 @@ type Phase = "input" | "signing" | "signed";
 /** Deep ink navy — reads as pen ink on paper rather than a UI accent color. */
 const INK_COLOR = "#1c2b45";
 const STROKE_WIDTH = 2.25;
-const SIGNING_CEREMONY_MS = 950;
+const SIGNING_CEREMONY_MS = 600;
 
 function midpoint(a: Point, b: Point): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };

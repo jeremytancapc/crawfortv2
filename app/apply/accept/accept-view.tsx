@@ -25,8 +25,8 @@ import type { SelectedPlanData } from "./page";
 // that collapse animation takes. The page-level auto-scroll (below) waits for
 // both to finish before moving to the next step, so it doesn't scroll to a
 // position that the collapsing card then invalidates.
-const STEP_COLLAPSE_DELAY_MS = 500;
-const STEP_COLLAPSE_DURATION_MS = 300;
+const STEP_COLLAPSE_DELAY_MS = 320;
+const STEP_COLLAPSE_DURATION_MS = 250;
 const SCROLL_TO_NEXT_STEP_DELAY_MS = STEP_COLLAPSE_DELAY_MS + STEP_COLLAPSE_DURATION_MS + 50;
 // Sticky MobileHeader is py-4 (32px) + logo h-5 (20px) ≈ 52px. Leave a little
 // breathing room so the next step's header isn't clipped under it.
@@ -486,6 +486,11 @@ function AcceptanceStepCard({
 
 // ── Step 1: loan terms ────────────────────────────────────────────────────────
 
+// Contract digest is capped to a scrollable window (matching the payment
+// schedule below) so the seven-point T&C list doesn't push the closing note
+// and CTA far down the page - the reader scrolls within the card instead.
+const TC_DIGEST_MAX_HEIGHT_PX = 260;
+
 function LoanTermsStepContent() {
   return (
     <>
@@ -503,25 +508,46 @@ function LoanTermsStepContent() {
       </div>
 
       {/* Contract digest */}
-      <ul className="flex flex-col gap-3">
-        {TC_ITEMS.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5">
-            <span
-              className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-              style={{
-                background: "var(--surface-secondary)",
-                color: "var(--text-secondary)",
-              }}
-              aria-hidden="true"
-            >
-              {i + 1}
-            </span>
-            <p className="text-[13px] leading-relaxed font-medium" style={{ color: "var(--text-primary)" }}>
-              {item}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <div className="relative">
+        <ul
+          className="flex flex-col gap-3 overflow-y-auto pr-1 pb-6"
+          style={{ maxHeight: TC_DIGEST_MAX_HEIGHT_PX }}
+        >
+          {TC_ITEMS.map((item, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span
+                className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                style={{
+                  background: "var(--surface-secondary)",
+                  color: "var(--text-secondary)",
+                }}
+                aria-hidden="true"
+              >
+                {i + 1}
+              </span>
+              <p className="text-[13px] leading-relaxed font-medium" style={{ color: "var(--text-primary)" }}>
+                {item}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-1"
+          style={{
+            height: 56,
+            background: "linear-gradient(to bottom, transparent, var(--surface-elevated) 48%, var(--surface-elevated) 100%)",
+          }}
+        >
+          <span
+            className="flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Scroll for more
+            <CaretDown size={9} weight="bold" />
+          </span>
+        </div>
+      </div>
 
       {/* Closing note */}
       <p className="text-[13px] leading-relaxed font-medium" style={{ color: "var(--text-secondary)" }}>
@@ -619,8 +645,8 @@ function PaymentScheduleStepContent({
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-1"
             style={{
-              height: 34,
-              background: "linear-gradient(to bottom, transparent, var(--surface-elevated) 70%)",
+              height: 56,
+              background: "linear-gradient(to bottom, transparent, var(--surface-elevated) 48%, var(--surface-elevated) 100%)",
             }}
           >
             <span
