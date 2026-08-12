@@ -820,24 +820,15 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
         className="relative flex w-full flex-1 flex-col overflow-hidden"
         style={{
           borderRadius: isPopular ? "0 0 6px 6px" : "6px",
-          background: isSelected
-            ? `radial-gradient(ellipse at 50% 0%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(165deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`
-            : "var(--surface-elevated)",
+          background: "var(--surface-elevated)",
           boxShadow: isSelected
-            ? "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)"
+            ? "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)"
             : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
         }}
       >
-        {/* Shine sweep on selected */}
-        {isSelected && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: "linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.04) 50%, transparent 65%)",
-            }}
-          />
-        )}
+        {/* Plays once when the card becomes selected - a brief glassy sweep
+            that reads as premium feedback without tinting the resting card. */}
+        {isSelected && <div aria-hidden="true" className="selected-card-shine z-[2]" />}
 
         {/* Header - plan name + tenure, with shiny overlay */}
         <div
@@ -878,7 +869,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
             <div className="flex w-full flex-col items-center gap-1">
               <span
                 className="text-[9px] font-bold tracking-[0.1em] uppercase sm:text-[11px]"
-                style={{ color: isSelected ? "oklch(1 0 0 / 0.55)" : "var(--text-tertiary)" }}
+                style={{ color: "var(--text-tertiary)" }}
               >
                 Monthly
               </span>
@@ -891,7 +882,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
                 style={{
                   fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
                   fontWeight: 600,
-                  color: isSelected ? "var(--brand-teal-hex)" : "var(--text-primary)",
+                  color: isSelected ? "var(--brand-blue-hex)" : "var(--text-primary)",
                   letterSpacing: "-0.02em",
                 }}
               >
@@ -912,7 +903,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
                       size={14}
                       weight="fill"
                       className="mt-0.5 shrink-0"
-                      style={{ color: isSelected ? "var(--brand-teal-hex)" : "#22c55e" }}
+                      style={{ color: "#22c55e" }}
                     />
                     <motion.span
                       key={feature}
@@ -920,7 +911,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.25, ease: EASE }}
                       className="min-w-0 text-[11px] font-semibold leading-snug sm:text-[13px]"
-                      style={{ color: isSelected ? "oklch(1 0 0 / 0.85)" : "var(--text-primary)" }}
+                      style={{ color: "var(--text-primary)" }}
                     >
                       {feature}
                     </motion.span>
@@ -934,8 +925,8 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           <span
             className="mt-auto flex w-full shrink-0 items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-2 text-[10px] font-semibold leading-none transition-all duration-200 sm:py-2.5 sm:text-[12px]"
             style={{
-              background: isSelected ? "var(--brand-teal-hex)" : "transparent",
-              color: isSelected ? "#0a1628" : "var(--text-secondary)",
+              background: isSelected ? "var(--brand-blue-hex)" : "transparent",
+              color: isSelected ? "#ffffff" : "var(--text-secondary)",
               border: isSelected ? "none" : "1.5px solid var(--border-medium)",
             }}
           >
@@ -1015,14 +1006,18 @@ function CustomOfferCard({
 
   return (
     <div
-      className="relative flex flex-col gap-4 rounded-[var(--radius-lg)] p-4"
+      className="relative flex flex-col gap-4 overflow-hidden rounded-[var(--radius-lg)] p-4"
       style={{
-        background: `radial-gradient(ellipse at 50% 0%, var(--offer-navy-glow) 0%, transparent 70%), linear-gradient(165deg, var(--offer-navy-start) 0%, var(--offer-navy-end) 100%)`,
-        boxShadow: "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)",
+        background: "var(--surface-elevated)",
+        boxShadow: "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)",
       }}
     >
+      {/* Plays once when the custom-offer panel opens - same brief glassy
+          sweep used on the selected plan cards. */}
+      <div aria-hidden="true" className="selected-card-shine z-[2]" />
+
       <div className="flex items-center gap-1.5">
-        <span className="text-sm font-semibold" style={{ color: "oklch(1 0 0 / 0.9)" }}>
+        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
           Custom offer
         </span>
         <span className="relative inline-flex shrink-0">
@@ -1035,9 +1030,9 @@ function CustomOfferCard({
             onMouseLeave={() => setTipOpen(false)}
             className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
             style={{
-              borderColor: "oklch(1 0 0 / 0.35)",
-              color: "oklch(1 0 0 / 0.7)",
-              background: "oklch(1 0 0 / 0.08)",
+              borderColor: "var(--border-medium)",
+              color: "var(--text-secondary)",
+              background: "var(--surface-secondary)",
             }}
           >
             ?
@@ -1066,14 +1061,14 @@ function CustomOfferCard({
         <>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
                 Loan amount
               </span>
               <div
                 className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
-                style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
+                style={{ background: "var(--surface-elevated)", boxShadow: "0 0 0 1px var(--border-medium)" }}
               >
-                <span className="text-[15px] font-semibold" style={{ color: "oklch(1 0 0 / 0.6)" }}>$</span>
+                <span className="text-[15px] font-semibold" style={{ color: "var(--text-tertiary)" }}>$</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -1082,17 +1077,17 @@ function CustomOfferCard({
                   value={amount}
                   onChange={(e) => onAmountChange(e.target.value)}
                   className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  style={{ color: "white" }}
+                  style={{ color: "var(--text-primary)" }}
                 />
               </div>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
                 Tenure (months)
               </span>
               <div
                 className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
-                style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
+                style={{ background: "var(--surface-elevated)", boxShadow: "0 0 0 1px var(--border-medium)" }}
               >
                 <input
                   type="number"
@@ -1102,9 +1097,9 @@ function CustomOfferCard({
                   value={tenure}
                   onChange={(e) => onTenureChange(e.target.value)}
                   className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  style={{ color: "white" }}
+                  style={{ color: "var(--text-primary)" }}
                 />
-                <span className="text-[13px] font-medium" style={{ color: "oklch(1 0 0 / 0.6)" }}>mo</span>
+                <span className="text-[13px] font-medium" style={{ color: "var(--text-tertiary)" }}>mo</span>
               </div>
             </label>
           </div>
@@ -1116,8 +1111,8 @@ function CustomOfferCard({
               className="flex h-11 w-full items-center justify-center rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
               style={{
                 background: "transparent",
-                color: "oklch(1 0 0 / 0.85)",
-                border: "1.5px solid oklch(1 0 0 / 0.22)",
+                color: "var(--text-secondary)",
+                border: "1.5px solid var(--border-medium)",
               }}
             >
               Cancel
@@ -1127,7 +1122,7 @@ function CustomOfferCard({
               onClick={() => setIsEditing(false)}
               disabled={!canConfirm}
               className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-              style={{ background: "var(--brand-teal-hex)", color: "#0a1628" }}
+              style={{ background: "var(--brand-blue-hex)", color: "#ffffff" }}
             >
               <CheckCircle size={15} weight="fill" />
               Confirm details
@@ -1138,18 +1133,18 @@ function CustomOfferCard({
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
                 Loan amount
               </span>
-              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-teal-hex)" }}>
+              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-blue-hex)" }}>
                 {formatCurrency(amountValue)}
               </span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
                 Tenure
               </span>
-              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-teal-hex)" }}>
+              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-blue-hex)" }}>
                 {tenureValue} {tenureValue === 1 ? "month" : "months"}
               </span>
             </div>
@@ -1160,8 +1155,8 @@ function CustomOfferCard({
             className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
             style={{
               background: "transparent",
-              color: "oklch(1 0 0 / 0.85)",
-              border: "1.5px solid oklch(1 0 0 / 0.22)",
+              color: "var(--text-secondary)",
+              border: "1.5px solid var(--border-medium)",
             }}
           >
             <PencilSimple size={14} weight="bold" />
