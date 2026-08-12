@@ -20,6 +20,14 @@ import { buildPaymentSchedule } from "@/lib/offer-plans";
 import { SignaturePad } from "./signature-pad";
 import type { SelectedPlanData } from "./page";
 
+// How long the just-checked step waits before auto-collapsing, and how long
+// that collapse animation takes. The page-level auto-scroll (below) waits for
+// both to finish before moving to the next step, so it doesn't scroll to a
+// position that the collapsing card then invalidates.
+const STEP_COLLAPSE_DELAY_MS = 500;
+const STEP_COLLAPSE_DURATION_MS = 300;
+const SCROLL_TO_NEXT_STEP_DELAY_MS = STEP_COLLAPSE_DELAY_MS + STEP_COLLAPSE_DURATION_MS + 50;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number): string {
@@ -355,7 +363,7 @@ function AcceptanceStepCard({
   // re-expand automatically if the customer unticks the box to revisit it.
   useEffect(() => {
     if (checked && !wasCheckedRef.current) {
-      const timeout = setTimeout(() => setExpanded(false), 500);
+      const timeout = setTimeout(() => setExpanded(false), STEP_COLLAPSE_DELAY_MS);
       wasCheckedRef.current = checked;
       return () => clearTimeout(timeout);
     }
@@ -453,7 +461,7 @@ function AcceptanceStepCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: STEP_COLLAPSE_DURATION_MS / 1000, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
           >
             <div
@@ -747,7 +755,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
     if (!checks.readTerms) return;
     const timeout = setTimeout(
       () => scheduleStepRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      350,
+      SCROLL_TO_NEXT_STEP_DELAY_MS,
     );
     return () => clearTimeout(timeout);
   }, [checks.readTerms]);
@@ -756,7 +764,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
     if (!checks.repaySchedule) return;
     const timeout = setTimeout(
       () => disbursementStepRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      350,
+      SCROLL_TO_NEXT_STEP_DELAY_MS,
     );
     return () => clearTimeout(timeout);
   }, [checks.repaySchedule]);
@@ -765,7 +773,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
     if (!checks.paynowNric) return;
     const timeout = setTimeout(
       () => signatureRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      350,
+      SCROLL_TO_NEXT_STEP_DELAY_MS,
     );
     return () => clearTimeout(timeout);
   }, [checks.paynowNric]);

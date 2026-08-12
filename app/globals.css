@@ -503,6 +503,43 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
   pointer-events: none;
 }
 
+/* ─── One-shot glossy sweep on card selection ───────────────────────
+   Plays once (fill-mode: forwards leaves it transparent at rest) when a
+   plan/custom-offer card becomes selected, so the border-only selected
+   state still gets a moment of "glass catching light" feedback without
+   ever tinting the resting card background. */
+@keyframes selected-card-shine-sweep {
+  0%   { transform: translateX(-120%) skewX(-14deg); opacity: 0; }
+  12%  { opacity: 1; }
+  60%  { transform: translateX(220%) skewX(-14deg); opacity: 0; }
+  100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
+}
+
+.selected-card-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.selected-card-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    oklch(1 0 0 / 0.85) 45%,
+    oklch(0.7 0.14 260 / 0.35) 55%,
+    transparent 100%
+  );
+  animation: selected-card-shine-sweep 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+  animation-fill-mode: forwards;
+}
+
 /* ─── Approval theme - Inter Tight headings, clean finance aesthetic ─── */
 
 .approval-theme {
@@ -512,19 +549,11 @@ input[type="range"].withdraw-slider::-moz-range-thumb {
   --offer-accent: oklch(0.66 0.10 176);
   --offer-accent-ring: oklch(0.66 0.10 176 / 0.22);
 
-  /* Softened navy for the selected-plan card - replaces the near-black oklch(0.22-0.34 0.16-0.18 258-262) gradient */
-  --offer-navy-glow: oklch(0.42 0.08 262);
-  --offer-navy-start: oklch(0.36 0.07 262);
-  --offer-navy-end: oklch(0.30 0.07 258);
-  --offer-navy-shadow: oklch(0.34 0.07 258 / 0.20);
-
   /* These offer-* tokens above are only ever read via inline JS styles
      (style={{ color: "var(--offer-accent)" }}), never from CSS itself.
      Tailwind's build strips custom properties with no in-CSS var() usage,
      so this unused reference keeps them from being minified away. */
-  --_approval-theme-keep-alive: var(--offer-accent) var(--offer-accent-ring)
-    var(--offer-navy-glow) var(--offer-navy-start) var(--offer-navy-end)
-    var(--offer-navy-shadow);
+  --_approval-theme-keep-alive: var(--offer-accent) var(--offer-accent-ring);
 }
 
 /* Match theme-fresh heading metrics so nested approval-theme does not
