@@ -12,13 +12,34 @@ export const OFFER_MONTHLY_RATE = 0.0392;
 export const MAX_OFFER_TENURE = 12;
 export const MIN_OFFER_TENURE = 1;
 
-/** Display name for each plan id, used on the acceptance page. */
+/**
+ * Display name for each plan id, used on the acceptance page. Kept short
+ * (no "Plan" suffix) to match the plan cards shown on the approval page.
+ */
 export const PLAN_TITLES: Record<string, string> = {
-  lowest_interest: "SuperSaver Plan",
-  average: "ValuePro Plan",
-  lowest_instalment: "FlexiPay Plan",
-  custom: "Custom plan",
+  lowest_interest: "SuperSaver",
+  average: "ValuePro",
+  lowest_instalment: "FlexiPay",
+  custom: "Custom offer",
 };
+
+/**
+ * Resolves the plan id to use for display when the persisted `selected_plan`
+ * value is missing or unrecognized (e.g. an older lead saved before this
+ * field existed, or a write that failed to land). Falls back to matching the
+ * lead's tenure against the standard plan tenures, same approach already
+ * used for amount/tenure fallbacks on the acceptance page.
+ */
+export function resolvePlanId(
+  rawPlanId: string | null | undefined,
+  tenure: number,
+): string {
+  if (rawPlanId && PLAN_TITLES[rawPlanId]) return rawPlanId;
+  if (tenure === 3) return "lowest_interest";
+  if (tenure === 6) return "average";
+  if (tenure === MAX_OFFER_TENURE) return "lowest_instalment";
+  return "custom";
+}
 
 export const OFFER_CONFIRMATION_DISCLAIMER =
   "This offer stands from the time of acceptance until loan disbursement, provided there are no changes to your income and you do not apply with another lender in a way that affects your credit profile.";
@@ -29,6 +50,58 @@ export function calculateInstalment(amount: number, months: number, monthlyRate:
   if (monthlyRate === 0) return amount / months;
   return (amount * (monthlyRate * Math.pow(1 + monthlyRate, months))) /
     (Math.pow(1 + monthlyRate, months) - 1);
+}
+
+export interface ScheduleInstallment {
+  /** 1-based instalment number. */
+  index: number;
+  dueDateIso: string;
+  amount: number;
+}
+
+/**
+ * Adds `months` calendar months to `date`, clamping the day-of-month so
+ * e.g. 31 Jan + 1 month lands on 28/29 Feb instead of overflowing into
+ * March (the native `Date.setMonth` behaviour).
+ */
+function addMonthsClamped(date: Date, months: number): Date {
+  const day = date.getDate();
+  const result = new Date(date);
+  result.setDate(1);
+  result.setMonth(result.getMonth() + months);
+  const daysInTargetMonth = new Date(
+    result.getFullYear(),
+    result.getMonth() + 1,
+    0,
+  ).getDate();
+  result.setDate(Math.min(day, daysInTargetMonth));
+  return result;
+}
+
+/**
+ * Builds the full monthly repayment schedule, one row per instalment,
+ * starting exactly one month after `disbursementIso`. Every instalment is
+ * the same fixed amount, matching the `totalRepayment = monthlyInstalment
+ * * tenure` math used elsewhere on the acceptance page - so there's no
+ * rounding remainder to special-case on the final row.
+ */
+export function buildPaymentSchedule(
+  disbursementIso: string,
+  tenure: number,
+  monthlyInstalment: number,
+): ScheduleInstallment[] {
+  if (tenure <= 0 || monthlyInstalment <= 0) return [];
+  const disbursementDate = new Date(disbursementIso);
+  const schedule: ScheduleInstallment[] = [];
+  for (let i = 1; i <= tenure; i++) {
+    const dueDate = addMonthsClamped(disbursementDate, i);
+    schedule.push({
+      index: i,
+      dueDateIso: dueDate.toISOString(),
+      amount: monthlyInstalment,
+    });
+  }
+  return schedule;
 }
 
 export interface OfferPlan {

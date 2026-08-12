@@ -12,6 +12,7 @@ import {
   PLAN_TITLES,
   OFFER_MONTHLY_RATE,
   calculateInstalment,
+  resolvePlanId,
 } from "@/lib/offer-plans";
 import {
   formatPlanAdditionalRequestsLabel,
@@ -68,7 +69,6 @@ export default async function AcceptPage() {
 
   // Build plan data - prefer persisted values, fall back to session/offer data
   // so the page always renders even if the select-plan DB write hasn't landed yet.
-  const planId = row?.selected_plan ?? "unknown";
   const amount =
     Number(row?.loan_amount) ||
     Number(merged.approvedLoanAmount) ||
@@ -77,6 +77,9 @@ export default async function AcceptPage() {
     Number(row?.loan_tenure) ||
     Number(merged.tenure) ||
     0;
+  // If selected_plan is missing/unrecognized, infer it from tenure so the
+  // acceptance page never shows a broken placeholder instead of a real name.
+  const planId = resolvePlanId(row?.selected_plan, tenure);
   const monthlyRate =
     Number(row?.plan_monthly_rate) ||
     OFFER_MONTHLY_RATE;
@@ -94,7 +97,7 @@ export default async function AcceptPage() {
 
   const plan: SelectedPlanData = {
     planId,
-    planTitle: PLAN_TITLES[planId] ?? "Selected plan",
+    planTitle: PLAN_TITLES[planId] ?? PLAN_TITLES.custom,
     amount,
     tenure,
     monthlyInstalment,

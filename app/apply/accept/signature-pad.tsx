@@ -216,14 +216,19 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
   const isSigning = phase === "signing";
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex items-center gap-2">
-        <PenNib size={14} weight="bold" style={{ color: "var(--text-tertiary)" }} />
-        <span
-          className="text-[10px] font-bold tracking-[0.16em] uppercase"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Sign to accept
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col items-center gap-1.5 text-center pt-1">
+        <div className="flex items-center gap-2">
+          <PenNib size={16} weight="bold" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+          <span
+            className="text-[13px] font-bold tracking-[0.14em] uppercase"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Sign to accept
+          </span>
+        </div>
+        <span className="text-[12.5px] leading-snug font-medium" style={{ color: "var(--text-secondary)" }}>
+          Draw your signature below to confirm this offer
         </span>
       </div>
 
