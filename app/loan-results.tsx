@@ -957,7 +957,7 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
 function CustomOfferCard({
   isSelected,
   onSelect,
-  onDeselect,
+  onCancel,
   amount,
   tenure,
   onAmountChange,
@@ -965,12 +965,27 @@ function CustomOfferCard({
 }: {
   isSelected: boolean;
   onSelect: () => void;
-  onDeselect: () => void;
+  onCancel: () => void;
   amount: string;
   tenure: string;
   onAmountChange: (value: string) => void;
   onTenureChange: (value: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(true);
+  const [tipOpen, setTipOpen] = useState(false);
+  const amountValue = parseInt(amount, 10);
+  const tenureValue = parseInt(tenure, 10);
+  const canConfirm =
+    Number.isFinite(amountValue) &&
+    amountValue > 0 &&
+    Number.isFinite(tenureValue) &&
+    tenureValue > 0;
+
+  // Re-open the form whenever the card is freshly selected.
+  useEffect(() => {
+    if (isSelected) setIsEditing(true);
+  }, [isSelected]);
+
   if (!isSelected) {
     return (
       <button
@@ -984,14 +999,14 @@ function CustomOfferCard({
             Want a different amount or tenure?
           </span>
           <span className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Build your own offer and our team will follow up to confirm the details.
+            Tell us what loan plan you need and our team will follow up to confirm the details.
           </span>
         </div>
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold text-white transition-all duration-200 group-hover:brightness-110 group-active:scale-[0.97]"
           style={{ background: "var(--brand-blue-hex)" }}
         >
-          Build a custom offer
+          Request custom loan amount & tenure
           <ArrowRight size={12} weight="bold" />
         </span>
       </button>
@@ -1006,68 +1021,154 @@ function CustomOfferCard({
         boxShadow: "0 0 0 2px var(--brand-teal-hex), 0 10px 32px var(--offer-navy-shadow), inset 0 1px 0 oklch(1 0 0 / 0.08)",
       }}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-1.5">
         <span className="text-sm font-semibold" style={{ color: "oklch(1 0 0 / 0.9)" }}>
           Custom offer
         </span>
-        <button
-          type="button"
-          onClick={onDeselect}
-          className="text-[12px] font-medium underline underline-offset-2 transition-colors duration-150 hover:text-white"
-          style={{ color: "oklch(1 0 0 / 0.6)" }}
-        >
-          Use a standard plan instead
-        </button>
+        <span className="relative inline-flex shrink-0">
+          <button
+            type="button"
+            aria-label="About custom offers"
+            aria-expanded={tipOpen}
+            onClick={() => setTipOpen((v) => !v)}
+            onMouseEnter={() => setTipOpen(true)}
+            onMouseLeave={() => setTipOpen(false)}
+            className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
+            style={{
+              borderColor: "oklch(1 0 0 / 0.35)",
+              color: "oklch(1 0 0 / 0.7)",
+              background: "oklch(1 0 0 / 0.08)",
+            }}
+          >
+            ?
+          </button>
+          {tipOpen && (
+            <div
+              role="tooltip"
+              className="absolute left-0 top-[calc(100%+8px)] z-50 w-[min(260px,70vw)] whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
+              style={{
+                background: "var(--surface-elevated)",
+                boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.18)",
+              }}
+            >
+              <p
+                className="text-[12px] font-medium leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Outside our standard plans and not a final approval. Our team will call and WhatsApp you to confirm the exact terms.
+              </p>
+            </div>
+          )}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
-            Loan amount
-          </span>
-          <div
-            className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
-            style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
-          >
-            <span className="text-[15px] font-semibold" style={{ color: "oklch(1 0 0 / 0.6)" }}>$</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="0"
-              value={amount}
-              onChange={(e) => onAmountChange(e.target.value)}
-              className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none"
-              style={{ color: "white" }}
-            />
+      {isEditing ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+                Loan amount
+              </span>
+              <div
+                className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
+                style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
+              >
+                <span className="text-[15px] font-semibold" style={{ color: "oklch(1 0 0 / 0.6)" }}>$</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="0"
+                  value={amount}
+                  onChange={(e) => onAmountChange(e.target.value)}
+                  className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  style={{ color: "white" }}
+                />
+              </div>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+                Tenure (months)
+              </span>
+              <div
+                className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
+                style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
+              >
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="0"
+                  value={tenure}
+                  onChange={(e) => onTenureChange(e.target.value)}
+                  className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  style={{ color: "white" }}
+                />
+                <span className="text-[13px] font-medium" style={{ color: "oklch(1 0 0 / 0.6)" }}>mo</span>
+              </div>
+            </label>
           </div>
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
-            Tenure (months)
-          </span>
-          <div
-            className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
-            style={{ background: "oklch(1 0 0 / 0.08)", boxShadow: "0 0 0 1px oklch(1 0 0 / 0.14)" }}
-          >
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="0"
-              value={tenure}
-              onChange={(e) => onTenureChange(e.target.value)}
-              className="w-full bg-transparent text-[15px] font-semibold tabular-nums outline-none"
-              style={{ color: "white" }}
-            />
-            <span className="text-[13px] font-medium" style={{ color: "oklch(1 0 0 / 0.6)" }}>mo</span>
-          </div>
-        </label>
-      </div>
 
-      <p className="text-[11px] leading-relaxed" style={{ color: "oklch(1 0 0 / 0.55)" }}>
-        Outside our standard plans and not a final approval. Our team will call and WhatsApp you to confirm the exact terms.
-      </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex h-11 w-full items-center justify-center rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+              style={{
+                background: "transparent",
+                color: "oklch(1 0 0 / 0.85)",
+                border: "1.5px solid oklch(1 0 0 / 0.22)",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              disabled={!canConfirm}
+              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+              style={{ background: "var(--brand-teal-hex)", color: "#0a1628" }}
+            >
+              <CheckCircle size={15} weight="fill" />
+              Confirm details
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+                Loan amount
+              </span>
+              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-teal-hex)" }}>
+                {formatCurrency(amountValue)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "oklch(1 0 0 / 0.55)" }}>
+                Tenure
+              </span>
+              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-teal-hex)" }}>
+                {tenureValue} {tenureValue === 1 ? "month" : "months"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+            style={{
+              background: "transparent",
+              color: "oklch(1 0 0 / 0.85)",
+              border: "1.5px solid oklch(1 0 0 / 0.22)",
+            }}
+          >
+            <PencilSimple size={14} weight="bold" />
+            Edit details
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1106,7 +1207,11 @@ function PlanPicker({
       <CustomOfferCard
         isSelected={selectedPlanId === "custom"}
         onSelect={() => onPlanSelect("custom")}
-        onDeselect={() => onPlanSelect(null)}
+        onCancel={() => {
+          onPlanSelect(null);
+          onCustomAmountChange("");
+          onCustomTenureChange("");
+        }}
         amount={customAmount}
         tenure={customTenure}
         onAmountChange={onCustomAmountChange}

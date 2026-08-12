@@ -43,7 +43,7 @@ export function ApprovalView({ formData }: Props) {
             Your loan offer is confirmed.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
-            Choose the repayment plan that works best for you, then book an appointment to collect your funds.
+            Choose the plan that works best for you.
           </p>
         </div>
       </aside>
@@ -65,8 +65,8 @@ export function ApprovalView({ formData }: Props) {
                 <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-white">
                   Your loan offer is confirmed.
                 </h1>
-                <p className="mt-2 text-sm leading-relaxed text-white/75 max-w-[38ch]">
-                  Choose the repayment plan that works best for you, then book an appointment to collect your funds.
+                <p className="mt-2 whitespace-nowrap text-[12px] leading-relaxed text-white/75 sm:text-sm">
+                  Choose the plan that works best for you.
                 </p>
               </div>
             </div>
