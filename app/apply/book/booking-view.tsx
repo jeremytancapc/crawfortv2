@@ -7,6 +7,7 @@ import { CalendarBlank } from "@phosphor-icons/react";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import { MobileHeader } from "@/app/mobile-header";
 import { MobileLegalFooter } from "@/app/mobile-legal-footer";
+import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import type { LoanFormData } from "@/lib/loan-form";
 
 interface Props {
@@ -96,14 +97,10 @@ export function BookingView({ formData }: Props) {
                 aria-hidden
                 className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
               />
-              <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center gap-2 px-5 pt-6 pb-16 text-center sm:px-8">
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
-                  style={{ background: "rgba(255,255,255,0.16)" }}
-                  aria-hidden="true"
-                >
-                  <CalendarBlank size={18} weight="duotone" className="text-white" />
-                </span>
+              <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center gap-2.5 px-5 pt-6 pb-16 text-center sm:px-8">
+                <AnimatedIconBadge background="rgba(255,255,255,0.16)" ringColor="rgba(255,255,255,0.6)">
+                  <CalendarBlank size={28} weight="duotone" className="text-white" />
+                </AnimatedIconBadge>
                 <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
                   Pick a time to collect your funds
                 </h1>

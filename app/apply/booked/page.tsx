@@ -6,6 +6,7 @@ import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 import { BookingConfirmedView } from "@/app/booking-confirmed-view";
 import { MobileHeader } from "@/app/mobile-header";
 import { MobileLegalFooter } from "@/app/mobile-legal-footer";
+import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -53,13 +54,9 @@ export default async function BookedPage() {
                 className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
               />
               <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center gap-2.5 px-5 pt-6 pb-16 text-center sm:px-8">
-                <span
-                  className="flex h-14 w-14 items-center justify-center rounded-full"
-                  style={{ background: "rgba(255,255,255,0.16)" }}
-                  aria-hidden="true"
-                >
+                <AnimatedIconBadge background="rgba(255,255,255,0.16)" ringColor="rgba(255,255,255,0.6)">
                   <SealCheck size={28} weight="fill" className="text-white" />
-                </span>
+                </AnimatedIconBadge>
                 <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
                   You&apos;re all set
                 </h1>
