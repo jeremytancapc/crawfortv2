@@ -312,7 +312,6 @@ export function ReviewForm({ initialData }: Props) {
                     <Step7_BankruptcyDeclaration
                       formData={formData}
                       updateField={updateField}
-                      onClear={scrollToBottomCta}
                     />
                   )}
                   {step === 8 && (

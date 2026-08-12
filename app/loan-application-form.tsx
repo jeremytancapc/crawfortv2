@@ -391,13 +391,11 @@ export function Step1_LoanDetails({
   updateField,
   monthlyRepayment,
   sliderPercentage,
-  onUrgencySelect,
 }: {
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
   monthlyRepayment: number;
   sliderPercentage: number;
-  onUrgencySelect?: () => void;
 }) {
   const [amountRaw, setAmountRaw] = useState(String(formData.amount));
   const [amountFocused, setAmountFocused] = useState(false);
@@ -601,7 +599,6 @@ export function Step1_LoanDetails({
                   type="button"
                   onClick={() => {
                     updateField("urgency", value);
-                    onUrgencySelect?.();
                   }}
                   className="flex items-center justify-center rounded-[var(--radius-md)] border px-1.5 py-3 text-center text-xs font-medium leading-snug transition-all duration-200 active:scale-[0.97] sm:text-sm"
                   style={{
@@ -799,7 +796,7 @@ export function Step3_SingpassGate({
           </div>
         ) : (
           <Image
-            src="/images/singpass-myinfo-red.png"
+            src="/images/singpass-myinfo-red.webp"
             alt="Retrieve Myinfo with Singpass"
             width={1272}
             height={192}
@@ -1883,11 +1880,9 @@ function LegalModal({
 export function Step7_BankruptcyDeclaration({
   formData,
   updateField,
-  onClear,
 }: {
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
-  onClear?: () => void;
 }) {
   const isClear      = formData.bankruptcyDeclaration === "clear";
   const isDischarged = formData.bankruptcyDeclaration === "discharged_lt5";
@@ -1914,10 +1909,7 @@ export function Step7_BankruptcyDeclaration({
             {/* Not bankrupt option - green when selected */}
             <button
               type="button"
-              onClick={() => {
-                updateField("bankruptcyDeclaration", "clear");
-                setTimeout(() => onClear?.(), 50);
-              }}
+              onClick={() => updateField("bankruptcyDeclaration", "clear")}
               className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3.5 text-left transition-all duration-200 active:scale-[0.99]"
               style={{
                 borderColor: isClear ? "oklch(0.55 0.15 145)" : "var(--border-subtle)",
