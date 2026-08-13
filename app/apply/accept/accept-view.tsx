@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
@@ -55,6 +55,66 @@ function scrollStepIntoView(el: HTMLElement | null) {
   }
 
   window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+}
+
+/**
+ * Tracks whether a scroll container still has content below the fold.
+ * Used to hide the "Scroll for more" cue once the reader reaches the bottom,
+ * and bring it back if they scroll up again.
+ */
+function useCanScrollMore(ref: RefObject<HTMLElement | null>) {
+  const [canScrollMore, setCanScrollMore] = useState(true);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const update = () => {
+      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setCanScrollMore(remaining > 4);
+    };
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [ref]);
+
+  return canScrollMore;
+}
+
+function ScrollForMoreHint({ visible }: { visible: boolean }) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-1"
+          style={{
+            height: 56,
+            background:
+              "linear-gradient(to bottom, transparent, var(--surface-elevated) 48%, var(--surface-elevated) 100%)",
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <span
+            className="flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Scroll for more
+            <CaretDown size={9} weight="bold" />
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -492,6 +552,9 @@ function AcceptanceStepCard({
 const TC_DIGEST_MAX_HEIGHT_PX = 260;
 
 function LoanTermsStepContent() {
+  const digestRef = useRef<HTMLUListElement>(null);
+  const canScrollMore = useCanScrollMore(digestRef);
+
   return (
     <>
       {/* Drawdown notice */}
@@ -510,6 +573,7 @@ function LoanTermsStepContent() {
       {/* Contract digest */}
       <div className="relative">
         <ul
+          ref={digestRef}
           className="flex flex-col gap-3 overflow-y-auto pr-1 pb-6"
           style={{ maxHeight: TC_DIGEST_MAX_HEIGHT_PX }}
         >
@@ -531,22 +595,7 @@ function LoanTermsStepContent() {
             </li>
           ))}
         </ul>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-1"
-          style={{
-            height: 56,
-            background: "linear-gradient(to bottom, transparent, var(--surface-elevated) 48%, var(--surface-elevated) 100%)",
-          }}
-        >
-          <span
-            className="flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Scroll for more
-            <CaretDown size={9} weight="bold" />
-          </span>
-        </div>
+        <ScrollForMoreHint visible={canScrollMore} />
       </div>
 
       {/* Closing note */}
@@ -603,6 +652,8 @@ function PaymentScheduleStepContent({
 }) {
   const schedule = buildPaymentSchedule(acceptedAt, plan.tenure, plan.monthlyInstalment);
   const isScrollable = schedule.length > 4;
+  const scheduleRef = useRef<HTMLDivElement>(null);
+  const canScrollMore = useCanScrollMore(scheduleRef);
 
   return (
     <>
@@ -628,6 +679,7 @@ function PaymentScheduleStepContent({
 
       <div className="relative">
         <div
+          ref={scheduleRef}
           className={isScrollable ? "flex flex-col gap-3 overflow-y-auto pr-1 pb-6" : "flex flex-col gap-3"}
           style={isScrollable ? { maxHeight: 224 } : undefined}
         >
@@ -640,24 +692,7 @@ function PaymentScheduleStepContent({
             />
           ))}
         </div>
-        {isScrollable && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-1"
-            style={{
-              height: 56,
-              background: "linear-gradient(to bottom, transparent, var(--surface-elevated) 48%, var(--surface-elevated) 100%)",
-            }}
-          >
-            <span
-              className="flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Scroll for more
-              <CaretDown size={9} weight="bold" />
-            </span>
-          </div>
-        )}
+        {isScrollable && <ScrollForMoreHint visible={canScrollMore} />}
       </div>
 
       <DashedDivider />
