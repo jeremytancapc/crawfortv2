@@ -13,6 +13,44 @@ export function startOfDay(date: Date): Date {
   return d;
 }
 
+/** Local calendar key, e.g. "2026-08-14". */
+export function toDateKey(date: Date): string {
+  const d = startOfDay(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+}
+
+export function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+export function isSameCalendarDay(a: Date, b: Date): boolean {
+  return toDateKey(a) === toDateKey(b);
+}
+
+/**
+ * Next weekday (Mon–Fri) after `from`, at 09:00 local.
+ * Singapore call-centre week; public holidays are not modelled.
+ */
+export function nextWorkingDay(from: Date): Date {
+  const d = startOfDay(from);
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  d.setHours(9, 0, 0, 0);
+  return d;
+}
+
 export function endOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
@@ -84,6 +122,12 @@ export interface SnoozePreset {
   id: string;
   label: string;
   until: string; // ISO
+}
+
+export function nextWorkingDayPreset(from: Date): SnoozePreset {
+  const until = nextWorkingDay(from);
+  const label = `${until.toLocaleDateString("en-SG", { weekday: "short", day: "numeric", month: "short" })}, 9:00 am`;
+  return { id: "next-working-day", label, until: until.toISOString() };
 }
 
 export function buildSnoozePresets(now: Date): SnoozePreset[] {

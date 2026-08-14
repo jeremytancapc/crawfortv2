@@ -7,7 +7,7 @@ const SHORTCUTS: [string, string][] = [
   ["M", "Message"],
   ["B", "Book"],
   ["S", "Snooze"],
-  ["D", "Done"],
+  ["D", "Next day"],
 ];
 
 export function KeyboardLegend() {

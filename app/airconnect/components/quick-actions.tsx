@@ -7,10 +7,11 @@ import {
   ChatCircleText,
   CalendarPlus,
   ClockCountdown,
-  CheckCircle,
+  SkipForward,
   DotsThreeVertical,
 } from "@phosphor-icons/react";
 import type { Lead } from "@/lib/airconnect/types";
+import { nextWorkingDayPreset, parseDateKey } from "@/lib/airconnect/helpers";
 import { useAirConnect } from "../airconnect-store";
 import { OutcomeChips } from "./outcome-chips";
 import { NotePopover } from "./note-popover";
@@ -27,7 +28,7 @@ export interface QuickActionsHandle {
   openMessage: () => void;
   openBook: () => void;
   openSnooze: () => void;
-  markDone: () => void;
+  pushNextDay: () => void;
 }
 
 interface QuickActionsProps {
@@ -44,13 +45,14 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
   { lead, size = "default", align = "left", onOutcomeChipsChange },
   ref
 ) {
-  const { setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus } = useAirConnect();
+  const { state, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, setStatus } = useAirConnect();
   const [panel, setPanel] = useState<PanelKind>(null);
   const [showOutcome, setShowOutcome] = useState(false);
 
   const isDone = lead.status === "done";
   const sizing = size === "compact" ? "px-2 py-1 text-[11px]" : "px-2.5 py-1.5 text-xs";
   const iconSize = size === "compact" ? 13 : 14;
+  const nextDay = nextWorkingDayPreset(parseDateKey(state.queueDate));
 
   function togglePanel(next: PanelKind) {
     setPanel((cur) => (cur === next ? null : next));
@@ -72,10 +74,14 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
     openMessage: () => togglePanel("message"),
     openBook: () => togglePanel("book"),
     openSnooze: () => togglePanel("snooze"),
-    markDone: () => {
-      if (!isDone) markDone(lead.id);
+    pushNextDay: () => {
+      if (!isDone) pushNextWorkingDay();
     },
   }));
+
+  function pushNextWorkingDay() {
+    snoozeLead(lead.id, nextDay.until, nextDay.label);
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -179,16 +185,18 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => markDone(lead.id)}
-          disabled={isDone}
-          title="Mark done (D)"
-          className={[BASE_BTN, sizing, "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"].join(" ")}
-        >
-          <CheckCircle size={iconSize} weight="fill" />
-          Done
-        </button>
+        {size === "compact" && (
+          <button
+            type="button"
+            onClick={pushNextWorkingDay}
+            disabled={isDone}
+            title={`Push to next working day (D) — ${nextDay.label}`}
+            className={[BASE_BTN, sizing, "bg-[var(--brand-blue-hex)] text-white shadow-sm hover:opacity-90"].join(" ")}
+          >
+            <SkipForward size={iconSize} weight="fill" />
+            Next day
+          </button>
+        )}
 
         <div className="relative">
           <button
@@ -211,6 +219,23 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
           />
         </div>
       </div>
+
+      {size !== "compact" && (
+        <button
+          type="button"
+          onClick={pushNextWorkingDay}
+          disabled={isDone}
+          title={`Push to next working day (D) — ${nextDay.label}`}
+          className={[
+            BASE_BTN,
+            "mt-1.5 w-full justify-center px-3 py-2.5 text-sm shadow-sm",
+            "bg-[var(--brand-blue-hex)] text-white hover:opacity-90",
+          ].join(" ")}
+        >
+          <SkipForward size={16} weight="fill" />
+          Push to {nextDay.label}
+        </button>
+      )}
 
       {showOutcome && (
         <OutcomeChips
