@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ActionPopover } from "./action-popover";
 
-const QUICK_PHRASES = [
+export const QUICK_PHRASES = [
   "No answer",
   "Asked to call back PM",
   "Sent info via WhatsApp",

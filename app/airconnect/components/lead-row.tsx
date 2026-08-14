@@ -6,6 +6,7 @@ import type { Lead } from "@/lib/airconnect/types";
 import { useAirConnect } from "../airconnect-store";
 import { formatDueLabel, formatRelativeTime, getDueBucket, maskPhone } from "@/lib/airconnect/helpers";
 import { StatusPill } from "./status-pill";
+import { CopyPhoneButton } from "./copy-phone-button";
 import { QuickActions, type QuickActionsHandle } from "./quick-actions";
 
 export type LeadRowHandle = QuickActionsHandle;
@@ -13,7 +14,7 @@ export type LeadRowHandle = QuickActionsHandle;
 interface LeadRowProps {
   lead: Lead;
   now: Date;
-  isFocused: boolean;
+  isSelected: boolean;
 }
 
 const NOTE_KIND_LABEL: Record<string, string> = {
@@ -25,7 +26,7 @@ const NOTE_KIND_LABEL: Record<string, string> = {
   snooze: "Snoozed",
 };
 
-export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow({ lead, now, isFocused }, ref) {
+export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow({ lead, now, isSelected }, ref) {
   const { selectLead } = useAirConnect();
   const qaRef = useRef<QuickActionsHandle>(null);
 
@@ -35,7 +36,7 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
     openMessage: () => qaRef.current?.openMessage(),
     openBook: () => qaRef.current?.openBook(),
     openSnooze: () => qaRef.current?.openSnooze(),
-    markDone: () => qaRef.current?.markDone(),
+    pushNextDay: () => qaRef.current?.pushNextDay(),
   }));
 
   const bucket = getDueBucket(lead, now);
@@ -51,28 +52,32 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
       exit={{ opacity: 0, x: 48, height: 0, marginBottom: 0, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       data-lead-id={lead.id}
+      onClick={() => selectLead(lead.id)}
       className={[
-        "group rounded-xl border bg-white p-3 transition-shadow",
-        isFocused
+        "group cursor-pointer rounded-xl border bg-white p-3 transition-shadow",
+        isSelected
           ? "border-[var(--brand-blue-hex)] shadow-md ring-2 ring-[var(--brand-blue-hex)]/15"
           : "border-[var(--border-subtle)] hover:shadow-sm",
       ].join(" ")}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => selectLead(lead.id)}
-              className="truncate text-sm font-bold text-[var(--text-primary)] underline-offset-2 hover:text-[var(--brand-blue-hex)] hover:underline"
-            >
-              {lead.name}
-            </button>
+            <span className="truncate text-sm font-bold text-[var(--text-primary)]">{lead.name}</span>
             <StatusPill status={lead.status} />
-            <span className="text-xs text-[var(--text-tertiary)]">{maskPhone(lead.phone)}</span>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">{lead.source}</span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
+            <span className="inline-flex items-center gap-0.5">
+              {maskPhone(lead.phone)}
+              <CopyPhoneButton phone={lead.phone} />
+            </span>
+            <span aria-hidden>&middot;</span>
+            <span>{lead.source}</span>
             {lead.loanAmountLabel && (
-              <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">{lead.loanAmountLabel}</span>
+              <>
+                <span aria-hidden>&middot;</span>
+                <span className="font-semibold">{lead.loanAmountLabel}</span>
+              </>
             )}
           </div>
           {lastNote && (
@@ -88,7 +93,7 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
         </div>
       </div>
 
-      <div className="mt-2.5 border-t border-[var(--border-subtle)] pt-2.5">
+      <div className="mt-2.5 border-t border-[var(--border-subtle)] pt-2.5" onClick={(e) => e.stopPropagation()}>
         <QuickActions ref={qaRef} lead={lead} />
       </div>
     </motion.div>

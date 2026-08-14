@@ -12,7 +12,8 @@ import type {
   ViewMode,
 } from "@/lib/airconnect/types";
 import { AGENTS } from "@/lib/airconnect/mock-data";
-import { applyCallOutcome, CALL_OUTCOME_LABELS, getDueBucket } from "@/lib/airconnect/helpers";
+import { ACTIVE_QUEUE_STATUSES } from "@/lib/airconnect/types";
+import { applyCallOutcome, CALL_OUTCOME_LABELS, getDueBucket, toDateKey } from "@/lib/airconnect/helpers";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ export interface AirConnectState {
   sourceFilter: LeadSource | "all";
   overdueOnly: boolean;
   selectedLeadId: string | null;
+  /** Calendar day the queue is showing, local YYYY-MM-DD. */
+  queueDate: string;
   toasts: Toast[];
   activityCounts: Record<AgentId, ActivityCounts>;
   /** Lead ids that were overdue/due-today for each agent at initial load - fixed baseline for the progress ring. */
@@ -45,6 +48,7 @@ type Action =
   | { type: "SET_SOURCE_FILTER"; source: LeadSource | "all" }
   | { type: "TOGGLE_OVERDUE_ONLY" }
   | { type: "SELECT_LEAD"; leadId: string | null }
+  | { type: "SET_QUEUE_DATE"; dateKey: string }
   | { type: "SET_CALL_OUTCOME"; leadId: string; outcome: CallOutcome }
   | { type: "ADD_NOTE"; leadId: string; text: string }
   | { type: "SEND_MESSAGE"; leadId: string; templateLabel: string; text: string }
@@ -75,6 +79,23 @@ function updateLead(leads: Lead[], leadId: string, updater: (lead: Lead) => Lead
   return leads.map((l) => (l.id === leadId ? updater(l) : l));
 }
 
+function nextVisibleQueueLeadId(state: AirConnectState, excludeId: string, now: Date): string | null {
+  const viewingToday = state.queueDate === toDateKey(now);
+  const remaining = state.leads.filter((lead) => {
+    if (lead.id === excludeId) return false;
+    if (lead.agentId !== state.currentAgentId) return false;
+    if (!ACTIVE_QUEUE_STATUSES.includes(lead.status)) return false;
+    if (!lead.followUpAt) return false;
+    if (viewingToday) {
+      const bucket = getDueBucket(lead, now);
+      return bucket === "overdue" || bucket === "today";
+    }
+    return toDateKey(new Date(lead.followUpAt)) === state.queueDate;
+  });
+  remaining.sort((a, b) => new Date(a.followUpAt as string).getTime() - new Date(b.followUpAt as string).getTime());
+  return remaining[0]?.id ?? null;
+}
+
 function bumpCount(state: AirConnectState, agentId: AgentId, key: keyof ActivityCounts): Record<AgentId, ActivityCounts> {
   const current = state.activityCounts[agentId] ?? emptyCounts();
   return { ...state.activityCounts, [agentId]: { ...current, [key]: current[key] + 1 } };
@@ -87,10 +108,10 @@ function airconnectReducer(state: AirConnectState, action: Action): AirConnectSt
 
   switch (action.type) {
     case "SWITCH_AGENT":
-      return { ...state, currentAgentId: action.agentId, selectedLeadId: null };
+      return { ...state, currentAgentId: action.agentId, selectedLeadId: null, queueDate: toDateKey(now) };
 
     case "SET_VIEW":
-      return { ...state, activeView: action.view };
+      return { ...state, activeView: action.view, selectedLeadId: action.view === "queue" ? state.selectedLeadId : null };
 
     case "SET_SEARCH":
       return { ...state, search: action.query };
@@ -106,6 +127,9 @@ function airconnectReducer(state: AirConnectState, action: Action): AirConnectSt
 
     case "SELECT_LEAD":
       return { ...state, selectedLeadId: action.leadId };
+
+    case "SET_QUEUE_DATE":
+      return { ...state, queueDate: action.dateKey };
 
     case "SET_CALL_OUTCOME": {
       const lead = state.leads.find((l) => l.id === action.leadId);
@@ -231,10 +255,10 @@ function airconnectReducer(state: AirConnectState, action: Action): AirConnectSt
       return {
         ...state,
         leads,
-        selectedLeadId: state.selectedLeadId === lead.id ? null : state.selectedLeadId,
+        selectedLeadId: state.selectedLeadId === lead.id ? nextVisibleQueueLeadId({ ...state, leads }, lead.id, now) : state.selectedLeadId,
         toasts: pushToast(state.toasts, {
           kind: "snooze",
-          message: `Moved ${lead.name.split(" ")[0]} to ${action.label}`,
+          message: `Moved ${lead.name.split(" ")[0]} to ${action.label} — use the date strip to find them`,
           undoSnapshot: lead,
         }),
       };
@@ -308,6 +332,7 @@ interface AirConnectContextValue {
   setSourceFilter: (source: LeadSource | "all") => void;
   toggleOverdueOnly: () => void;
   selectLead: (leadId: string | null) => void;
+  setQueueDate: (dateKey: string) => void;
   setCallOutcome: (leadId: string, outcome: CallOutcome) => void;
   addNote: (leadId: string, text: string) => void;
   sendMessage: (leadId: string, templateLabel: string, text: string) => void;
@@ -346,6 +371,7 @@ function buildInitialState(leads: Lead[]): AirConnectState {
     sourceFilter: "all",
     overdueOnly: false,
     selectedLeadId: null,
+    queueDate: toDateKey(now),
     toasts: [],
     activityCounts,
     dailyBaseline,
@@ -362,6 +388,7 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
   const setSourceFilter = useCallback((source: LeadSource | "all") => dispatch({ type: "SET_SOURCE_FILTER", source }), []);
   const toggleOverdueOnly = useCallback(() => dispatch({ type: "TOGGLE_OVERDUE_ONLY" }), []);
   const selectLead = useCallback((leadId: string | null) => dispatch({ type: "SELECT_LEAD", leadId }), []);
+  const setQueueDate = useCallback((dateKey: string) => dispatch({ type: "SET_QUEUE_DATE", dateKey }), []);
   const setCallOutcome = useCallback((leadId: string, outcome: CallOutcome) => dispatch({ type: "SET_CALL_OUTCOME", leadId, outcome }), []);
   const addNote = useCallback((leadId: string, text: string) => dispatch({ type: "ADD_NOTE", leadId, text }), []);
   const sendMessage = useCallback((leadId: string, templateLabel: string, text: string) => dispatch({ type: "SEND_MESSAGE", leadId, templateLabel, text }), []);
@@ -382,6 +409,7 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
       setSourceFilter,
       toggleOverdueOnly,
       selectLead,
+      setQueueDate,
       setCallOutcome,
       addNote,
       sendMessage,
@@ -392,7 +420,7 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
       undoToast,
       dismissToast,
     }),
-    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, selectLead, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, undoToast, dismissToast]
+    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, undoToast, dismissToast]
   );
 
   return <AirConnectContext.Provider value={value}>{children}</AirConnectContext.Provider>;

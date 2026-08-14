@@ -21,7 +21,7 @@ function WorkspaceShell() {
         {state.activeView === "pipeline" && <PipelineView />}
         {state.activeView === "table" && <TableView />}
       </main>
-      <LeadPanel />
+      {state.activeView !== "queue" && <LeadPanel />}
       <ToastStack />
     </div>
   );
