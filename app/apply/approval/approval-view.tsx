@@ -12,11 +12,15 @@ interface Props {
 export function ApprovalView({ formData }: Props) {
   const router = useRouter();
 
-  // Demo-only figures: derive the offer straight from the self-declared monthly
-  // income captured at step 2/8, rather than the real underwriting output.
-  const monthlyIncome = parseInt(formData.monthlyIncome, 10) || 0;
-  const withdrawToday = monthlyIncome * 3;
-  const maxCreditLimit = monthlyIncome * 6;
+  // Demo-only figures: 3× / 6× monthly income. After submit the session often
+  // drops the self-declared string, so fall back to verified income, then the
+  // approved amount that already gated this page.
+  const monthlyIncome =
+    parseInt(formData.monthlyIncome.replace(/,/g, ""), 10) ||
+    Number(formData.verifiedMonthlyIncome) ||
+    0;
+  const withdrawToday = monthlyIncome > 0 ? monthlyIncome * 3 : formData.approvedLoanAmount;
+  const maxCreditLimit = monthlyIncome > 0 ? monthlyIncome * 6 : formData.approvedLoanAmount * 2;
 
   const displayData = { ...formData, amount: withdrawToday };
 
@@ -34,17 +38,15 @@ export function ApprovalView({ formData }: Props) {
         </p>
       </div>
 
-      <div className="flex-1 px-5 pb-8">
-        <LoanResults
-          formData={displayData}
-          creditLimit={maxCreditLimit}
-          monthlyRepayment={0}
-          onAccept={() => router.push("/apply/accept")}
-          onCustomOfferSubmitted={() =>
-            router.push(`/apply/custom-received?leadId=${formData.leadId ?? ""}`)
-          }
-        />
-      </div>
+      <LoanResults
+        formData={displayData}
+        creditLimit={maxCreditLimit}
+        monthlyRepayment={0}
+        onAccept={() => router.push("/apply/accept")}
+        onCustomOfferSubmitted={() =>
+          router.push(`/apply/custom-received?leadId=${formData.leadId ?? ""}`)
+        }
+      />
     </ApplyIosShell>
   );
 }
