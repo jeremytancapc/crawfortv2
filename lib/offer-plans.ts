@@ -9,6 +9,9 @@
 /** Standard offer rate: 3.92% per month. */
 export const OFFER_MONTHLY_RATE = 0.0392;
 
+/** Ceiling on the processing fee deducted at disbursement, as a % of the loan. */
+export const OFFER_MAX_PROCESSING_FEE_PCT = 10;
+
 export const MAX_OFFER_TENURE = 12;
 export const MIN_OFFER_TENURE = 1;
 
@@ -107,7 +110,10 @@ export function buildPaymentSchedule(
 export interface OfferPlan {
   id: "lowest_interest" | "lowest_instalment" | "average" | "custom";
   title: string;
-  tagline: string;
+  /** Benefit-led headline on the card front - sells the plan, no figures. */
+  pitch: string;
+  /** Two short proof points under the pitch. Kept to ~3 words for the 3-up grid. */
+  sellingPoints: [string, string];
   badge?: string;
   tenure: number;
   monthlyRate: number;
@@ -121,7 +127,8 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
   const make = (
     id: OfferPlan["id"],
     title: string,
-    tagline: string,
+    pitch: string,
+    sellingPoints: [string, string],
     tenure: number,
     monthlyRate: number,
     opts?: { badge?: string; isPopular?: boolean },
@@ -132,7 +139,8 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
     return {
       id,
       title,
-      tagline,
+      pitch,
+      sellingPoints,
       tenure,
       monthlyRate,
       monthlyInstalment,
@@ -146,14 +154,16 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
     make(
       "lowest_interest",
       "SuperSaver Plan",
-      "Shortest tenure - least interest paid",
+      "Pay the least overall",
+      ["Least interest", "Fastest payoff"],
       3,
       OFFER_MONTHLY_RATE,
     ),
     make(
       "average",
       "ValuePro Plan",
-      "Even split of payments and interest",
+      "Best of both worlds",
+      ["Balanced monthly", "Most chosen"],
       6,
       OFFER_MONTHLY_RATE,
       {
@@ -164,7 +174,8 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
     make(
       "lowest_instalment",
       "FlexiPay Plan",
-      "Smallest payment - longer tenure",
+      "Easiest on your wallet",
+      ["Lowest monthly", "Most flexible"],
       MAX_OFFER_TENURE,
       OFFER_MONTHLY_RATE,
     ),

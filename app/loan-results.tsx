@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import {
   ArrowRight,
   Warning,
@@ -19,12 +19,11 @@ import { motion, useReducedMotion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildOfferPlans,
-  buildPaymentSchedule,
   calculateInstalment,
   OFFER_CONFIRMATION_DISCLAIMER,
+  OFFER_MAX_PROCESSING_FEE_PCT,
   OFFER_MONTHLY_RATE,
   type OfferPlan,
-  type ScheduleInstallment,
 } from "@/lib/offer-plans";
 
 // ── Offer expiry helpers ──────────────────────────────────────────────────────
@@ -157,22 +156,42 @@ function clampWithdrawAmount(raw: number, max: number): number {
 
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-/** "19 Sep", widening to "19 Jan 27" once the schedule crosses into a new year. */
-function formatInstalmentDate(iso: string, baseYear: number): string {
-  const date = new Date(iso);
-  const day = `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
-  return date.getFullYear() === baseYear
-    ? day
-    : `${day} ${String(date.getFullYear()).slice(-2)}`;
-}
-
 // ── Term-sheet confirmed offer card ───────────────────────────────────────────
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const SCROLL_VIEWPORT = { once: true, amount: 0.28, margin: "0px 0px -56px 0px" } as const;
+
+/** Fade-up once the block actually enters the viewport — not on page load. */
+function RevealOnScroll({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={SCROLL_VIEWPORT}
+      transition={{
+        duration: prefersReducedMotion ? 0 : 0.5,
+        ease: EASE,
+        delay: prefersReducedMotion ? 0 : delay,
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 interface OfferCardProps {
   formData: FormData;
-  revealStage: number;
   creditLimit?: number;
   withdrawAmount: number;
   onWithdrawAmountChange: (amount: number) => void;
@@ -189,11 +208,9 @@ const PRE_APPROVED_TEXT = "oklch(0.48 0.08 176)";
 function CreditLineRing({
   limit,
   available,
-  revealStage,
 }: {
   limit: number;
   available: number;
-  revealStage: number;
 }) {
   const radius = (RING_SIZE - RING_STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -207,6 +224,7 @@ function CreditLineRing({
   const availableOffset = gapFraction / 2;
   const reservedOffset = availableFraction + gapFraction / 2;
   const center = RING_SIZE / 2;
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
@@ -226,12 +244,10 @@ function CreditLineRing({
           stroke={RING_RESERVED_COLOR}
           strokeWidth={RING_STROKE}
           strokeLinecap="round"
-          initial={{ pathLength: 0, pathOffset: reservedOffset }}
-          animate={{
-            pathLength: revealStage >= 1 ? reservedArc : 0,
-            pathOffset: reservedOffset,
-          }}
-          transition={{ duration: 0.7, ease: EASE, delay: 0.35 }}
+          initial={prefersReducedMotion ? { pathLength: reservedArc, pathOffset: reservedOffset } : { pathLength: 0, pathOffset: reservedOffset }}
+          whileInView={{ pathLength: reservedArc, pathOffset: reservedOffset }}
+          viewport={SCROLL_VIEWPORT}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.7, ease: EASE, delay: prefersReducedMotion ? 0 : 0.2 }}
         />
         <motion.circle
           cx={center}
@@ -241,12 +257,10 @@ function CreditLineRing({
           stroke="var(--accent)"
           strokeWidth={RING_STROKE}
           strokeLinecap="round"
-          initial={{ pathLength: 0, pathOffset: availableOffset }}
-          animate={{
-            pathLength: revealStage >= 1 ? availableArc : 0,
-            pathOffset: availableOffset,
-          }}
-          transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
+          initial={prefersReducedMotion ? { pathLength: availableArc, pathOffset: availableOffset } : { pathLength: 0, pathOffset: availableOffset }}
+          whileInView={{ pathLength: availableArc, pathOffset: availableOffset }}
+          viewport={SCROLL_VIEWPORT}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.7, ease: EASE, delay: prefersReducedMotion ? 0 : 0.08 }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -290,7 +304,6 @@ function RingLegendRow({
 
 function OfferHeader({
   formData,
-  revealStage,
   creditLimit,
   withdrawAmount,
   onWithdrawAmountChange,
@@ -321,13 +334,9 @@ function OfferHeader({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={revealStage >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-      transition={{ duration: 0.5, ease: EASE }}
-      className="flex flex-col gap-3"
-    >
+    <div className="flex flex-col gap-3">
       {/* Hero card: the single figure the customer acts on, then one meta row. */}
+      <RevealOnScroll>
       <div className="ios-card">
         <div className="flex flex-col items-center px-4 pb-5 pt-6">
           <span className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
@@ -422,10 +431,12 @@ function OfferHeader({
           </span>
         </div>
       </div>
+      </RevealOnScroll>
 
       {/* Credit line: the ring carries the limit, so the figures below stay two
           quiet rows instead of a second stack of hero numbers. */}
       {hasStructuralReserve ? (
+        <RevealOnScroll>
         <div className="ios-card px-4 pb-3 pt-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[17px] font-semibold leading-tight text-[var(--text-primary)]">
@@ -441,7 +452,7 @@ function OfferHeader({
           </div>
 
           <div className="flex justify-center py-5">
-            <CreditLineRing limit={limit} available={maxWithdraw} revealStage={revealStage} />
+            <CreditLineRing limit={limit} available={maxWithdraw} />
           </div>
 
           <RingLegendRow
@@ -480,7 +491,9 @@ function OfferHeader({
             </p>
           )}
         </div>
+        </RevealOnScroll>
       ) : (
+        <RevealOnScroll>
         <div className="ios-card">
           <div className="ios-row">
             <span className="flex items-center gap-2 text-[15px] leading-tight text-[var(--text-primary)]">
@@ -492,8 +505,9 @@ function OfferHeader({
             </span>
           </div>
         </div>
+        </RevealOnScroll>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -503,7 +517,6 @@ interface PlanCardProps {
   plan: OfferPlan;
   isSelected: boolean;
   isFlipped: boolean;
-  schedule: ScheduleInstallment[];
   onSelect: () => void;
   onFlipBack: () => void;
 }
@@ -513,51 +526,54 @@ function shortPlanName(title: string): string {
   return title.replace(/\s+Plan$/i, "");
 }
 
+const FLIP_DURATION = 0.55;
+
+/** Height of the reserved ribbon slot above every card - keeps the blue headers aligned. */
+const RIBBON_HEIGHT = "1.25rem";
+
+/** Ring + drop shadow drawn around a whole card, ribbon included. */
+function cardFrameShadow(isSelected: boolean): string {
+  return isSelected
+    ? "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)"
+    : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)";
+}
+
 function PlanCard({
   plan,
   isSelected,
   isFlipped,
-  schedule,
   onSelect,
   onFlipBack,
 }: PlanCardProps) {
   const isPopular = Boolean(plan.badge);
   const prefersReducedMotion = useReducedMotion();
 
+  // `perspective` forces Chrome to rasterize the whole card as a 3D layer, which
+  // softens its text. Mount it only while the card is mid-flip or showing its back.
+  const [isFlipping, setIsFlipping] = useState(false);
+
   return (
-    <div
-      className="relative h-full w-full transition-transform duration-200"
-      style={{
-        perspective: 1000,
-        transform: isSelected ? "scale(1.02)" : "scale(1)",
-      }}
-    >
-      {/* The front face stays in flow so the grid row keeps sizing to it; the
-          schedule is layered on top, pre-rotated, and scrolls inside the card. */}
-      <motion.div
-        className="relative flex h-full w-full flex-col"
-        style={{ transformStyle: "preserve-3d" }}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
-        }
-      >
-    <button
-      type="button"
-      onClick={onSelect}
-      className="relative flex h-full w-full flex-col text-center focus:outline-none"
-      style={{
-        backfaceVisibility: "hidden",
-        WebkitBackfaceVisibility: "hidden",
-      }}
-      aria-pressed={isSelected}
-      tabIndex={isFlipped ? -1 : 0}
-    >
-      {/* Reserved ribbon slot - keeps blue headers aligned across all three cards */}
-      <div className="flex h-5 w-full shrink-0 items-center justify-center">
-        {isPopular && (
+    <div className="relative h-full w-full">
+      {/* Ring + shadow live outside the flip so they frame the ribbon and the
+          card as one unit, and stay crisp while the faces rotate. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 rounded-[6px] transition-shadow duration-200"
+        style={{
+          top: isPopular ? 0 : RIBBON_HEIGHT,
+          boxShadow: cardFrameShadow(isSelected),
+        }}
+      />
+
+      {/* Popular ribbon also sits outside the flip so it never rotates, mirrors,
+          or disappears when the details face comes forward. */}
+      {isPopular && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-[3]"
+          style={{ height: RIBBON_HEIGHT }}
+        >
+          {/* .popular-badge-glow sets position: relative, so the positioning has
+              to live on the wrapper above it. */}
           <div
             className="popular-badge-glow flex h-full w-full items-center justify-center rounded-t-[6px]"
             style={{ background: "#F5C518" }}
@@ -569,17 +585,48 @@ function PlanCard({
               Popular
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* The front face stays in flow so the grid row keeps sizing to it; the
+          details face is layered on top, pre-rotated. */}
+      <div
+        className="h-full w-full"
+        style={{ perspective: isFlipped || isFlipping ? 1000 : undefined }}
+      >
+      <motion.div
+        className="relative flex h-full w-full flex-col"
+        style={{ transformStyle: "preserve-3d" }}
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+        onAnimationStart={() => setIsFlipping(true)}
+        onAnimationComplete={() => setIsFlipping(false)}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: FLIP_DURATION, ease: [0.22, 1, 0.36, 1] }
+        }
+      >
+    <button
+      type="button"
+      onClick={onSelect}
+      className="relative flex h-full w-full flex-col text-center focus:outline-none"
+      style={{
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+      }}
+      aria-pressed={isSelected}
+      aria-label={`${shortPlanName(plan.title)}${isPopular ? ", most popular" : ""}: ${plan.pitch}, ${formatCurrency(plan.monthlyInstalment)} a month over ${plan.tenure} months. Shows the full breakdown.`}
+      aria-hidden={isFlipped}
+      tabIndex={isFlipped ? -1 : 0}
+    >
+      {/* Reserved ribbon slot - keeps blue headers aligned across all three cards */}
+      <div className="w-full shrink-0" style={{ height: RIBBON_HEIGHT }} aria-hidden="true" />
 
       <div
         className="relative flex w-full flex-1 flex-col overflow-hidden"
         style={{
           borderRadius: isPopular ? "0 0 6px 6px" : "6px",
           background: "var(--surface-elevated)",
-          boxShadow: isSelected
-            ? "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)"
-            : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
         }}
       >
         {/* Plays once when the card becomes selected - a brief glassy sweep
@@ -646,31 +693,34 @@ function PlanCard({
               </motion.span>
             </div>
 
-            {/* Fixed row heights keep feature N aligned across cards; first row
-                sized for 3-line wraps on narrow 3-col mobile (~70px text). */}
-            <ul className="grid w-full grid-rows-[3.75rem_1.125rem] gap-2 text-left sm:grid-rows-[3.5rem_1.25rem] sm:gap-3">
-              {[
-                plan.tagline,
-                `${formatRate(plan.monthlyRate)}/month`,
-              ].map((feature) => (
-                <li key={feature} className="flex min-h-0 items-start overflow-hidden">
+            {/* Benefit-led pitch, then proof points. Fixed slot heights keep the
+                pitch and bullet N aligned across all three cards. */}
+            <span
+              className="flex h-[2.25rem] w-full items-start justify-center text-[12px] font-bold leading-tight tracking-[-0.01em] sm:text-[14px]"
+              style={{
+                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                color: isSelected ? "var(--brand-blue-hex)" : "var(--text-primary)",
+              }}
+            >
+              {plan.pitch}
+            </span>
+
+            <ul className="grid w-full grid-rows-[2rem_2rem] gap-1 text-left sm:gap-1.5">
+              {plan.sellingPoints.map((point) => (
+                <li key={point} className="flex min-h-0 items-start overflow-hidden">
                   <span className="flex min-w-0 items-start gap-1 sm:gap-1.5">
                     <CheckCircle
-                      size={14}
+                      size={13}
                       weight="fill"
-                      className="mt-0.5 shrink-0"
+                      className="mt-px shrink-0"
                       style={{ color: "#22c55e" }}
                     />
-                    <motion.span
-                      key={feature}
-                      initial={{ opacity: 0.3 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.25, ease: EASE }}
-                      className="min-w-0 text-[11px] font-semibold leading-snug sm:text-[13px]"
-                      style={{ color: "var(--text-primary)" }}
+                    <span
+                      className="min-w-0 text-[10.5px] font-semibold leading-snug sm:text-[12px]"
+                      style={{ color: "var(--text-secondary)" }}
                     >
-                      {feature}
-                    </motion.span>
+                      {point}
+                    </span>
                   </span>
                 </li>
               ))}
@@ -699,22 +749,27 @@ function PlanCard({
       </div>
     </button>
 
-        <div
-          className="absolute inset-0 flex flex-col"
+        {/* Details face - the whole thing is the flip-back target, so a tap
+            anywhere on the card returns to the sales side. */}
+        <button
+          type="button"
+          onClick={onFlipBack}
+          aria-label={`Hide the ${shortPlanName(plan.title)} numbers`}
+          tabIndex={isFlipped ? 0 : -1}
+          aria-hidden={!isFlipped}
+          className="absolute inset-0 flex flex-col text-left focus:outline-none"
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
           }}
-          aria-hidden={!isFlipped}
         >
-          <div className="h-5 w-full shrink-0" aria-hidden="true" />
+          <div className="w-full shrink-0" style={{ height: RIBBON_HEIGHT }} aria-hidden="true" />
           <div
-            className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px]"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
             style={{
+              borderRadius: isPopular ? "0 0 6px 6px" : "6px",
               background: "var(--surface-elevated)",
-              boxShadow:
-                "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)",
             }}
           >
             <div
@@ -722,85 +777,61 @@ function PlanCard({
               style={{ background: "var(--brand-blue-hex)" }}
             >
               <span className="min-w-0 truncate text-[10px] font-semibold text-white sm:text-[11px]">
-                {plan.tenure} payments
+                The numbers
               </span>
-              <button
-                type="button"
-                onClick={onFlipBack}
-                aria-label={`Hide the ${shortPlanName(plan.title)} payment schedule`}
-                tabIndex={isFlipped ? 0 : -1}
+              <span
+                aria-hidden="true"
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
                 style={{ background: "oklch(1 0 0 / 0.18)" }}
               >
                 <ArrowLeft size={10} weight="bold" />
-              </button>
+              </span>
             </div>
 
-            <div className="relative min-h-0 flex-1">
-            <div className="h-full overflow-y-auto overscroll-contain px-1.5">
-              {schedule.map((instalment, index) => (
+            <div className="flex min-h-0 flex-1 flex-col justify-center px-1.5">
+              {[
+                { label: "Monthly instalment", value: formatCurrency(plan.monthlyInstalment), isKey: true },
+                { label: "Tenure", value: `${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}` },
+                { label: "Interest rate", value: `Up to ${formatRate(plan.monthlyRate)}/mo` },
+                { label: "Processing fee", value: `Up to ${OFFER_MAX_PROCESSING_FEE_PCT}%` },
+                { label: "Total repayable", value: formatCurrency(plan.totalRepayment) },
+              ].map((row, index, rows) => (
                 <div
-                  key={instalment.index}
-                  className="flex items-baseline justify-between gap-1 py-[3px]"
+                  key={row.label}
+                  className="flex flex-col gap-px py-[3px]"
                   style={{
                     borderBottom:
-                      index === schedule.length - 1
-                        ? "none"
-                        : "1px solid var(--separator)",
+                      index === rows.length - 1 ? "none" : "1px solid var(--separator)",
                   }}
                 >
                   <span
-                    className="tabular-nums text-[9px] sm:text-[10px]"
-                    style={{ color: "var(--text-secondary)" }}
+                    className="text-[8px] font-bold uppercase leading-tight tracking-[0.06em] sm:text-[9px]"
+                    style={{ color: "var(--text-tertiary)" }}
                   >
-                    {formatInstalmentDate(
-                      instalment.dueDateIso,
-                      new Date(schedule[0].dueDateIso).getFullYear(),
-                    )}
+                    {row.label}
                   </span>
                   <span
-                    className="tabular-nums text-[9px] font-semibold sm:text-[10px]"
-                    style={{ color: "var(--text-primary)" }}
+                    className="tabular-nums text-[11px] font-semibold leading-tight sm:text-[12px]"
+                    style={{
+                      color: row.isKey ? "var(--brand-blue-hex)" : "var(--text-primary)",
+                    }}
                   >
-                    {formatCurrency(instalment.amount)}
+                    {row.value}
                   </span>
                 </div>
               ))}
             </div>
-            {/* Fade hints at the rows still below the fold on longer tenures. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-4"
-              style={{
-                background:
-                  "linear-gradient(to top, var(--surface-elevated), transparent)",
-              }}
-            />
-            </div>
 
-            <div
-              className="flex shrink-0 items-baseline justify-between gap-1 px-1.5 py-1.5"
-              style={{
-                background: "var(--surface-secondary)",
-                borderTop: "1px solid var(--separator)",
-              }}
+            <span
+              className="shrink-0 px-1.5 pb-1.5 pt-1 text-[8px] leading-tight sm:text-[9px]"
+              style={{ color: "var(--text-tertiary)" }}
             >
-              <span
-                className="text-[9px] font-bold uppercase tracking-[0.06em] sm:text-[10px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Total
-              </span>
-              <span
-                className="tabular-nums text-[10px] font-semibold sm:text-[11px]"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {formatCurrency(plan.totalRepayment)}
-              </span>
-            </div>
+              Tap anywhere to go back
+            </span>
           </div>
-        </div>
+        </button>
       </motion.div>
+      </div>
     </div>
   );
 }
@@ -1049,32 +1080,25 @@ function PlanPicker({
 }: PlanPickerProps) {
   const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
 
-  // Disbursement anchor for every schedule: instalment 1 falls on the same
-  // day-of-month, one month out (19 Aug -> 19 Sep).
-  const disbursementIso = useMemo(() => new Date().toISOString(), []);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2 sm:gap-3 items-stretch">
-        {plans.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            isSelected={selectedPlanId === plan.id}
-            isFlipped={flippedPlanId === plan.id}
-            schedule={buildPaymentSchedule(
-              disbursementIso,
-              plan.tenure,
-              plan.monthlyInstalment,
-            )}
-            onSelect={() => {
-              onPlanSelect(plan.id);
-              setFlippedPlanId(plan.id);
-            }}
-            onFlipBack={() => setFlippedPlanId(null)}
-          />
+        {plans.map((plan, index) => (
+          <RevealOnScroll key={plan.id} className="h-full" delay={index * 0.06}>
+            <PlanCard
+              plan={plan}
+              isSelected={selectedPlanId === plan.id}
+              isFlipped={flippedPlanId === plan.id}
+              onSelect={() => {
+                onPlanSelect(plan.id);
+                setFlippedPlanId(plan.id);
+              }}
+              onFlipBack={() => setFlippedPlanId(null)}
+            />
+          </RevealOnScroll>
         ))}
       </div>
+      <RevealOnScroll>
       <CustomOfferCard
         isSelected={selectedPlanId === "custom"}
         onSelect={() => {
@@ -1091,6 +1115,7 @@ function PlanPicker({
         onAmountChange={onCustomAmountChange}
         onTenureChange={onCustomTenureChange}
       />
+      </RevealOnScroll>
     </div>
   );
 }
@@ -1424,8 +1449,6 @@ function CustomOfferConfirmModal({
   );
 }
 
-const EASE = [0.16, 1, 0.3, 1] as const;
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface LoanResultsProps {
@@ -1471,16 +1494,6 @@ export function LoanResults({
       customAmountValue <= 0 ||
       !Number.isFinite(customTenureValue) ||
       customTenureValue <= 0);
-
-  const [revealStage, setRevealStage] = useState(0);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setRevealStage(1), 300);
-    const t2 = setTimeout(() => setRevealStage(2), 800);
-    const t3 = setTimeout(() => setRevealStage(3), 1200);
-    const t4 = setTimeout(() => setRevealStage(4), 1600);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
-  }, []);
 
   const getSelectedPlanPayload = useCallback(() => {
     if (selectedPlanId === null) return null;
@@ -1571,12 +1584,7 @@ export function LoanResults({
         {/* Expiry notice only. The confirmed-offer heading lives in the page
             shell at every breakpoint, so repeating it here would double it up. */}
         {isExpired && (
-          <motion.div
-            className="flex flex-col gap-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: EASE }}
-          >
+          <RevealOnScroll className="flex flex-col gap-2">
             <h1
               className="text-[26px] font-bold leading-tight tracking-[-0.022em] sm:text-3xl"
               style={{ color: "#7f1d1d" }}
@@ -1586,14 +1594,13 @@ export function LoanResults({
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               This loan offer is no longer valid. Start a new application to get a fresh offer.
             </p>
-          </motion.div>
+          </RevealOnScroll>
         )}
 
         {/* Confirmed offer header */}
         <div style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
           <OfferHeader
             formData={formData}
-            revealStage={revealStage}
             creditLimit={creditLimit}
             withdrawAmount={withdrawAmount}
             onWithdrawAmountChange={setWithdrawAmount}
@@ -1603,13 +1610,8 @@ export function LoanResults({
         {/* Plan picker — its own section, with the intro copy that used to live
             in the hero now anchoring this section instead of a divider banner. */}
         {!isExpired && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={revealStage >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-            transition={{ duration: 0.45, ease: EASE }}
-            style={{ pointerEvents: revealStage >= 2 ? "auto" : "none" }}
-            className="flex flex-col gap-2 sm:gap-5"
-          >
+          <div className="flex flex-col gap-2 sm:gap-5">
+            <RevealOnScroll>
             <div ref={planHintRef} className="flex flex-col gap-2.5 sm:gap-3">
               <div
                 aria-hidden="true"
@@ -1627,10 +1629,11 @@ export function LoanResults({
                   Choose your repayment plan
                 </h2>
                 <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  Tap a plan to see every payment date and amount.
+                  Tap a plan to see the rate, fees and total repayable.
                 </p>
               </div>
             </div>
+            </RevealOnScroll>
             <PlanPicker
               selectedPlanId={selectedPlanId}
               onPlanSelect={setSelectedPlanId}
@@ -1640,19 +1643,18 @@ export function LoanResults({
               onCustomAmountChange={setCustomAmount}
               onCustomTenureChange={setCustomTenure}
             />
-          </motion.div>
+          </div>
         )}
 
         {/* Offer validity disclaimer */}
-        <motion.p
+        <RevealOnScroll>
+        <p
           className="text-[11px] leading-relaxed"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: revealStage >= 3 ? 1 : 0 }}
-          transition={{ duration: 0.4, delay: revealStage >= 3 ? 0.2 : 0 }}
           style={{ color: "var(--text-secondary)", position: "relative", zIndex: 1, textAlign: "center" }}
         >
           {OFFER_CONFIRMATION_DISCLAIMER}
-        </motion.p>
+        </p>
+        </RevealOnScroll>
 
       </div>
       </div>
