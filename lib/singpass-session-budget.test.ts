@@ -7,6 +7,11 @@ import {
   mergeActivateSession,
   funnelRedirectForReviewSession,
 } from "./apply-session-inspect";
+import {
+  buildMyinfoCookiePayload,
+  decodeMyinfoCookie,
+  encodeMyinfoCookie,
+} from "./apply-myinfo-cookie";
 import { buildActivateSessionCookie } from "./apply-session-slim";
 
 const PRE_SINGPASS: Parameters<typeof mergeActivateSession>[0] = {
@@ -80,6 +85,22 @@ describe("Singpass activate session cookie budget", () => {
     expect(funnelRedirectForReviewSession(slim, "/")).toBe("/apply/review");
     expect(funnelRedirectForReviewSession(slim, "/foreigner")).toBe("/apply/review");
     expect(funnelRedirectForReviewSession(slim, "/apply/review")).toBeNull();
+  });
+
+  it("gzipped MyInfo cookie keeps production-scale CPF/NOA under the browser limit", () => {
+    const myinfo = loadCallbackMyInfo(
+      "../scripts/fixtures/singpass-callback-production-scale.json",
+    );
+    const { merged } = mergeActivateSession(PRE_SINGPASS, myinfo);
+    const payload = buildMyinfoCookiePayload(merged);
+    expect(payload).not.toBeNull();
+    const encoded = encodeMyinfoCookie(payload!);
+    const decoded = decodeMyinfoCookie(encoded);
+
+    expect(encoded.length).toBeLessThan(BROWSER_COOKIE_MAX_BYTES);
+    expect(decoded?.cpfContributions.length).toBe(payload!.cpfContributions.length);
+    expect(decoded?.noaHistory.length).toBe(payload!.noaHistory.length);
+    expect(decoded?.cpfContributions.length).toBeGreaterThanOrEqual(29);
   });
 
   it("gate without MyInfo identity does not enter review (pre-Singpass tap only)", () => {

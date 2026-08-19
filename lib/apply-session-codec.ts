@@ -7,6 +7,8 @@ export const GATE_COOKIE = "apply_gate";
 export const REVIEW_GATE_COOKIE = "review_gate";
 /** Carries the in-progress lead UUID from activate/draft to submit. Invisible to funnel logic. */
 export const DRAFT_LEAD_COOKIE = "draft_lead";
+/** Gzipped CPF/NOA blob so review can hydrate on serverless after the session is slimmed. */
+export const MYINFO_COOKIE = "apply_myinfo";
 
 /** In-funnel cookies (gate, session while applying). */
 export const COOKIE_BASE_OPTS = {
@@ -82,5 +84,6 @@ export function clearCookies() {
     { name: GATE_COOKIE, value: "", ...expire },
     { name: REVIEW_GATE_COOKIE, value: "", ...expire },
     { name: DRAFT_LEAD_COOKIE, value: "", ...expire },
+    { name: MYINFO_COOKIE, value: "", ...expire },
   ];
 }

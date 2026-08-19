@@ -9,6 +9,8 @@ import {
   formatCurrency,
   MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER,
 } from "@/lib/loan-form";
+import { assessCredit } from "@/lib/credit-score";
+import { buildDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
@@ -2156,10 +2158,71 @@ export function Step8_Review({
     onModalOpenChange?.(false);
   }, [onModalOpenChange]);
 
+  const declaredIncome = parseInt(formData.monthlyIncome.replace(/,/g, ""), 10) || 0;
+  const demoMyInfo = useMemo(() => buildDemoReviewMyInfo(), []);
+  const noaRecords = useMemo(() => {
+    const rows =
+      formData.noaHistory.length > 0 ? formData.noaHistory : demoMyInfo.noaHistory;
+    return [...rows].sort((a, b) =>
+      b.yearOfAssessment.localeCompare(a.yearOfAssessment),
+    );
+  }, [formData.noaHistory, demoMyInfo.noaHistory]);
+  const cpfRecords = useMemo(() => {
+    const rows =
+      formData.cpfContributions.length > 0
+        ? formData.cpfContributions
+        : demoMyInfo.cpfContributions;
+    return [...rows].sort((a, b) => {
+      const byPaid = b.paidOn.localeCompare(a.paidOn);
+      return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
+    });
+  }, [formData.cpfContributions, demoMyInfo.cpfContributions]);
+  const reviewDob = formData.dob || demoMyInfo.dob;
+  const incomeAssessment = useMemo(() => {
+    return assessCredit({
+      dob: reviewDob,
+      idType: formData.idType || "pr",
+      cpfContributions: cpfRecords,
+      noaHistory: noaRecords,
+      selfDeclaredMonthlyIncome: declaredIncome,
+      requestedLoanAmount: formData.amount,
+      moneylenderNoLoans: formData.moneylenderNoLoans,
+      moneylenderLoanAmount: formData.moneylenderLoanAmount,
+      moneylenderPaymentHistory: formData.moneylenderPaymentHistory,
+      authMethod: "singpass",
+    });
+  }, [
+    reviewDob,
+    declaredIncome,
+    formData.idType,
+    cpfRecords,
+    noaRecords,
+    formData.amount,
+    formData.moneylenderNoLoans,
+    formData.moneylenderLoanAmount,
+    formData.moneylenderPaymentHistory,
+  ]);
+
+  const incomeSourceLabel =
+    incomeAssessment?.incomeSource === "cpf"
+      ? "CPF contributions"
+      : incomeAssessment?.incomeSource === "noa"
+        ? "Notice of Assessment"
+        : "Self-declared";
+
+  const dobLabel = reviewDob
+    ? new Date(`${reviewDob}T00:00:00`).toLocaleDateString("en-SG", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
+
   const personalStaticRows = [
     { label: "ID Type", value: ID_TYPE_OPTIONS.find((o) => o.value === formData.idType)?.label ?? "-" },
     { label: "Name", value: formData.fullName || "-" },
     { label: "NRIC / FIN", value: formData.nric ? `${formData.nric.slice(0, 1)}****${formData.nric.slice(-1)}` : "-" },
+    ...(dobLabel ? [{ label: "Date of birth", value: dobLabel }] : []),
     { label: "Mobile", value: formData.mobile ? `+65 ${formData.mobile}` : "-" },
     ...(formData.address ? [{ label: "Address", value: formData.address }] : []),
     ...(formData.postalCode ? [{ label: "Postal Code", value: formData.postalCode }] : []),
@@ -2194,15 +2257,49 @@ export function Step8_Review({
           </Card>
         </section>
 
-        {/* NOA - Singpass data display guidelines: show all detailed fields per YA */}
-        {formData.authMethod === "singpass" && formData.noaHistory.length > 0 && (
+        <section>
+          <SectionLabel>Income</SectionLabel>
+          <Card>
+            <CardRow>
+              <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
+                Monthly income
+              </span>
+              <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
+                {formatCurrency(incomeAssessment.verifiedMonthlyIncome)}
+              </span>
+            </CardRow>
+            <CardRow>
+              <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
+                Source
+              </span>
+              <span className="text-right text-[17px] font-semibold text-[var(--text-primary)]">
+                {incomeSourceLabel}
+              </span>
+            </CardRow>
+            {declaredIncome > 0 && (
+              <CardRow>
+                <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
+                  You declared
+                </span>
+                <span className="tabular-nums text-[17px] text-[var(--text-primary)]">
+                  {formatCurrency(declaredIncome)} / mo
+                </span>
+              </CardRow>
+            )}
+          </Card>
+          <p className="mt-2 px-1 text-[13px] leading-[1.4] text-[var(--text-secondary)]">
+            {incomeAssessment.explanation}
+          </p>
+        </section>
+
+        {noaRecords.length > 0 && (
           <section>
             <SectionLabel>Notice of Assessment</SectionLabel>
             <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
-              Data retrieved as at time of Singpass verification.
+              {noaRecords.length} year{noaRecords.length === 1 ? "" : "s"} retrieved via Singpass.
             </p>
             <div className="flex flex-col gap-3">
-              {formData.noaHistory.map((rec) => {
+              {noaRecords.map((rec) => {
                 const typeLabel = rec.taxClearance === "Y"
                   ? `${rec.type} Clearance`
                   : rec.type;
@@ -2239,6 +2336,14 @@ export function Step8_Review({
                         </span>
                       </CardRow>
                     ))}
+                    <CardRow>
+                      <span className="text-[17px] text-[var(--text-secondary)]">
+                        Implied monthly
+                      </span>
+                      <span className="tabular-nums text-[17px] text-[var(--text-primary)]">
+                        {formatCurrency(Math.round((rec.employmentIncome + rec.tradeIncome) / 12))}
+                      </span>
+                    </CardRow>
                   </Card>
                 );
               })}
@@ -2246,19 +2351,14 @@ export function Step8_Review({
           </section>
         )}
 
-        {formData.authMethod === "singpass" && formData.cpfContributions.length > 0 && (
+        {cpfRecords.length > 0 && (
           <section>
             <SectionLabel>CPF contribution history</SectionLabel>
             <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
-              Data retrieved as at time of Singpass verification.
+              {cpfRecords.length} month{cpfRecords.length === 1 ? "" : "s"} retrieved via Singpass.
             </p>
             <Card>
-              {[...formData.cpfContributions]
-                .sort((a, b) => {
-                  const d = a.paidOn.localeCompare(b.paidOn);
-                  return d !== 0 ? d : a.month.localeCompare(b.month);
-                })
-                .map((c) => (
+              {cpfRecords.map((c) => (
                   <CardRow key={`${c.paidOn}-${c.month}`}>
                     <span className="min-w-0">
                       <span className="block truncate text-[17px] text-[var(--text-primary)]">

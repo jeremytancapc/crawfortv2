@@ -18,6 +18,8 @@ export {
   clearCookies,
 } from "./apply-session-codec";
 
+export { MYINFO_COOKIE } from "./apply-session-codec";
+
 import {
   SESSION_COOKIE,
   decodeSession,
