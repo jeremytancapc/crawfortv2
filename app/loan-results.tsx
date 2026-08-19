@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   ArrowRight,
-  ArrowDown,
-  ArrowUp,
   Warning,
   Clock,
   ArrowLeft,
@@ -12,11 +10,11 @@ import {
   TrendUp,
   CheckCircle,
   SealCheck,
-  Lock,
+  CaretDown,
   PencilSimple,
   CalendarBlank,
-  Lightning,
 } from "@phosphor-icons/react";
+import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { motion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -167,8 +165,15 @@ interface OfferCardProps {
   onWithdrawAmountChange: (amount: number) => void;
 }
 
-/** Segmented meter: filled = available today, striped = reserved for later. */
-function CreditLineMeter({
+const RING_SIZE = 176;
+const RING_STROKE = 12;
+const RING_RESERVED_COLOR = "#D1D1D6";
+
+/** --offer-accent is tuned for icons; text on its tinted chip needs to go darker. */
+const PRE_APPROVED_TEXT = "oklch(0.48 0.08 176)";
+
+/** Donut split into available-today and reserved arcs, with the limit in the middle. */
+function CreditLineRing({
   limit,
   available,
   revealStage,
@@ -177,30 +182,95 @@ function CreditLineMeter({
   available: number;
   revealStage: number;
 }) {
-  const pct = limit > 0 ? Math.max(0, Math.min(1, available / limit)) : 0;
+  const radius = (RING_SIZE - RING_STROKE) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const availableFraction = limit > 0 ? Math.max(0, Math.min(1, available / limit)) : 0;
+
+  // Round caps overhang each arc end by half a stroke, so the notch between the
+  // two segments has to be wider than the stroke to read as a gap.
+  const gapFraction = (RING_STROKE + 6) / circumference;
+  const availableArc = Math.max(0, availableFraction - gapFraction);
+  const reservedArc = Math.max(0, 1 - availableFraction - gapFraction);
+  const availableOffset = gapFraction / 2;
+  const reservedOffset = availableFraction + gapFraction / 2;
+  const center = RING_SIZE / 2;
 
   return (
-    <div
-      role="meter"
-      aria-valuemin={0}
-      aria-valuemax={limit}
-      aria-valuenow={available}
-      aria-label={`${formatCurrency(available)} available to withdraw today out of a ${formatCurrency(limit)} credit line`}
-      className="relative h-3 w-full overflow-hidden rounded-full"
-      style={{
-        background: "oklch(0.93 0.045 176 / 0.6)",
-        boxShadow: "inset 0 1px 2px oklch(0 0 0 / 0.06)",
-      }}
-    >
-      <motion.div
-        className="credit-meter-fill absolute inset-y-0 left-0 rounded-full"
-        style={{
-          background: "linear-gradient(90deg, var(--offer-accent) 0%, var(--brand-teal-hex) 100%)",
-        }}
-        initial={{ width: "0%" }}
-        animate={{ width: revealStage >= 1 ? `${pct * 100}%` : "0%" }}
-        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
-      />
+    <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
+      <svg
+        width={RING_SIZE}
+        height={RING_SIZE}
+        viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+        className="-rotate-90"
+        role="img"
+        aria-label={`${formatCurrency(limit)} total credit limit, of which ${formatCurrency(available)} is available to withdraw today`}
+      >
+        <motion.circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke={RING_RESERVED_COLOR}
+          strokeWidth={RING_STROKE}
+          strokeLinecap="round"
+          initial={{ pathLength: 0, pathOffset: reservedOffset }}
+          animate={{
+            pathLength: revealStage >= 1 ? reservedArc : 0,
+            pathOffset: reservedOffset,
+          }}
+          transition={{ duration: 0.7, ease: EASE, delay: 0.35 }}
+        />
+        <motion.circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={RING_STROKE}
+          strokeLinecap="round"
+          initial={{ pathLength: 0, pathOffset: availableOffset }}
+          animate={{
+            pathLength: revealStage >= 1 ? availableArc : 0,
+            pathOffset: availableOffset,
+          }}
+          transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[26px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
+          {formatCurrency(limit)}
+        </span>
+        <span className="mt-2 text-[13px] leading-none text-[var(--text-secondary)]">
+          Total credit limit
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Ring legend entry: colour swatch and label on the left, amount on the right. */
+function RingLegendRow({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <span className="flex items-center gap-2.5 text-[15px] leading-tight text-[var(--text-primary)]">
+        <span
+          aria-hidden="true"
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ background: color }}
+        />
+        {label}
+      </span>
+      <span className="text-[15px] font-semibold leading-tight tabular-nums text-[var(--text-primary)]">
+        {value}
+      </span>
     </div>
   );
 }
@@ -212,11 +282,9 @@ function OfferHeader({
   withdrawAmount,
   onWithdrawAmountChange,
 }: OfferCardProps) {
-  const [preApprovedTipOpen, setPreApprovedTipOpen] = useState(false);
-  const [unlocksTipOpen, setUnlocksTipOpen] = useState(false);
+  const [isExplainerOpen, setIsExplainerOpen] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
-  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const maxWithdraw = formData.amount;
   const minWithdraw = Math.min(MIN_WITHDRAW_AMOUNT, maxWithdraw);
@@ -239,340 +307,179 @@ function OfferHeader({
     setAmountRaw(String(clamped));
   };
 
-  const focusAmountInput = () => {
-    if (!canAdjust) return;
-    amountInputRef.current?.focus();
-    amountInputRef.current?.select();
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={revealStage >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="flex flex-col items-center py-2 text-center"
+      transition={{ duration: 0.5, ease: EASE }}
+      className="flex flex-col gap-3"
     >
-      {/* Account overview — a single clean card: limit summary, availability
-          meter, the withdraw-today amount, and a footer meta strip. Replaces
-          the previous split tinted-box + hero layout with one unified object. */}
-      <div
-        className="w-full overflow-hidden rounded-[var(--radius-lg)] text-left"
-        style={{
-          background: "var(--surface-elevated)",
-          boxShadow:
-            "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)",
-        }}
-      >
-        <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5">
-          {/* Limit summary row */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-1.5 pt-0.5">
-              <SealCheck size={16} weight="fill" className="shrink-0" style={{ color: "var(--offer-accent)" }} />
+      {/* Hero card: the single figure the customer acts on, then one meta row. */}
+      <div className="ios-card">
+        <div className="flex flex-col items-center px-4 pb-5 pt-6">
+          <span className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
+            Withdraw today
+          </span>
+
+          <div className="mt-1.5 flex w-full justify-center">
+            <div className="flex items-baseline leading-none">
               <span
-                className="inline-flex min-w-0 flex-col items-start gap-0.5 text-[12px] font-bold tracking-[0.08em] uppercase sm:flex-row sm:items-center sm:gap-1"
-                style={{ color: "var(--text-primary)" }}
+                aria-hidden="true"
+                className="text-[34px] font-bold leading-none tracking-[-0.03em] text-[var(--text-primary)]"
               >
-                <span className="whitespace-nowrap">Credit line</span>
-                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                  pre-approved
-                  <span className="relative inline-flex shrink-0 normal-case tracking-normal">
-                    <button
-                      type="button"
-                      aria-label="What does pre-approved mean?"
-                      aria-expanded={preApprovedTipOpen}
-                      onClick={() => setPreApprovedTipOpen((v) => !v)}
-                      onMouseEnter={() => setPreApprovedTipOpen(true)}
-                      onMouseLeave={() => setPreApprovedTipOpen(false)}
-                      className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
-                      style={{
-                        borderColor: "var(--border-medium)",
-                        color: "var(--text-tertiary)",
-                        background: "var(--surface-primary)",
-                      }}
-                    >
-                      ?
-                    </button>
-                    {preApprovedTipOpen && (
-                      <div
-                        role="tooltip"
-                        className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-[min(260px,70vw)] -translate-x-1/2 whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
-                        style={{
-                          background: "var(--surface-elevated)",
-                          boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
-                        }}
-                      >
-                        <p
-                          className="text-[12px] font-medium leading-relaxed normal-case tracking-normal"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          {hasStructuralReserve ? (
-                            <>
-                              Pre-approved means your full credit limit looks like a strong fit for you.
-                              For now, you&apos;re ready to take up to{" "}
-                              <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                                {formatCurrency(maxWithdraw)}
-                              </span>{" "}
-                              today. The rest of your line is reserved and unlocks automatically over time.
-                            </>
-                          ) : (
-                            <>
-                              Pre-approved means this credit line is confirmed and ready. Your full{" "}
-                              <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                                {formatCurrency(maxWithdraw)}
-                              </span>{" "}
-                              is approved and available for instant disbursement.
-                            </>
-                          )}
-                        </p>
-                        <span
-                          aria-hidden="true"
-                          className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent"
-                          style={{ borderBottomColor: "var(--border-subtle)" }}
-                        />
-                      </div>
-                    )}
-                  </span>
-                </span>
+                $
               </span>
-            </div>
-            <div className="shrink-0 text-right leading-none">
-              <div
-                className="tabular-nums text-[1.35rem] font-semibold"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  letterSpacing: "-0.03em",
-                  color: "var(--text-primary)",
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
+                onFocus={() => {
+                  setAmountFocused(true);
+                  setAmountRaw(String(withdrawAmount));
                 }}
-              >
-                {formatCurrency(limit)}
-              </div>
-              <div className="mt-1 text-[10px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                Total credit limit
-              </div>
+                onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
+                onBlur={() => {
+                  setAmountFocused(false);
+                  commitAmount(parseInt(amountRaw, 10));
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+                disabled={!canAdjust}
+                aria-label="Amount to withdraw today"
+                className="border-0 bg-transparent p-0 text-center text-[52px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
+                style={{ fieldSizing: "content", width: "auto", minWidth: "2ch" }}
+              />
             </div>
           </div>
 
-          {hasStructuralReserve && (
-            <div className="flex flex-col gap-2.5">
-              <CreditLineMeter limit={limit} available={maxWithdraw} revealStage={revealStage} />
+          <p className="mt-1.5 text-[15px] leading-tight text-[var(--text-tertiary)]">
+            Instant disbursement
+          </p>
 
-              {/* Two-column legend, mirroring "Available Credit Limit | Total Credit
-                  Utilised" from the reference design, with a thin divider between. */}
-              <div className="flex items-stretch">
-                <div className="flex flex-1 flex-col gap-0.5">
-                  <span
-                    className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.06em] uppercase"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--brand-teal-hex)" }} />
-                    Available today
-                  </span>
-                  <span
-                    className="tabular-nums text-[15px] font-semibold"
-                    style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)" }}
-                  >
-                    {formatCurrency(maxWithdraw)}
-                  </span>
+          {canAdjust && (
+            <div className="mt-3 w-full">
+              <div
+                className="ios-slider-wrap"
+                style={{ ["--slider-pct" as string]: `${sliderPct}%` }}
+              >
+                <div className="ios-slider-track" aria-hidden="true">
+                  <div className="ios-slider-fill" />
                 </div>
-                <div className="mx-3 w-px shrink-0 self-stretch" style={{ background: "var(--border-subtle)" }} aria-hidden="true" />
-                <div className="flex flex-1 flex-col gap-0.5">
-                  <span
-                    className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.06em] uppercase"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    <Lock size={9} weight="fill" style={{ color: "#E0B000" }} />
-                    Unlocks over time
-                    <span className="relative inline-flex shrink-0 normal-case tracking-normal">
-                      <button
-                        type="button"
-                        aria-label="How do I unlock the rest of my credit line?"
-                        aria-expanded={unlocksTipOpen}
-                        onClick={() => setUnlocksTipOpen((v) => !v)}
-                        onMouseEnter={() => setUnlocksTipOpen(true)}
-                        onMouseLeave={() => setUnlocksTipOpen(false)}
-                        className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
-                        style={{
-                          borderColor: "var(--border-medium)",
-                          color: "var(--text-tertiary)",
-                          background: "var(--surface-primary)",
-                        }}
-                      >
-                        ?
-                      </button>
-                      {unlocksTipOpen && (
-                        <div
-                          role="tooltip"
-                          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(300px,82vw)] whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
-                          style={{
-                            background: "var(--surface-elevated)",
-                            boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.12)",
-                          }}
-                        >
-                          <p
-                            className="mb-1 text-[12px] font-semibold normal-case tracking-normal"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            How to unlock over time
-                          </p>
-                          <ol
-                            className="list-decimal space-y-1 pl-4 text-[12px] font-medium leading-relaxed normal-case tracking-normal"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            <li>Download and login to our mobile app</li>
-                            <li>Make loan repayments on time</li>
-                          </ol>
-                        </div>
-                      )}
-                    </span>
-                  </span>
-                  <span
-                    className="tabular-nums text-[15px] font-semibold"
-                    style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", color: "var(--text-primary)" }}
-                  >
-                    +{formatCurrency(structuralReserve)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="h-px w-full" style={{ background: "var(--border-subtle)" }} aria-hidden="true" />
-
-          {/* Withdraw-today amount — merged into the same card as the credit summary above */}
-          <div className="flex flex-col items-center gap-1.5">
-            <span
-              className="text-[12px] font-bold tracking-[0.16em] uppercase"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Withdraw today
-            </span>
-
-            {/* Amount stays optically centred under the label; pencil is docked to
-                the right of the $amount group so it doesn't shove the figure off-centre. */}
-            <div className="flex justify-center">
-              <div className="relative flex items-baseline leading-none">
-                <span
-                  aria-hidden="true"
-                  style={{
-                    fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                    fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-                    fontWeight: 600,
-                    letterSpacing: "-0.02em",
-                    color: "var(--brand-blue-hex)",
-                  }}
-                >
-                  $
-                </span>
                 <input
-                  ref={amountInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
-                  onFocus={() => {
-                    setAmountFocused(true);
-                    setAmountRaw(String(withdrawAmount));
+                  type="range"
+                  className="ios-slider w-full"
+                  min={minWithdraw}
+                  max={maxWithdraw}
+                  step={1}
+                  value={withdrawAmount}
+                  onChange={(e) => {
+                    const val = clampWithdrawAmount(parseInt(e.target.value, 10), maxWithdraw);
+                    onWithdrawAmountChange(val);
+                    setAmountRaw(String(val));
                   }}
-                  onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
-                  onBlur={() => {
-                    setAmountFocused(false);
-                    commitAmount(parseInt(amountRaw, 10));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.currentTarget.blur();
-                  }}
-                  disabled={!canAdjust}
-                  aria-label="Amount to withdraw today"
-                  className="tabular-nums border-0 bg-transparent text-center outline-none disabled:opacity-100"
-                  style={{
-                    fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                    fontSize: "clamp(2.8rem, 11vw, 3.75rem)",
-                    fontWeight: 600,
-                    letterSpacing: "-0.02em",
-                    color: "var(--brand-blue-hex)",
-                    caretColor: "var(--offer-accent)",
-                    fieldSizing: "content",
-                    width: "auto",
-                    minWidth: "2ch",
-                  }}
+                  aria-label="Slide to choose a lower withdrawal amount"
                 />
-                {canAdjust && (
+              </div>
+              <div className="flex h-5 items-center justify-between text-[13px] leading-none text-[var(--text-secondary)]">
+                <span className="tabular-nums">{formatCurrency(minWithdraw)}</span>
+                {isAtMax ? (
+                  <span className="tabular-nums">{formatCurrency(maxWithdraw)}</span>
+                ) : (
                   <button
                     type="button"
-                    onClick={focusAmountInput}
-                    aria-label="Edit withdrawal amount"
-                    className="absolute top-1/2 left-[calc(100%+0.35rem)] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-150"
-                    style={{
-                      background: amountFocused ? "oklch(0.9 0.07 176 / 0.45)" : "var(--surface-secondary)",
-                      color: "var(--brand-blue-hex)",
-                    }}
+                    onClick={() => commitAmount(maxWithdraw)}
+                    className="font-semibold tabular-nums text-[var(--accent)] underline underline-offset-2"
                   >
-                    <PencilSimple size={16} weight="bold" />
+                    Use max {formatCurrency(maxWithdraw)}
                   </button>
                 )}
               </div>
             </div>
-
-            <span className="text-[12px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-              Instant disbursement
-            </span>
-          </div>
-
-          {/* Amount adjuster — standard range control; defaults to the maximum available today */}
-          {canAdjust && (
-            <div className="-mt-1.5 w-full">
-              <input
-                type="range"
-                className="withdraw-slider w-full"
-                min={minWithdraw}
-                max={maxWithdraw}
-                step={1}
-                value={withdrawAmount}
-                onChange={(e) => {
-                  const val = clampWithdrawAmount(parseInt(e.target.value, 10), maxWithdraw);
-                  onWithdrawAmountChange(val);
-                  setAmountRaw(String(val));
-                }}
-                aria-label="Slide to choose a lower withdrawal amount"
-                style={{
-                  background: `linear-gradient(to right, var(--brand-teal-hex) 0%, var(--brand-teal-hex) ${sliderPct}%, var(--border-medium) ${sliderPct}%, var(--border-medium) 100%)`,
-                }}
-              />
-              <div className="mt-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                  {formatCurrency(minWithdraw)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => commitAmount(maxWithdraw)}
-                  disabled={isAtMax}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold leading-none transition-colors duration-150 disabled:cursor-default"
-                  style={{
-                    background: isAtMax ? "var(--surface-secondary)" : "oklch(0.9 0.07 176 / 0.35)",
-                    color: isAtMax ? "var(--text-tertiary)" : "var(--offer-accent)",
-                  }}
-                >
-                  {isAtMax ? "Max Amount" : `Use max · ${formatCurrency(maxWithdraw)}`}
-                </button>
-              </div>
-            </div>
           )}
         </div>
 
-        {/* Footer meta strip */}
-        <div
-          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t px-4 py-3 sm:justify-between sm:px-5"
-          style={{ background: "var(--surface-secondary)", borderColor: "var(--border-subtle)" }}
-        >
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-            <CalendarBlank size={13} weight="duotone" style={{ color: "#FF3B30" }} />
-            Offer Expires: {renewalLabel}
+        <div className="ios-row" style={{ borderTop: "1px solid var(--separator)" }}>
+          <span className="flex items-center gap-2 text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
+            <CalendarBlank size={16} weight="bold" className="text-[var(--text-tertiary)]" />
+            Offer expires
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-            <Lightning size={13} weight="fill" style={{ color: "#E0B000" }} />
-            Instant disbursement
+          <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
+            {renewalLabel}
           </span>
         </div>
       </div>
+
+      {/* Credit line: the ring carries the limit, so the figures below stay two
+          quiet rows instead of a second stack of hero numbers. */}
+      {hasStructuralReserve ? (
+        <div className="ios-card px-4 pb-3 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[17px] font-semibold leading-tight text-[var(--text-primary)]">
+              Your credit line
+            </span>
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none"
+              style={{ background: "var(--offer-accent-ring)", color: PRE_APPROVED_TEXT }}
+            >
+              <SealCheck size={13} weight="fill" />
+              Pre-approved
+            </span>
+          </div>
+
+          <div className="flex justify-center py-5">
+            <CreditLineRing limit={limit} available={maxWithdraw} revealStage={revealStage} />
+          </div>
+
+          <RingLegendRow
+            color="var(--accent)"
+            label="Available today"
+            value={formatCurrency(maxWithdraw)}
+          />
+          <RingLegendRow
+            color={RING_RESERVED_COLOR}
+            label="Unlocks over time"
+            value={`+${formatCurrency(structuralReserve)}`}
+          />
+
+          <button
+            type="button"
+            onClick={() => setIsExplainerOpen((open) => !open)}
+            aria-expanded={isExplainerOpen}
+            className="mt-1 flex w-full items-center justify-between gap-3 pt-3 text-left"
+            style={{ borderTop: "1px solid var(--separator)" }}
+          >
+            <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
+              How your credit line works
+            </span>
+            <CaretDown
+              size={14}
+              weight="bold"
+              className="shrink-0 text-[var(--text-tertiary)] transition-transform duration-200"
+              style={{ transform: isExplainerOpen ? "rotate(180deg)" : "none" }}
+            />
+          </button>
+          {isExplainerOpen && (
+            <p className="pb-1 pt-2 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+              Your {formatCurrency(limit)} limit is pre-approved.{" "}
+              {formatCurrency(maxWithdraw)} is ready for instant disbursement today, and the rest
+              unlocks as you repay on time in the Crawfort app.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="ios-card">
+          <div className="ios-row">
+            <span className="flex items-center gap-2 text-[15px] leading-tight text-[var(--text-primary)]">
+              <SealCheck size={16} weight="fill" style={{ color: "var(--offer-accent)" }} />
+              Pre-approved credit line
+            </span>
+            <span className="text-[15px] font-semibold leading-tight tabular-nums text-[var(--text-primary)]">
+              {formatCurrency(limit)}
+            </span>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -1376,10 +1283,7 @@ export function LoanResults({
   const { parts: expiryParts } = useCountdownParts();
   const isExpired = expiryParts.expired;
 
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const ctaButtonRef = useRef<HTMLButtonElement>(null);
   const planHintRef = useRef<HTMLDivElement>(null);
-  const [isCtaVisible, setIsCtaVisible] = useState(false);
 
   const [withdrawAmount, setWithdrawAmount] = useState(formData.amount);
   const plans = buildOfferPlans(withdrawAmount);
@@ -1399,24 +1303,6 @@ export function LoanResults({
       customAmountValue <= 0 ||
       !Number.isFinite(customTenureValue) ||
       customTenureValue <= 0);
-
-  useEffect(() => {
-    const el = ctaButtonRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsCtaVisible(entry.isIntersecting),
-      { threshold: 0, rootMargin: "0px 0px -80px 0px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  /** Sticky CTA: nudge to plan picker if nothing selected; otherwise scroll to the bottom CTA. */
-  const scrollToStickyTarget = useCallback(() => {
-    const el = hasNoSelection ? planHintRef.current : ctaRef.current;
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: hasNoSelection ? "start" : "center" });
-  }, [hasNoSelection]);
 
   const [revealStage, setRevealStage] = useState(0);
 
@@ -1503,32 +1389,37 @@ export function LoanResults({
     (onCustomOfferSubmitted ?? onAccept)();
   }, [getSelectedPlanPayload, formData.leadId, onCustomOfferSubmitted, onAccept]);
 
+  const footerHint = hasNoSelection
+    ? "Select a repayment plan to continue"
+    : isCustomSelected && hasInvalidCustomInput
+      ? "Enter a loan amount and tenure for your custom offer."
+      : null;
+
   return (
     <>
+      <div className="flex-1 px-5 pb-8">
       <div className="relative z-[1] flex flex-col gap-5">
 
-        {/* Heading - hidden on mobile when not expired, since the parent page
-            shows the equivalent heading in its blue hero band instead. The
-            expiry warning always renders here (mobile included) since it's
-            dynamic and can't live in the static hero. */}
-        <motion.div
-          className={isExpired ? "flex flex-col gap-2" : "hidden flex-col gap-2 lg:flex"}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: EASE }}
-        >
-          <h1
-            className="font-display text-[26px] sm:text-3xl font-semibold leading-tight tracking-tight"
-            style={{ color: isExpired ? "#7f1d1d" : "var(--text-primary)" }}
+        {/* Expiry notice only. The confirmed-offer heading lives in the page
+            shell at every breakpoint, so repeating it here would double it up. */}
+        {isExpired && (
+          <motion.div
+            className="flex flex-col gap-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: EASE }}
           >
-            {isExpired ? "Your offer has expired." : "Your loan offer is confirmed."}
-          </h1>
-          {isExpired && (
+            <h1
+              className="text-[26px] font-bold leading-tight tracking-[-0.022em] sm:text-3xl"
+              style={{ color: "#7f1d1d" }}
+            >
+              Your offer has expired.
+            </h1>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               This loan offer is no longer valid. Start a new application to get a fresh offer.
             </p>
-          )}
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Confirmed offer header */}
         <div style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
@@ -1595,91 +1486,28 @@ export function LoanResults({
           {OFFER_CONFIRMATION_DISCLAIMER}
         </motion.p>
 
-        {/* CTA buttons */}
-        <motion.div
-          ref={ctaRef}
-          className="flex flex-col gap-3"
-          initial={{ opacity: 0, y: 8 }}
-          animate={revealStage >= 4 ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-          transition={{ duration: 0.45, ease: EASE }}
-          style={{ pointerEvents: revealStage >= 4 ? "auto" : "none" }}
-        >
-          {isExpired ? (
-            <a
-              ref={ctaButtonRef as unknown as React.RefObject<HTMLAnchorElement>}
-              href="/"
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-            >
-              Start a New Application
-              <ArrowRight size={16} weight="bold" />
-            </a>
-          ) : (
-            <>
-              <button
-                ref={ctaButtonRef}
-                type="button"
-                onClick={handleReviewOfferClick}
-                disabled={hasNoSelection || hasInvalidCustomInput || isSavingPlan}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-              >
-                {isSavingPlan ? "Saving plan…" : "Review Offer"}
-                {!isSavingPlan && <ArrowRight size={16} weight="bold" />}
-              </button>
-              {hasNoSelection && (
-                <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                  Select a repayment plan above to continue.
-                </p>
-              )}
-              {isCustomSelected && hasInvalidCustomInput && (
-                <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                  Enter a loan amount and tenure for your custom offer.
-                </p>
-              )}
-              {/* Temporarily hidden — restore to re-enable the reconsider modal entry point.
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="text-center text-sm text-[var(--text-tertiary)] transition-colors duration-200 hover:text-[var(--text-secondary)]"
-              >
-                I need to think about it
-              </button>
-              */}
-            </>
-          )}
-        </motion.div>
+      </div>
       </div>
 
-      {/* Temporarily hidden — floating sticky Review Offer CTA on mobile.
-      {revealStage >= 4 && !isCtaVisible && (
-        <div
-          className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
-          style={{ animation: "fade-up 0.4s cubic-bezier(0.16,1,0.3,1) 850ms both" }}
-        >
-          {isExpired ? (
-            <a
-              href="/"
-              className="flex h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue px-10 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:brightness-110 active:scale-[0.98] whitespace-nowrap"
-            >
-              Start New Application
-              <ArrowDown size={16} weight="bold" />
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={scrollToStickyTarget}
-              className="flex h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal px-12 text-sm font-semibold text-[var(--text-primary)] shadow-lg shadow-brand-teal/30 transition-all duration-200 hover:brightness-110 active:scale-[0.98] whitespace-nowrap"
-            >
-              Review Offer
-              {hasNoSelection ? (
-                <ArrowUp size={16} weight="bold" />
-              ) : (
-                <ArrowDown size={16} weight="bold" />
-              )}
-            </button>
-          )}
-        </div>
-      )}
-      */}
+      <StickyFooter>
+        {footerHint && (
+          <p className="mb-2 text-center text-[13px] text-[var(--text-secondary)]">
+            {footerHint}
+          </p>
+        )}
+        {isExpired ? (
+          <PrimaryButton onClick={() => { window.location.href = "/"; }}>
+            Start a New Application
+          </PrimaryButton>
+        ) : (
+          <PrimaryButton
+            onClick={handleReviewOfferClick}
+            disabled={hasNoSelection || hasInvalidCustomInput || isSavingPlan}
+          >
+            {isSavingPlan ? "Saving plan…" : "Review Offer"}
+          </PrimaryButton>
+        )}
+      </StickyFooter>
 
       {showModal && (
         <ReconsiderModal
