@@ -82,8 +82,8 @@ function isApproved(ctx: ApplyFunnelContext): boolean {
 /** User may enter steps 4-9 on /apply/review. */
 export function canEnterReview(session: Partial<LoanFormData> | null): boolean {
   if (!session || !hasValidApplyAuthMethod(session)) return false;
-  const income = session.monthlyIncome?.trim() ?? "";
-  if (!session.amount || income === "") return false;
+  // Income is no longer collected on the landing gate; amount is enough to continue.
+  if (!session.amount) return false;
   if (session.authMethod === "singpass" && !hasSingpassMyInfoMerged(session)) {
     return false;
   }

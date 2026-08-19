@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { LoanApplicationForm } from "../loan-application-form";
 import { SidebarTrustFeatures } from "../sidebar-trust-features";
-import { MobileHeader } from "../mobile-header";
 import { redirectToApplyContinueIfNeeded } from "@/lib/apply-landing";
 
 const FOREIGNER_REMINDERS = [
@@ -62,9 +61,8 @@ export default async function ForeignerPage() {
       </aside>
 
       <main className="flex flex-col flex-1 overflow-x-clip">
-        <MobileHeader />
-
-        <div className="flex flex-col items-center justify-start px-5 pb-8 pt-6 sm:px-8 sm:pt-6 sm:pb-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
+        {/* The gate renders its own nav bar and gutters, so no MobileHeader here. */}
+        <div className="flex flex-1 flex-col items-center justify-start pb-8 lg:justify-center lg:px-12 lg:pb-10 lg:pt-10 xl:px-20">
           <div className="w-full max-w-[520px]">
             <LoanApplicationForm reminderItems={FOREIGNER_REMINDERS} thingsToBring={FOREIGNER_THINGS_TO_BRING} />
           </div>
