@@ -56,7 +56,7 @@ export default async function VerifyIncomePage({
       </aside>
 
       <main className="flex flex-1 flex-col overflow-x-clip">
-        <div className="flex flex-1 flex-col lg:justify-center lg:px-12 lg:py-10 xl:px-20">
+        <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
             <VerifyIncomeForm initialShowResults={view === "results"} />
           </div>

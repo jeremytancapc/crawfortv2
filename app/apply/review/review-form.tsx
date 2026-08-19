@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import {
   Step4_Identity,
@@ -12,7 +11,7 @@ import {
   Step7_BankruptcyDeclaration,
   Step8_Review,
 } from "@/app/loan-application-form";
-import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import { GateProgressNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
 import { trackDisplayStep, trackEvent } from "@/lib/analytics";
@@ -184,7 +183,6 @@ export function ReviewForm({ initialData }: Props) {
   const totalDisplay = singpassFlow ? 5 : 6;
   const displayStep = history.length + 3; // offset: apply page was steps 1-3
   const stepMeta = REVIEW_STEP_META[step];
-  const progressPercentage = (displayStep / totalDisplay) * 100;
   const canGoForward =
     Boolean(canProceed) && !submitOverlay && !isLegalModalOpen;
 
@@ -249,56 +247,36 @@ export function ReviewForm({ initialData }: Props) {
       </aside>
 
       <main className="flex flex-1 flex-col overflow-x-clip">
-        <div className="flex flex-1 flex-col lg:justify-center lg:px-12 lg:py-10 xl:px-20">
+        <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
-            <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-0">
-              <header className="relative flex h-14 shrink-0 items-center justify-center px-5 lg:hidden">
-                <Link href="/" className="flex h-11 items-center" aria-label="Crawfort home">
-                  <span className="flex h-8 items-center rounded-[10px] bg-[var(--accent)] px-3">
-                    <Image
-                      src="/images/crawfort-white.png"
-                      alt="Crawfort"
-                      width={1261}
-                      height={155}
-                      className="h-[15px] w-auto"
-                      priority
-                    />
-                  </span>
-                </Link>
-              </header>
-
-              <div className="flex shrink-0 items-center gap-3 px-5">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  aria-label="Previous step"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95"
-                >
-                  <CaretLeft size={16} weight="bold" />
-                </button>
-                <div
-                  className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-sunken)]"
-                  role="progressbar"
-                  aria-valuenow={displayStep}
-                  aria-valuemin={1}
-                  aria-valuemax={totalDisplay}
-                  aria-label={`Step ${displayStep} of ${totalDisplay}`}
-                >
-                  <div
-                    className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-400 ease-out"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handlePrimary}
-                  disabled={mounted && !canGoForward}
-                  aria-label="Next step"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <CaretRight size={16} weight="bold" />
-                </button>
-              </div>
+            <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
+              <MobileGateHeader />
+              <MobileGateSheet>
+              <GateProgressNav
+                current={displayStep}
+                total={totalDisplay}
+                leading={
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    aria-label="Previous step"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95"
+                  >
+                    <CaretLeft size={16} weight="bold" />
+                  </button>
+                }
+                trailing={
+                  <button
+                    type="button"
+                    onClick={handlePrimary}
+                    disabled={mounted && !canGoForward}
+                    aria-label="Next step"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+                  >
+                    <CaretRight size={16} weight="bold" />
+                  </button>
+                }
+              />
 
               {stepMeta && (
                 <div className="shrink-0 px-5 pb-6 pt-7">
@@ -355,6 +333,7 @@ export function ReviewForm({ initialData }: Props) {
                   {primaryLabel}
                 </PrimaryButton>
               </StickyFooter>
+              </MobileGateSheet>
             </div>
           </div>
         </div>

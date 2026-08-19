@@ -1,13 +1,14 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CaretLeft, CaretRight, File, FileArrowUp, X } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
 import {
   Card,
   CardRow,
+  GateProgressNav,
+  MobileGateHeader,
+  MobileGateSheet,
   PrimaryButton,
   SectionLabel,
   StickyFooter,
@@ -41,14 +42,25 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function lastThreeMonthDates(from: Date = new Date()): Date[] {
+  return [3, 2, 1].map(
+    (offset) => new Date(from.getFullYear(), from.getMonth() - offset, 1),
+  );
+}
+
+function lastThreeMonthNames(from: Date = new Date()): string {
+  return lastThreeMonthDates(from)
+    .map((date) => date.toLocaleDateString("en-SG", { month: "long" }))
+    .join(", ");
+}
+
 function lastThreeMonths(from: Date = new Date()): { label: string; amount: number }[] {
-  return DUMMY_MONTHLY_INCOMES.map((amount, index) => {
-    const date = new Date(from.getFullYear(), from.getMonth() - (index + 1), 1);
-    return {
+  return lastThreeMonthDates(from)
+    .reverse()
+    .map((date, index) => ({
       label: date.toLocaleDateString("en-SG", { month: "long", year: "numeric" }),
-      amount,
-    };
-  });
+      amount: DUMMY_MONTHLY_INCOMES[index],
+    }));
 }
 
 function continueToReview() {
@@ -72,6 +84,7 @@ export function VerifyIncomeForm({
   const [showResults, setShowResults] = useState(initialShowResults);
   const inputRef = useRef<HTMLInputElement>(null);
   const incomeMonths = lastThreeMonths();
+  const uploadMonthNames = lastThreeMonthNames();
   const averageIncome = Math.round(
     incomeMonths.reduce((sum, month) => sum + month.amount, 0) / incomeMonths.length,
   );
@@ -121,57 +134,35 @@ export function VerifyIncomeForm({
     };
   }, []);
 
-  const progressPercentage = (VERIFY_STEP / GATE_TOTAL_STEPS) * 100;
-
   return (
-    <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-0">
-      <header className="relative flex h-14 shrink-0 items-center justify-center px-5 lg:hidden">
-        <Link href="/" className="flex h-11 items-center" aria-label="Crawfort home">
-          <span className="flex h-8 items-center rounded-[10px] bg-[var(--accent)] px-3">
-            <Image
-              src="/images/crawfort-white.png"
-              alt="Crawfort"
-              width={1261}
-              height={155}
-              className="h-[15px] w-auto"
-              priority
-            />
-          </span>
-        </Link>
-      </header>
-
-      <div className="flex shrink-0 items-center gap-3 px-5">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={isProcessing}
-          aria-label="Previous step"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-        >
-          <CaretLeft size={16} weight="bold" />
-        </button>
-        <div
-          className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-sunken)]"
-          role="progressbar"
-          aria-valuenow={VERIFY_STEP}
-          aria-valuemin={1}
-          aria-valuemax={GATE_TOTAL_STEPS}
-          aria-label={`Step ${VERIFY_STEP} of ${GATE_TOTAL_STEPS}`}
-        >
-          <div
-            className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-400 ease-out"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-        <button
-          type="button"
-          disabled
-          aria-label="Next step"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:pointer-events-none disabled:opacity-30"
-        >
-          <CaretRight size={16} weight="bold" />
-        </button>
-      </div>
+    <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
+      <MobileGateHeader />
+      <MobileGateSheet>
+      <GateProgressNav
+        current={VERIFY_STEP}
+        total={GATE_TOTAL_STEPS}
+        leading={
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={isProcessing}
+            aria-label="Previous step"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+          >
+            <CaretLeft size={16} weight="bold" />
+          </button>
+        }
+        trailing={
+          <button
+            type="button"
+            disabled
+            aria-label="Next step"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:pointer-events-none disabled:opacity-30"
+          >
+            <CaretRight size={16} weight="bold" />
+          </button>
+        }
+      />
 
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
@@ -180,7 +171,7 @@ export function VerifyIncomeForm({
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
           {showResults
             ? "Check the last 3 months we read from your documents."
-            : "Upload your latest payslips or bank statements so we can confirm your offer."}
+            : "Upload your payslips or bank statements as income proof."}
         </p>
       </div>
 
@@ -214,7 +205,12 @@ export function VerifyIncomeForm({
         ) : (
         <div className="animate-fade-up flex flex-col gap-6">
           <section>
-            <SectionLabel>Income documents</SectionLabel>
+            <div className="mb-2 flex items-center gap-0.5 px-1">
+              <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
+                Upload documents ({uploadMonthNames})
+              </p>
+              <IncomeDocsHint />
+            </div>
             <Card>
               <button
                 type="button"
@@ -323,7 +319,69 @@ export function VerifyIncomeForm({
       {isProcessing && (
         <ProcessingDocumentsModal onComplete={handleProcessingDone} />
       )}
+      </MobileGateSheet>
     </div>
+  );
+}
+
+const INCOME_DOC_HINTS = [
+  "Payslips for full-time employees",
+  "Monthly statements for PHV drivers",
+  "Bank statements for all other employment types",
+] as const;
+
+function IncomeDocsHint() {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!wrapRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  const canHover =
+    typeof window !== "undefined" &&
+    window.matchMedia("(hover: hover)").matches;
+
+  return (
+    <span
+      ref={wrapRef}
+      className="relative inline-flex shrink-0 self-center"
+      onMouseEnter={() => {
+        if (canHover) setOpen(true);
+      }}
+      onMouseLeave={() => {
+        if (canHover) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Accepted income documents"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors duration-150 hover:text-[var(--accent)]"
+      >
+        <Info size={18} weight="fill" />
+      </button>
+      {open ? (
+        <span
+          role="tooltip"
+          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2.5rem))] rounded-[var(--radius-md)] bg-gray-900 px-3.5 py-3 text-left shadow-2xl"
+        >
+          <ul className="flex list-disc flex-col gap-1.5 pl-4 text-[12px] leading-snug text-white">
+            {INCOME_DOC_HINTS.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </span>
+      ) : null}
+    </span>
   );
 }
 

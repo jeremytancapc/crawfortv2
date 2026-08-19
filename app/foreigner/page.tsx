@@ -62,7 +62,7 @@ export default async function ForeignerPage() {
 
       <main className="flex flex-col flex-1 overflow-x-clip">
         {/* The gate renders its own nav bar and gutters, so no MobileHeader here. */}
-        <div className="flex flex-1 flex-col items-center justify-start pb-8 lg:justify-center lg:px-12 lg:pb-10 lg:pt-10 xl:px-20">
+        <div className="flex flex-1 flex-col items-center justify-start pb-8 lg:px-12 lg:pb-10 lg:pt-10 xl:px-20">
           <div className="w-full max-w-[520px]">
             <LoanApplicationForm reminderItems={FOREIGNER_REMINDERS} thingsToBring={FOREIGNER_THINGS_TO_BRING} />
           </div>

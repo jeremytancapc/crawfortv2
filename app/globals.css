@@ -748,6 +748,8 @@ body:has(.theme-fresh)::before {
 
   --radius-card: 16px;
   --accent: var(--brand-blue-hex);
+  --offer-accent: oklch(0.66 0.10 176);
+  --offer-accent-ring: oklch(0.66 0.10 176 / 0.22);
 
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -756,7 +758,8 @@ body:has(.theme-fresh)::before {
 
   /* Tailwind strips custom properties that no CSS rule reads. --accent and
      --surface-sunken are consumed from inline styles, so keep a reference. */
-  --_theme-ios-keep-alive: var(--accent) var(--surface-sunken);
+  --_theme-ios-keep-alive: var(--accent) var(--surface-sunken) var(--offer-accent)
+    var(--offer-accent-ring);
 }
 
 .theme-ios h1,
@@ -989,15 +992,28 @@ input[type="range"].ios-slider::-moz-range-thumb {
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
 }
 
-/* Desktop renders the gate inside a centered column, so the bar is just the
-   last block of that column rather than a pinned phone action bar. */
+/* Desktop: span the whole right pane (beside the blue sidebar), not the 520px form. */
 @media (min-width: 1024px) {
   .ios-sticky-footer {
-    position: static;
-    background: transparent;
-    border-top: 0;
-    /* Match the 20px gutter the step content uses so the CTA lines up with the cards. */
-    padding: 8px 20px 0;
+    position: fixed;
+    left: 42%;
+    right: 0;
+    bottom: 0;
+    padding: 16px 48px;
+  }
+
+  .ios-sticky-footer > * {
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ios-sticky-footer {
+    left: 38%;
+    padding-left: 80px;
+    padding-right: 80px;
   }
 }
 
