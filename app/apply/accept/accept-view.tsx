@@ -14,8 +14,7 @@ import {
   CurrencyCircleDollar,
 } from "@phosphor-icons/react";
 
-import { MobileHeader } from "@/app/mobile-header";
-import { MobileLegalFooter } from "@/app/mobile-legal-footer";
+import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { buildPaymentSchedule } from "@/lib/offer-plans";
 import { SignaturePad } from "./signature-pad";
@@ -28,9 +27,9 @@ import type { SelectedPlanData } from "./page";
 const STEP_COLLAPSE_DELAY_MS = 320;
 const STEP_COLLAPSE_DURATION_MS = 250;
 const SCROLL_TO_NEXT_STEP_DELAY_MS = STEP_COLLAPSE_DELAY_MS + STEP_COLLAPSE_DURATION_MS + 50;
-// Sticky MobileHeader is py-4 (32px) + logo h-5 (20px) ≈ 52px. Leave a little
-// breathing room so the next step's header isn't clipped under it.
-const STICKY_HEADER_OFFSET_PX = 72;
+// Blue gate header is in document flow (not sticky). Keep a small inset so
+// tall cards aren't flush against the top of the viewport when we pin them.
+const STICKY_HEADER_OFFSET_PX = 16;
 
 /**
  * Scroll a newly unlocked step into a comfortable viewport position.
@@ -840,61 +839,20 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   }, [checks.paynowNric]);
 
   return (
-    <div className="theme-fresh approval-theme flex flex-col lg:flex-row min-h-dvh bg-[var(--surface-primary)]">
-      {/* Sidebar */}
-      <aside
-        className="hero-chrome relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden p-12 xl:p-16"
-      >
-        <div className="relative z-10">
-          <div className="mb-16">
-            <Image
-              src="/images/crawfort-white.png"
-              alt="Crawfort"
-              width={151}
-              height={20}
-              className="h-6 w-auto"
-              priority
-            />
-          </div>
-          <h1 className="font-display text-4xl xl:text-5xl font-semibold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
-            One last step.
-          </h1>
-          <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
-            Review your selected plan and accept the loan terms to secure your
-            funds.
-          </p>
-        </div>
-      </aside>
+    <ApplyIosShell
+      sidebarTitle="One last step."
+      sidebarSubtitle="Review your selected plan and accept the loan terms to secure your funds."
+    >
+      <div className="shrink-0 px-5 pb-6 pt-7">
+        <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+          Your loan is approved
+        </h1>
+        <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+          Review your plan details and accept the terms below to proceed.
+        </p>
+      </div>
 
-      {/* Main */}
-      <main className="flex flex-col flex-1 overflow-x-clip">
-        <MobileHeader />
-
-        {/* Match home page: full-bleed blue hero on mobile + floating white card. */}
-        <div className="flex flex-col items-center justify-start pb-8 flex-1 lg:justify-center lg:px-12 lg:pt-10 lg:pb-10 xl:px-20">
-          <div className="flex w-full flex-col lg:max-w-[520px]">
-            {/* Mobile/tablet blue hero band */}
-            <div className="relative w-full lg:hidden">
-              <div
-                aria-hidden
-                className="hero-chrome pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
-              />
-              <div className="relative mx-auto flex w-full max-w-[520px] flex-col items-center gap-2.5 px-5 pt-6 pb-16 text-center sm:px-8">
-                <ApprovalStampBadge
-                  background="rgba(255,255,255,0.16)"
-                  ringColor="rgba(255,255,255,0.6)"
-                  iconClassName="text-white"
-                />
-                <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
-                  Your Loan Is Approved
-                </h1>
-                <p className="text-sm leading-relaxed text-white/75 max-w-[300px]">
-                  Review your plan details and accept the terms below to proceed.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative z-10 mx-auto -mt-10 flex w-full max-w-[520px] flex-1 flex-col gap-5 px-5 sm:px-8 lg:mt-0 lg:px-0">
+      <div className="flex flex-1 flex-col gap-5 px-5 pb-8">
               {/* Plan summary card - carries the page's heading and subtitle */}
               <PlanSummaryCard plan={plan} leadId={leadId} acceptedAt={acceptedAt} />
 
@@ -993,12 +951,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                     : "Please tick all three acknowledgements and sign above to continue."}
                 </p>
               )}
-            </div>
-          </div>
-        </div>
-
-        <MobileLegalFooter />
-      </main>
-    </div>
+      </div>
+    </ApplyIosShell>
   );
 }

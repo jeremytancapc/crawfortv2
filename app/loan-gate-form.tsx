@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { LoanFormData as FormData } from "@/lib/loan-form";
 import {
@@ -15,7 +13,7 @@ import {
   Step3_SingpassGate,
 } from "@/app/loan-application-form";
 import { GateStepAmount } from "@/app/apply-gate/gate-step-amount";
-import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import { GateProgressNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 const GATE_LAST_STEP = 3;
@@ -33,8 +31,8 @@ const GATE_STEP_META: Record<number, { title: string; subtitle: string }> = {
     subtitle: "So we can check the loan fits your budget.",
   },
   3: {
-    title: "Get approved quicker",
-    subtitle: "Verify with Singpass for a faster decision.",
+    title: "Retrieve your details with Singpass",
+    subtitle: "Get approved on the spot.",
   },
 };
 
@@ -160,61 +158,43 @@ export function LoanGateForm({
   const stepMeta = GATE_STEP_META[step];
   const canGoBack = !step3RedirectPending;
   const canGoForward = Boolean(canProceed) && step < GATE_LAST_STEP;
-  const progressPercentage = (history.length / GATE_TOTAL_STEPS) * 100;
+  const isFirstStep = step === 1;
   const showActionBar = step !== 3;
 
   return (
     /* Carries its own theme scope so the variant landing pages (/foreigner,
        /vcsa-sg) render the same gate without adopting theme-ios wholesale. */
-    <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-0">
-      <header className="relative flex h-14 shrink-0 items-center justify-center px-5 lg:hidden">
-        <Link href="/" className="flex h-11 items-center" aria-label="Crawfort home">
-          <span className="flex h-8 items-center rounded-[10px] bg-[var(--accent)] px-3">
-            <Image
-              src="/images/crawfort-white.png"
-              alt="Crawfort"
-              width={1261}
-              height={155}
-              className="h-[15px] w-auto"
-              priority
-            />
-          </span>
-        </Link>
-      </header>
-
-      <div className="flex shrink-0 items-center gap-3 px-5">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={!canGoBack}
-          aria-label="Previous step"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-        >
-          <CaretLeft size={16} weight="bold" />
-        </button>
-        <div
-          className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-sunken)]"
-          role="progressbar"
-          aria-valuenow={history.length}
-          aria-valuemin={1}
-          aria-valuemax={GATE_TOTAL_STEPS}
-          aria-label={`Step ${history.length} of ${GATE_TOTAL_STEPS}`}
-        >
-          <div
-            className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-400 ease-out"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={mounted && !canGoForward}
-          aria-label="Next step"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-        >
-          <CaretRight size={16} weight="bold" />
-        </button>
-      </div>
+    <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
+      <MobileGateHeader />
+      <MobileGateSheet>
+      {!isFirstStep && (
+        <GateProgressNav
+          current={history.length}
+          total={GATE_TOTAL_STEPS}
+          leading={
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={!canGoBack}
+              aria-label="Previous step"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+            >
+              <CaretLeft size={16} weight="bold" />
+            </button>
+          }
+          trailing={
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={mounted && !canGoForward}
+              aria-label="Next step"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+            >
+              <CaretRight size={16} weight="bold" />
+            </button>
+          }
+        />
+      )}
 
       {stepMeta && (
         <div className="shrink-0 px-5 pb-6 pt-7">
@@ -269,6 +249,7 @@ export function LoanGateForm({
           </PrimaryButton>
         </StickyFooter>
       )}
+      </MobileGateSheet>
     </div>
   );
 }
