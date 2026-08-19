@@ -199,7 +199,7 @@ interface OfferCardProps {
 
 const RING_SIZE = 176;
 const RING_STROKE = 12;
-const RING_RESERVED_COLOR = "#D1D1D6";
+const RING_RESERVED_COLOR = "#F5C518";
 
 /** --offer-accent is tuned for icons; text on its tinted chip needs to go darker. */
 const PRE_APPROVED_TEXT = "oklch(0.48 0.08 176)";
@@ -440,7 +440,7 @@ function OfferHeader({
         <div className="ios-card px-4 pb-3 pt-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[17px] font-semibold leading-tight text-[var(--text-primary)]">
-              Your credit line
+              Your credit limit
             </span>
             <span
               className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none"
@@ -474,7 +474,7 @@ function OfferHeader({
             style={{ borderTop: "1px solid var(--separator)" }}
           >
             <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
-              How your credit line works
+              How your credit limit works
             </span>
             <CaretDown
               size={14}
@@ -484,11 +484,40 @@ function OfferHeader({
             />
           </button>
           {isExplainerOpen && (
-            <p className="pb-1 pt-2 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-              Your {formatCurrency(limit)} limit is pre-approved.{" "}
-              {formatCurrency(maxWithdraw)} is ready for instant disbursement today, and the rest
-              unlocks as you repay on time in the Crawfort app.
-            </p>
+            /* Mirrors the legend above - same swatches, same order - so the
+               explainer reads as a key to the ring rather than a wall of text. */
+            <dl className="flex flex-col gap-3 pb-1 pt-3">
+              {[
+                {
+                  color: "var(--accent)",
+                  term: "Available today",
+                  detail:
+                    "Paid into your bank after you finish every step, including your in-person appointment.",
+                },
+                {
+                  color: RING_RESERVED_COLOR,
+                  term: "Unlocks over time",
+                  detail:
+                    "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
+                },
+              ].map((row) => (
+                <div key={row.term} className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: row.color }}
+                  />
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <dt className="text-[14px] font-semibold leading-tight text-[var(--text-primary)]">
+                      {row.term}
+                    </dt>
+                    <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+                      {row.detail}
+                    </dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
           )}
         </div>
         </RevealOnScroll>
