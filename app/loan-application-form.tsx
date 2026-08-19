@@ -2378,23 +2378,29 @@ export function Step8_Review({
         )}
       </div>
 
-      <p className="mt-6 px-1 text-[13px] leading-[1.4] text-[var(--text-secondary)]">
+      <p className="mt-6 w-full px-1 text-[13px] leading-[1.4] [text-wrap:wrap] text-[var(--text-secondary)]">
         By submitting, you agree to Crawfort&apos;s{" "}
-        <button
-          type="button"
-          onClick={() => handleOpenModal("terms")}
+        <a
+          href="#terms"
+          onClick={(event) => {
+            event.preventDefault();
+            handleOpenModal("terms");
+          }}
           className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
         >
           Terms &amp; Conditions
-        </button>{" "}
+        </a>{" "}
         and{" "}
-        <button
-          type="button"
-          onClick={() => handleOpenModal("privacy")}
+        <a
+          href="#privacy"
+          onClick={(event) => {
+            event.preventDefault();
+            handleOpenModal("privacy");
+          }}
           className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
         >
           Privacy Policy
-        </button>
+        </a>
         . Your data is encrypted and protected under Singapore&apos;s PDPA.
       </p>
 
