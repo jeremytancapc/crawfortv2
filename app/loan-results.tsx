@@ -754,7 +754,7 @@ function PlanCard({
         <button
           type="button"
           onClick={onFlipBack}
-          aria-label={`Hide the ${shortPlanName(plan.title)} numbers`}
+          aria-label={`Hide the ${shortPlanName(plan.title)} breakdown`}
           tabIndex={isFlipped ? 0 : -1}
           aria-hidden={!isFlipped}
           className="absolute inset-0 flex flex-col text-left focus:outline-none"
@@ -776,8 +776,8 @@ function PlanCard({
               className="flex shrink-0 items-center justify-between gap-1 px-1.5 py-1.5"
               style={{ background: "var(--brand-blue-hex)" }}
             >
-              <span className="min-w-0 truncate text-[10px] font-semibold text-white sm:text-[11px]">
-                The numbers
+              <span className="min-w-0 truncate text-[13px] font-semibold text-white sm:text-[15px]">
+                Breakdown
               </span>
               <span
                 aria-hidden="true"
