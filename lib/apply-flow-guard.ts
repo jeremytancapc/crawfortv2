@@ -25,8 +25,7 @@ export function shouldRedirectToApplyContinue(
   if (session.leadId) return false;
   const auth = session.authMethod;
   if (auth !== "manual" && auth !== "singpass") return false;
-  const income = session.monthlyIncome?.trim() ?? "";
-  if (!session.amount || income === "") return false;
+  if (!session.amount) return false;
   if (auth === "singpass" && !hasSingpassMyInfoMerged(session)) return false;
   return true;
 }

@@ -1,16 +1,15 @@
 import type { Viewport } from "next";
 import Image from "next/image";
 
-import { LoanApplicationForm } from "./loan-application-form";
-import { SidebarTrustFeatures } from "./sidebar-trust-features";
-import { getApplySession } from "@/lib/apply-session";
-import { gateInitialSession } from "@/lib/apply-flow-guard";
-import { redirectToApplyContinueIfNeeded } from "@/lib/apply-landing";
+import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
+import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
+
+import { VerifyIncomeForm } from "@/app/apply/verify-income/verify-income-form";
+
+export const dynamic = "force-dynamic";
 
 /**
- * Route-scoped so only this page opts into the display cutout area, letting the
- * action bar clear the home indicator via env(safe-area-inset-bottom). Applying
- * it globally would push other pages' fixed bottom bars under the indicator.
+ * Route-scoped so the sticky footer can clear the home indicator, matching `/`.
  */
 export const viewport: Viewport = {
   width: "device-width",
@@ -19,17 +18,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default async function HomePage() {
-  const session = await getApplySession();
-  await redirectToApplyContinueIfNeeded("/");
-  return <ApplyLandingLayout initialGateSession={gateInitialSession(session)} />;
-}
-
-function ApplyLandingLayout({
-  initialGateSession,
+export default async function VerifyIncomePage({
+  searchParams,
 }: {
-  initialGateSession?: Partial<import("@/lib/loan-form").LoanFormData>;
+  searchParams: Promise<{ view?: string | string[] }>;
 }) {
+  await enforceApplyFunnel("/apply/verify-income");
+  const params = await searchParams;
+  const view = Array.isArray(params.view) ? params.view[0] : params.view;
+
   return (
     <div className="theme-ios flex min-h-[100dvh] flex-col bg-[var(--surface-primary)] lg:flex-row">
       <aside className="relative hidden overflow-hidden bg-[var(--accent)] p-12 lg:flex lg:w-[42%] lg:flex-col lg:justify-between xl:w-[38%] xl:p-16">
@@ -45,7 +42,6 @@ function ApplyLandingLayout({
             />
           </div>
 
-          {/* Marketing tagline, not the page heading - the gate step owns the h1. */}
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
             Get the funds you need, in 8 minutes
           </p>
@@ -62,7 +58,7 @@ function ApplyLandingLayout({
       <main className="flex flex-1 flex-col overflow-x-clip">
         <div className="flex flex-1 flex-col lg:justify-center lg:px-12 lg:py-10 xl:px-20">
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
-            <LoanApplicationForm initialApplySession={initialGateSession} />
+            <VerifyIncomeForm initialShowResults={view === "results"} />
           </div>
         </div>
 

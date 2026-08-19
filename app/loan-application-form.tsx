@@ -12,9 +12,8 @@ import {
 import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
+import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
 import {
-  ArrowRight,
-  ArrowLeft,
   CheckCircle,
   ShieldCheck,
   CurrencyDollar,
@@ -25,7 +24,6 @@ import {
   Buildings,
   Lock,
   Fingerprint,
-  Coins,
   MagnifyingGlass,
   Plus,
   Minus,
@@ -43,13 +41,15 @@ import {
 const TOTAL_STEPS = 8; // review is still at internal step 8
 
 const MAX_LOAN_TENURE_MONTHS = 18;
-const TENURE_OPTIONS = [1, 3, 6, 9, 12, 18];
+export const TENURE_OPTIONS = [1, 3, 6, 9, 12, 18] as const;
 
-const URGENCY_OPTIONS = [
+export const URGENCY_OPTIONS = [
   { value: "today", label: "Within 24 hours", emoji: "⚡" },
   { value: "this_week", label: "Within 7 days", emoji: "📅" },
   { value: "not_sure", label: "Flexible", emoji: "🔄" },
 ] as const;
+
+export type UrgencyValue = (typeof URGENCY_OPTIONS)[number]["value"];
 
 const ID_TYPE_OPTIONS = [
   { value: "singaporean", label: "Singaporean" },
@@ -624,6 +624,36 @@ export function Step1_LoanDetails({
   );
 }
 
+/** Tinted inline notice, iOS alert-cell styling. */
+function GateNotice({
+  tone,
+  children,
+}: {
+  tone: "error" | "warning";
+  children: React.ReactNode;
+}) {
+  const isError = tone === "error";
+  return (
+    <div
+      className="flex items-start gap-2.5 rounded-[12px] px-4 py-3"
+      style={{ background: isError ? "#FFEBE9" : "#FFF4E0" }}
+    >
+      <WarningCircle
+        size={18}
+        weight="fill"
+        className="mt-px shrink-0"
+        style={{ color: isError ? "#D70015" : "#B25000" }}
+      />
+      <p
+        className="text-[15px] leading-snug"
+        style={{ color: isError ? "#8E0009" : "#7A3600" }}
+      >
+        {children}
+      </p>
+    </div>
+  );
+}
+
 export function Step2_SelfDeclaredIncome({
   formData,
   updateField,
@@ -638,204 +668,154 @@ export function Step2_SelfDeclaredIncome({
   onIncomeConfirmedChange: (v: boolean) => void;
 }) {
   const [touched, setTouched] = useState(false);
+  const [incomeFocused, setIncomeFocused] = useState(false);
 
   const incomeNum = parseInt(formData.monthlyIncome, 10);
   const hasValue = formData.monthlyIncome.trim() !== "" && !Number.isNaN(incomeNum);
   const isTooLow = touched && hasValue && incomeNum < 200;
   const isHighIncome = hasValue && incomeNum > 20000;
 
+  // Thousand separators are display-only; the session stores bare digits so
+  // every downstream parseInt keeps working.
+  const incomeDisplay =
+    !incomeFocused && hasValue
+      ? incomeNum.toLocaleString("en-SG")
+      : formData.monthlyIncome;
+
   return (
-    <div>
-      <div className="hidden lg:block">
-        <StepHeader
-          icon={Coins}
-          title="What is your monthly income?"
-          subtitle="This helps us confirm the loan is within your budget."
-        />
-      </div>
-      <div className="flex flex-col gap-5">
-        <InputField
-          label="Estimated Gross Monthly Income"
-          type="number"
-          placeholder="e.g. 4500"
-          value={formData.monthlyIncome}
-          onChange={(v) => { setTouched(false); updateField("monthlyIncome", v); }}
-          onBlur={() => setTouched(true)}
-          prefix="$"
-          helper=""
-          tooltip={
-            <ol className="space-y-2.5">
-              <li className="text-sm leading-snug text-white/70">
-                <span className="font-semibold text-white">Employed Full-time - </span>
-                Gross monthly salary before CPF deduction
-              </li>
-              <li className="text-sm leading-snug text-white/70">
-                <span className="font-semibold text-white">PHV drivers - </span>
-                Gross monthly salary after deducting vehicle rental fees
-              </li>
-              <li className="text-sm leading-snug text-white/70">
-                <span className="font-semibold text-white">Own business - </span>
-                Monthly salary based on latest year Notice of Assessment or monthly bank statement
-              </li>
-            </ol>
-          }
-        />
+    <div className="flex flex-col gap-6">
+      <section>
+        <SectionLabel>Gross monthly income</SectionLabel>
+        <Card className="px-4 pb-4 pt-5">
+          <label htmlFor="monthly-income-input" className="flex items-baseline gap-1">
+            <span className="text-[34px] font-bold leading-none tracking-[-0.022em] text-[var(--text-primary)]">
+              $
+            </span>
+            <input
+              id="monthly-income-input"
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={incomeDisplay}
+              onChange={(e) => {
+                setTouched(false);
+                updateField("monthlyIncome", e.target.value.replace(/[^0-9]/g, "").slice(0, 7));
+              }}
+              onFocus={() => setIncomeFocused(true)}
+              onBlur={() => {
+                setIncomeFocused(false);
+                setTouched(true);
+              }}
+              aria-label="Gross monthly income in dollars"
+              className="w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+            />
+          </label>
+          <p className="mt-3 text-[13px] leading-snug text-[var(--text-secondary)]">
+            Before CPF deduction. Drivers, use earnings after vehicle rental.
+          </p>
+        </Card>
+      </section>
 
-        {isTooLow && (
-          <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3">
-            <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-red-500" />
-            <p className="text-sm text-red-700 leading-snug">
-              Our minimum income requirement is <span className="font-semibold">$200/month</span>.
-            </p>
-          </div>
-        )}
+      {isTooLow && (
+        <GateNotice tone="error">
+          The minimum is <span className="font-semibold">$200 a month</span>.
+        </GateNotice>
+      )}
 
-        {isHighIncome && incomeHighWarningShown && (
-          <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-4 py-3">
-            <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-amber-500" />
-            <p className="text-sm text-amber-800 leading-snug">
-              Just double checking your income is entered correctly.
-            </p>
-          </div>
-        )}
+      {isHighIncome && incomeHighWarningShown && (
+        <GateNotice tone="warning">
+          That is higher than most. Check the amount is right.
+        </GateNotice>
+      )}
 
-        {hasValue && !isTooLow && (
+      {hasValue && !isTooLow && (
+        <Card>
           <button
             type="button"
             onClick={() => onIncomeConfirmedChange(!incomeConfirmed)}
-            className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3.5 text-left transition-all duration-200 active:scale-[0.99]"
-            style={{
-              borderColor: incomeConfirmed ? "var(--brand-blue-hex)" : "var(--border-subtle)",
-              background: incomeConfirmed ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
-            }}
+            aria-pressed={incomeConfirmed}
+            className="ios-row w-full text-left"
           >
+            <span className="text-[15px] leading-snug text-[var(--text-primary)]">
+              I confirm this is accurate and can be used to assess my
+              eligibility.
+            </span>
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+              className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-150"
               style={{
-                borderColor: incomeConfirmed ? "var(--brand-blue-hex)" : "var(--border-medium)",
-                background: incomeConfirmed ? "var(--brand-blue-hex)" : "transparent",
+                borderColor: incomeConfirmed ? "var(--accent)" : "var(--border-medium)",
+                background: incomeConfirmed ? "var(--accent)" : "transparent",
               }}
             >
-              {incomeConfirmed && (
-                <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                  <path d="M1 4L4 7L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </span>
-            <span
-              className="text-sm leading-snug"
-              style={{ color: incomeConfirmed ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
-            >
-              I confirm this income is accurate and understand it will be used to
-              determine my final loan eligibility.
+              {incomeConfirmed && <Check size={15} weight="bold" className="text-white" />}
             </span>
           </button>
-        )}
-      </div>
+        </Card>
+      )}
     </div>
   );
 }
 
 export function Step3_SingpassGate({
-  onBack,
   onSingpass,
-  onManual,
   redirectPending = false,
 }: {
-  onBack: () => void;
   onSingpass: () => void;
-  onManual: () => void;
   /** When true, disables actions while session is saved and browser navigates away. */
   redirectPending?: boolean;
 }) {
   const benefits = [
-    "No documents submission required",
-    "Increases approval rate to up to 90%",
-    "Your data is safe and will only be used for this application.",
+    "Takes less than a minute",
+    "Approval rates of up to 90%",
+    "Used only for this application",
   ];
 
   return (
-    <div className="pt-1 pb-2 lg:py-6">
-      <div className="hidden lg:block">
-        <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
-          Get Approved Quicker ⚡
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-          Verify with Singpass for higher approval rates and faster processing.
-        </p>
-      </div>
-
-      <p className="mb-3 font-display text-lg font-semibold tracking-tight text-[var(--text-primary)] lg:hidden">
-        Apply with Singpass
-      </p>
-
-      <ul className="flex flex-col gap-3.5 lg:mt-7">
+    <div className="flex flex-col gap-6">
+      <Card>
         {benefits.map((text) => (
-          <li key={text} className="flex items-start gap-2.5">
-            <CheckCircle
-              size={16}
-              weight="duotone"
-              className="mt-0.5 shrink-0 text-brand-teal"
-            />
-            <span className="text-sm text-[var(--text-secondary)]">{text}</span>
-          </li>
+          <CardRow key={text}>
+            <span className="flex items-center gap-3">
+              <CheckCircle
+                size={22}
+                weight="fill"
+                className="shrink-0 text-[var(--accent)]"
+              />
+              <span className="text-[15px] leading-snug text-[var(--text-primary)]">
+                {text}
+              </span>
+            </span>
+          </CardRow>
         ))}
-      </ul>
+      </Card>
 
-      <button
-        type="button"
-        onClick={onSingpass}
-        disabled={redirectPending}
-        className="mt-6 flex w-full justify-center active:scale-[0.98] transition-transform duration-150 disabled:cursor-not-allowed disabled:opacity-60"
-        aria-label="Retrieve Myinfo with Singpass"
-      >
-        {redirectPending ? (
-          <div className="flex h-11 w-full max-w-[318px] items-center justify-center gap-2 rounded-[var(--radius-md)] sm:h-12" style={{ backgroundColor: "#F4333D" }}>
-            <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-            <span className="text-sm font-medium text-white">Please wait…</span>
-          </div>
-        ) : (
-          <Image
-            src="/images/singpass-myinfo-red.webp"
-            alt="Retrieve Myinfo with Singpass"
-            width={1272}
-            height={192}
-            className="h-11 w-auto max-w-full object-contain sm:h-12"
-            sizes="(max-width: 520px) 100vw, 318px"
-            priority
-          />
-        )}
-      </button>
-
-      <div className="relative my-4">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[var(--border-subtle)]" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-[var(--surface-elevated)] px-3 text-xs font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
-            or
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col items-center">
         <button
           type="button"
-          onClick={onBack}
+          onClick={onSingpass}
           disabled={redirectPending}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full justify-center transition-transform duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Retrieve Myinfo with Singpass"
         >
-          <ArrowLeft size={16} weight="bold" />
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={onManual}
-          disabled={redirectPending}
-          className="flex items-center gap-2 text-sm font-semibold text-brand-blue transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {redirectPending ? "Please wait…" : "Fill in manually"}
-          {!redirectPending && <ArrowRight size={16} weight="bold" />}
+          {redirectPending ? (
+            <div
+              className="flex h-12 w-full max-w-[318px] items-center justify-center gap-2 rounded-[12px]"
+              style={{ backgroundColor: "#F4333D" }}
+            >
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <span className="text-[15px] font-medium text-white">Please wait…</span>
+            </div>
+          ) : (
+            <Image
+              src="/images/singpass-myinfo-red.webp"
+              alt="Retrieve Myinfo with Singpass"
+              width={1272}
+              height={192}
+              className="h-12 w-auto max-w-full object-contain"
+              sizes="(max-width: 520px) 100vw, 318px"
+              priority
+            />
+          )}
         </button>
       </div>
     </div>
@@ -851,13 +831,6 @@ export function Step4_Identity({
 }) {
   return (
     <div>
-      <StepHeader
-        icon={IdentificationCard}
-        title="Tell us about yourself"
-        subtitle="We need this to verify your identity and eligibility."
-        desktopOnly
-      />
-
       <div className="flex flex-col gap-3 sm:gap-5">
         <div>
           <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
@@ -966,13 +939,6 @@ export function Step6_Contact({
 
   return (
     <div>
-      <StepHeader
-        icon={Phone}
-        title="How can we reach you?"
-        subtitle="We'll contact you regarding your loan status and details."
-        desktopOnly
-      />
-
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
@@ -1019,13 +985,6 @@ export function Step7_Additional({
 }) {
   return (
     <div>
-      <StepHeader
-        icon={Buildings}
-        title="A few more details"
-        subtitle="Almost done. This helps us finalise your application."
-        desktopOnly
-      />
-
       <div className="flex flex-col gap-5">
         <InputField
           label="Residential Address"
@@ -1887,16 +1846,15 @@ export function Step7_BankruptcyDeclaration({
   const isClear      = formData.bankruptcyDeclaration === "clear";
   const isDischarged = formData.bankruptcyDeclaration === "discharged_lt5";
   const isActive     = formData.bankruptcyDeclaration === "active";
+  const hasRecord    = isDischarged || isActive;
+
+  // The record sub-options stay revealed once one of them is chosen, even if
+  // this component remounts (e.g. navigating back into the step).
+  const [recordExpanded, setRecordExpanded] = useState(hasRecord);
+  const expanded = recordExpanded || hasRecord;
 
   return (
     <div>
-      <StepHeader
-        icon={ShieldCheck}
-        title="A Quick Check"
-        subtitle="Help us confirm your financial standing to move forward."
-        desktopOnly
-      />
-
       <div className="flex flex-col gap-5">
         <div>
           <div className="mb-3">
@@ -1906,108 +1864,205 @@ export function Step7_BankruptcyDeclaration({
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {/* Not bankrupt option - green when selected */}
+            {/* Not bankrupt option - the answer ~99% of applicants give, so it leads and stands out */}
             <button
               type="button"
-              onClick={() => updateField("bankruptcyDeclaration", "clear")}
-              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3.5 text-left transition-all duration-200 active:scale-[0.99]"
+              onClick={() => {
+                updateField("bankruptcyDeclaration", "clear");
+                setRecordExpanded(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-4 text-left transition-all duration-200 active:scale-[0.99]"
               style={{
                 borderColor: isClear ? "oklch(0.55 0.15 145)" : "var(--border-subtle)",
                 background:  isClear ? "oklch(0.55 0.15 145 / 0.06)" : "var(--surface-elevated)",
+                boxShadow:   isClear ? "none" : "0 1px 2px oklch(0 0 0 / 0.04)",
               }}
             >
               <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
                 style={{
                   borderColor: isClear ? "oklch(0.55 0.15 145)" : "var(--border-medium)",
                   background:  isClear ? "oklch(0.55 0.15 145)" : "transparent",
                 }}
               >
-                {isClear && <CheckCircle size={14} weight="fill" color="white" />}
+                {isClear && <CheckCircle size={16} weight="fill" color="white" />}
               </span>
               <span
-                className="text-sm font-semibold"
+                className="text-[15px] font-semibold leading-snug"
                 style={{ color: isClear ? "oklch(0.40 0.12 145)" : "var(--text-primary)" }}
               >
                 I do not have any active bankruptcy, DRS, or self-exclusion records.
               </span>
             </button>
 
-            {/* Discharged bankrupt option - blue when selected */}
+            {/* Generic "I have a record" option - expands to the two specific choices below */}
             <button
               type="button"
-              onClick={() => updateField("bankruptcyDeclaration", "discharged_lt5")}
+              onClick={() => {
+                setRecordExpanded(true);
+                if (formData.bankruptcyDeclaration === "clear") {
+                  updateField("bankruptcyDeclaration", "");
+                }
+              }}
               className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
               style={{
-                borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-subtle)",
-                background:  isDischarged ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+                borderColor: expanded ? "oklch(0.65 0.18 25)" : "var(--border-subtle)",
+                background:  expanded ? "oklch(0.65 0.18 25 / 0.06)" : "var(--surface-elevated)",
               }}
             >
               <span
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
                 style={{
-                  borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-medium)",
-                  background:  isDischarged ? "var(--brand-blue-hex)" : "transparent",
+                  borderColor: expanded ? "oklch(0.65 0.18 25)" : "var(--border-medium)",
+                  background:  "transparent",
                 }}
               >
-                {isDischarged && <CheckCircle size={14} weight="fill" color="white" />}
+                {expanded && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "oklch(0.65 0.18 25)" }} />}
               </span>
               <span
-                className="text-sm"
-                style={{ color: isDischarged ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
+                className="flex-1 text-sm"
+                style={{ color: expanded ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
               >
-                I have previously been discharged from bankruptcy (within the last 5 years).
+                I have a bankruptcy, DRS, or self-exclusion record.
               </span>
+              <CaretDown
+                size={14}
+                weight="bold"
+                className="shrink-0 transition-transform duration-200"
+                style={{
+                  color: expanded ? "oklch(0.65 0.18 25)" : "var(--text-tertiary)",
+                  transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
             </button>
 
-            {/* Active bankruptcy / DRS option */}
-            <button
-              type="button"
-              onClick={() => updateField("bankruptcyDeclaration", "active")}
-              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
-              style={{
-                borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-subtle)",
-                background:  isActive ? "oklch(0.65 0.18 25 / 0.06)" : "var(--surface-elevated)",
-              }}
-            >
-              <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
-                style={{
-                  borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-medium)",
-                  background:  isActive ? "oklch(0.65 0.18 25)" : "transparent",
-                }}
-              >
-                {isActive && <CheckCircle size={14} weight="fill" color="white" />}
-              </span>
-              <span
-                className="text-sm"
-                style={{ color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
-              >
-                I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).
-              </span>
-            </button>
+            {expanded && (
+              <div className="animate-fade-up ml-3 flex flex-col gap-2 border-l-2 pl-4" style={{ borderColor: "var(--border-subtle)" }}>
+                {/* Discharged bankrupt option - blue when selected */}
+                <button
+                  type="button"
+                  onClick={() => updateField("bankruptcyDeclaration", "discharged_lt5")}
+                  className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
+                  style={{
+                    borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-subtle)",
+                    background:  isDischarged ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+                  }}
+                >
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                    style={{
+                      borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-medium)",
+                      background:  isDischarged ? "var(--brand-blue-hex)" : "transparent",
+                    }}
+                  >
+                    {isDischarged && <CheckCircle size={14} weight="fill" color="white" />}
+                  </span>
+                  <span
+                    className="text-sm"
+                    style={{ color: isDischarged ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
+                  >
+                    I have previously been discharged from bankruptcy (within the last 5 years).
+                  </span>
+                </button>
+
+                {isDischarged && (
+                  <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
+                    <Warning size={16} weight="fill" className="mt-0.5 shrink-0 text-brand-blue" />
+                    <p className="text-sm text-brand-blue leading-snug">
+                      Please bring along your bankruptcy/DRS discharge letter to the appointment.
+                    </p>
+                  </div>
+                )}
+
+                {/* Active bankruptcy / DRS option */}
+                <button
+                  type="button"
+                  onClick={() => updateField("bankruptcyDeclaration", "active")}
+                  className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
+                  style={{
+                    borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-subtle)",
+                    background:  isActive ? "oklch(0.65 0.18 25 / 0.06)" : "var(--surface-elevated)",
+                  }}
+                >
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                    style={{
+                      borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-medium)",
+                      background:  isActive ? "oklch(0.65 0.18 25)" : "transparent",
+                    }}
+                  >
+                    {isActive && <CheckCircle size={14} weight="fill" color="white" />}
+                  </span>
+                  <span
+                    className="text-sm"
+                    style={{ color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
+                  >
+                    I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).
+                  </span>
+                </button>
+
+                {isActive && (
+                  <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3">
+                    <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-red-500" />
+                    <p className="text-sm text-red-700 leading-snug">
+                      We are currently not able to issue loans if you are not discharged from bankruptcy or DRS status.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-
-        {isDischarged && (
-          <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
-            <Warning size={16} weight="fill" className="mt-0.5 shrink-0 text-brand-blue" />
-            <p className="text-sm text-brand-blue leading-snug">
-              Please bring along your bankruptcy/DRS discharge letter to the appointment.
-            </p>
-          </div>
-        )}
-
-        {isActive && (
-          <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3">
-            <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-red-500" />
-            <p className="text-sm text-red-700 leading-snug">
-              We are currently not able to issue loans if you are not discharged from bankruptcy or DRS status.
-            </p>
-          </div>
-        )}
       </div>
     </div>
+  );
+}
+
+const MARITAL_OPTIONS = ["Single", "Married", "Divorced", "Widowed"] as const;
+
+function MaritalStatusRow({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const hasKnownValue = MARITAL_OPTIONS.includes(
+    value as (typeof MARITAL_OPTIONS)[number],
+  );
+
+  return (
+    <CardRow>
+      <label
+        htmlFor="marital-status"
+        className="text-[17px] leading-tight text-[var(--text-secondary)]"
+      >
+        Marital Status
+      </label>
+      <div className="relative min-w-0">
+        <select
+          id="marital-status"
+          value={hasKnownValue ? value : value || "Single"}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label="Marital status"
+          className="appearance-none bg-transparent pr-5 text-right text-[17px] font-semibold text-[var(--text-primary)] outline-none"
+        >
+          {!hasKnownValue && value ? (
+            <option value={value}>{value}</option>
+          ) : null}
+          {MARITAL_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <CaretDown
+          size={12}
+          weight="bold"
+          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+        />
+      </div>
+    </CardRow>
   );
 }
 
@@ -2036,9 +2091,11 @@ function EditableReviewRow({
   }, [editing]);
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-sm">
-      <span className="text-[var(--text-tertiary)]">{label}</span>
-      <div className="flex items-center gap-2 min-w-0">
+    <CardRow>
+      <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
+        {label}
+      </span>
+      <div className="flex min-w-0 items-center gap-2">
         {editing ? (
           <>
             <input
@@ -2047,12 +2104,12 @@ function EditableReviewRow({
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commit}
               onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
-              className="w-36 sm:w-44 rounded-[var(--radius-sm)] border border-brand-blue bg-[var(--surface-elevated)] px-2 py-1 text-right text-sm font-medium text-[var(--text-primary)] outline-none ring-2 ring-brand-blue/10"
+              className="w-36 rounded-[10px] bg-[var(--surface-sunken)] px-2 py-1 text-right text-[17px] font-semibold text-[var(--text-primary)] outline-none"
             />
             <button
               type="button"
               onMouseDown={(e) => { e.preventDefault(); commit(); }}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue transition-all hover:brightness-110"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]"
               aria-label="Save"
             >
               <Check size={12} weight="bold" className="text-white" />
@@ -2060,13 +2117,13 @@ function EditableReviewRow({
           </>
         ) : (
           <>
-            <span className="font-medium text-[var(--text-primary)] text-right max-w-[180px] truncate">
+            <span className="max-w-[180px] truncate text-right text-[17px] font-semibold text-[var(--text-primary)]">
               {value || "-"}
             </span>
             <button
               type="button"
               onClick={() => { setDraft(value); setEditing(true); }}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-secondary)] text-[var(--text-tertiary)] transition-all duration-150 hover:border-[var(--border-medium)] hover:text-brand-blue active:scale-95"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-secondary)]"
               aria-label={`Edit ${label}`}
             >
               <PencilSimple size={12} weight="bold" />
@@ -2074,19 +2131,17 @@ function EditableReviewRow({
           </>
         )}
       </div>
-    </div>
+    </CardRow>
   );
 }
 
 export function Step8_Review({
   formData,
   updateField,
-  monthlyRepayment,
   onModalOpenChange,
 }: {
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
-  monthlyRepayment: number;
   onModalOpenChange?: (open: boolean) => void;
 }) {
   const [openModal, setOpenModal] = useState<"terms" | "privacy" | null>(null);
@@ -2101,22 +2156,6 @@ export function Step8_Review({
     onModalOpenChange?.(false);
   }, [onModalOpenChange]);
 
-  const authLabel =
-    formData.authMethod === "singpass"
-      ? "Singpass (Myinfo)"
-      : formData.authMethod === "manual"
-        ? "Manual form"
-        : "-";
-
-  const loanRows = [
-    { label: "Amount", value: formatCurrency(formData.amount) },
-    { label: "Tenure", value: `${formData.tenure} months` },
-    { label: "Monthly instalment (est.)", value: `${formatCurrency(monthlyRepayment)}*` },
-    { label: "Urgency", value: URGENCY_OPTIONS.find((o) => o.value === formData.urgency)?.label ?? "-" },
-    { label: "Monthly income", value: formData.monthlyIncome ? formatCurrency(parseInt(formData.monthlyIncome, 10) || 0) : "-" },
-    { label: "Verification", value: authLabel },
-  ];
-
   const personalStaticRows = [
     { label: "ID Type", value: ID_TYPE_OPTIONS.find((o) => o.value === formData.idType)?.label ?? "-" },
     { label: "Name", value: formData.fullName || "-" },
@@ -2129,162 +2168,135 @@ export function Step8_Review({
 
   return (
     <div>
-      <StepHeader
-        icon={ShieldCheck}
-        title="Review your application"
-        subtitle="Please confirm everything is correct before submitting."
-        desktopOnly
-      />
-
-      <div className="flex flex-col gap-5">
-        {/* Loan & income */}
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <CurrencyDollar size={16} weight="duotone" className="text-brand-blue" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Loan &amp; income</span>
-          </div>
-          <div className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
-            {loanRows.map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="text-[var(--text-tertiary)]">{label}</span>
-                <span className="font-medium text-[var(--text-primary)] text-right max-w-[60%] truncate">{value}</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-1.5 text-xs text-[var(--text-tertiary)]">
-            *{MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER}
-          </p>
-        </div>
-
-        {/* Personal Info - with editable Marital Status + Email */}
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <User size={16} weight="duotone" className="text-brand-blue" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Personal Info</span>
-          </div>
-          <div className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
+      <div className="flex flex-col gap-6">
+        <section>
+          <SectionLabel>Personal info</SectionLabel>
+          <Card>
             {personalStaticRows.map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="text-[var(--text-tertiary)]">{label}</span>
-                <span className="font-medium text-[var(--text-primary)] text-right max-w-[60%] truncate">{value}</span>
-              </div>
+              <CardRow key={label}>
+                <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
+                  {label}
+                </span>
+                <span className="max-w-[60%] truncate text-right text-[17px] font-semibold text-[var(--text-primary)]">
+                  {value}
+                </span>
+              </CardRow>
             ))}
-            <EditableReviewRow
-              label="Marital Status"
+            <MaritalStatusRow
               value={formData.maritalStatus}
-              onSave={(v) => updateField("maritalStatus", v)}
+              onChange={(v) => updateField("maritalStatus", v)}
             />
             <EditableReviewRow
               label="Email"
               value={formData.email}
               onSave={(v) => updateField("email", v)}
             />
-          </div>
-        </div>
+          </Card>
+        </section>
 
         {/* NOA - Singpass data display guidelines: show all detailed fields per YA */}
         {formData.authMethod === "singpass" && formData.noaHistory.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <CurrencyDollar size={16} weight="duotone" className="text-brand-blue" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Notice of Assessment</span>
-            </div>
-            <p className="mb-2 text-[11px] text-[var(--text-tertiary)]">Data retrieved as at time of Singpass verification.</p>
+          <section>
+            <SectionLabel>Notice of Assessment</SectionLabel>
+            <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
+              Data retrieved as at time of Singpass verification.
+            </p>
             <div className="flex flex-col gap-3">
               {formData.noaHistory.map((rec) => {
                 const typeLabel = rec.taxClearance === "Y"
                   ? `${rec.type} Clearance`
                   : rec.type;
                 return (
-                  <div key={rec.yearOfAssessment} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-sm">
-                    {/* Header row */}
-                    <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-2.5">
-                      <span className="font-semibold text-[var(--text-primary)]">YA {rec.yearOfAssessment}</span>
-                      <span className="text-xs font-medium text-[var(--text-secondary)]">{typeLabel}</span>
-                    </div>
-                    {/* Assessable income */}
-                    <div className="flex items-center justify-between bg-[var(--surface-secondary)] px-4 py-2.5">
-                      <span className="font-medium text-[var(--text-primary)]">Assessable Income</span>
-                      <span className="font-semibold text-[var(--text-primary)]">{formatCurrency(rec.assessableIncome)}</span>
-                    </div>
-                    {/* Income breakdown */}
+                  <Card key={rec.yearOfAssessment}>
+                    <CardRow>
+                      <span className="text-[17px] font-semibold text-[var(--text-primary)]">
+                        YA {rec.yearOfAssessment}
+                      </span>
+                      <span className="text-[13px] text-[var(--text-secondary)]">
+                        {typeLabel}
+                      </span>
+                    </CardRow>
+                    <CardRow>
+                      <span className="text-[17px] text-[var(--text-secondary)]">
+                        Assessable Income
+                      </span>
+                      <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
+                        {formatCurrency(rec.assessableIncome)}
+                      </span>
+                    </CardRow>
                     {[
                       { label: "Employment", value: rec.employmentIncome },
                       { label: "Trade", value: rec.tradeIncome },
                       { label: "Rent", value: rec.rentIncome },
                       { label: "Interest", value: rec.interestIncome },
                     ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between border-t border-[var(--border-subtle)] px-4 py-2.5">
-                        <span className="text-[var(--text-tertiary)]">{label}</span>
-                        <span className="text-[var(--text-primary)]">{formatCurrency(value)}</span>
-                      </div>
+                      <CardRow key={label}>
+                        <span className="text-[17px] text-[var(--text-secondary)]">
+                          {label}
+                        </span>
+                        <span className="tabular-nums text-[17px] text-[var(--text-primary)]">
+                          {formatCurrency(value)}
+                        </span>
+                      </CardRow>
                     ))}
-                  </div>
+                  </Card>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* CPF - Singpass guidelines: Employer / For Month / Paid On / Amount, ascending */}
         {formData.authMethod === "singpass" && formData.cpfContributions.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <CurrencyDollar size={16} weight="duotone" className="text-brand-blue" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">CPF Contribution History</span>
-            </div>
-            <p className="mb-2 text-[11px] text-[var(--text-tertiary)]">Data retrieved as at time of Singpass verification.</p>
-            <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-sm overflow-hidden">
-              {/* Column headers */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                <span>Employer</span>
-                <span className="text-right">For Month</span>
-                <span className="text-right">Paid On</span>
-                <span className="text-right">Amount</span>
-              </div>
-              {/* Rows - sorted ascending by paidOn then month (oldest first) */}
+          <section>
+            <SectionLabel>CPF contribution history</SectionLabel>
+            <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
+              Data retrieved as at time of Singpass verification.
+            </p>
+            <Card>
               {[...formData.cpfContributions]
                 .sort((a, b) => {
                   const d = a.paidOn.localeCompare(b.paidOn);
                   return d !== 0 ? d : a.month.localeCompare(b.month);
                 })
-                .map((c, i) => (
-                  <div
-                    key={`${c.paidOn}-${c.month}`}
-                    className={`grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2.5 ${i > 0 ? "border-t border-[var(--border-subtle)]" : ""}`}
-                  >
-                    <span className="truncate text-[var(--text-secondary)] text-xs">{c.employer || "-"}</span>
-                    <span className="text-right tabular-nums text-[var(--text-primary)]">{c.month}</span>
-                    <span className="text-right tabular-nums text-[var(--text-tertiary)]">{c.paidOn || "-"}</span>
-                    <span className="text-right tabular-nums font-medium text-[var(--text-primary)]">{formatCurrency(c.amount)}</span>
-                  </div>
+                .map((c) => (
+                  <CardRow key={`${c.paidOn}-${c.month}`}>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[17px] text-[var(--text-primary)]">
+                        {c.employer || "-"}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-[var(--text-secondary)]">
+                        {c.month} · paid {c.paidOn || "-"}
+                      </span>
+                    </span>
+                    <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
+                      {formatCurrency(c.amount)}
+                    </span>
+                  </CardRow>
                 ))}
-            </div>
-          </div>
+            </Card>
+          </section>
         )}
       </div>
 
-      <div className="mt-6 rounded-[var(--radius-md)] bg-brand-teal/[0.06] px-4 py-3">
-        <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
-          By submitting, you agree to Crawfort&apos;s{" "}
-          <button
-            type="button"
-            onClick={() => handleOpenModal("terms")}
-            className="font-medium text-brand-blue underline-offset-2 hover:underline"
-          >
-            Terms &amp; Conditions
-          </button>{" "}
-          and{" "}
-          <button
-            type="button"
-            onClick={() => handleOpenModal("privacy")}
-            className="font-medium text-brand-blue underline-offset-2 hover:underline"
-          >
-            Privacy Policy
-          </button>
-          . Your data is encrypted and protected under Singapore&apos;s PDPA.
-        </p>
-      </div>
+      <p className="mt-6 px-1 text-[13px] leading-[1.4] text-[var(--text-secondary)]">
+        By submitting, you agree to Crawfort&apos;s{" "}
+        <button
+          type="button"
+          onClick={() => handleOpenModal("terms")}
+          className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+        >
+          Terms &amp; Conditions
+        </button>{" "}
+        and{" "}
+        <button
+          type="button"
+          onClick={() => handleOpenModal("privacy")}
+          className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+        >
+          Privacy Policy
+        </button>
+        . Your data is encrypted and protected under Singapore&apos;s PDPA.
+      </p>
 
       {openModal === "terms" && (
         <LegalModal
