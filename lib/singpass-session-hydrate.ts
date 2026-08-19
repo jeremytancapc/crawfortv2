@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 
+import { decodeMyinfoCookie, MYINFO_COOKIE } from "@/lib/apply-myinfo-cookie";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session-codec";
 import { createAdminClient } from "@/lib/db/client";
 import type { LoanFormData } from "@/lib/loan-form";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
+import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import {
   loadMyinfoProcessedPayload,
   processedPayloadFromAuthStore,
@@ -11,11 +13,13 @@ import {
 
 /**
  * Merge CPF/NOA into session for /apply/review when the cookie was slimmed at activate.
+ * Prefer the signed apply_myinfo cookie - it survives serverless isolates, unlike
+ * the in-memory myinfo_profiles table and auth-callback-store.
  */
 export async function hydrateSingpassReviewSession(
   session: Partial<LoanFormData> | null,
 ): Promise<Partial<LoanFormData> | null> {
-  if (!session || session.authMethod !== "singpass") return session;
+  if (!session) return withDemoReviewMyInfo(session);
 
   const hasBulk =
     (session.cpfContributions?.length ?? 0) > 0 ||
@@ -23,6 +27,20 @@ export async function hydrateSingpassReviewSession(
   if (hasBulk) return session;
 
   const store = await cookies();
+
+  const fromCookie = decodeMyinfoCookie(store.get(MYINFO_COOKIE)?.value ?? "");
+  if (
+    fromCookie &&
+    (fromCookie.cpfContributions.length > 0 || fromCookie.noaHistory.length > 0)
+  ) {
+    return {
+      ...session,
+      cpfContributions: fromCookie.cpfContributions,
+      noaHistory: fromCookie.noaHistory,
+      dob: session.dob || fromCookie.dob,
+    };
+  }
+
   const draftLeadId = store.get(DRAFT_LEAD_COOKIE)?.value?.trim() ?? "";
 
   let processed = null;
@@ -40,12 +58,12 @@ export async function hydrateSingpassReviewSession(
     processed = processedPayloadFromAuthStore(session.singpassRawKey);
   }
 
-  if (!processed) return session;
+  if (!processed) return withDemoReviewMyInfo(session);
 
-  return {
+  return withDemoReviewMyInfo({
     ...session,
     cpfContributions: processed.cpfContributions,
     noaHistory: processed.noaHistory,
     dob: session.dob || processed.dob,
-  };
+  });
 }

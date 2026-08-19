@@ -15,14 +15,16 @@ import {
   CalendarBlank,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildOfferPlans,
+  buildPaymentSchedule,
   calculateInstalment,
   OFFER_CONFIRMATION_DISCLAIMER,
   OFFER_MONTHLY_RATE,
   type OfferPlan,
+  type ScheduleInstallment,
 } from "@/lib/offer-plans";
 
 // ── Offer expiry helpers ──────────────────────────────────────────────────────
@@ -154,6 +156,17 @@ function clampWithdrawAmount(raw: number, max: number): number {
 }
 
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/** "19 Sep", widening to "19 Jan 27" once the schedule crosses into a new year. */
+function formatInstalmentDate(iso: string, baseYear: number): string {
+  const date = new Date(iso);
+  const day = `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === baseYear
+    ? day
+    : `${day} ${String(date.getFullYear()).slice(-2)}`;
+}
 
 // ── Term-sheet confirmed offer card ───────────────────────────────────────────
 
@@ -489,7 +502,10 @@ function OfferHeader({
 interface PlanCardProps {
   plan: OfferPlan;
   isSelected: boolean;
+  isFlipped: boolean;
+  schedule: ScheduleInstallment[];
   onSelect: () => void;
+  onFlipBack: () => void;
 }
 
 /** Card labels are space-constrained in the 3-up grid, so drop the trailing "Plan" suffix. */
@@ -497,18 +513,47 @@ function shortPlanName(title: string): string {
   return title.replace(/\s+Plan$/i, "");
 }
 
-function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
+function PlanCard({
+  plan,
+  isSelected,
+  isFlipped,
+  schedule,
+  onSelect,
+  onFlipBack,
+}: PlanCardProps) {
   const isPopular = Boolean(plan.badge);
+  const prefersReducedMotion = useReducedMotion();
 
   return (
+    <div
+      className="relative h-full w-full transition-transform duration-200"
+      style={{
+        perspective: 1000,
+        transform: isSelected ? "scale(1.02)" : "scale(1)",
+      }}
+    >
+      {/* The front face stays in flow so the grid row keeps sizing to it; the
+          schedule is layered on top, pre-rotated, and scrolls inside the card. */}
+      <motion.div
+        className="relative flex h-full w-full flex-col"
+        style={{ transformStyle: "preserve-3d" }}
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
+        }
+      >
     <button
       type="button"
       onClick={onSelect}
-      className="relative flex h-full w-full flex-col text-center transition-all duration-200 focus:outline-none"
+      className="relative flex h-full w-full flex-col text-center focus:outline-none"
       style={{
-        transform: isSelected ? "scale(1.02)" : "scale(1)",
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
       }}
       aria-pressed={isSelected}
+      tabIndex={isFlipped ? -1 : 0}
     >
       {/* Reserved ribbon slot - keeps blue headers aligned across all three cards */}
       <div className="flex h-5 w-full shrink-0 items-center justify-center">
@@ -653,6 +698,110 @@ function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
         </div>
       </div>
     </button>
+
+        <div
+          className="absolute inset-0 flex flex-col"
+          style={{
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            transform: "rotateY(180deg)",
+          }}
+          aria-hidden={!isFlipped}
+        >
+          <div className="h-5 w-full shrink-0" aria-hidden="true" />
+          <div
+            className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px]"
+            style={{
+              background: "var(--surface-elevated)",
+              boxShadow:
+                "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)",
+            }}
+          >
+            <div
+              className="flex shrink-0 items-center justify-between gap-1 px-1.5 py-1.5"
+              style={{ background: "var(--brand-blue-hex)" }}
+            >
+              <span className="min-w-0 truncate text-[10px] font-semibold text-white sm:text-[11px]">
+                {plan.tenure} payments
+              </span>
+              <button
+                type="button"
+                onClick={onFlipBack}
+                aria-label={`Hide the ${shortPlanName(plan.title)} payment schedule`}
+                tabIndex={isFlipped ? 0 : -1}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
+                style={{ background: "oklch(1 0 0 / 0.18)" }}
+              >
+                <ArrowLeft size={10} weight="bold" />
+              </button>
+            </div>
+
+            <div className="relative min-h-0 flex-1">
+            <div className="h-full overflow-y-auto overscroll-contain px-1.5">
+              {schedule.map((instalment, index) => (
+                <div
+                  key={instalment.index}
+                  className="flex items-baseline justify-between gap-1 py-[3px]"
+                  style={{
+                    borderBottom:
+                      index === schedule.length - 1
+                        ? "none"
+                        : "1px solid var(--separator)",
+                  }}
+                >
+                  <span
+                    className="tabular-nums text-[9px] sm:text-[10px]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {formatInstalmentDate(
+                      instalment.dueDateIso,
+                      new Date(schedule[0].dueDateIso).getFullYear(),
+                    )}
+                  </span>
+                  <span
+                    className="tabular-nums text-[9px] font-semibold sm:text-[10px]"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {formatCurrency(instalment.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* Fade hints at the rows still below the fold on longer tenures. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-4"
+              style={{
+                background:
+                  "linear-gradient(to top, var(--surface-elevated), transparent)",
+              }}
+            />
+            </div>
+
+            <div
+              className="flex shrink-0 items-baseline justify-between gap-1 px-1.5 py-1.5"
+              style={{
+                background: "var(--surface-secondary)",
+                borderTop: "1px solid var(--separator)",
+              }}
+            >
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.06em] sm:text-[10px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Total
+              </span>
+              <span
+                className="tabular-nums text-[10px] font-semibold sm:text-[11px]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {formatCurrency(plan.totalRepayment)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -898,6 +1047,12 @@ function PlanPicker({
   onCustomAmountChange,
   onCustomTenureChange,
 }: PlanPickerProps) {
+  const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
+
+  // Disbursement anchor for every schedule: instalment 1 falls on the same
+  // day-of-month, one month out (19 Aug -> 19 Sep).
+  const disbursementIso = useMemo(() => new Date().toISOString(), []);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2 sm:gap-3 items-stretch">
@@ -906,13 +1061,26 @@ function PlanPicker({
             key={plan.id}
             plan={plan}
             isSelected={selectedPlanId === plan.id}
-            onSelect={() => onPlanSelect(plan.id)}
+            isFlipped={flippedPlanId === plan.id}
+            schedule={buildPaymentSchedule(
+              disbursementIso,
+              plan.tenure,
+              plan.monthlyInstalment,
+            )}
+            onSelect={() => {
+              onPlanSelect(plan.id);
+              setFlippedPlanId(plan.id);
+            }}
+            onFlipBack={() => setFlippedPlanId(null)}
           />
         ))}
       </div>
       <CustomOfferCard
         isSelected={selectedPlanId === "custom"}
-        onSelect={() => onPlanSelect("custom")}
+        onSelect={() => {
+          onPlanSelect("custom");
+          setFlippedPlanId(null);
+        }}
         onCancel={() => {
           onPlanSelect(null);
           onCustomAmountChange("");
@@ -1459,7 +1627,7 @@ export function LoanResults({
                   Choose your repayment plan
                 </h2>
                 <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  Pick from our 3 best-selling plans for your loan.
+                  Tap a plan to see every payment date and amount.
                 </p>
               </div>
             </div>

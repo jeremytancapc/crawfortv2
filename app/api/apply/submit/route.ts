@@ -33,6 +33,7 @@ import { createAdminClient } from "@/lib/db/client";
 import { buildPostSubmitSession } from "@/lib/apply-session-slim";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
+import { clearMyinfoCookie, decodeMyinfoCookie, MYINFO_COOKIE } from "@/lib/apply-myinfo-cookie";
 import {
   loadMyinfoProcessedPayload,
   processedPayloadFromAuthStore,
@@ -144,6 +145,14 @@ export async function POST(request: NextRequest) {
     let dob = formData.dob;
 
     if (cpfContributions.length === 0 && noaHistory.length === 0) {
+      const fromMyinfoCookie = decodeMyinfoCookie(
+        request.cookies.get(MYINFO_COOKIE)?.value ?? "",
+      );
+      const cookieHasBulk = Boolean(
+        fromMyinfoCookie &&
+          (fromMyinfoCookie.cpfContributions.length > 0 ||
+            fromMyinfoCookie.noaHistory.length > 0),
+      );
       const fromDb = looksLikeLeadUuid(leadId)
         ? await loadMyinfoProcessedPayload(admin, leadId)
         : null;
@@ -151,7 +160,7 @@ export async function POST(request: NextRequest) {
         !fromDb && formData.singpassRawKey
           ? processedPayloadFromAuthStore(formData.singpassRawKey)
           : null;
-      const fallback = fromDb ?? fromStore;
+      const fallback = (cookieHasBulk ? fromMyinfoCookie : null) ?? fromDb ?? fromStore;
       if (fallback) {
         cpfContributions = fallback.cpfContributions;
         noaHistory = fallback.noaHistory;
@@ -313,8 +322,9 @@ export async function POST(request: NextRequest) {
     reloanReason: isSimulatedSingpass ? null : eligibility.reloanReason,
   });
 
-  // Clear draft_lead cookie - no longer needed after full submit.
+  // Clear draft_lead + MyInfo blobs - no longer needed after full submit.
   res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
+  res.cookies.set(clearMyinfoCookie());
 
   if (finalAssessment.isEligible && finalAssessment.approvedLoanAmount > 0) {
     const sc = sessionCookieValue(updatedSession);

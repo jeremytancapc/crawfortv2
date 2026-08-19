@@ -18,6 +18,10 @@ import type { LoanFormData } from "@/lib/loan-form";
 import { createAdminClient } from "@/lib/db/client";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
+import {
+  buildMyinfoCookiePayload,
+  myinfoCookieValue,
+} from "@/lib/apply-myinfo-cookie";
 import { buildActivateSessionCookie } from "@/lib/apply-session-slim";
 import { upsertMyinfoProfileForLead } from "@/lib/myinfo-profile";
 
@@ -146,6 +150,11 @@ export async function GET(request: NextRequest) {
   const sc = sessionCookieValue(slimSession);
   res.cookies.set({ ...sc, value: encoded });
   res.cookies.set(gateCookieValue());
+
+  const myinfoPayload = buildMyinfoCookiePayload(merged);
+  if (myinfoPayload) {
+    res.cookies.set(myinfoCookieValue(myinfoPayload));
+  }
 
   if (newDraftLeadId) {
     res.cookies.set(draftLeadCookieValue(newDraftLeadId));
