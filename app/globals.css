@@ -720,6 +720,55 @@ body:has(.theme-fresh)::before {
   font-weight: 700;
 }
 
+.theme-ios .ios-display-amount {
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/*
+ * iOS Safari paints form fields with SF Text and often skips font-weight, so
+ * large amounts look thin and unlike neighbouring headings. Strip the default
+ * appearance and use the system stack + fill-color; size/weight still come
+ * from the element's own classes.
+ */
+.theme-ios input[type="text"],
+.theme-ios input[type="number"],
+.theme-ios input[type="tel"],
+.theme-ios input[type="email"],
+.theme-ios input:not([type]) {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-text-fill-color: currentColor;
+}
+
+.theme-ios input[type="text"]:focus,
+.theme-ios input[type="number"]:focus,
+.theme-ios input[type="tel"]:focus,
+.theme-ios input[type="email"]:focus,
+.theme-ios input:not([type]):focus,
+.theme-ios input[type="text"]:disabled,
+.theme-ios input[type="number"]:disabled {
+  -webkit-text-fill-color: currentColor;
+}
+
+.theme-ios input::placeholder {
+  -webkit-text-fill-color: var(--text-tertiary);
+  color: var(--text-tertiary);
+}
+
+.theme-ios .ios-display-input,
+.theme-ios .ios-display-input:focus,
+.theme-ios .ios-display-input:disabled {
+  font-weight: 700;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 body:has(.theme-ios)::before {
   display: none;
 }

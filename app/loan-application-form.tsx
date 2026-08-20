@@ -689,7 +689,7 @@ export function Step2_SelfDeclaredIncome({
       <section>
         <SectionLabel>Gross monthly income</SectionLabel>
         <Card className="px-4 pb-4 pt-5">
-          <label htmlFor="monthly-income-input" className="flex items-baseline gap-1">
+          <label htmlFor="monthly-income-input" className="ios-display-amount flex items-baseline gap-1">
             <span className="text-[34px] font-bold leading-none tracking-[-0.022em] text-[var(--text-primary)]">
               $
             </span>
@@ -709,7 +709,7 @@ export function Step2_SelfDeclaredIncome({
                 setTouched(true);
               }}
               aria-label="Gross monthly income in dollars"
-              className="w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+              className="ios-display-input w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
             />
           </label>
           <p className="mt-3 text-[13px] leading-snug text-[var(--text-secondary)]">

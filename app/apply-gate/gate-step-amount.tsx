@@ -115,7 +115,7 @@ export function GateStepAmount({
         <Card className="px-4 pb-4 pt-5">
           <label
             htmlFor="loan-amount-input"
-            className="flex items-baseline gap-1"
+            className="ios-display-amount flex items-baseline gap-1"
           >
             <span className="text-[34px] font-bold leading-none tracking-[-0.022em] text-[var(--text-primary)]">
               $
@@ -132,7 +132,7 @@ export function GateStepAmount({
               onBlur={handleAmountBlur}
               onChange={handleAmountChange}
               aria-label="Loan amount in dollars"
-              className="w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none"
+              className="ios-display-input w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none"
             />
           </label>
 

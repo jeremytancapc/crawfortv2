@@ -354,7 +354,7 @@ function OfferHeader({
 
         <div className="flex flex-col items-center px-4 pb-5 pt-5">
           <div className="flex w-full justify-center">
-            <div className="flex items-baseline leading-none">
+            <div className="ios-display-amount flex items-baseline leading-none">
               <span
                 aria-hidden="true"
                 className="text-[34px] font-bold leading-none tracking-[-0.03em] text-[var(--text-primary)]"
@@ -379,7 +379,7 @@ function OfferHeader({
                 }}
                 disabled={!canAdjust}
                 aria-label="Amount to withdraw today"
-                className="border-0 bg-transparent p-0 text-center text-[52px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
+                className="ios-display-input border-0 bg-transparent p-0 text-center text-[52px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
                 style={{ fieldSizing: "content", width: "auto", minWidth: "2ch" }}
               />
             </div>
