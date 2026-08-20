@@ -17,6 +17,7 @@ import {
   Scales,
   Feather,
   Star,
+  SlidersHorizontal,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { motion, useReducedMotion } from "motion/react";
@@ -432,7 +433,7 @@ function OfferHeader({
 
         <div className="ios-row" style={{ borderTop: "1px solid var(--separator)" }}>
           <span className="flex items-center gap-2 text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-            <CalendarBlank size={16} weight="bold" className="text-[var(--text-tertiary)]" />
+            <CalendarBlank size={16} weight="bold" style={{ color: "oklch(0.62 0.17 25)" }} />
             Offer expires
           </span>
           <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
@@ -581,7 +582,9 @@ const PANEL_GRADIENTS = {
   lowest_interest: "linear-gradient(135deg, oklch(0.93 0.045 258) 0%, oklch(0.968 0.016 258) 100%)",
   average: "linear-gradient(135deg, oklch(0.92 0.055 95) 0%, oklch(0.965 0.022 90) 100%)",
   lowest_instalment: "linear-gradient(135deg, oklch(0.92 0.05 175) 0%, oklch(0.965 0.02 178) 100%)",
-  custom: "linear-gradient(135deg, oklch(0.93 0.045 258) 0%, oklch(0.968 0.016 258) 100%)",
+  // Violet sits outside the three standard plans' hues on purpose - a custom
+  // plan is a request, not one of the offers on the table.
+  custom: "linear-gradient(135deg, oklch(0.92 0.055 305) 0%, oklch(0.965 0.022 305) 100%)",
 } satisfies Record<OfferPlan["id"], string>;
 
 /** Hairline used inside a resting card. --border-subtle is too heavy here. */
@@ -598,7 +601,7 @@ const WATERMARK_TINTS = {
   lowest_interest: "oklch(0.55 0.1 258)",
   average: "oklch(0.55 0.11 95)",
   lowest_instalment: "oklch(0.55 0.1 175)",
-  custom: "oklch(0.55 0.1 258)",
+  custom: "oklch(0.52 0.13 305)",
 } satisfies Record<OfferPlan["id"], string>;
 
 /* Three cards share one narrow column - barely 100px each at 360px - so type is
@@ -1024,6 +1027,140 @@ function PlanCard({
   );
 }
 
+/** Same card anatomy as PlanCard - rounded body, ring/glow that carries
+ *  selection, one-shot shine - stretched to the full column width. */
+function CustomCardFrame({
+  isSelected,
+  children,
+}: {
+  isSelected: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="relative flex w-full flex-col overflow-hidden text-left transition-shadow duration-200"
+      style={{
+        borderRadius: CARD_RADIUS,
+        background: "var(--surface-elevated)",
+        boxShadow: cardFrameShadow(isSelected),
+      }}
+    >
+      {isSelected && <div aria-hidden="true" className="selected-card-shine z-[2]" />}
+      {children}
+    </div>
+  );
+}
+
+/** Header band mirroring PlanCard's: the plan's own gradient, its identity
+ *  glyph bleeding off the top-right corner as a watermark, then the headline
+ *  the state wants to lead with (a title while choosing, the estimated
+ *  instalment once the request is set). */
+function CustomCardHeader({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="relative flex shrink-0 flex-col gap-2 px-4 pt-4 pb-3.5"
+      style={{
+        background: PANEL_GRADIENTS.custom,
+        boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
+      }}
+    >
+      <SlidersHorizontal
+        aria-hidden="true"
+        weight="fill"
+        className="pointer-events-none absolute -right-4 -top-5 h-[5.5rem] w-[5.5rem]"
+        style={{ color: WATERMARK_TINTS.custom, opacity: 0.24 }}
+      />
+
+      <div className="relative flex items-center gap-2">
+        <span
+          className="text-[13px] font-semibold leading-none tracking-[-0.01em]"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Your own plan
+        </span>
+        <span
+          className="rounded-full px-2 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
+          style={{
+            background: "oklch(1 0 0 / 0.6)",
+            color: WATERMARK_TINTS.custom,
+            boxShadow: "inset 0 0 0 1px oklch(0.52 0.13 305 / 0.22)",
+          }}
+        >
+          Tentative
+        </span>
+      </div>
+
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
+/** Repeated in every state of the card. A custom plan is a request our team
+ *  works on by hand, so nothing here may read as an approved offer. */
+function TentativeRequestNote() {
+  return (
+    <div
+      className="flex items-start gap-2 rounded-[var(--radius-md)] px-2.5 py-2"
+      style={{ background: "var(--surface-secondary)" }}
+    >
+      {/* Amber rather than --offer-accent's teal: this note is a caution, not
+          another reassurance. */}
+      <Warning
+        size={13}
+        weight="fill"
+        className="mt-[2px] shrink-0"
+        style={{ color: "oklch(0.63 0.15 72)" }}
+      />
+      <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+          Tentative request only.
+        </span>{" "}
+        This is not a confirmed offer. Our team will call and WhatsApp you to check what&apos;s
+        possible and confirm the final terms.
+      </p>
+    </div>
+  );
+}
+
+/** Feature row shared with PlanCard: a spinning star for the lead perk,
+ *  a checkmark for the supporting facts. */
+function CustomCardPoint({
+  text,
+  special = false,
+  spin = false,
+}: {
+  text: ReactNode;
+  special?: boolean;
+  spin?: boolean;
+}) {
+  return (
+    <li className="flex items-start gap-1.5">
+      {special ? (
+        <motion.span
+          className="mt-[1px] inline-flex h-3.5 w-3.5 shrink-0"
+          animate={spin ? { rotate: 360 } : undefined}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+        >
+          <Star weight="fill" className="h-full w-full" style={{ color: WATERMARK_TINTS.custom }} />
+        </motion.span>
+      ) : (
+        <CheckCircle
+          size={14}
+          weight="bold"
+          className="mt-[1px] h-3.5 w-3.5 shrink-0"
+          style={{ color: "var(--brand-blue-hex)" }}
+        />
+      )}
+      <span
+        className="min-w-0 text-[13px] font-medium leading-snug tracking-[-0.01em]"
+        style={{ color: "var(--text-primary)" }}
+      >
+        {text}
+      </span>
+    </li>
+  );
+}
+
 function CustomOfferCard({
   isSelected,
   onSelect,
@@ -1041,8 +1178,8 @@ function CustomOfferCard({
   onAmountChange: (value: string) => void;
   onTenureChange: (value: string) => void;
 }) {
+  const prefersReducedMotion = useReducedMotion();
   const [isEditing, setIsEditing] = useState(true);
-  const [tipOpen, setTipOpen] = useState(false);
   const amountValue = parseInt(amount, 10);
   const tenureValue = parseInt(tenure, 10);
   const canConfirm =
@@ -1050,6 +1187,12 @@ function CustomOfferCard({
     amountValue > 0 &&
     Number.isFinite(tenureValue) &&
     tenureValue > 0;
+
+  // Indicative only - the same standard rate the three plans quote, applied to
+  // whatever the customer asked for. Our team confirms the real figure.
+  const estimatedInstalment = canConfirm
+    ? Math.ceil(calculateInstalment(amountValue, tenureValue, OFFER_MONTHLY_RATE))
+    : 0;
 
   // Re-open the form whenever the card is freshly selected.
   useEffect(() => {
@@ -1061,83 +1204,66 @@ function CustomOfferCard({
       <button
         type="button"
         onClick={onSelect}
-        className="group flex w-full flex-col items-center gap-3 rounded-[var(--radius-lg)] p-4 text-center transition-all duration-200 hover:bg-[var(--surface-secondary)] active:scale-[0.99]"
-        style={{ boxShadow: "0 0 0 1px var(--border-subtle)" }}
+        className="group block w-full transition-transform duration-200 active:scale-[0.99]"
+        aria-label="Customise your own loan plan. Sends a tentative request, not a confirmed offer."
       >
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Want a different amount or tenure?
-          </span>
-          <span className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Tell us what loan plan you need and our team will follow up to confirm the details.
-          </span>
-        </div>
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold text-white transition-all duration-200 group-hover:brightness-110 group-active:scale-[0.97]"
-          style={{ background: "var(--brand-blue-hex)" }}
-        >
-          Request custom loan amount & tenure
-          <ArrowRight size={12} weight="bold" />
-        </span>
+        <CustomCardFrame isSelected={false}>
+          <CustomCardHeader>
+            <span
+              className="text-[20px] font-extrabold leading-tight tracking-[-0.03em]"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Customise your own loan plan
+            </span>
+          </CustomCardHeader>
+
+          <div className="flex flex-col gap-2.5 px-4 pt-3.5 pb-3.5">
+            <ul className="flex flex-col gap-1.5">
+              <CustomCardPoint
+                special
+                spin={!prefersReducedMotion}
+                text="Set your own amount and tenure"
+              />
+              <CustomCardPoint text="Our team follows up on what's possible" />
+            </ul>
+            <TentativeRequestNote />
+          </div>
+
+          <div
+            className="flex shrink-0 items-center justify-center gap-1.5 px-4 py-3 transition-[filter] duration-200 group-hover:brightness-[0.98]"
+            style={{ background: CTA_GHOST_BG, boxShadow: `inset 0 1px 0 0 ${HAIRLINE}` }}
+          >
+            <span
+              className="text-[13px] font-semibold leading-none"
+              style={{ color: "var(--brand-blue-hex)" }}
+            >
+              Start my custom plan
+            </span>
+            <ArrowRight size={13} weight="bold" style={{ color: "var(--brand-blue-hex)" }} />
+          </div>
+        </CustomCardFrame>
       </button>
     );
   }
 
-  return (
-    <div
-      className="relative flex flex-col gap-4 overflow-hidden rounded-[var(--radius-lg)] p-4"
-      style={{
-        background: "var(--surface-elevated)",
-        boxShadow: "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)",
-      }}
-    >
-      {/* Plays once when the custom-offer panel opens - same brief glassy
-          sweep used on the selected plan cards. */}
-      <div aria-hidden="true" className="selected-card-shine z-[2]" />
-
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-          Custom offer
-        </span>
-        <span className="relative inline-flex shrink-0">
-          <button
-            type="button"
-            aria-label="About custom offers"
-            aria-expanded={tipOpen}
-            onClick={() => setTipOpen((v) => !v)}
-            onMouseEnter={() => setTipOpen(true)}
-            onMouseLeave={() => setTipOpen(false)}
-            className="flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold leading-none transition-colors duration-150"
-            style={{
-              borderColor: "var(--border-medium)",
-              color: "var(--text-secondary)",
-              background: "var(--surface-secondary)",
-            }}
-          >
-            ?
-          </button>
-          {tipOpen && (
-            <div
-              role="tooltip"
-              className="absolute left-0 top-[calc(100%+8px)] z-50 w-[min(260px,70vw)] whitespace-normal rounded-[var(--radius-md)] px-3 py-2.5 text-left shadow-lg"
-              style={{
-                background: "var(--surface-elevated)",
-                boxShadow: "0 0 0 1px var(--border-subtle), 0 8px 24px oklch(0.24 0.06 260 / 0.18)",
-              }}
+  if (isEditing) {
+    return (
+      <CustomCardFrame isSelected>
+        <CustomCardHeader>
+          <div className="flex flex-col gap-1">
+            <span
+              className="text-[20px] font-extrabold leading-tight tracking-[-0.03em]"
+              style={{ color: "var(--text-primary)" }}
             >
-              <p
-                className="text-[12px] font-medium leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Outside our standard plans and not a final approval. Our team will call and WhatsApp you to confirm the exact terms.
-              </p>
-            </div>
-          )}
-        </span>
-      </div>
+              Customise your own loan plan
+            </span>
+            <span className="text-[12px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              Tell us the amount and tenure you want to request.
+            </span>
+          </div>
+        </CustomCardHeader>
 
-      {isEditing ? (
-        <>
+        <div className="flex flex-col gap-3 px-4 pt-3.5 pb-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
@@ -1183,6 +1309,28 @@ function CustomOfferCard({
             </label>
           </div>
 
+          {canConfirm && (
+            <div
+              className="flex items-baseline justify-between rounded-[var(--radius-md)] px-3 py-2"
+              style={{ background: "var(--surface-secondary)" }}
+            >
+              <span
+                className="text-[11px] font-bold uppercase tracking-[0.07em]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Indicative instalment
+              </span>
+              <span
+                className="text-[15px] font-bold tabular-nums tracking-[-0.02em]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {formatCurrency(estimatedInstalment)}/mo
+              </span>
+            </div>
+          )}
+
+          <TentativeRequestNote />
+
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -1207,43 +1355,66 @@ function CustomOfferCard({
               Confirm details
             </button>
           </div>
-        </>
-      ) : (
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                Loan amount
-              </span>
-              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-blue-hex)" }}>
-                {formatCurrency(amountValue)}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                Tenure
-              </span>
-              <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--brand-blue-hex)" }}>
-                {tenureValue} {tenureValue === 1 ? "month" : "months"}
-              </span>
-            </div>
-          </div>
+        </div>
+      </CustomCardFrame>
+    );
+  }
+
+  return (
+    <CustomCardFrame isSelected>
+      <CustomCardHeader>
+        <div className="flex items-baseline gap-1 whitespace-nowrap">
+          <span
+            className="text-[26px] font-extrabold leading-none tabular-nums tracking-[-0.04em]"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {formatCurrency(estimatedInstalment)}
+          </span>
+          <span className="text-[13px] font-semibold leading-none" style={{ color: "var(--text-tertiary)" }}>
+            /mo est.
+          </span>
+        </div>
+      </CustomCardHeader>
+
+      <div className="flex flex-col gap-2.5 px-4 pt-3.5 pb-3.5">
+        <ul className="flex flex-col gap-1.5">
+          <CustomCardPoint special spin={!prefersReducedMotion} text="Your own amount and tenure" />
+          <CustomCardPoint text={`${formatCurrency(amountValue)} requested`} />
+          <CustomCardPoint text={`${tenureValue}-month tenure`} />
+          <CustomCardPoint text={`Indicative rate up to ${formatRate(OFFER_MONTHLY_RATE)}/mo`} />
+        </ul>
+        <TentativeRequestNote />
+      </div>
+
+      <div
+        className="flex shrink-0 items-center justify-between gap-2 px-4 py-2.5"
+        style={{ background: "var(--brand-blue-hex)" }}
+      >
+        <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-white">
+          <CheckCircle size={14} weight="fill" />
+          Request ready
+        </span>
+        <span className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] text-[13px] font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-            style={{
-              background: "transparent",
-              color: "var(--text-secondary)",
-              border: "1.5px solid var(--border-medium)",
-            }}
+            className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold leading-none text-white transition-colors duration-150 hover:bg-white/25"
+            style={{ background: "oklch(1 0 0 / 0.16)" }}
           >
-            <PencilSimple size={14} weight="bold" />
-            Edit details
+            <PencilSimple size={12} weight="bold" />
+            Edit
           </button>
-        </div>
-      )}
-    </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex items-center rounded-full p-1.5 text-white/80 transition-colors duration-150 hover:bg-white/20 hover:text-white"
+            aria-label="Remove custom plan request"
+          >
+            <X size={12} weight="bold" />
+          </button>
+        </span>
+      </div>
+    </CustomCardFrame>
   );
 }
 
@@ -1591,7 +1762,7 @@ function CustomOfferConfirmModal({
             className="text-xl font-bold tracking-tight text-[var(--text-primary)]"
             style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.03em" }}
           >
-            Confirm your custom offer request
+            Send your custom plan request
           </p>
           <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
             You&apos;re requesting{" "}
@@ -1609,8 +1780,8 @@ function CustomOfferConfirmModal({
         >
           <Warning size={18} weight="fill" className="mt-0.5 shrink-0 text-[var(--offer-accent)]" />
           <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-            This isn&apos;t a final approval. Our team will call and WhatsApp you to confirm the exact terms
-            before anything is signed.
+            This is a tentative request, not a confirmed offer or an approval. Our team will call and
+            WhatsApp you to check what&apos;s possible and confirm the exact terms before anything is signed.
           </p>
         </div>
 
@@ -1761,7 +1932,7 @@ export function LoanResults({
   const footerHint = hasNoSelection
     ? "Select a repayment plan to continue"
     : isCustomSelected && hasInvalidCustomInput
-      ? "Enter a loan amount and tenure for your custom offer."
+      ? "Enter the loan amount and tenure for your custom plan."
       : null;
 
   return (
