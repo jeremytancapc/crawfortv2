@@ -13,6 +13,10 @@ import {
   CaretDown,
   PencilSimple,
   CalendarBlank,
+  Lightning,
+  Scales,
+  Feather,
+  Star,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { motion, useReducedMotion } from "motion/react";
@@ -338,12 +342,17 @@ function OfferHeader({
       {/* Hero card: the single figure the customer acts on, then one meta row. */}
       <RevealOnScroll>
       <div className="ios-card">
-        <div className="flex flex-col items-center px-4 pb-5 pt-6">
-          <span className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-            Withdraw today
+        {/* Flush black header banner - clipped to the card's own rounded top
+            corners by .ios-card's overflow: hidden, so it stands out as its
+            own section rather than blending into the white card body. */}
+        <div className="flex items-center justify-center bg-[#0a0a0a] px-4 py-2.5">
+          <span className="text-[13px] font-semibold uppercase leading-tight tracking-[0.06em] text-white">
+            Approved Amount
           </span>
+        </div>
 
-          <div className="mt-1.5 flex w-full justify-center">
+        <div className="flex flex-col items-center px-4 pb-5 pt-5">
+          <div className="flex w-full justify-center">
             <div className="flex items-baseline leading-none">
               <span
                 aria-hidden="true"
@@ -376,7 +385,7 @@ function OfferHeader({
           </div>
 
           <p className="mt-1.5 text-[15px] leading-tight text-[var(--text-tertiary)]">
-            Instant disbursement
+            Withdraw today
           </p>
 
           {canAdjust && (
@@ -557,14 +566,82 @@ function shortPlanName(title: string): string {
 
 const FLIP_DURATION = 0.55;
 
-/** Height of the reserved ribbon slot above every card - keeps the blue headers aligned. */
-const RIBBON_HEIGHT = "1.25rem";
+/** Reserved strip above every card body. The "Popular" tab occupies this slot
+ *  so a badge on one card can never push the other two header panels out of line. */
+const PILL_SLOT_HEIGHT = "1.125rem";
 
-/** Ring + drop shadow drawn around a whole card, ribbon included. */
+const CARD_RADIUS = 16;
+
+/** Header panel fill - each plan gets its own soft, diagonal tint so the three
+ *  cards read as distinct choices at a glance rather than three copies of the
+ *  same card. Kept light enough that --text-primary/--text-tertiary still sit
+ *  on top cleanly. Shared between the front panel and its flipped-back twin
+ *  so the identity carries through the flip. */
+const PANEL_GRADIENTS = {
+  lowest_interest: "linear-gradient(135deg, oklch(0.93 0.045 258) 0%, oklch(0.968 0.016 258) 100%)",
+  average: "linear-gradient(135deg, oklch(0.92 0.055 95) 0%, oklch(0.965 0.022 90) 100%)",
+  lowest_instalment: "linear-gradient(135deg, oklch(0.92 0.05 175) 0%, oklch(0.965 0.02 178) 100%)",
+  custom: "linear-gradient(135deg, oklch(0.93 0.045 258) 0%, oklch(0.968 0.016 258) 100%)",
+} satisfies Record<OfferPlan["id"], string>;
+
+/** Hairline used inside a resting card. --border-subtle is too heavy here. */
+const HAIRLINE = "rgba(60, 60, 67, 0.09)";
+
+/** Resting-state CTA fill - a whisper of brand blue so the footer bar reads
+ *  as its own tappable band instead of blending into the white card body. */
+const CTA_GHOST_BG = "oklch(0.965 0.028 260)";
+
+/** Tints the big watermark glyph in each header - same hue family as that
+ *  plan's PANEL_GRADIENTS, just darker/more saturated so it reads at low
+ *  opacity instead of washing out against its own gradient. */
+const WATERMARK_TINTS = {
+  lowest_interest: "oklch(0.55 0.1 258)",
+  average: "oklch(0.55 0.11 95)",
+  lowest_instalment: "oklch(0.55 0.1 175)",
+  custom: "oklch(0.55 0.1 258)",
+} satisfies Record<OfferPlan["id"], string>;
+
+/* Three cards share one narrow column - barely 100px each at 360px - so type is
+   sized against the card itself (@container on the card root) rather than the
+   viewport. Every step caps out once the column stops growing, and the floors
+   are set to keep the price row inside the panel at the narrowest width. */
+const TYPE = {
+  planName: "text-[clamp(0.6rem,10cqi,1rem)]",
+  price: "text-[clamp(0.9375rem,16cqi,1.625rem)]",
+  priceUnit: "text-[clamp(0.5rem,7.8cqi,0.8125rem)]",
+  cta: "text-[clamp(0.5625rem,8.6cqi,0.875rem)]",
+  body: "text-[clamp(0.625rem,9cqi,0.875rem)]",
+  label: "text-[clamp(0.5rem,7cqi,0.6875rem)]",
+  pill: "text-[clamp(0.5rem,6.5cqi,0.6875rem)]",
+  icon: "h-[clamp(0.625rem,9.5cqi,1rem)] w-[clamp(0.625rem,9.5cqi,1rem)]",
+} as const;
+
+/* Slots sized for two lines of TYPE.body, so a pitch or bullet that wraps on a
+   narrow card can't knock the three cards out of step. Written out in full
+   rather than composed, so Tailwind can still see the class names. */
+const TWO_LINE_HEIGHT = "h-[clamp(1.5625rem,22.5cqi,2.1875rem)]";
+/* Taller than two lines of TYPE.body so a wrap on one card leaves a gap
+   before the next bullet, and every card's row N stays on the same line.
+   Four rows: the pitch (now a "special" starred perk) plus tenure and the
+   two selling points. */
+const TWO_LINE_ROWS = "grid-rows-[repeat(4,clamp(2.25rem,32cqi,3rem))]";
+
+/** Plan identity glyph. `custom` is covered for exhaustiveness only - custom
+ *  offers render through CustomOfferCard, never through PlanCard. */
+const PLAN_ICONS = {
+  lowest_interest: Lightning,
+  average: Scales,
+  lowest_instalment: Feather,
+  custom: Scales,
+} satisfies Record<OfferPlan["id"], typeof Lightning>;
+
+/** Ring + drop shadow drawn around the card body, outside the flipping faces.
+ *  Selection is carried entirely by this blue ring/glow plus the CTA below -
+ *  no background wash, so there's no color left to flash mid-flip. */
 function cardFrameShadow(isSelected: boolean): string {
   return isSelected
-    ? "0 0 0 3px var(--brand-blue-hex, #0033AA), 0 8px 24px oklch(0.32 0.14 260 / 0.12)"
-    : "0 0 0 1px var(--border-subtle), 0 4px 16px oklch(0.24 0.06 260 / 0.08), 0 1px 3px oklch(0.24 0.06 260 / 0.06)";
+    ? "0 0 0 2px var(--brand-blue-hex, #0033AA), 0 10px 26px oklch(0.32 0.14 260 / 0.28)"
+    : "0 0 0 1px var(--border-subtle), 0 1px 2px oklch(0.24 0.06 260 / 0.05)";
 }
 
 function PlanCard({
@@ -576,39 +653,67 @@ function PlanCard({
 }: PlanCardProps) {
   const isPopular = Boolean(plan.badge);
   const prefersReducedMotion = useReducedMotion();
+  const PlanIcon = PLAN_ICONS[plan.id];
+  // The pitch leads the list as its own "special" perk - a spinning star
+  // instead of a checkmark - rather than living in a separate colored band.
+  const features = [
+    { text: plan.pitch, special: true },
+    { text: `${plan.tenure}-month tenure`, special: false },
+    ...plan.sellingPoints.map((point) => ({ text: point, special: false })),
+  ];
 
   // `perspective` forces Chrome to rasterize the whole card as a 3D layer, which
   // softens its text. Mount it only while the card is mid-flip or showing its back.
   const [isFlipping, setIsFlipping] = useState(false);
 
+  // The card body and panels never change color for selection - only the
+  // ring/glow (outside the flip) and the CTA (below) do. Gating the one-shot
+  // shine on "settled" keeps it from playing mid-flip, when the front face
+  // isn't even in view.
+  const isSettledSelected = isSelected && !isFlipped;
+
+  // Bumped on every tap of the CTA so the click itself gets a quick shine,
+  // independent of the slower whole-panel sweep that plays once the card
+  // settles back into its selected state. Keyed by the counter so each tap
+  // remounts (and thus replays) the sweep even if the previous one hasn't
+  // finished.
+  const [ctaPulse, setCtaPulse] = useState(0);
+
   return (
-    <div className="relative h-full w-full">
-      {/* Ring + shadow live outside the flip so they frame the ribbon and the
-          card as one unit, and stay crisp while the faces rotate. */}
+    <div className="@container relative h-full w-full">
+      {/* Ring + shadow live outside the flip so they frame the card as one unit
+          and stay crisp while the faces rotate. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 rounded-[6px] transition-shadow duration-200"
+        className="pointer-events-none absolute inset-x-0 bottom-0 transition-shadow duration-200"
         style={{
-          top: isPopular ? 0 : RIBBON_HEIGHT,
+          top: isPopular ? 0 : PILL_SLOT_HEIGHT,
+          borderRadius: CARD_RADIUS,
           boxShadow: cardFrameShadow(isSelected),
         }}
       />
 
-      {/* Popular ribbon also sits outside the flip so it never rotates, mirrors,
-          or disappears when the details face comes forward. */}
+      {/* Full-width tab, flush with the card below: rounded top, square bottom,
+          like a header bar sitting on the card. Lives outside the flip so it
+          never rotates, mirrors, or disappears when the details face comes
+          forward. */}
       {isPopular && (
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-[3]"
-          style={{ height: RIBBON_HEIGHT }}
+          className="pointer-events-none absolute inset-x-0 top-0 z-[3] overflow-hidden"
+          style={{
+            height: PILL_SLOT_HEIGHT,
+            borderTopLeftRadius: CARD_RADIUS,
+            borderTopRightRadius: CARD_RADIUS,
+          }}
         >
-          {/* .popular-badge-glow sets position: relative, so the positioning has
-              to live on the wrapper above it. */}
+          {/* .popular-badge-glow supplies the pulse and the shine sweep; it sets
+              position: relative itself, so the text needs to sit above it. */}
           <div
-            className="popular-badge-glow flex h-full w-full items-center justify-center rounded-t-[6px]"
+            className="popular-badge-glow flex h-full w-full items-center justify-center"
             style={{ background: "#F5C518" }}
           >
             <span
-              className="relative z-[1] text-[8px] font-bold uppercase tracking-wide"
+              className={`relative z-[1] font-bold uppercase leading-none tracking-[0.08em] ${TYPE.pill}`}
               style={{ color: "#0a1628" }}
             >
               Popular
@@ -617,14 +722,20 @@ function PlanCard({
         </div>
       )}
 
-      {/* The front face stays in flow so the grid row keeps sizing to it; the
-          details face is layered on top, pre-rotated. */}
+      {/* Both faces sit in the same grid cell (grid-area 1/1) rather than one
+          in flow and the other absolutely positioned over it - that way the
+          card's natural height is the taller of the two faces, so the back
+          can never end up squeezed into less room than its content needs.
+          grid-cols-1 (minmax(0,1fr)) pins the column's width to the card
+          itself - without it, a grid item's default min-width:auto lets its
+          content push the column (and the card) wider than its neighbors,
+          which is what was bleeding one card's back face into the next. */}
       <div
         className="h-full w-full"
         style={{ perspective: isFlipped || isFlipping ? 1000 : undefined }}
       >
       <motion.div
-        className="relative flex h-full w-full flex-col"
+        className="relative grid h-full w-full grid-cols-1"
         style={{ transformStyle: "preserve-3d" }}
         animate={{ rotateY: isFlipped ? 180 : 0 }}
         onAnimationStart={() => setIsFlipping(true)}
@@ -637,8 +748,11 @@ function PlanCard({
       >
     <button
       type="button"
-      onClick={onSelect}
-      className="relative flex h-full w-full flex-col text-center focus:outline-none"
+      onClick={() => {
+        onSelect();
+        setCtaPulse((n) => n + 1);
+      }}
+      className="relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]"
       style={{
         backfaceVisibility: "hidden",
         WebkitBackfaceVisibility: "hidden",
@@ -648,130 +762,141 @@ function PlanCard({
       aria-hidden={isFlipped}
       tabIndex={isFlipped ? -1 : 0}
     >
-      {/* Reserved ribbon slot - keeps blue headers aligned across all three cards */}
-      <div className="w-full shrink-0" style={{ height: RIBBON_HEIGHT }} aria-hidden="true" />
+      {/* Reserved tab slot - keeps header panels aligned across all three cards */}
+      <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
 
       <div
         className="relative flex w-full flex-1 flex-col overflow-hidden"
         style={{
-          borderRadius: isPopular ? "0 0 6px 6px" : "6px",
+          borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
           background: "var(--surface-elevated)",
         }}
       >
-        {/* Plays once when the card becomes selected - a brief glassy sweep
-            that reads as premium feedback without tinting the resting card. */}
-        {isSelected && <div aria-hidden="true" className="selected-card-shine z-[2]" />}
+        {/* Plays once when the card settles into the selected state - a brief
+            glassy sweep that reads as premium feedback. Gated on
+            isSettledSelected (not raw isSelected) so it never plays mid-flip,
+            when the front face isn't even in view. */}
+        {isSettledSelected && <div aria-hidden="true" className="selected-card-shine z-[2]" />}
 
-        {/* Header - plan name + tenure, with shiny overlay */}
+        {/* Header - the plan's own gradient runs flush to the card's own edges,
+            clipped to its top corners by the parent's overflow-hidden, instead
+            of floating as a smaller inset panel. Only a bottom hairline marks
+            where it hands off to the white body below. */}
         <div
-          className="relative flex w-full shrink-0 flex-col items-center justify-center gap-0.5 overflow-hidden px-1 py-1.5 sm:gap-1 sm:px-1.5 sm:py-2"
-          style={{ background: "var(--brand-blue-hex)" }}
+          className="relative flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
+          style={{
+            background: PANEL_GRADIENTS[plan.id],
+            boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
+          }}
         >
-          {/* Corner sheen - kept off the centred text (which now spans two lines) by
-              sitting in the top-left and bottom-right corners rather than a middle sweep. */}
-          <div
+          {/* Big decorative glyph bleeding off the card's top-right corner -
+              the plan's identity as a watermark rather than a small inline
+              icon. Painted first (DOM order) so the name/price below it
+              layer on top without needing an explicit z-index. */}
+          <PlanIcon
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(130% 70% at 0% 0%, oklch(1 0 0 / 0.24) 0%, transparent 55%), radial-gradient(130% 70% at 100% 100%, oklch(1 0 0 / 0.14) 0%, transparent 55%)",
-            }}
+            weight="fill"
+            className="pointer-events-none absolute -right-3 -top-3 h-[clamp(3rem,52cqi,4.5rem)] w-[clamp(3rem,52cqi,4.5rem)] sm:-right-3.5 sm:-top-3.5"
+            style={{ color: WATERMARK_TINTS[plan.id], opacity: 0.28 }}
           />
+
           <span
-            className="relative min-w-0 max-w-full truncate text-[15px] font-semibold leading-snug text-white"
-            style={{
-              fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-              letterSpacing: "-0.02em",
-            }}
+            className={`min-w-0 truncate font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
+            style={{ color: "var(--text-primary)" }}
           >
             {shortPlanName(plan.title)}
           </span>
-          <span
-            className="relative inline-flex max-w-full items-center truncate rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-[0.04em] text-white sm:px-2.5 sm:text-[10px] sm:tracking-[0.06em]"
-            style={{ background: "oklch(1 0 0 / 0.18)" }}
+
+          {/* The monthly figure carries the most weight; tenure moves into the
+              feature list below so nothing competes with it. */}
+          <motion.div
+            key={plan.monthlyInstalment}
+            initial={{ opacity: 0.3 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25, ease: EASE }}
+            className="flex items-baseline gap-0.5 whitespace-nowrap"
           >
-            {plan.tenure} {plan.tenure === 1 ? "month" : "months"} tenure
-          </span>
+            <span
+              className={`tabular-nums font-extrabold leading-none tracking-[-0.04em] ${TYPE.price}`}
+              style={{ color: "var(--text-primary)" }}
+            >
+              {formatCurrency(plan.monthlyInstalment)}
+            </span>
+            <span
+              className={`font-semibold leading-none ${TYPE.priceUnit}`}
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              /mo
+            </span>
+          </motion.div>
+
         </div>
 
-        <div className="relative flex flex-1 flex-col items-center gap-4 px-2 py-3 sm:gap-6 sm:px-3 sm:py-5">
-          <div className="flex w-full flex-col items-center gap-2.5 sm:gap-3">
-            {/* Price block - tenure lives in the header above so the monthly figure
-                can carry the most visual weight. */}
-            <div className="flex w-full flex-col items-center gap-1">
-              <span
-                className="text-[9px] font-bold tracking-[0.1em] uppercase sm:text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Monthly
-              </span>
-              <motion.span
-                key={plan.monthlyInstalment}
-                initial={{ opacity: 0.3 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                className="tabular-nums text-[1.25rem] leading-none sm:text-[1.875rem]"
-                style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                  fontWeight: 600,
-                  color: isSelected ? "var(--brand-blue-hex)" : "var(--text-primary)",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {formatCurrency(plan.monthlyInstalment)}
-              </motion.span>
-            </div>
+        {/* Selling features - the pitch leads as its own starred perk
+            instead of living in a separate colored band. Carries its own
+            side/top padding now that the card body has none; flex-1 so it
+            absorbs whatever extra height items-stretch gives this card,
+            pinning the CTA below to the card's bottom edge. */}
+        <div className="flex flex-1 flex-col gap-2 px-3 pt-3 sm:gap-2.5 sm:px-3.5 sm:pt-3.5">
+          <ul className={`grid ${TWO_LINE_ROWS}`}>
+            {features.map((feature) => (
+              <li key={feature.text} className="flex items-start gap-1 sm:gap-1.5">
+                {feature.special ? (
+                  <motion.span
+                    className={`mt-px inline-flex shrink-0 ${TYPE.icon}`}
+                    animate={prefersReducedMotion ? undefined : { rotate: 360 }}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+                  >
+                    <Star weight="fill" className="h-full w-full" style={{ color: WATERMARK_TINTS[plan.id] }} />
+                  </motion.span>
+                ) : (
+                  <CheckCircle
+                    size={12}
+                    weight="bold"
+                    className={`mt-px shrink-0 ${TYPE.icon}`}
+                    style={{ color: "var(--brand-blue-hex)" }}
+                  />
+                )}
+                <span
+                  className={`min-w-0 font-medium leading-tight tracking-[-0.01em] ${TYPE.body}`}
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {feature.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-            {/* Benefit-led pitch, then proof points. Fixed slot heights keep the
-                pitch and bullet N aligned across all three cards. */}
-            <span
-              className="flex h-[2.25rem] w-full items-start justify-center text-[12px] font-bold leading-tight tracking-[-0.01em] sm:text-[14px]"
-              style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
-                color: isSelected ? "var(--brand-blue-hex)" : "var(--text-primary)",
-              }}
-            >
-              {plan.pitch}
-            </span>
-
-            <ul className="grid w-full grid-rows-[2rem_2rem] gap-1 text-left sm:gap-1.5">
-              {plan.sellingPoints.map((point) => (
-                <li key={point} className="flex min-h-0 items-start overflow-hidden">
-                  <span className="flex min-w-0 items-start gap-1 sm:gap-1.5">
-                    <CheckCircle
-                      size={13}
-                      weight="fill"
-                      className="mt-px shrink-0"
-                      style={{ color: "#22c55e" }}
-                    />
-                    <span
-                      className="min-w-0 text-[10.5px] font-semibold leading-snug sm:text-[12px]"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {point}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Pick-this-plan footer doubles as the selection indicator */}
+        {/* CTA footer - doubles as the selection indicator: resting cards
+            get a white ghost bar, the selected card gets a filled blue bar
+            plus the ring and glow drawn around the whole card. Flush to the
+            card's bottom corners, mirroring the header treatment above. */}
+        <div
+          className="relative flex shrink-0 items-center justify-center overflow-hidden px-3.5 py-2.5 sm:px-4 sm:py-3"
+          style={{
+            borderRadius: `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px`,
+            background: isSelected ? "var(--brand-blue-hex)" : CTA_GHOST_BG,
+            boxShadow: isSelected ? "none" : `inset 0 1px 0 0 ${HAIRLINE}`,
+          }}
+        >
+          {/* Quick tactile sweep on every tap - remounts on each ctaPulse
+              bump so rapid re-taps replay it instead of queuing. */}
+          {ctaPulse > 0 && <span key={ctaPulse} aria-hidden="true" className="cta-tap-shine" />}
           <span
-            className="mt-auto flex w-full shrink-0 items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-2 text-[10px] font-semibold leading-none transition-all duration-200 sm:py-2.5 sm:text-[12px]"
-            style={{
-              background: isSelected ? "var(--brand-blue-hex)" : "transparent",
-              color: isSelected ? "#ffffff" : "var(--text-secondary)",
-              border: isSelected ? "none" : "1.5px solid var(--border-medium)",
-            }}
+            className={`flex items-center justify-center gap-1 font-semibold leading-none ${TYPE.cta}`}
+            style={{ color: isSelected ? "#ffffff" : "var(--brand-blue-hex)" }}
           >
             {isSelected ? (
               <>
-                <CheckCircle size={13} weight="fill" />
+                <CheckCircle size={13} weight="fill" className={TYPE.icon} />
                 Selected
               </>
             ) : (
-              "Pick this plan"
+              <>
+                Pick this plan
+                <ArrowRight size={13} weight="bold" className={TYPE.icon} />
+              </>
             )}
           </span>
         </div>
@@ -786,77 +911,111 @@ function PlanCard({
           aria-label={`Hide the ${shortPlanName(plan.title)} breakdown`}
           tabIndex={isFlipped ? 0 : -1}
           aria-hidden={!isFlipped}
-          className="absolute inset-0 flex flex-col text-left focus:outline-none"
+          className="relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]"
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
           }}
         >
-          <div className="w-full shrink-0" style={{ height: RIBBON_HEIGHT }} aria-hidden="true" />
+          <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
           <div
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
             style={{
-              borderRadius: isPopular ? "0 0 6px 6px" : "6px",
+              borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
               background: "var(--surface-elevated)",
             }}
           >
+            {/* Ink-black on the flipped side - deliberately breaks from the
+                front's per-plan gradient so the two faces read as distinct
+                "sell" vs "detail" moods, matching the black "Tap to go back"
+                footer below. */}
             <div
-              className="flex shrink-0 items-center justify-between gap-1 px-1.5 py-1.5"
-              style={{ background: "var(--brand-blue-hex)" }}
+              className="flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
+              style={{
+                background: "#0a0a0a",
+                boxShadow: "inset 0 -1px 0 0 oklch(1 0 0 / 0.12)",
+              }}
             >
-              <span className="min-w-0 truncate text-[13px] font-semibold text-white sm:text-[15px]">
+              <div className="flex min-w-0 items-center gap-[3px] sm:gap-1.5">
+                <PlanIcon
+                  size={12}
+                  weight="bold"
+                  className={`shrink-0 ${TYPE.icon}`}
+                  style={{ color: "#ffffff" }}
+                />
+                <span
+                  className={`min-w-0 truncate font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
+                  style={{ color: "#ffffff" }}
+                >
+                  {shortPlanName(plan.title)}
+                </span>
+              </div>
+              {/* Replaces the price here - the monthly figure moved down
+                  into the figures list below, so this row now names what
+                  the rest of the face is showing. */}
+              <span
+                className={`font-extrabold leading-none tracking-[-0.02em] ${TYPE.price}`}
+                style={{ color: "#ffffff" }}
+              >
                 Breakdown
               </span>
-              <span
-                aria-hidden="true"
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
-                style={{ background: "oklch(1 0 0 / 0.18)" }}
-              >
-                <ArrowLeft size={10} weight="bold" />
-              </span>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col justify-center px-1.5">
-              {[
-                { label: "Monthly instalment", value: formatCurrency(plan.monthlyInstalment), isKey: true },
-                { label: "Tenure", value: `${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}` },
-                { label: "Interest rate", value: `Up to ${formatRate(plan.monthlyRate)}/mo` },
-                { label: "Processing fee", value: `Up to ${OFFER_MAX_PROCESSING_FEE_PCT}%` },
-                { label: "Total repayable", value: formatCurrency(plan.totalRepayment) },
-              ].map((row, index, rows) => (
-                <div
-                  key={row.label}
-                  className="flex flex-col gap-px py-[3px]"
-                  style={{
-                    borderBottom:
-                      index === rows.length - 1 ? "none" : "1px solid var(--separator)",
-                  }}
-                >
-                  <span
-                    className="text-[8px] font-bold uppercase leading-tight tracking-[0.06em] sm:text-[9px]"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {row.label}
-                  </span>
-                  <span
-                    className="tabular-nums text-[11px] font-semibold leading-tight sm:text-[12px]"
+            {/* Figures list. flex-1 so it absorbs whatever extra height
+                items-stretch gives this card. Bottom padding guarantees a
+                minimum gap above the "Tap to go back" footer even when
+                justify-center leaves little room of its own. */}
+            <div className="flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4">
+              <dl className="flex min-h-0 flex-1 flex-col justify-center">
+                {[
+                  { label: "Monthly instalment", value: `${formatCurrency(plan.monthlyInstalment)}/mo` },
+                  { label: "Tenure", value: `${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}` },
+                  { label: "Interest rate", value: `Up to ${formatRate(plan.monthlyRate)}/mo` },
+                  { label: "Processing fee", value: `Up to ${OFFER_MAX_PROCESSING_FEE_PCT}%` },
+                  { label: "Total repayable", value: formatCurrency(plan.totalRepayment) },
+                ].map((row, index) => (
+                  <div
+                    key={row.label}
+                    className="flex flex-col gap-px py-[3px] sm:py-1.5"
                     style={{
-                      color: row.isKey ? "var(--brand-blue-hex)" : "var(--text-primary)",
+                      borderTop: index === 0 ? "none" : `1px solid ${HAIRLINE}`,
                     }}
                   >
-                    {row.value}
-                  </span>
-                </div>
-              ))}
+                    <dt
+                      className={`font-bold uppercase leading-tight tracking-[0.07em] ${TYPE.label}`}
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {row.label}
+                    </dt>
+                    <dd
+                      className={`tabular-nums font-semibold leading-tight ${TYPE.body}`}
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
 
-            <span
-              className="shrink-0 px-1.5 pb-1.5 pt-1 text-[8px] leading-tight sm:text-[9px]"
-              style={{ color: "var(--text-tertiary)" }}
+            {/* Same footer-bar shape/padding as the front's CTA, but in its
+                own ink-black treatment so it reads as this face's distinct
+                action rather than a repeat of the front's blue CTA. */}
+            <div
+              className="relative flex shrink-0 items-center justify-center px-3.5 py-2.5 sm:px-4 sm:py-3"
+              style={{
+                borderRadius: `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px`,
+                background: "#0a0a0a",
+              }}
             >
-              Tap anywhere to go back
-            </span>
+              <span
+                className={`font-semibold leading-none ${TYPE.cta}`}
+                style={{ color: "#ffffff" }}
+              >
+                Tap to go back
+              </span>
+            </div>
           </div>
         </button>
       </motion.div>
