@@ -767,37 +767,46 @@ body:has(.theme-ios) {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--surface-sunken);
+  gap: 8px;
 }
 
+/* Every option carries its own raised surface, so the row reads as three
+   tappable choices instead of labels printed on a grey track. */
 .ios-segment-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 8px;
-  border: 1.5px solid transparent;
+  border: 1.5px solid var(--border-medium);
   border-radius: 999px;
-  background: transparent;
-  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.2;
   text-align: center;
+  box-shadow: 0 1px 2px oklch(0.24 0.06 260 / 0.07);
   transition:
     background-color 0.18s ease,
     border-color 0.18s ease,
+    box-shadow 0.18s ease,
     color 0.18s ease;
 }
 
 .ios-segment-item[data-selected="true"] {
-  background: var(--surface-elevated);
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--text-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 10px oklch(0.32 0.14 260 / 0.3);
+}
+
+@media (hover: hover) {
+  .ios-segment-item:not([data-selected="true"]):hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
 
 .ios-segment-item:active {
@@ -935,12 +944,21 @@ input[type="range"].ios-slider::-moz-range-thumb {
   z-index: 40;
   background: var(--surface-elevated);
   border-top: 1px solid var(--separator);
-  padding: 12px 20px max(12px, env(safe-area-inset-bottom));
+  padding: 0;
 }
 
-/* Full-bleed band (e.g. selected-plan strip) that cancels the footer's padding. */
-.ios-footer-bleed {
-  margin: -12px -20px 10px;
+/* Full-bleed strip above the padded CTA. :empty collapses it when AnimatePresence
+   has nothing to show, so the action padding still meets the top edge. */
+.ios-sticky-footer-banner:empty {
+  display: none;
+}
+
+.ios-sticky-footer:has(.ios-sticky-footer-banner:not(:empty)) {
+  border-top: none;
+}
+
+.ios-sticky-footer-action {
+  padding: 12px 20px max(12px, env(safe-area-inset-bottom));
 }
 
 /* Desktop: span the whole right pane (beside the blue sidebar), not the 520px form. */
@@ -950,32 +968,27 @@ input[type="range"].ios-slider::-moz-range-thumb {
     left: 42%;
     right: 0;
     bottom: 0;
+  }
+
+  .ios-sticky-footer-action {
     padding: 16px 48px;
   }
 
-  .ios-sticky-footer > * {
+  .ios-sticky-footer-action > * {
     width: 100%;
     max-width: 520px;
     margin-inline: auto;
-  }
-
-  .ios-sticky-footer > .ios-footer-bleed {
-    max-width: none;
-    width: auto;
-    margin: -16px -48px 10px;
   }
 }
 
 @media (min-width: 1280px) {
   .ios-sticky-footer {
     left: 38%;
-    padding-left: 80px;
-    padding-right: 80px;
   }
 
-  .ios-sticky-footer > .ios-footer-bleed {
-    margin-left: -80px;
-    margin-right: -80px;
+  .ios-sticky-footer-action {
+    padding-left: 80px;
+    padding-right: 80px;
   }
 }
 

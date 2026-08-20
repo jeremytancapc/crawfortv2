@@ -236,8 +236,8 @@ export type SegmentedOption<T extends string> = {
 };
 
 /**
- * iOS segmented control. Selected segment is white with an accent border;
- * unselected segments sit flat on the sunken track.
+ * Segmented control. Every option is a raised outlined pill so the row reads as
+ * tappable; the selected one fills with the accent colour.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -324,12 +324,28 @@ export function StepperRow({
   );
 }
 
-/** Bottom action bar that stays in view and clears the iPhone home indicator. */
-export function StickyFooter({ children }: { children: ReactNode }) {
+/** Bottom action bar that stays in view and clears the iPhone home indicator.
+ *  Pass `banner` for a full-bleed strip (e.g. selected-plan) that sits flush
+ *  to the bar's top edge and spans the whole right pane on desktop. */
+export function StickyFooter({
+  banner,
+  children,
+}: {
+  banner?: ReactNode;
+  children: ReactNode;
+}) {
+  const hasBanner = banner != null;
   return (
     <>
-      <div className="hidden shrink-0 lg:block" style={{ height: 84 }} aria-hidden />
-      <div className="ios-sticky-footer">{children}</div>
+      <div
+        className="hidden shrink-0 lg:block"
+        style={{ height: hasBanner ? 120 : 84 }}
+        aria-hidden
+      />
+      <div className="ios-sticky-footer">
+        {hasBanner ? <div className="ios-sticky-footer-banner">{banner}</div> : null}
+        <div className="ios-sticky-footer-action">{children}</div>
+      </div>
     </>
   );
 }
