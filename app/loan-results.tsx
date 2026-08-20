@@ -885,9 +885,8 @@ function PlanCard({
             plus the ring and glow drawn around the whole card. Flush to the
             card's bottom corners, mirroring the header treatment above. */}
         <div
-          className="relative flex shrink-0 items-center justify-center overflow-hidden px-3.5 py-2.5 sm:px-4 sm:py-3"
+          className="relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center overflow-hidden px-3.5 py-2.5 sm:px-4 sm:py-3"
           style={{
-            borderRadius: `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px`,
             background: isSelected ? "var(--brand-blue-hex)" : CTA_GHOST_BG,
             boxShadow: isSelected ? "none" : `inset 0 1px 0 0 ${HAIRLINE}`,
           }}
@@ -935,7 +934,7 @@ function PlanCard({
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
             style={{
               borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
-              background: "var(--surface-elevated)",
+              background: "#0a0a0a",
             }}
           >
             {/* Ink-black on the flipped side - deliberately breaks from the
@@ -978,7 +977,10 @@ function PlanCard({
                 items-stretch gives this card. Bottom padding guarantees a
                 minimum gap above the "Tap to go back" footer even when
                 justify-center leaves little room of its own. */}
-            <div className="flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4">
+            <div
+              className="flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4"
+              style={{ background: "var(--surface-elevated)" }}
+            >
               <dl className="flex min-h-0 flex-1 flex-col justify-center">
                 {[
                   { label: "Monthly instalment", value: `${formatCurrency(plan.monthlyInstalment)}/mo` },
@@ -1015,9 +1017,8 @@ function PlanCard({
                 own ink-black treatment so it reads as this face's distinct
                 action rather than a repeat of the front's blue CTA. */}
             <div
-              className="relative flex shrink-0 items-center justify-center px-3.5 py-2.5 sm:px-4 sm:py-3"
+              className="relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center px-3.5 py-2.5 sm:px-4 sm:py-3"
               style={{
-                borderRadius: `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px`,
                 background: "#0a0a0a",
               }}
             >
@@ -1504,11 +1505,10 @@ function SelectedPlanStrip({
     : { type: "spring" as const, stiffness: 520, damping: 28, mass: 0.7 };
 
   return (
-    /* Bleeds through the footer's own padding (-mt-3 / -mx-5) so it reads as a
-       band clipped to the footer's top edge rather than a chip floating in
-       white space. */
+    /* `.ios-footer-bleed` cancels the footer's padding so this reads as a band
+       clipped to the footer's top edge — full right-pane width on desktop. */
     <motion.div
-      className="-mx-5 -mt-3 mb-2.5 flex items-center justify-center gap-1.5 px-5 py-2"
+      className="ios-footer-bleed flex items-center justify-center gap-1.5 px-5 py-2"
       style={{
         background: PANEL_GRADIENTS[planId],
         boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,

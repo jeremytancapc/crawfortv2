@@ -459,7 +459,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
     <div className="animate-fade-up flex flex-col gap-8">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div
-        className="relative flex flex-col gap-2"
+        className={hideHeaderOnMobile ? "relative hidden flex-col gap-2 lg:flex" : "relative flex flex-col gap-2"}
         style={{
           opacity: 0,
           animation: "fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0ms both",
@@ -479,32 +479,21 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             <ArrowLeft size={14} weight="bold" />
           </button>
         )}
-        {hideHeaderOnMobile && (
-          <div className="flex flex-col gap-1 lg:hidden">
-            <p className="font-display text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-              Book Appointment
-            </p>
-            <p className="text-sm leading-snug text-[var(--text-secondary)]">
-              The whole visit takes around 30 minutes.
-            </p>
-          </div>
-        )}
         <div className={hideHeaderOnMobile ? "hidden flex-col gap-2 lg:flex" : "flex flex-col gap-2"}>
           <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-brand-blue/[0.06]">
             <CalendarBlank size={18} weight="duotone" className="text-brand-blue" />
           </div>
           <h2 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-            Pick a time to collect your funds
+            Pick a collection time
           </h2>
           <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
-            A physical visit is required for KYC and AML under local regulations.
+            The visit only takes around 30 minutes.
           </p>
         </div>
       </div>
 
       {/* ── Relationship Manager image ───────────────────────── */}
       <div
-        className={hideHeaderOnMobile ? "-mt-4 lg:mt-0" : undefined}
         style={{
           opacity: 0,
           animation: "fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 40ms both",
@@ -558,11 +547,11 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             <ul className="mt-1.5 flex flex-col gap-1.5 font-normal text-[var(--text-secondary)]">
               <li className="flex items-start gap-1.5">
                 <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>
-                  5–7 mins walk from City Hall MRT (Exit B)
-                  <br />
-                  or Clarke Quay MRT (Exit E)
-                </span>
+                <span>City Hall MRT (6 mins walk)</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>Clarke Quay MRT (7 mins walk)</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />

@@ -68,12 +68,12 @@ export function BookingView({ formData }: Props) {
       sidebarTitle="Book your appointment"
       sidebarSubtitle="Choose a date and time that works best for you to visit our office."
     >
-      <div className="shrink-0 px-5 pb-6 pt-7">
+      <div className="shrink-0 px-5 pb-4 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
-          Pick a time to collect your funds
+          Pick a collection time
         </h1>
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
-          A physical visit is required for KYC and AML under local regulations.
+          The visit only takes around 30 minutes.
         </p>
       </div>
       <div className="flex-1 px-5 pb-8">
