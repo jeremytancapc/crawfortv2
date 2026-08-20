@@ -938,6 +938,11 @@ input[type="range"].ios-slider::-moz-range-thumb {
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
 }
 
+/* Full-bleed band (e.g. selected-plan strip) that cancels the footer's padding. */
+.ios-footer-bleed {
+  margin: -12px -20px 10px;
+}
+
 /* Desktop: span the whole right pane (beside the blue sidebar), not the 520px form. */
 @media (min-width: 1024px) {
   .ios-sticky-footer {
@@ -953,6 +958,12 @@ input[type="range"].ios-slider::-moz-range-thumb {
     max-width: 520px;
     margin-inline: auto;
   }
+
+  .ios-sticky-footer > .ios-footer-bleed {
+    max-width: none;
+    width: auto;
+    margin: -16px -48px 10px;
+  }
 }
 
 @media (min-width: 1280px) {
@@ -960,6 +971,11 @@ input[type="range"].ios-slider::-moz-range-thumb {
     left: 38%;
     padding-left: 80px;
     padding-right: 80px;
+  }
+
+  .ios-sticky-footer > .ios-footer-bleed {
+    margin-left: -80px;
+    margin-right: -80px;
   }
 }
 

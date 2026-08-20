@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
-  MapPin,
-  Clock,
-  ArrowSquareOut,
   CheckCircle,
-  Train,
-  Car,
-  DownloadSimple,
+  ClockCountdown,
+  WhatsappLogo,
+  ArrowUpRight,
   Copy,
   Check,
 } from "@phosphor-icons/react";
 import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
 
+const MOBILE_APP_URL = "https://crawfort.com/mobileapp";
+
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const FULL_DAY_LABELS = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+];
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -24,6 +27,18 @@ function formatDisplayDate(isoDate: string): string {
   const [y, mo, d] = isoDate.split("-").map(Number);
   const date = new Date(y, mo - 1, d);
   return `${DAY_LABELS[date.getDay()]}, ${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+/** Split parts for the calendar chip + headline in the ticket card. */
+function getDateParts(isoDate: string) {
+  const [y, mo, d] = isoDate.split("-").map(Number);
+  const date = new Date(y, mo - 1, d);
+  return {
+    month: MONTH_LABELS[date.getMonth()].toUpperCase(),
+    day: String(date.getDate()),
+    weekday: FULL_DAY_LABELS[date.getDay()],
+    full: `${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`,
+  };
 }
 
 function formatDisplayTime(slot: string): string {
@@ -105,160 +120,6 @@ function formatThingsToBringForShare(idType: "sg_pr" | "foreigner"): string {
   return lines.join("\n");
 }
 
-function GlowingDot({ color }: { color: "green" | "blue" }) {
-  const dotColor = color === "green" ? "#22c55e" : "var(--brand-blue-hex, #0033AA)";
-  return (
-    <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
-      <span
-        className="absolute inline-flex h-full w-full rounded-full animate-ping"
-        style={{ background: dotColor, opacity: 0.55 }}
-      />
-      <span
-        className="relative inline-flex h-2 w-2 rounded-full"
-        style={{
-          background: dotColor,
-          boxShadow: color === "green"
-            ? "0 0 8px #22c55e88"
-            : "0 0 8px oklch(0.32 0.14 260 / 0.45)",
-        }}
-      />
-    </span>
-  );
-}
-
-function BringGroupSection({
-  label,
-  dotColor,
-  headerSub,
-  items,
-}: {
-  label: string;
-  dotColor: "green" | "blue";
-  headerSub?: string;
-  items: BringItem[];
-}) {
-  const iconColor = dotColor === "green" ? "#22c55e" : "var(--brand-blue-hex, #0033AA)";
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center gap-2">
-          <GlowingDot color={dotColor} />
-          <span
-            className="text-xs sm:text-[10px] font-bold tracking-[0.16em] uppercase"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {label}
-          </span>
-        </div>
-        {headerSub && (
-          <p className="text-xs sm:text-[11px] leading-snug pl-4" style={{ color: "var(--text-tertiary)" }}>
-            {headerSub}
-          </p>
-        )}
-      </div>
-      <ul className="flex flex-col gap-3 pl-4">
-        {items.map((item) => (
-          <li key={item.title} className="flex items-start gap-2.5">
-            <CheckCircle
-              size={16}
-              weight="duotone"
-              className="mt-0.5 shrink-0"
-              color={iconColor}
-            />
-            <span className="flex flex-col gap-0.5 min-w-0">
-              <span
-                className="text-sm sm:text-[13px] font-semibold leading-snug"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {item.title}
-                {item.titleSuffix && (
-                  <>
-                    <br className="sm:hidden" />
-                    <span className="hidden sm:inline"> </span>
-                    {item.titleSuffix}
-                  </>
-                )}
-              </span>
-              {item.subItems ? (
-                <ul className="flex flex-col gap-0.5 mt-0.5">
-                  {item.subItems.map((line) => (
-                    <li
-                      key={line}
-                      className="flex gap-1.5 text-xs sm:text-[11px] leading-relaxed"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      <span className="flex h-[1.625em] shrink-0 items-center" aria-hidden="true">
-                        <span className="h-1 w-1 rounded-full bg-[var(--text-tertiary)] opacity-60" />
-                      </span>
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              ) : item.sub ? (
-                <span
-                  className="text-xs sm:text-[11px] leading-relaxed"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {item.sub}
-                </span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function WhatToBring({ idType }: { idType: string }) {
-  const defaultTab = idType === "foreigner" ? "foreigner" : "sg_pr";
-  const [tab, setTab] = useState<"sg_pr" | "foreigner">(defaultTab as "sg_pr" | "foreigner");
-  const group = getWhatToBring()[tab];
-
-  return (
-    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5 text-left">
-      <p className="text-sm sm:text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-        Things to bring
-      </p>
-
-      <div className="flex gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-1 w-fit">
-        {(["sg_pr", "foreigner"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className="rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-200"
-            style={{
-              background: tab === t ? "var(--brand-teal-hex)" : "var(--surface-elevated)",
-              color: tab === t ? "var(--text-primary)" : "var(--text-secondary)",
-              boxShadow: tab === t ? "none" : "0 0 0 1px var(--border-subtle)",
-            }}
-          >
-            {t === "sg_pr" ? "Singaporean / PR" : "Foreigner"}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <BringGroupSection
-          label="Must have"
-          dotColor="green"
-          items={group.mustHave}
-        />
-        {group.goodToHave && group.goodToHave.length > 0 && (
-          <BringGroupSection
-            label="Good to have"
-            dotColor="blue"
-            headerSub="Can help increase your loan amount"
-            items={group.goodToHave}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
 interface BookingConfirmedViewProps {
   booking: StoredBookingConfirmation;
 }
@@ -304,132 +165,144 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
   };
 
 
+  const { month, day, weekday, full } = getDateParts(booking.date);
+
   return (
-    <div className="animate-fade-up flex flex-col gap-8 pt-6 text-center sm:pt-0 sm:text-left">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-center gap-2 sm:justify-start">
-          <CheckCircle
-            size={18}
-            weight="duotone"
-            className="shrink-0 text-brand-teal"
-          />
-          <span className="text-xs font-semibold uppercase tracking-widest text-[var(--text-tertiary)]">
+    <div className="animate-fade-up flex flex-col gap-3.5 text-left">
+      {/* Appointment ticket ------------------------------------------------ */}
+      <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)]">
+        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] bg-brand-teal/12 px-5 py-2.5">
+          <CheckCircle size={17} weight="fill" className="shrink-0 text-[oklch(0.55_0.13_178)]" />
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
             Appointment confirmed
           </span>
         </div>
-        <div>
-          <p className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-            {formatDisplayDate(booking.date)}
-          </p>
-          <p className="mt-1 text-lg font-semibold text-brand-blue">
-            {formatDisplayTime(booking.time)}
-          </p>
-          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+
+        <div className="flex items-center gap-4 px-5 py-5">
+          <div
+            className="flex h-[62px] w-[58px] shrink-0 flex-col items-center justify-center rounded-[14px] text-white"
+            style={{ background: "var(--brand-blue-hex)" }}
+            aria-hidden="true"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] opacity-70">
+              {month}
+            </span>
+            <span className="text-[26px] font-bold leading-none">{day}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+              {weekday}, {full}
+            </p>
+            <p className="mt-0.5 text-[28px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
+              {formatDisplayTime(booking.time)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 border-t border-[var(--border-subtle)] px-5 py-3">
+          <ClockCountdown size={16} weight="regular" className="mt-px shrink-0 text-[var(--text-tertiary)]" />
+          <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
             Kindly arrive on time so we can serve you promptly.
           </p>
         </div>
-        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-          <button
-            type="button"
-            onClick={handleShare}
-            className="flex items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-          >
-            <DownloadSimple size={16} weight="bold" />
-            Save Details on WhatsApp
-          </button>
-        </div>
-      </div>
 
-      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-4 text-left">
-        <p className="text-xs text-[var(--text-tertiary)]">Application reference</p>
-        <div className="mt-0.5 flex items-center gap-2.5">
-          <p className="font-display text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-            {booking.cfh5Id}
-          </p>
+        <div className="flex items-center justify-between gap-3 border-t border-dashed border-white/25 bg-black px-5 py-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">
+              Application reference
+            </p>
+            <p className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-white">
+              {booking.cfh5Id}
+            </p>
+          </div>
           <button
             type="button"
             onClick={handleCopyRef}
             aria-label="Copy reference number"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded transition-opacity duration-150 hover:opacity-60 active:scale-95"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-opacity duration-150 hover:opacity-60 active:scale-95"
           >
             {copied
-              ? <Check size={20} weight="bold" style={{ color: "var(--text-primary)" }} />
-              : <Copy size={20} weight="regular" style={{ color: "var(--text-primary)" }} />
+              ? <Check size={19} weight="bold" />
+              : <Copy size={19} weight="regular" />
             }
           </button>
         </div>
-      </div>
+      </section>
 
-      <WhatToBring idType={idType} />
+      {/* WhatsApp ---------------------------------------------------------- */}
+      <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5">
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "oklch(0.72 0.17 145 / 0.16)" }}
+          >
+            <WhatsappLogo size={22} weight="fill" style={{ color: "oklch(0.58 0.16 148)" }} />
+          </span>
+          <p className="text-[16px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+            Details are on the way
+          </p>
+        </div>
+        <p className="mt-3 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+          We&apos;ll WhatsApp your appointment time, our office address and the
+          documents to bring to the number on your application.
+        </p>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-[var(--border-medium)] bg-[var(--surface-elevated)] px-4 text-[15px] font-semibold text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-secondary)] active:scale-[0.98]"
+        >
+          <WhatsappLogo size={18} weight="fill" />
+          Save details on WhatsApp
+        </button>
+      </section>
 
-      <div className="flex flex-col gap-4 text-left">
-        <div className="relative h-44 w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
-          <img
-            src="/images/cf-money-shopfront.jpg"
-            alt="CF Money office shopfront at 1 North Bridge Road"
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: "35% center", transform: "scale(1.35)", transformOrigin: "35% center" }}
-            loading="lazy"
+      {/* Crawfort app ------------------------------------------------------ */}
+      <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/images/crawfort-app-logo.png"
+            alt="Crawfort app"
+            width={1000}
+            height={1000}
+            className="h-10 w-10 shrink-0"
           />
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-blue">
+              Before your appointment
+            </p>
+            <p className="text-[16px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+              Download the Crawfort app
+            </p>
+          </div>
         </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">
-              Our office
-            </h3>
-            <a
-              href="https://maps.app.goo.gl/Cs9Av94qW3NHh7wY6"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-brand-blue transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+        <p className="mt-3 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+          Set it up before you come in so we can serve you faster on the day.
+          You&apos;ll keep using it after your loan starts.
+        </p>
+        <p className="mt-3.5 text-[12px] font-semibold text-[var(--text-tertiary)]">
+          Also used for
+        </p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {["Loan contract", "Payments", "Loan details"].map((label) => (
+            <span
+              key={label}
+              className="rounded-full bg-[var(--surface-secondary)] px-2.5 py-1 text-[12px] font-semibold text-[var(--text-secondary)]"
             >
-              View on Google Maps
-              <ArrowSquareOut size={14} weight="bold" />
-            </a>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <MapPin size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
-            <div>
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                1 North Bridge Road, High Street Centre
-              </p>
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                #01-35, Singapore 179094
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <Clock size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
-            <div>
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                Mon - Sat &nbsp;&middot;&nbsp; 10:30am - 7:30pm
-              </p>
-              <p className="text-sm text-[var(--text-tertiary)]">
-                Closed on Sundays &amp; Public Holidays
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <Train size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
-            <p className="text-sm font-medium text-[var(--text-primary)]">
-              City Hall MRT (Exit B) or Clarke Quay MRT (Exit E)
-            </p>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <Car size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
-            <p className="text-sm font-medium text-[var(--text-primary)]">
-              Multi-storey carpark in the building
-            </p>
-          </div>
+              {label}
+            </span>
+          ))}
         </div>
-      </div>
-
-      <div className="pb-1" />
+        <a
+          href={MOBILE_APP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-full px-4 text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+          style={{ background: "var(--brand-blue-hex)" }}
+        >
+          Get the app
+          <ArrowUpRight size={17} weight="bold" />
+        </a>
+      </section>
     </div>
   );
 }
