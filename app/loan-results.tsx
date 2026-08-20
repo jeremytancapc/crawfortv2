@@ -1505,10 +1505,9 @@ function SelectedPlanStrip({
     : { type: "spring" as const, stiffness: 520, damping: 28, mass: 0.7 };
 
   return (
-    /* `.ios-footer-bleed` cancels the footer's padding so this reads as a band
-       clipped to the footer's top edge — full right-pane width on desktop. */
+    /* Full-bleed in the footer's banner slot — no padding, no 520px cap. */
     <motion.div
-      className="ios-footer-bleed flex items-center justify-center gap-1.5 px-5 py-2"
+      className="flex w-full items-center justify-center gap-1.5 px-5 py-2"
       style={{
         background: PANEL_GRADIENTS[planId],
         boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
@@ -2090,17 +2089,21 @@ export function LoanResults({
       </div>
       </div>
 
-      <StickyFooter>
-        {/* Keyed by plan so switching plans replays the pop rather than
-            cross-fading one label into the next. */}
+      <StickyFooter
+        banner={
+          <AnimatePresence mode="wait" initial={false}>
+            {selectionLabel && selectedPlanId ? (
+              <SelectedPlanStrip
+                key={selectedPlanId}
+                planId={selectedPlanId}
+                label={selectionLabel}
+              />
+            ) : null}
+          </AnimatePresence>
+        }
+      >
         <AnimatePresence mode="wait" initial={false}>
-          {selectionLabel && selectedPlanId ? (
-            <SelectedPlanStrip
-              key={selectedPlanId}
-              planId={selectedPlanId}
-              label={selectionLabel}
-            />
-          ) : footerHint ? (
+          {footerHint ? (
             <motion.p
               key="hint"
               className="mb-2 text-center text-[13px] text-[var(--text-secondary)]"
