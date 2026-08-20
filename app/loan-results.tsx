@@ -20,7 +20,7 @@ import {
   SlidersHorizontal,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildOfferPlans,
@@ -602,6 +602,15 @@ const WATERMARK_TINTS = {
   average: "oklch(0.55 0.11 95)",
   lowest_instalment: "oklch(0.55 0.1 175)",
   custom: "oklch(0.52 0.13 305)",
+} satisfies Record<OfferPlan["id"], string>;
+
+/** Darker sibling of WATERMARK_TINTS in the same hue - low enough in
+ *  lightness to hold small text on top of that plan's PANEL_GRADIENTS. */
+const PLAN_INK = {
+  lowest_interest: "oklch(0.40 0.13 258)",
+  average: "oklch(0.40 0.09 95)",
+  lowest_instalment: "oklch(0.38 0.08 175)",
+  custom: "oklch(0.40 0.14 305)",
 } satisfies Record<OfferPlan["id"], string>;
 
 /* Three cards share one narrow column - barely 100px each at 360px - so type is
@@ -1479,6 +1488,58 @@ function PlanPicker({
   );
 }
 
+/** Receipt strip above the sticky CTA - names the plan the customer just
+ *  tapped, in that plan's own colours, so the choice is confirmed where
+ *  their thumb already is instead of only on a card further up the page. */
+function SelectedPlanStrip({
+  planId,
+  label,
+}: {
+  planId: OfferPlan["id"];
+  label: string;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const pop = prefersReducedMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 520, damping: 28, mass: 0.7 };
+
+  return (
+    /* Bleeds through the footer's own padding (-mt-3 / -mx-5) so it reads as a
+       band clipped to the footer's top edge rather than a chip floating in
+       white space. */
+    <motion.div
+      className="-mx-5 -mt-3 mb-2.5 flex items-center justify-center gap-1.5 px-5 py-2"
+      style={{
+        background: PANEL_GRADIENTS[planId],
+        boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
+      }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 4 }}
+      transition={pop}
+    >
+      <motion.span
+        className="inline-flex"
+        initial={{ scale: 0.2 }}
+        animate={{ scale: 1 }}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { type: "spring", stiffness: 700, damping: 16, delay: 0.06 }
+        }
+      >
+        <CheckCircle size={15} weight="fill" style={{ color: WATERMARK_TINTS[planId] }} />
+      </motion.span>
+      <span
+        className="text-[13px] font-semibold leading-none"
+        style={{ color: PLAN_INK[planId] }}
+      >
+        {label}
+      </span>
+    </motion.div>
+  );
+}
+
 // ── Reconsider Modal ──────────────────────────────────────────────────────────
 
 const SURVEY_REASONS = [
@@ -1935,6 +1996,17 @@ export function LoanResults({
       ? "Enter the loan amount and tenure for your custom plan."
       : null;
 
+  /** Only once the choice is actually actionable - a custom request still
+   *  missing its figures keeps showing the hint instead. */
+  const selectionLabel = footerHint
+    ? null
+    : isCustomSelected
+      ? "Your own plan selected"
+      : (() => {
+          const plan = plans.find((p) => p.id === selectedPlanId);
+          return plan ? `${shortPlanName(plan.title)} plan selected` : null;
+        })();
+
   return (
     <>
       <div className="flex-1 px-5 pb-8">
@@ -2019,11 +2091,28 @@ export function LoanResults({
       </div>
 
       <StickyFooter>
-        {footerHint && (
-          <p className="mb-2 text-center text-[13px] text-[var(--text-secondary)]">
-            {footerHint}
-          </p>
-        )}
+        {/* Keyed by plan so switching plans replays the pop rather than
+            cross-fading one label into the next. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {selectionLabel && selectedPlanId ? (
+            <SelectedPlanStrip
+              key={selectedPlanId}
+              planId={selectedPlanId}
+              label={selectionLabel}
+            />
+          ) : footerHint ? (
+            <motion.p
+              key="hint"
+              className="mb-2 text-center text-[13px] text-[var(--text-secondary)]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {footerHint}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
         {isExpired ? (
           <PrimaryButton onClick={() => { window.location.href = "/"; }}>
             Start a New Application
