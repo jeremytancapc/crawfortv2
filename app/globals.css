@@ -85,9 +85,13 @@ body::before {
   will-change: transform;
 }
 
-/* Prevent iOS Safari auto-zoom on input focus (triggered when font-size < 16px) */
+/* Prevent iOS Safari auto-zoom on input focus (triggered when font-size < 16px).
+   .ios-display-input is excluded - those fields already render well above
+   16px (34-52px) and this plain-element rule is unlayered CSS, so it would
+   otherwise always beat their layered Tailwind text-[Npx] utility on Safari,
+   silently shrinking them back down to 16px regardless of specificity. */
 @supports (-webkit-touch-callout: none) {
-  input,
+  input:not(.ios-display-input),
   select,
   textarea {
     font-size: 16px;
