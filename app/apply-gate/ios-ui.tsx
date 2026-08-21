@@ -33,10 +33,10 @@ export function MobileGateHeader({
   progressTotal?: number;
 }) {
   return (
-    <header className="relative z-10 flex h-14 shrink-0 items-center justify-between gap-3 bg-[var(--brand-blue-hex)] px-5 lg:hidden">
+    <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 bg-[var(--brand-blue-hex)] px-5 py-4 lg:hidden">
       <Link
         href="/"
-        className="flex h-11 min-w-0 items-center"
+        className="flex min-h-11 min-w-0 items-center"
         aria-label="Crawfort home"
       >
         {/* Scales down rather than pushing the badge out on narrow phones. */}
