@@ -15,7 +15,7 @@ import {
 } from "@/app/apply-gate/ios-ui";
 
 const MIN_AMOUNT = 500;
-const MAX_AMOUNT = 20000;
+const MAX_AMOUNT = 100000;
 const AMOUNT_STEP = 500;
 
 /** Shorter labels than the funnel defaults - the segments are narrow on a phone. */
@@ -157,7 +157,7 @@ export function GateStepAmount({
 
           <div className="flex justify-between text-[13px] text-[var(--text-secondary)]">
             <span>$500</span>
-            <span>$20,000+</span>
+            <span>${MAX_AMOUNT.toLocaleString("en-SG")}+</span>
           </div>
         </Card>
       </section>
