@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CaretLeft, CaretRight, File, FileArrowUp, Info, X } from "@phosphor-icons/react";
+import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
 import {
   Card,
@@ -12,6 +12,7 @@ import {
   PrimaryButton,
   SectionLabel,
   StickyFooter,
+  type StepNavControls,
 } from "@/app/apply-gate/ios-ui";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
@@ -27,6 +28,7 @@ const PROCESSING_STATUSES = [
 ];
 
 const DUMMY_MONTHLY_INCOMES = [4280, 4150, 4200];
+const DEMO_EMPLOYER = "Grab Holdings Limited";
 
 type SelectedFile = {
   id: string;
@@ -52,12 +54,17 @@ function lastThreeMonthNames(from: Date = new Date()): string {
     .join(", ");
 }
 
-function lastThreeMonths(from: Date = new Date()): { label: string; amount: number }[] {
+function lastThreeMonths(
+  from: Date = new Date(),
+): { label: string; month: string; year: string; amount: number; employer: string }[] {
   return lastThreeMonthDates(from)
     .reverse()
     .map((date, index) => ({
       label: date.toLocaleDateString("en-SG", { month: "long", year: "numeric" }),
+      month: date.toLocaleDateString("en-SG", { month: "long" }),
+      year: date.toLocaleDateString("en-SG", { year: "numeric" }),
       amount: DUMMY_MONTHLY_INCOMES[index],
+      employer: DEMO_EMPLOYER,
     }));
 }
 
@@ -132,33 +139,17 @@ export function VerifyIncomeForm({
     };
   }, []);
 
+  // Forward only ever happens through the footer action on this step.
+  const stepNav: StepNavControls = {
+    back: { onClick: handleBack, disabled: isProcessing },
+    next: { disabled: true },
+  };
+
   return (
     <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet>
-      <GateStepNav
-        leading={
-          <button
-            type="button"
-            onClick={handleBack}
-            disabled={isProcessing}
-            aria-label="Previous step"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-          >
-            <CaretLeft size={16} weight="bold" />
-          </button>
-        }
-        trailing={
-          <button
-            type="button"
-            disabled
-            aria-label="Next step"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] disabled:pointer-events-none disabled:opacity-30"
-          >
-            <CaretRight size={16} weight="bold" />
-          </button>
-        }
-      />
+      <GateStepNav nav={stepNav} />
 
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
@@ -179,22 +170,27 @@ export function VerifyIncomeForm({
               <Card>
                 {incomeMonths.map((month) => (
                   <CardRow key={month.label}>
-                    <span className="text-[17px] leading-tight text-[var(--text-primary)]">
-                      {month.label}
+                    <span className="min-w-0">
+                      <span className="block text-[17px] leading-tight text-[var(--text-primary)]">
+                        {month.month} {month.year}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[13px] text-[var(--text-secondary)]">
+                        {month.employer}
+                      </span>
                     </span>
-                    <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
+                    <span className="shrink-0 text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
                       {formatCurrency(month.amount)}
                     </span>
                   </CardRow>
                 ))}
-                <CardRow>
-                  <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
+                <div className="flex items-center justify-between gap-3 bg-brand-teal/14 px-4 py-3.5">
+                  <span className="text-[17px] font-semibold leading-tight text-[var(--brand-blue-hex)]">
                     Monthly average
                   </span>
-                  <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
+                  <span className="text-[20px] font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
                     {formatCurrency(averageIncome)}
                   </span>
-                </CardRow>
+                </div>
               </Card>
             </section>
           </div>
@@ -302,7 +298,7 @@ export function VerifyIncomeForm({
         )}
       </div>
 
-      <StickyFooter>
+      <StickyFooter nav={stepNav}>
         {showResults ? (
           <PrimaryButton onClick={continueToReview}>Review Application</PrimaryButton>
         ) : (

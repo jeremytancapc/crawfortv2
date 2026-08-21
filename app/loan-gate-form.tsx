@@ -13,8 +13,14 @@ import {
   Step3_SingpassGate,
 } from "@/app/loan-application-form";
 import { GateStepAmount } from "@/app/apply-gate/gate-step-amount";
-import { GateStepNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import {
+  GateStepNav,
+  MobileGateHeader,
+  MobileGateSheet,
+  PrimaryButton,
+  StickyFooter,
+  type StepNavControls,
+} from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
 import { setApplyProgressStep } from "@/lib/apply-progress-store";
 
@@ -158,6 +164,10 @@ export function LoanGateForm({
   const canGoBack = !step3RedirectPending;
   const canGoForward = Boolean(canProceed) && step < GATE_LAST_STEP;
   const showActionBar = step !== 3;
+  const stepNav: StepNavControls = {
+    back: { onClick: handleBack, disabled: step === 1 || !canGoBack },
+    next: { onClick: handleNext, disabled: mounted && !canGoForward },
+  };
   const progressStep =
     step === 1
       ? APPLY_PROGRESS.amount
@@ -177,34 +187,7 @@ export function LoanGateForm({
     <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={progressStep} />
       <MobileGateSheet>
-      <GateStepNav
-          leading={
-            step === 1 ? undefined : (
-            <button
-              type="button"
-              onClick={handleBack}
-              disabled={!canGoBack}
-              aria-label="Previous step"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-            >
-              <CaretLeft size={16} weight="bold" />
-            </button>
-            )
-          }
-          trailing={
-            step === 1 ? undefined : (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={mounted && !canGoForward}
-              aria-label="Next step"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-            >
-              <CaretRight size={16} weight="bold" />
-            </button>
-            )
-          }
-        />
+      <GateStepNav nav={stepNav} />
 
       {stepMeta && (
         <div className="shrink-0 px-5 pb-6 pt-7">
@@ -244,21 +227,23 @@ export function LoanGateForm({
         </div>
       </div>
 
-      {showActionBar && (
-        <StickyFooter>
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <span className="text-[13px] text-[var(--text-secondary)]">
-              Est. monthly repayment
-            </span>
-            <span className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">
-              {formatCurrency(monthlyRepayment)}
-            </span>
-          </div>
-          <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
-            Continue
-          </PrimaryButton>
-        </StickyFooter>
-      )}
+      <StickyFooter nav={stepNav}>
+        {showActionBar ? (
+          <>
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <span className="text-[13px] text-[var(--text-secondary)]">
+                Est. monthly repayment
+              </span>
+              <span className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">
+                {formatCurrency(monthlyRepayment)}
+              </span>
+            </div>
+            <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
+              Continue
+            </PrimaryButton>
+          </>
+        ) : null}
+      </StickyFooter>
       </MobileGateSheet>
     </div>
   );

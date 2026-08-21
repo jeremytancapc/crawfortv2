@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import {
   Step4_Identity,
   Step6_Contact,
@@ -11,7 +10,15 @@ import {
   Step7_BankruptcyDeclaration,
   Step8_Review,
 } from "@/app/loan-application-form";
-import { ApplyProgressPanel, GateStepNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import {
+  ApplyProgressPanel,
+  GateStepNav,
+  MobileGateHeader,
+  MobileGateSheet,
+  PrimaryButton,
+  StickyFooter,
+  type StepNavControls,
+} from "@/app/apply-gate/ios-ui";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
 import { trackDisplayStep, trackEvent } from "@/lib/analytics";
@@ -211,6 +218,11 @@ export function ReviewForm({ initialData }: Props) {
           : "Submit Application"
         : "Continue";
 
+  const stepNav: StepNavControls = {
+    back: { onClick: handleBack },
+    next: { onClick: handlePrimary, disabled: mounted && !canGoForward },
+  };
+
   return (
     <div className="theme-ios flex min-h-[100dvh] flex-col bg-[var(--surface-primary)] lg:flex-row">
       {submitOverlay ? (
@@ -257,29 +269,7 @@ export function ReviewForm({ initialData }: Props) {
             <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
-              <GateStepNav
-                leading={
-                  <button
-                    type="button"
-                    onClick={handleBack}
-                    aria-label="Previous step"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95"
-                  >
-                    <CaretLeft size={16} weight="bold" />
-                  </button>
-                }
-                trailing={
-                  <button
-                    type="button"
-                    onClick={handlePrimary}
-                    disabled={mounted && !canGoForward}
-                    aria-label="Next step"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-                  >
-                    <CaretRight size={16} weight="bold" />
-                  </button>
-                }
-              />
+              <GateStepNav nav={stepNav} />
 
               {stepMeta && (
                 <div className="shrink-0 px-5 pb-6 pt-7">
@@ -328,7 +318,7 @@ export function ReviewForm({ initialData }: Props) {
                 </div>
               </div>
 
-              <StickyFooter>
+              <StickyFooter nav={stepNav}>
                 <PrimaryButton
                   onClick={handlePrimary}
                   disabled={(mounted && !canProceed) || !!submitOverlay}

@@ -10,7 +10,7 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, Minus, Plus } from "@phosphor-icons/react";
 
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import {
@@ -425,21 +425,69 @@ export function LiveApplyProgressPanel({
   return <ApplyProgressPanel current={current} total={total} />;
 }
 
-/** Back/next controls for the steps that have them. Nothing else lives here. */
-export function GateStepNav({
-  leading,
-  trailing,
+/**
+ * Step navigation intent, declared once per step and rendered in two places:
+ * a small row above the content on desktop, and inside the sticky footer on
+ * mobile. Both directions always render so the primary action stays centered;
+ * omit onClick (or set disabled) to keep a side visible but not tappable.
+ */
+export type StepNavControls = {
+  back?: { onClick?: () => void; disabled?: boolean };
+  next?: { onClick?: () => void; disabled?: boolean };
+};
+
+function StepNavButton({
+  direction,
+  size,
+  onClick,
+  disabled = false,
+  className = "",
 }: {
-  leading?: ReactNode;
-  trailing?: ReactNode;
+  direction: "back" | "next";
+  size: "sm" | "lg";
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
 }) {
-  if (leading == null && trailing == null) return null;
-  const sideSlot = <span className="h-9 w-9 shrink-0" aria-hidden />;
+  const isBack = direction === "back";
+  const Icon = isBack ? CaretLeft : CaretRight;
+  const skin =
+    size === "sm"
+      ? "h-9 w-9 bg-[var(--surface-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+      : "h-[52px] w-[52px] bg-[var(--surface-sunken)]";
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-4">
-      {leading ?? sideSlot}
-      {trailing ?? sideSlot}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={isBack ? "Previous step" : "Next step"}
+      className={`flex shrink-0 items-center justify-center rounded-full text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30 ${skin} ${className}`.trim()}
+    >
+      <Icon size={size === "sm" ? 16 : 20} weight="bold" />
+    </button>
+  );
+}
+
+/** Desktop-only nav row. On mobile the same controls sit in the sticky footer,
+ *  within thumb reach, so this row would only crowd the heading. */
+export function GateStepNav({ nav }: { nav?: StepNavControls }) {
+  if (nav == null) return null;
+
+  return (
+    <div className="hidden shrink-0 items-center justify-between gap-3 px-5 pt-4 lg:flex">
+      <StepNavButton
+        direction="back"
+        size="sm"
+        onClick={nav.back?.onClick}
+        disabled={nav.back?.disabled || !nav.back?.onClick}
+      />
+      <StepNavButton
+        direction="next"
+        size="sm"
+        onClick={nav.next?.onClick}
+        disabled={nav.next?.disabled || !nav.next?.onClick}
+      />
     </div>
   );
 }
@@ -574,22 +622,54 @@ export function StepperRow({
  *  to the bar's top edge and spans the whole right pane on desktop. */
 export function StickyFooter({
   banner,
+  nav,
   children,
 }: {
   banner?: ReactNode;
-  children: ReactNode;
+  nav?: StepNavControls;
+  children?: ReactNode;
 }) {
   const hasBanner = banner != null;
+  const hasAction = children != null && children !== false;
+  const hasNav = nav != null;
+
+  if (!hasAction && !hasNav) return null;
+
   return (
     <>
-      <div
-        className="hidden shrink-0 lg:block"
-        style={{ height: hasBanner ? 120 : 84 }}
-        aria-hidden
-      />
-      <div className="ios-sticky-footer">
+      {hasAction ? (
+        <div
+          className="hidden shrink-0 lg:block"
+          style={{ height: hasBanner ? 120 : 84 }}
+          aria-hidden
+        />
+      ) : null}
+      {/* A nav-only bar exists for mobile alone: desktop keeps its controls up top. */}
+      <div className={`ios-sticky-footer${hasAction ? "" : " lg:hidden"}`}>
         {hasBanner ? <div className="ios-sticky-footer-banner">{banner}</div> : null}
-        <div className="ios-sticky-footer-action">{children}</div>
+        <div className="ios-sticky-footer-action">
+          {hasNav ? (
+            <div className="flex items-end gap-2.5">
+              <StepNavButton
+                direction="back"
+                size="lg"
+                onClick={nav.back?.onClick}
+                disabled={nav.back?.disabled || !nav.back?.onClick}
+                className="lg:hidden"
+              />
+              <div className="min-w-0 flex-1">{children}</div>
+              <StepNavButton
+                direction="next"
+                size="lg"
+                onClick={nav.next?.onClick}
+                disabled={nav.next?.disabled || !nav.next?.onClick}
+                className="lg:hidden"
+              />
+            </div>
+          ) : (
+            children
+          )}
+        </div>
       </div>
     </>
   );
