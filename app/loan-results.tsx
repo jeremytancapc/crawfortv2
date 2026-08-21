@@ -202,110 +202,10 @@ interface OfferCardProps {
   onWithdrawAmountChange: (amount: number) => void;
 }
 
-const RING_SIZE = 176;
-const RING_STROKE = 12;
 const RING_RESERVED_COLOR = "#F5C518";
 
 /** --offer-accent is tuned for icons; text on its tinted chip needs to go darker. */
 const PRE_APPROVED_TEXT = "oklch(0.48 0.08 176)";
-
-/** Donut split into available-today and reserved arcs, with the limit in the middle. */
-function CreditLineRing({
-  limit,
-  available,
-}: {
-  limit: number;
-  available: number;
-}) {
-  const radius = (RING_SIZE - RING_STROKE) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const availableFraction = limit > 0 ? Math.max(0, Math.min(1, available / limit)) : 0;
-
-  // Round caps overhang each arc end by half a stroke, so the notch between the
-  // two segments has to be wider than the stroke to read as a gap.
-  const gapFraction = (RING_STROKE + 6) / circumference;
-  const availableArc = Math.max(0, availableFraction - gapFraction);
-  const reservedArc = Math.max(0, 1 - availableFraction - gapFraction);
-  const availableOffset = gapFraction / 2;
-  const reservedOffset = availableFraction + gapFraction / 2;
-  const center = RING_SIZE / 2;
-  const prefersReducedMotion = useReducedMotion();
-
-  return (
-    <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
-      <svg
-        width={RING_SIZE}
-        height={RING_SIZE}
-        viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-        className="-rotate-90"
-        role="img"
-        aria-label={`${formatCurrency(limit)} total credit limit, of which ${formatCurrency(available)} is available to withdraw today`}
-      >
-        <motion.circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={RING_RESERVED_COLOR}
-          strokeWidth={RING_STROKE}
-          strokeLinecap="round"
-          initial={prefersReducedMotion ? { pathLength: reservedArc, pathOffset: reservedOffset } : { pathLength: 0, pathOffset: reservedOffset }}
-          whileInView={{ pathLength: reservedArc, pathOffset: reservedOffset }}
-          viewport={SCROLL_VIEWPORT}
-          transition={{ duration: prefersReducedMotion ? 0 : 0.7, ease: EASE, delay: prefersReducedMotion ? 0 : 0.2 }}
-        />
-        <motion.circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth={RING_STROKE}
-          strokeLinecap="round"
-          initial={prefersReducedMotion ? { pathLength: availableArc, pathOffset: availableOffset } : { pathLength: 0, pathOffset: availableOffset }}
-          whileInView={{ pathLength: availableArc, pathOffset: availableOffset }}
-          viewport={SCROLL_VIEWPORT}
-          transition={{ duration: prefersReducedMotion ? 0 : 0.7, ease: EASE, delay: prefersReducedMotion ? 0 : 0.08 }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[26px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
-          {formatCurrency(limit)}
-        </span>
-        <span className="mt-2 text-[13px] leading-none text-[var(--text-secondary)]">
-          Total credit limit
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/** Ring legend entry: colour swatch and label on the left, amount on the right. */
-function RingLegendRow({
-  color,
-  label,
-  value,
-}: {
-  color: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <span className="flex items-center gap-2.5 text-[15px] leading-tight text-[var(--text-primary)]">
-        <span
-          aria-hidden="true"
-          className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ background: color }}
-        />
-        {label}
-      </span>
-      <span className="text-[15px] font-semibold leading-tight tabular-nums text-[var(--text-primary)]">
-        {value}
-      </span>
-    </div>
-  );
-}
 
 function OfferHeader({
   formData,
@@ -316,6 +216,7 @@ function OfferHeader({
   const [isExplainerOpen, setIsExplainerOpen] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
+  const prefersReducedMotion = useReducedMotion();
 
   const maxWithdraw = formData.amount;
   const minWithdraw = Math.min(MIN_WITHDRAW_AMOUNT, maxWithdraw);
@@ -338,26 +239,81 @@ function OfferHeader({
     setAmountRaw(String(clamped));
   };
 
+  // Share of the limit that is spendable now. The split bar is the only place
+  // the two halves appear as proportions rather than figures.
+  const availablePct =
+    limit > 0 ? Math.max(0, Math.min(1, maxWithdraw / limit)) * 100 : 100;
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* Hero card: the single figure the customer acts on, then one meta row. */}
-      <RevealOnScroll>
+    /* One card, read top down: the ceiling they were approved for, how it
+       splits, then the single figure they set today. */
+    <RevealOnScroll>
       <div className="ios-card">
-        {/* Flush black header banner - clipped to the card's own rounded top
-            corners by .ios-card's overflow: hidden, so it stands out as its
-            own section rather than blending into the white card body. */}
-        <div className="flex items-center justify-center bg-[#0a0a0a] px-4 py-2.5">
-          <span className="text-[13px] font-semibold uppercase leading-tight tracking-[0.06em] text-white">
-            Approved Amount
+        <div className="flex flex-col items-center px-5 pb-6 pt-6">
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none"
+            style={{ background: "var(--offer-accent-ring)", color: PRE_APPROVED_TEXT }}
+          >
+            <SealCheck size={13} weight="fill" />
+            Pre-approved
           </span>
+
+          <span className="ios-display-amount mt-3.5 text-[52px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
+            {formatCurrency(limit)}
+          </span>
+          <span className="mt-2.5 text-[15px] leading-tight text-[var(--text-secondary)]">
+            Total credit limit
+          </span>
+
+          {hasStructuralReserve && (
+            <div className="mt-5 w-full">
+              <div
+                className="h-1.5 w-full overflow-hidden rounded-full"
+                style={{ background: RING_RESERVED_COLOR }}
+                aria-hidden="true"
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: "var(--accent)" }}
+                  initial={prefersReducedMotion ? false : { width: 0 }}
+                  whileInView={{ width: `${availablePct}%` }}
+                  viewport={SCROLL_VIEWPORT}
+                  transition={{
+                    duration: prefersReducedMotion ? 0 : 0.7,
+                    ease: EASE,
+                    delay: prefersReducedMotion ? 0 : 0.12,
+                  }}
+                />
+              </div>
+              {/* Each label sits under its own segment, so position does the
+                  decoding and the bar needs no legend swatches. */}
+              <div className="mt-2.5 flex items-baseline justify-between gap-3">
+                <span className="text-[13px] leading-tight text-[var(--text-primary)]">
+                  <span className="font-semibold tabular-nums">
+                    {formatCurrency(maxWithdraw)}
+                  </span>{" "}
+                  available now
+                </span>
+                <span className="text-right text-[13px] leading-tight text-[var(--text-secondary)]">
+                  <span className="font-semibold tabular-nums">
+                    +{formatCurrency(structuralReserve)}
+                  </span>{" "}
+                  later
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col items-center px-4 pb-5 pt-5">
-          <div className="flex w-full justify-center">
+        <div className="px-4 pb-4 pt-3.5" style={{ borderTop: "1px solid var(--separator)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[17px] font-semibold leading-tight text-[var(--text-primary)]">
+              Withdraw today
+            </span>
             <div className="ios-display-amount flex items-baseline leading-none">
               <span
                 aria-hidden="true"
-                className="text-[34px] font-bold leading-none tracking-[-0.03em] text-[var(--text-primary)]"
+                className="text-[20px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]"
               >
                 $
               </span>
@@ -379,18 +335,14 @@ function OfferHeader({
                 }}
                 disabled={!canAdjust}
                 aria-label="Amount to withdraw today"
-                className="ios-display-input border-0 bg-transparent p-0 text-center text-[52px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
+                className="ios-display-input border-0 bg-transparent p-0 text-right text-[28px] font-bold leading-none tracking-[-0.02em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
                 style={{ fieldSizing: "content", width: "auto", minWidth: "2ch" }}
               />
             </div>
           </div>
 
-          <p className="mt-1.5 text-[15px] leading-tight text-[var(--text-tertiary)]">
-            Withdraw today
-          </p>
-
           {canAdjust && (
-            <div className="mt-3 w-full">
+            <>
               <div
                 className="ios-slider-wrap"
                 style={{ ["--slider-pct" as string]: `${sliderPct}%` }}
@@ -427,7 +379,7 @@ function OfferHeader({
                   </button>
                 )}
               </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -440,113 +392,65 @@ function OfferHeader({
             {renewalLabel}
           </span>
         </div>
-      </div>
-      </RevealOnScroll>
 
-      {/* Credit line: the ring carries the limit, so the figures below stay two
-          quiet rows instead of a second stack of hero numbers. */}
-      {hasStructuralReserve ? (
-        <RevealOnScroll>
-        <div className="ios-card px-4 pb-3 pt-4">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[17px] font-semibold leading-tight text-[var(--text-primary)]">
-              Your credit limit
-            </span>
-            <span
-              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none"
-              style={{ background: "var(--offer-accent-ring)", color: PRE_APPROVED_TEXT }}
+        {hasStructuralReserve && (
+          <div style={{ borderTop: "1px solid var(--separator)" }}>
+            <button
+              type="button"
+              onClick={() => setIsExplainerOpen((open) => !open)}
+              aria-expanded={isExplainerOpen}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
             >
-              <SealCheck size={13} weight="fill" />
-              Pre-approved
-            </span>
-          </div>
-
-          <div className="flex justify-center py-5">
-            <CreditLineRing limit={limit} available={maxWithdraw} />
-          </div>
-
-          <RingLegendRow
-            color="var(--accent)"
-            label="Available today"
-            value={formatCurrency(maxWithdraw)}
-          />
-          <RingLegendRow
-            color={RING_RESERVED_COLOR}
-            label="Unlocks over time"
-            value={`+${formatCurrency(structuralReserve)}`}
-          />
-
-          <button
-            type="button"
-            onClick={() => setIsExplainerOpen((open) => !open)}
-            aria-expanded={isExplainerOpen}
-            className="mt-1 flex w-full items-center justify-between gap-3 pt-3 text-left"
-            style={{ borderTop: "1px solid var(--separator)" }}
-          >
-            <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
-              How your credit limit works
-            </span>
-            <CaretDown
-              size={14}
-              weight="bold"
-              className="shrink-0 text-[var(--text-tertiary)] transition-transform duration-200"
-              style={{ transform: isExplainerOpen ? "rotate(180deg)" : "none" }}
-            />
-          </button>
-          {isExplainerOpen && (
-            /* Mirrors the legend above - same swatches, same order - so the
-               explainer reads as a key to the ring rather than a wall of text. */
-            <dl className="flex flex-col gap-3 pb-1 pt-3">
-              {[
-                {
-                  color: "var(--accent)",
-                  term: "Available today",
-                  detail:
-                    "Paid into your bank after you finish every step, including your in-person appointment.",
-                },
-                {
-                  color: RING_RESERVED_COLOR,
-                  term: "Unlocks over time",
-                  detail:
-                    "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
-                },
-              ].map((row) => (
-                <div key={row.term} className="flex items-start gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ background: row.color }}
-                  />
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <dt className="text-[14px] font-semibold leading-tight text-[var(--text-primary)]">
-                      {row.term}
-                    </dt>
-                    <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-                      {row.detail}
-                    </dd>
+              <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
+                How your credit limit works
+              </span>
+              <CaretDown
+                size={14}
+                weight="bold"
+                className="shrink-0 text-[var(--text-tertiary)] transition-transform duration-200"
+                style={{ transform: isExplainerOpen ? "rotate(180deg)" : "none" }}
+              />
+            </button>
+            {isExplainerOpen && (
+              /* Swatches match the split bar above, so the explainer reads as a
+                 key to it rather than a wall of text. */
+              <dl className="flex flex-col gap-3 px-4 pb-4">
+                {[
+                  {
+                    color: "var(--accent)",
+                    term: "Available now",
+                    detail:
+                      "Paid into your bank after you finish every step, including your in-person appointment.",
+                  },
+                  {
+                    color: RING_RESERVED_COLOR,
+                    term: "Unlocks later",
+                    detail:
+                      "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
+                  },
+                ].map((row) => (
+                  <div key={row.term} className="flex items-start gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: row.color }}
+                    />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <dt className="text-[14px] font-semibold leading-tight text-[var(--text-primary)]">
+                        {row.term}
+                      </dt>
+                      <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+                        {row.detail}
+                      </dd>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-        </RevealOnScroll>
-      ) : (
-        <RevealOnScroll>
-        <div className="ios-card">
-          <div className="ios-row">
-            <span className="flex items-center gap-2 text-[15px] leading-tight text-[var(--text-primary)]">
-              <SealCheck size={16} weight="fill" style={{ color: "var(--offer-accent)" }} />
-              Pre-approved credit line
-            </span>
-            <span className="text-[15px] font-semibold leading-tight tabular-nums text-[var(--text-primary)]">
-              {formatCurrency(limit)}
-            </span>
+                ))}
+              </dl>
+            )}
           </div>
-        </div>
-        </RevealOnScroll>
-      )}
-    </div>
+        )}
+      </div>
+    </RevealOnScroll>
   );
 }
 
@@ -564,6 +468,11 @@ interface PlanCardProps {
 function shortPlanName(title: string): string {
   return title.replace(/\s+Plan$/i, "");
 }
+
+/** Widths where globals.css runs the plan cards as a lane - one card forward,
+ *  the other two peeking behind it - instead of the even 3-up desktop grid.
+ *  Kept in step with the `.plan-lane` media query. */
+const LANE_MEDIA_QUERY = "(max-width: 1023.98px)";
 
 const FLIP_DURATION = 0.55;
 
@@ -649,11 +558,13 @@ const PLAN_ICONS = {
 
 /** Ring + drop shadow drawn around the card body, outside the flipping faces.
  *  Selection is carried entirely by this blue ring/glow plus the CTA below -
- *  no background wash, so there's no color left to flash mid-flip. */
+ *  no background wash, so there's no color left to flash mid-flip. Colour
+ *  comes from a custom property so the mobile lane can run a darker edge
+ *  than the desktop grid without changing ring width. */
 function cardFrameShadow(isSelected: boolean): string {
   return isSelected
-    ? "0 0 0 2px var(--brand-blue-hex, #0033AA), 0 10px 26px oklch(0.32 0.14 260 / 0.28)"
-    : "0 0 0 1px var(--border-subtle), 0 1px 2px oklch(0.24 0.06 260 / 0.05)";
+    ? "0 0 0 var(--plan-ring-selected, 2px) var(--brand-blue-hex, #0033AA), 0 10px 26px oklch(0.32 0.14 260 / 0.28)"
+    : "0 0 0 var(--plan-ring, 1px) var(--plan-ring-color, var(--border-subtle)), 0 1px 2px oklch(0.24 0.06 260 / 0.05)";
 }
 
 function PlanCard({
@@ -850,7 +761,7 @@ function PlanCard({
             absorbs whatever extra height items-stretch gives this card,
             pinning the CTA below to the card's bottom edge. */}
         <div className="flex flex-1 flex-col gap-2 px-3 pt-3 sm:gap-2.5 sm:px-3.5 sm:pt-3.5">
-          <ul className={`grid ${TWO_LINE_ROWS}`}>
+          <ul className={`plan-features grid ${TWO_LINE_ROWS}`}>
             {features.map((feature) => (
               <li key={feature.text} className="flex items-start gap-1 sm:gap-1.5">
                 {feature.special ? (
@@ -922,7 +833,7 @@ function PlanCard({
           aria-label={`Hide the ${shortPlanName(plan.title)} breakdown`}
           tabIndex={isFlipped ? 0 : -1}
           aria-hidden={!isFlipped}
-          className="relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]"
+          className="plan-card-back relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]"
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
@@ -1449,22 +1360,44 @@ function PlanPicker({
 }: PlanPickerProps) {
   const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
 
+  // Which card holds the lane below desktop. The popular plan starts centred,
+  // so the row opens on the one most customers pick.
+  const [lanePlanId, setLanePlanId] = useState<OfferPlan["id"] | undefined>(
+    () => plans.find((plan) => plan.badge)?.id ?? plans[Math.floor(plans.length / 2)]?.id,
+  );
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 items-stretch">
+      <div className="plan-lane">
         {plans.map((plan, index) => (
-          <RevealOnScroll key={plan.id} className="h-full" delay={index * 0.06}>
-            <PlanCard
-              plan={plan}
-              isSelected={selectedPlanId === plan.id}
-              isFlipped={flippedPlanId === plan.id}
-              onSelect={() => {
-                onPlanSelect(plan.id);
-                setFlippedPlanId(plan.id);
-              }}
-              onFlipBack={() => setFlippedPlanId(null)}
-            />
-          </RevealOnScroll>
+          <div
+            key={plan.id}
+            className="plan-lane-item"
+            data-active={plan.id === lanePlanId}
+          >
+            {/* RevealOnScroll writes its own transform, so the lane's scale
+                needs a layer of its own to sit on. */}
+            <RevealOnScroll className="h-full" delay={index * 0.06}>
+              <div className="plan-lane-card">
+                <PlanCard
+                  plan={plan}
+                  isSelected={selectedPlanId === plan.id}
+                  isFlipped={flippedPlanId === plan.id}
+                  onSelect={() => {
+                    onPlanSelect(plan.id);
+                    setLanePlanId(plan.id);
+                    // A peeking card comes forward on its first tap, so the
+                    // breakdown only ever flips in at full width.
+                    const comesForward =
+                      plan.id !== lanePlanId &&
+                      window.matchMedia(LANE_MEDIA_QUERY).matches;
+                    setFlippedPlanId(comesForward ? null : plan.id);
+                  }}
+                  onFlipBack={() => setFlippedPlanId(null)}
+                />
+              </div>
+            </RevealOnScroll>
+          </div>
         ))}
       </div>
       <RevealOnScroll>
