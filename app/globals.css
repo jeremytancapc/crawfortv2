@@ -48,15 +48,15 @@
   --color-text-tertiary: var(--text-tertiary);
   --color-border-subtle: var(--border-subtle);
   --color-border-medium: var(--border-medium);
-  --font-sans: var(--font-manrope);
+  --font-sans: var(--font-nunito);
   --font-display: var(--font-quicksand);
 }
 
 body {
   background: var(--surface-primary);
   color: var(--text-primary);
-  font-family: var(--font-manrope), system-ui, sans-serif;
-  font-weight: 500;
+  font-family: var(--font-nunito), system-ui, sans-serif;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -333,6 +333,24 @@ input[type="range"]::-moz-range-thumb {
   50%       { opacity: 1; }
 }
 
+/* ─── Apply progress badge - GPS blip on the very first step ────── */
+
+@keyframes apply-blip-ping {
+  0%   { transform: scale(0.85); opacity: 0.65; }
+  70%  { transform: scale(2.3); opacity: 0; }
+  100% { transform: scale(2.3); opacity: 0; }
+}
+
+.animate-apply-blip {
+  animation: apply-blip-ping 1.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-apply-blip {
+    animation: none;
+  }
+}
+
 /* ─── Clock tick - 12-step rotation simulating a ticking clock ───── */
 
 @keyframes clock-tick {
@@ -490,11 +508,9 @@ input[type="range"]::-moz-range-thumb {
   animation-fill-mode: forwards;
 }
 
-/* ─── Approval theme - Inter Tight headings, clean finance aesthetic ─── */
+/* ─── Approval theme - Quicksand headings, clean finance aesthetic ─── */
 
 .approval-theme {
-  --font-display: var(--font-inter-tight);
-
   /* Softened accent for offer/plan cards - replaces the vivid #06DEC0 / oklch(0.78 0.16 178) teal in this scope only */
   --offer-accent: oklch(0.66 0.10 176);
   --offer-accent-ring: oklch(0.66 0.10 176 / 0.22);
@@ -507,22 +523,21 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Match theme-fresh heading metrics so nested approval-theme does not
-   re-bold Inter Tight titles in the consumer funnel. */
+   re-bold Quicksand titles in the consumer funnel. */
 .approval-theme h1,
 .approval-theme h2,
 .approval-theme h3,
 .approval-theme h4,
 .approval-theme h5,
 .approval-theme h6 {
-  font-family: var(--font-inter-tight), system-ui, sans-serif;
+  font-family: var(--font-quicksand), system-ui, sans-serif;
   letter-spacing: -0.02em;
   font-weight: 600;
 }
 
-/* ─── AXS theme - Inter Tight headings, finance-2.0 aesthetic ───── */
+/* ─── AXS theme - Quicksand headings, finance-2.0 aesthetic ───── */
 
 .axs-theme {
-  --font-display: var(--font-inter-tight);
   --surface-primary: oklch(0.99 0.001 260);
   --surface-secondary: oklch(0.965 0.003 260);
   --surface-elevated: oklch(1 0 0);
@@ -536,32 +551,24 @@ input[type="range"]::-moz-range-thumb {
 .axs-theme h4,
 .axs-theme h5,
 .axs-theme h6 {
-  font-family: var(--font-inter-tight), system-ui, sans-serif;
+  font-family: var(--font-quicksand), system-ui, sans-serif;
   letter-spacing: -0.03em;
   font-weight: 700;
 }
 
-/* ─── Fresh theme - Inter/Inter Tight typography, bright blue hero + floating white card ─── */
+/* ─── Fresh theme - Nunito body / Quicksand headings, bright blue hero + floating white card ─── */
 
 .theme-fresh {
-  --font-display: var(--font-inter-tight);
   --hero-blue-hex: #2E4FE8;
   --surface-primary: #F4F6FC;
   --surface-canvas: #F4F6FC;
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-nunito), system-ui, sans-serif;
   font-weight: 400;
 
   /* Keep --hero-blue-hex from being stripped when only referenced via
      .hero-chrome / keep-alive. Without a CSS var() consumer, production
      builds drop the token and chrome goes transparent over #F4F6FC. */
   --_theme-fresh-keep-alive: var(--hero-blue-hex);
-}
-
-/* Tailwind compiles `.font-display` to `font-family: var(--font-quicksand)`
-   (from @theme), so setting --font-display above has no effect on the utility.
-   Force Inter Tight for every font-display usage inside the consumer funnel. */
-.theme-fresh .font-display {
-  font-family: var(--font-inter-tight), system-ui, sans-serif;
 }
 
 /* Shared chrome fill for aside / mobile header / footer / mobile hero band.
@@ -577,7 +584,7 @@ input[type="range"]::-moz-range-thumb {
 .theme-fresh h4,
 .theme-fresh h5,
 .theme-fresh h6 {
-  font-family: var(--font-inter-tight), system-ui, sans-serif;
+  font-family: var(--font-quicksand), system-ui, sans-serif;
   letter-spacing: -0.02em;
   font-weight: 600;
 }
@@ -677,7 +684,7 @@ body:has(.theme-fresh)::before {
   display: none;
 }
 
-/* ─── iOS theme - system-grouped canvas, SF Pro type, white cards ──────────
+/* ─── iOS theme - system-grouped canvas, brand type, white cards ──────────
    Scoped to the apply-funnel landing page. Do not fold these overrides into
    .theme-fresh; the rest of the funnel still renders against that theme. */
 
@@ -701,8 +708,7 @@ body:has(.theme-fresh)::before {
   --offer-accent: oklch(0.66 0.10 176);
   --offer-accent-ring: oklch(0.66 0.10 176 / 0.22);
 
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-nunito), system-ui, sans-serif;
   font-weight: 400;
   color: var(--text-primary);
 
@@ -719,21 +725,21 @@ body:has(.theme-fresh)::before {
 .theme-ios h5,
 .theme-ios h6,
 .theme-ios .font-display {
-  font-family: inherit;
+  font-family: var(--font-quicksand), system-ui, sans-serif;
   letter-spacing: -0.022em;
   font-weight: 700;
 }
 
 .theme-ios .ios-display-amount {
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: var(--font-quicksand), system-ui, sans-serif;
   font-weight: 700;
 }
 
 /*
  * iOS Safari paints form fields with SF Text and often skips font-weight, so
  * large amounts look thin and unlike neighbouring headings. Strip the default
- * appearance and use the system stack + fill-color; size/weight still come
- * from the element's own classes.
+ * appearance and use Nunito + fill-color; size/weight still come from the
+ * element's own classes.
  */
 .theme-ios input[type="text"],
 .theme-ios input[type="number"],
@@ -742,7 +748,7 @@ body:has(.theme-fresh)::before {
 .theme-ios input:not([type]) {
   -webkit-appearance: none;
   appearance: none;
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: var(--font-nunito), system-ui, sans-serif;
   -webkit-text-fill-color: currentColor;
 }
 

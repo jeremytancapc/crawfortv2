@@ -2,6 +2,8 @@ import type { Viewport } from "next";
 import Image from "next/image";
 
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
+import { ApplyProgressPanel } from "@/app/apply-gate/ios-ui";
+import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 
 import { VerifyIncomeForm } from "@/app/apply/verify-income/verify-income-form";
@@ -51,6 +53,11 @@ export default async function VerifyIncomePage({
             Singaporeans since 2011.
           </p>
         </div>
+
+        <ApplyProgressPanel
+          current={APPLY_PROGRESS.verifyOrIdentity}
+          total={APPLY_PROGRESS_TOTAL}
+        />
 
         <SidebarTrustFeatures />
       </aside>

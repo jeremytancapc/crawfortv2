@@ -1,4 +1,4 @@
-import { Quicksand, Manrope, Inter_Tight, Inter } from "next/font/google";
+import { Quicksand, Nunito } from "next/font/google";
 
 export const quicksand = Quicksand({
   subsets: ["latin"],
@@ -7,23 +7,9 @@ export const quicksand = Quicksand({
   weight: ["400", "500", "600", "700"],
 });
 
-export const manrope = Manrope({
+export const nunito = Nunito({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-manrope",
-  weight: ["500", "600", "700"],
-});
-
-export const interTight = Inter_Tight({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter-tight",
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-export const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
+  variable: "--font-nunito",
   weight: ["400", "500", "600", "700"],
 });

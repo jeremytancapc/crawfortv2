@@ -7,6 +7,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { PendingDisplay } from "@/lib/pending-display";
 
 interface Props {
@@ -25,16 +26,16 @@ const NEXT_STEPS = [
 ];
 
 export function PendingView({ pending }: Props) {
-  const { fullName, leadId, amount, idType } = pending;
-  const firstName = fullName ? fullName.split(" ")[0] : null;
+  const { leadId, amount, idType } = pending;
   const cfh5Ref = leadId ? `CFH5-${shortRef(leadId)}` : null;
 
   const isForeigner = idType === "foreigner";
 
   return (
     <ApplyIosShell
-      sidebarTitle="Application received"
+      sidebarTitle="Wait for our review"
       sidebarSubtitle="We've received your application and our team will be in touch with you shortly."
+      progressStep={APPLY_PROGRESS.completeApp}
     >
       <div className="flex flex-1 flex-col gap-8 px-5 pb-8 pt-7 animate-fade-up">
 
@@ -54,7 +55,7 @@ export function PendingView({ pending }: Props) {
             {/* Heading */}
             <div className="flex flex-col gap-2">
               <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
-                {firstName ? `Thank you, ${firstName}.` : "Thank you for applying."}
+                Wait for our review
               </h2>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
                 Your application for a loan of{" "}

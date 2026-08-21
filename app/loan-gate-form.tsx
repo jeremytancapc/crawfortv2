@@ -13,21 +13,20 @@ import {
   Step3_SingpassGate,
 } from "@/app/loan-application-form";
 import { GateStepAmount } from "@/app/apply-gate/gate-step-amount";
-import { GateProgressNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import { GateStepNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
+import { setApplyProgressStep } from "@/lib/apply-progress-store";
 
 const GATE_LAST_STEP = 3;
-const GATE_TOTAL_STEPS = 8;
-/** Flip to true to put the self-declared income step back between amount and Singpass. */
-const SHOW_INCOME_STEP = false;
 
 const GATE_STEP_META: Record<number, { title: string; subtitle: string }> = {
   1: {
-    title: "Start with your loan amount",
+    title: "Choose your loan amount",
     subtitle: "The whole application takes just a few minutes.",
   },
   2: {
-    title: "What do you earn a month?",
+    title: "Confirm your monthly income",
     subtitle: "So we can check the loan fits your budget.",
   },
   3: {
@@ -158,20 +157,29 @@ export function LoanGateForm({
   const stepMeta = GATE_STEP_META[step];
   const canGoBack = !step3RedirectPending;
   const canGoForward = Boolean(canProceed) && step < GATE_LAST_STEP;
-  const isFirstStep = step === 1;
   const showActionBar = step !== 3;
+  const progressStep =
+    step === 1
+      ? APPLY_PROGRESS.amount
+      : step === 2
+        ? APPLY_PROGRESS.income
+        : APPLY_PROGRESS.singpass;
+
+  // The desktop sidebar lives outside this form, so publish the step for it.
+  useEffect(() => {
+    setApplyProgressStep(progressStep);
+    return () => setApplyProgressStep(null);
+  }, [progressStep]);
 
   return (
     /* Carries its own theme scope so the variant landing pages (/foreigner,
        /vcsa-sg) render the same gate without adopting theme-ios wholesale. */
     <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
-      <MobileGateHeader />
+      <MobileGateHeader progressStep={progressStep} />
       <MobileGateSheet>
-      {!isFirstStep && (
-        <GateProgressNav
-          current={history.length}
-          total={GATE_TOTAL_STEPS}
+      <GateStepNav
           leading={
+            step === 1 ? undefined : (
             <button
               type="button"
               onClick={handleBack}
@@ -181,8 +189,10 @@ export function LoanGateForm({
             >
               <CaretLeft size={16} weight="bold" />
             </button>
+            )
           }
           trailing={
+            step === 1 ? undefined : (
             <button
               type="button"
               onClick={handleNext}
@@ -192,9 +202,9 @@ export function LoanGateForm({
             >
               <CaretRight size={16} weight="bold" />
             </button>
+            )
           }
         />
-      )}
 
       {stepMeta && (
         <div className="shrink-0 px-5 pb-6 pt-7">

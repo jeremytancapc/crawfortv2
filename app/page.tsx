@@ -3,6 +3,8 @@ import Image from "next/image";
 
 import { LoanApplicationForm } from "./loan-application-form";
 import { SidebarTrustFeatures } from "./sidebar-trust-features";
+import { LiveApplyProgressPanel } from "./apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { getApplySession } from "@/lib/apply-session";
 import { gateInitialSession } from "@/lib/apply-flow-guard";
 import { redirectToApplyContinueIfNeeded } from "@/lib/apply-landing";
@@ -55,6 +57,8 @@ function ApplyLandingLayout({
             Singaporeans since 2011.
           </p>
         </div>
+
+        <LiveApplyProgressPanel fallbackStep={APPLY_PROGRESS.amount} />
 
         <SidebarTrustFeatures />
       </aside>

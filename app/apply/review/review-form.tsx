@@ -11,12 +11,13 @@ import {
   Step7_BankruptcyDeclaration,
   Step8_Review,
 } from "@/app/loan-application-form";
-import { GateProgressNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import { ApplyProgressPanel, GateStepNav, MobileGateHeader, MobileGateSheet, PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
 import { trackDisplayStep, trackEvent } from "@/lib/analytics";
 import { postSubmitUrl } from "@/lib/post-submit-nav";
 import { LoanLoadingScreen } from "@/app/loan-loading-screen";
+import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 
 interface Props {
   initialData: LoanFormData;
@@ -27,23 +28,23 @@ interface Props {
 
 const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
   4: {
-    title: "Tell us about yourself",
+    title: "Confirm your identity",
     subtitle: "We need this to verify your identity and eligibility.",
   },
   5: {
-    title: "Last few details",
+    title: "Complete your application",
     subtitle: "Get your application status sent to you.",
   },
   6: {
-    title: "A few more details",
+    title: "Confirm extra details",
     subtitle: "Almost done. This helps us finalise your application.",
   },
   7: {
-    title: "Last few details",
+    title: "Complete your application",
     subtitle: "Get your application status sent to you.",
   },
   8: {
-    title: "Check your info",
+    title: "Confirm your info",
     subtitle: "Make sure everything looks right before you continue.",
   },
 };
@@ -178,10 +179,13 @@ export function ReviewForm({ initialData }: Props) {
     scrollToTop();
   }, [formData, navigateTo, scrollToTop]);
 
-  // Progress indicator: count unique logical steps for display
-  const singpassFlow = formData.authMethod === "singpass";
-  const totalDisplay = singpassFlow ? 5 : 6;
-  const displayStep = history.length + 3; // offset: apply page was steps 1-3
+  // Progress: shared funnel scale (visit = 100%, never shown in-app).
+  const progressStep =
+    step === 4
+      ? APPLY_PROGRESS.verifyOrIdentity
+      : step === 8 || step === 6
+        ? APPLY_PROGRESS.reviewInfo
+        : APPLY_PROGRESS.completeApp;
   const stepMeta = REVIEW_STEP_META[step];
   const canGoForward =
     Boolean(canProceed) && !submitOverlay && !isLegalModalOpen;
@@ -237,12 +241,13 @@ export function ReviewForm({ initialData }: Props) {
             />
           </div>
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Almost there
+            {stepMeta?.title ?? "Confirm your info"}
           </p>
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            Review your details, then we&apos;ll finish the last few checks.
+            {stepMeta?.subtitle ?? "Make sure everything looks right before you continue."}
           </p>
         </div>
+        <ApplyProgressPanel current={progressStep} total={APPLY_PROGRESS_TOTAL} />
         <SidebarTrustFeatures />
       </aside>
 
@@ -250,11 +255,9 @@ export function ReviewForm({ initialData }: Props) {
         <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
             <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
-              <MobileGateHeader />
+              <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
-              <GateProgressNav
-                current={displayStep}
-                total={totalDisplay}
+              <GateStepNav
                 leading={
                   <button
                     type="button"
