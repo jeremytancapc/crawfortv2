@@ -426,10 +426,9 @@ export function LiveApplyProgressPanel({
 }
 
 /**
- * Step navigation intent, declared once per step and rendered in two places:
- * a small row above the content on desktop, and inside the sticky footer on
- * mobile. Both directions always render so the primary action stays centered;
- * omit onClick (or set disabled) to keep a side visible but not tappable.
+ * Step navigation for the mobile sticky footer. Both directions always render
+ * so the primary action stays centered; omit onClick (or set disabled) to keep
+ * a side visible but not tappable. Desktop uses the primary CTA alone.
  */
 export type StepNavControls = {
   back?: { onClick?: () => void; disabled?: boolean };
@@ -438,23 +437,15 @@ export type StepNavControls = {
 
 function StepNavButton({
   direction,
-  size,
   onClick,
   disabled = false,
-  className = "",
 }: {
   direction: "back" | "next";
-  size: "sm" | "lg";
   onClick?: () => void;
   disabled?: boolean;
-  className?: string;
 }) {
   const isBack = direction === "back";
   const Icon = isBack ? CaretLeft : CaretRight;
-  const skin =
-    size === "sm"
-      ? "h-9 w-9 bg-[var(--surface-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-      : "h-[52px] w-[52px] bg-[var(--surface-sunken)]";
 
   return (
     <button
@@ -462,33 +453,10 @@ function StepNavButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={isBack ? "Previous step" : "Next step"}
-      className={`flex shrink-0 items-center justify-center rounded-full text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30 ${skin} ${className}`.trim()}
+      className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30 lg:hidden"
     >
-      <Icon size={size === "sm" ? 16 : 20} weight="bold" />
+      <Icon size={20} weight="bold" />
     </button>
-  );
-}
-
-/** Desktop-only nav row. On mobile the same controls sit in the sticky footer,
- *  within thumb reach, so this row would only crowd the heading. */
-export function GateStepNav({ nav }: { nav?: StepNavControls }) {
-  if (nav == null) return null;
-
-  return (
-    <div className="hidden shrink-0 items-center justify-between gap-3 px-5 pt-4 lg:flex">
-      <StepNavButton
-        direction="back"
-        size="sm"
-        onClick={nav.back?.onClick}
-        disabled={nav.back?.disabled || !nav.back?.onClick}
-      />
-      <StepNavButton
-        direction="next"
-        size="sm"
-        onClick={nav.next?.onClick}
-        disabled={nav.next?.disabled || !nav.next?.onClick}
-      />
-    </div>
   );
 }
 
@@ -652,18 +620,14 @@ export function StickyFooter({
             <div className="flex items-end gap-2.5">
               <StepNavButton
                 direction="back"
-                size="lg"
                 onClick={nav.back?.onClick}
                 disabled={nav.back?.disabled || !nav.back?.onClick}
-                className="lg:hidden"
               />
               <div className="min-w-0 flex-1">{children}</div>
               <StepNavButton
                 direction="next"
-                size="lg"
                 onClick={nav.next?.onClick}
                 disabled={nav.next?.disabled || !nav.next?.onClick}
-                className="lg:hidden"
               />
             </div>
           ) : (
