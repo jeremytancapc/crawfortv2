@@ -27,7 +27,7 @@
   --shadow-card:0 18px 50px rgba(10,20,70,.09), 0 2px 8px rgba(10,20,70,.05);
   --shadow-pop:0 24px 70px rgba(10,20,70,.16);
   --font-display:var(--font-quicksand), 'Noto Sans SC', 'Noto Sans Tamil', sans-serif;
-  --font-body:var(--font-inter-tight), 'Noto Sans SC', 'Noto Sans Tamil', sans-serif;
+  --font-body:var(--font-nunito), 'Noto Sans SC', 'Noto Sans Tamil', sans-serif;
   --bar-h:88px;
   --actionbar-h:110px;
 }
@@ -340,7 +340,7 @@
   text-transform:uppercase;letter-spacing:.12em;
 }
 .offer-amount{
-  font-family:var(--font-inter-tight), var(--font-display), sans-serif;
+  font-family:var(--font-display);
   font-size:clamp(2.4rem, 8vw, 3.25rem);font-weight:800;margin:6px 0 22px;
   letter-spacing:-.04em;line-height:1;
   text-shadow:0 2px 12px oklch(0.24 0.18 258 / 0.5);

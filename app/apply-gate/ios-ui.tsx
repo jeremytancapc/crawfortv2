@@ -1,26 +1,57 @@
 "use client";
 
-import type { ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus } from "@phosphor-icons/react";
 
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
+import {
+  APPLY_PROGRESS_APPOINTMENT,
+  APPLY_PROGRESS_START,
+  APPLY_PROGRESS_TOTAL,
+  applyProgressHint,
+} from "@/lib/apply-progress";
+import { useApplyProgressStep } from "@/lib/apply-progress-store";
 
-/** Full-bleed brand-blue bar with the white wordmark, mobile apply chrome only. */
-export function MobileGateHeader() {
+/**
+ * Full-bleed brand-blue bar: wordmark on the left, progress meter on the right
+ * like a status-bar battery. Mobile apply chrome only.
+ */
+export function MobileGateHeader({
+  progressStep,
+  progressTotal = APPLY_PROGRESS_TOTAL,
+}: {
+  progressStep?: number;
+  progressTotal?: number;
+}) {
   return (
-    <header className="relative z-10 flex h-14 shrink-0 items-center justify-center bg-[var(--brand-blue-hex)] px-5 lg:hidden">
-      <Link href="/" className="flex h-11 items-center" aria-label="Crawfort home">
+    <header className="relative z-10 flex h-14 shrink-0 items-center justify-between gap-3 bg-[var(--brand-blue-hex)] px-5 lg:hidden">
+      <Link
+        href="/"
+        className="flex h-11 min-w-0 items-center"
+        aria-label="Crawfort home"
+      >
+        {/* Scales down rather than pushing the badge out on narrow phones. */}
         <Image
           src="/images/crawfort-white-color-dot.png"
           alt="Crawfort"
           width={1261}
           height={155}
-          className="h-5 w-auto"
+          className="h-5 w-auto max-w-full object-contain object-left"
           priority
         />
       </Link>
+      {progressStep != null ? (
+        <ApplyProgressBadge current={progressStep} total={progressTotal} />
+      ) : null}
     </header>
   );
 }
@@ -70,10 +101,12 @@ export function IosLegalFooter() {
 export function ApplyIosShell({
   sidebarTitle,
   sidebarSubtitle,
+  progressStep,
   children,
 }: {
   sidebarTitle: string;
   sidebarSubtitle: string;
+  progressStep?: number;
   children: ReactNode;
 }) {
   return (
@@ -97,6 +130,9 @@ export function ApplyIosShell({
             {sidebarSubtitle}
           </p>
         </div>
+        {progressStep != null ? (
+          <ApplyProgressPanel current={progressStep} total={APPLY_PROGRESS_TOTAL} />
+        ) : null}
         <SidebarTrustFeatures />
       </aside>
 
@@ -104,8 +140,10 @@ export function ApplyIosShell({
         <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
             <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
-              <MobileGateHeader />
-              <MobileGateSheet>{children}</MobileGateSheet>
+              <MobileGateHeader progressStep={progressStep} />
+              <MobileGateSheet>
+                {children}
+              </MobileGateSheet>
             </div>
           </div>
         </div>
@@ -115,86 +153,293 @@ export function ApplyIosShell({
   );
 }
 
-const PROGRESS_SEGMENTS = 20;
-
-function mixHex(from: string, to: string, t: number): string {
-  const parse = (hex: string) => [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-  ] as const;
-  const a = parse(from);
-  const b = parse(to);
-  const channel = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t)
-    .toString(16)
-    .padStart(2, "0");
-  return `#${channel(0)}${channel(1)}${channel(2)}`;
-}
-
-function progressValue(current: number, total: number) {
+/** Percent never reads 0 or a premature 100 — the visit is the last 10%. */
+function progressPercent(current: number, total: number): number {
   const ratio = Math.min(1, Math.max(0, current / total));
-  const isFirstStep = current <= 1;
-  return {
-    filled: isFirstStep ? 1 : Math.max(1, Math.round(ratio * PROGRESS_SEGMENTS)),
-    percent: isFirstStep ? 1 : Math.round(ratio * 100),
-  };
+  return current >= total ? 100 : Math.min(99, Math.max(1, Math.round(ratio * 100)));
 }
 
-/** 20-tick bar that fills blue → teal. Percent sits above so arrows can share the bar row. */
-export function GateProgressNav({
+const PROGRESS_DOTS = 5;
+
+/** Waypoint the applicant is standing on, 1-5. */
+function progressActiveDot(current: number, total: number): number {
+  return Math.min(
+    PROGRESS_DOTS,
+    Math.max(1, Math.ceil((current / total) * PROGRESS_DOTS)),
+  );
+}
+
+/**
+ * Five waypoints across the funnel; the last one is the office visit. A
+ * teardrop pin marks the dot in play at either end of the journey — the first
+ * one before you begin, the last one while the appointment is outstanding.
+ */
+function ProgressDots({
+  activeDot,
+  isPinned,
+  isWaiting,
+}: {
+  activeDot: number;
+  isPinned: boolean;
+  isWaiting: boolean;
+}) {
+  return (
+    <span className="flex items-center gap-[3.5px]" aria-hidden>
+      {Array.from({ length: PROGRESS_DOTS }, (_, index) => {
+        const dot = index + 1;
+        const isActive = dot === activeDot;
+        const fill =
+          isActive && isWaiting
+            ? "border-[1.5px] border-white/75"
+            : dot <= activeDot
+              ? "bg-[var(--brand-teal-hex)]"
+              : "bg-white/30";
+
+        return (
+          <span
+            key={dot}
+            className="relative flex h-[5px] w-[5px] items-center justify-center"
+          >
+            {isActive && isPinned ? (
+              <>
+                <span className="absolute inset-0 animate-apply-blip rounded-full border border-[var(--brand-teal-hex)]/70" />
+                <span className="absolute -top-[14px] left-1/2 h-[9px] w-[9px] -translate-x-1/2 -rotate-45 rounded-[50%_50%_50%_0] bg-[var(--brand-teal-hex)]" />
+              </>
+            ) : null}
+            <span className={`h-full w-full rounded-full ${fill}`} />
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * Status-bar-sized progress readout: five waypoint dots with the percentage
+ * beside them. The ends of the journey are named instead of numbered — "Start"
+ * before anything is filled in, "Appointment" while the visit is outstanding.
+ * Tapping it opens the detail bubble explaining what closes the gap.
+ */
+export function ApplyProgressBadge({
   current,
   total,
-  label,
-  leading,
-  trailing,
 }: {
   current: number;
   total: number;
-  label?: string;
-  leading: ReactNode;
-  trailing: ReactNode;
 }) {
-  const { filled, percent } = progressValue(current, total);
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const detailId = useId();
+
+  const percent = progressPercent(current, total);
+  const isStart = current <= APPLY_PROGRESS_START;
+  const isWaitingForVisit =
+    current >= APPLY_PROGRESS_APPOINTMENT && current < total;
+  const label = isStart ? "Start" : isWaitingForVisit ? "Appointment" : `${percent}%`;
+  const hint = applyProgressHint(current);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!wrapRef.current?.contains(event.target as Node)) setIsOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen]);
 
   return (
-    <div className="shrink-0 px-5 pt-6">
-      <div className="flex items-center gap-3">
-        {leading}
-        <div className="relative flex min-w-0 flex-1 justify-center">
-          <p
+    <div ref={wrapRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        aria-expanded={isOpen}
+        aria-describedby={isOpen ? detailId : undefined}
+        aria-label={
+          isStart
+            ? "Application not started yet. Show what happens next"
+            : isWaitingForVisit
+              ? `Application progress ${percent} percent, appointment outstanding. Show what is left`
+              : `Application progress ${percent} percent. Show what is left`
+        }
+        className="flex h-8 items-center gap-[7px] rounded-full border border-white/25 bg-white/15 pl-2.5 pr-3 text-[12px] font-bold leading-none tracking-[0.01em] text-white transition-transform duration-150 active:scale-95"
+      >
+        <ProgressDots
+          activeDot={progressActiveDot(current, total)}
+          isPinned={isStart || isWaitingForVisit}
+          isWaiting={isWaitingForVisit}
+        />
+        <span className="tabular-nums">{label}</span>
+      </button>
+
+      {isOpen ? (
+        <div
+          role="tooltip"
+          id={detailId}
+          className="absolute right-0 top-full z-40 mt-2.5 w-[min(17.5rem,calc(100vw-2.5rem))] animate-fade-up rounded-[16px] bg-[var(--surface-elevated)] p-3.5 text-left shadow-[0_14px_36px_rgba(0,0,20,0.22)] ring-1 ring-black/[0.06]"
+        >
+          <span
+            className="absolute -top-1 right-4 h-3 w-3 rotate-45 rounded-[3px] bg-[var(--surface-elevated)]"
             aria-hidden
-            className="absolute bottom-full left-0 right-0 mb-2 text-center text-[15px] font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]"
-          >
-            {percent}%
-          </p>
-          <div
-            role="progressbar"
-            aria-valuenow={current}
-            aria-valuemin={1}
-            aria-valuemax={total}
-            aria-valuetext={`${percent} percent`}
-            aria-label={label ?? `Step ${current} of ${total}`}
-            className="flex w-[75%] gap-[3px]"
-          >
-            {Array.from({ length: PROGRESS_SEGMENTS }, (_, index) => {
-              const isFilled = index < filled;
-              const stop = filled <= 1 ? 0 : index / (filled - 1);
-              return (
-                <span
-                  key={index}
-                  className="h-[7px] min-w-0 flex-1 rounded-[2px] transition-colors duration-300"
-                  style={{
-                    background: isFilled
-                      ? mixHex("#0033AA", "#06DEC0", stop)
-                      : "var(--surface-sunken)",
-                  }}
-                />
-              );
-            })}
+          />
+          <div className="relative">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[15px] font-bold leading-none text-[var(--brand-blue-hex)]">
+                {isStart ? "Ready to start" : `${percent}% complete`}
+              </p>
+              <p className="text-[11px] font-semibold leading-none text-[var(--text-tertiary)]">
+                Step {Math.min(current, total)} of {total}
+              </p>
+            </div>
+            <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-[var(--surface-sunken)]">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: isStart ? "8px" : `${percent}%`,
+                  background: "linear-gradient(90deg, #0033AA, #06DEC0)",
+                }}
+              />
+            </div>
+            <p className="mt-3 text-[13px] font-bold leading-tight text-[var(--text-primary)]">
+              {hint.title}
+            </p>
+            <p className="mt-1 text-[12.5px] leading-[1.45] text-[var(--text-secondary)]">
+              {hint.detail}
+            </p>
           </div>
         </div>
-        {trailing}
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Full-width progress module for the brand-blue sidebar. Desktop hides the
+ * mobile header, and the sidebar has room to name the waypoints and spell out
+ * what the current step needs, so it carries progress there instead.
+ */
+export function ApplyProgressPanel({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
+  const percent = progressPercent(current, total);
+  const isStart = current <= APPLY_PROGRESS_START;
+  const isWaitingForVisit =
+    current >= APPLY_PROGRESS_APPOINTMENT && current < total;
+  const activeDot = progressActiveDot(current, total);
+  const hint = applyProgressHint(current);
+
+  return (
+    <section className="relative z-10 my-8 max-w-[420px] rounded-[18px] border border-white/[0.14] bg-white/[0.07] px-6 pb-6 pt-5">
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="text-[32px] font-bold leading-none tracking-[-0.024em] text-white">
+          {percent}%
+        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/55">
+          Step {Math.min(current, total)} of {total}
+        </p>
       </div>
+
+      <div
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={1}
+        aria-valuemax={100}
+        aria-valuetext={`${percent} percent`}
+        aria-label="Application progress"
+        className="mt-8 flex items-center"
+      >
+        {Array.from({ length: PROGRESS_DOTS }, (_, index) => {
+          const dot = index + 1;
+          const isDone = dot <= activeDot;
+          const isActive = dot === activeDot;
+          const isWaiting = isActive && isWaitingForVisit;
+
+          return (
+            <Fragment key={dot}>
+              {index > 0 ? (
+                <span
+                  className={`h-[2px] flex-1 rounded-full ${isDone ? "bg-[var(--brand-teal-hex)]/60" : "bg-white/20"}`}
+                />
+              ) : null}
+              <span className="relative flex h-[10px] w-[10px] shrink-0 items-center justify-center">
+                {isActive ? (
+                  <>
+                    <span className="absolute inset-0 animate-apply-blip rounded-full border border-[var(--brand-teal-hex)]/70" />
+                    <span className="absolute -top-[22px] left-1/2 h-[15px] w-[15px] -translate-x-1/2 -rotate-45 rounded-[50%_50%_50%_0] bg-[var(--brand-teal-hex)]" />
+                  </>
+                ) : null}
+                <span
+                  className={`h-full w-full rounded-full ${
+                    isWaiting
+                      ? "border-2 border-white/75"
+                      : isDone
+                        ? "bg-[var(--brand-teal-hex)]"
+                        : "bg-white/25"
+                  }`}
+                />
+              </span>
+            </Fragment>
+          );
+        })}
+      </div>
+
+      <div className="mt-2.5 flex items-baseline justify-between gap-4 text-[12px] font-semibold">
+        <span className={isStart ? "text-white" : "text-white/45"}>Start</span>
+        <span className={isWaitingForVisit ? "text-white" : "text-white/45"}>
+          Appointment
+        </span>
+      </div>
+
+      <p className="mt-5 text-[15px] font-bold leading-tight text-white">
+        {hint.title}
+      </p>
+      <p className="mt-1.5 text-[13.5px] leading-[1.45] text-white/60">
+        {hint.detail}
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Sidebar progress for the gate landing pages, where the live step lives in
+ * client state inside the form rather than on the server-rendered page.
+ */
+export function LiveApplyProgressPanel({
+  fallbackStep,
+  total = APPLY_PROGRESS_TOTAL,
+}: {
+  fallbackStep: number;
+  total?: number;
+}) {
+  const current = useApplyProgressStep(fallbackStep);
+  return <ApplyProgressPanel current={current} total={total} />;
+}
+
+/** Back/next controls for the steps that have them. Nothing else lives here. */
+export function GateStepNav({
+  leading,
+  trailing,
+}: {
+  leading?: ReactNode;
+  trailing?: ReactNode;
+}) {
+  if (leading == null && trailing == null) return null;
+  const sideSlot = <span className="h-9 w-9 shrink-0" aria-hidden />;
+
+  return (
+    <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-4">
+      {leading ?? sideSlot}
+      {trailing ?? sideSlot}
     </div>
   );
 }

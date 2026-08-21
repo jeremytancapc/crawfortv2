@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { LoanFormData } from "@/lib/loan-form";
 
 interface Props {
@@ -67,10 +68,11 @@ export function BookingView({ formData }: Props) {
     <ApplyIosShell
       sidebarTitle="Book your appointment"
       sidebarSubtitle="Choose a date and time that works best for you to visit our office."
+      progressStep={APPLY_PROGRESS.book}
     >
       <div className="shrink-0 px-5 pb-4 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
-          Pick a collection time
+          Book your appointment
         </h1>
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
           The visit only takes around 30 minutes.

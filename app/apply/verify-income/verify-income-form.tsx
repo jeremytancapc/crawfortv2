@@ -6,7 +6,7 @@ import { CaretLeft, CaretRight, File, FileArrowUp, Info, X } from "@phosphor-ico
 import {
   Card,
   CardRow,
-  GateProgressNav,
+  GateStepNav,
   MobileGateHeader,
   MobileGateSheet,
   PrimaryButton,
@@ -15,9 +15,7 @@ import {
 } from "@/app/apply-gate/ios-ui";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
-
-const GATE_TOTAL_STEPS = 8;
-const VERIFY_STEP = 4;
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -136,11 +134,9 @@ export function VerifyIncomeForm({
 
   return (
     <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
-      <MobileGateHeader />
+      <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet>
-      <GateProgressNav
-        current={VERIFY_STEP}
-        total={GATE_TOTAL_STEPS}
+      <GateStepNav
         leading={
           <button
             type="button"
@@ -166,7 +162,7 @@ export function VerifyIncomeForm({
 
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
-          {showResults ? "Does this look right?" : "Let's verify your income"}
+          {showResults ? "Confirm your income" : "Upload your income proof"}
         </h1>
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
           {showResults

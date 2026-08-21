@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import type { LoanFormData } from "@/lib/loan-form";
 import { LoanResults } from "@/app/loan-results";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 
 interface Props {
   formData: LoanFormData;
@@ -28,8 +29,9 @@ export function ApprovalView({ formData }: Props) {
 
   return (
     <ApplyIosShell
-      sidebarTitle="Your loan offer is confirmed."
+      sidebarTitle="Choose your repayment plan"
       sidebarSubtitle="Choose the plan that works best for you."
+      progressStep={APPLY_PROGRESS.choosePlan}
     >
       <motion.div
         className="shrink-0 px-5 pb-6 pt-7"
@@ -39,7 +41,7 @@ export function ApprovalView({ formData }: Props) {
         transition={{ duration: prefersReducedMotion ? 0 : 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
-          Your loan offer is confirmed.
+          Choose your repayment plan
         </h1>
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
           Choose the plan that works best for you.

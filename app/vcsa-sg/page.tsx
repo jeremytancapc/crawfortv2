@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { LoanApplicationForm } from "../loan-application-form";
 import { SidebarTrustFeatures } from "../sidebar-trust-features";
+import { LiveApplyProgressPanel } from "../apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { redirectToApplyContinueIfNeeded } from "@/lib/apply-landing";
 
 const VCSA_SG_THINGS_TO_BRING = [
@@ -33,6 +35,8 @@ export default async function VCSASGPage() {
             200,000 Singaporeans since 2011.
           </p>
         </div>
+
+        <LiveApplyProgressPanel fallbackStep={APPLY_PROGRESS.amount} />
 
         <SidebarTrustFeatures />
 

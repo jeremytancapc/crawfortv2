@@ -1640,8 +1640,8 @@ function ReconsiderModal({
           <>
             <div className="flex flex-col gap-2 pr-8">
               <p
-                className="text-xl font-bold tracking-tight text-[var(--text-primary)]"
-                style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.03em" }}
+                className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]"
+                style={{ letterSpacing: "-0.03em" }}
               >
                 Are you sure?
               </p>
@@ -1709,8 +1709,8 @@ function ReconsiderModal({
               style={{ animation: "fade-up 0.3s cubic-bezier(0.16,1,0.3,1) both" }}
             >
               <p
-                className="text-xl font-bold tracking-tight text-[var(--text-primary)]"
-                style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.03em" }}
+                className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]"
+                style={{ letterSpacing: "-0.03em" }}
               >
                 No worries, mind sharing why?
               </p>
@@ -1819,8 +1819,8 @@ function CustomOfferConfirmModal({
 
         <div className="flex flex-col gap-2 pr-8">
           <p
-            className="text-xl font-bold tracking-tight text-[var(--text-primary)]"
-            style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.03em" }}
+            className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]"
+            style={{ letterSpacing: "-0.03em" }}
           >
             Send your custom plan request
           </p>
@@ -2052,12 +2052,6 @@ export function LoanResults({
                 }}
               />
               <div className="flex flex-col gap-1">
-                <h2
-                  className="font-display text-xl sm:text-2xl font-semibold leading-tight tracking-tight"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Choose your repayment plan
-                </h2>
                 <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   Tap a plan to see the rate, fees and total repayable.
                 </p>

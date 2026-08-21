@@ -87,7 +87,7 @@ function MoneylenderStep({
       <div className="mb-8">
         <h1
           className="text-4xl font-bold text-[var(--text-primary)] leading-tight mb-2"
-          style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.04em" }}
+          style={{ letterSpacing: "-0.04em" }}
         >
           Two quick checks<br />to unlock your offer.
         </h1>
@@ -106,7 +106,7 @@ function MoneylenderStep({
         <div>
           <h2
             className="text-lg font-bold tracking-tight text-[var(--text-primary)]"
-            style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.025em" }}
+            style={{ letterSpacing: "-0.025em" }}
           >
             Outstanding moneylender loans
           </h2>
@@ -225,7 +225,7 @@ function BankruptcyStep({
         <div>
           <h1
             className="text-2xl font-bold tracking-tight text-[var(--text-primary)]"
-            style={{ fontFamily: "var(--font-inter-tight), system-ui, sans-serif", letterSpacing: "-0.04em" }}
+            style={{ letterSpacing: "-0.04em" }}
           >
             One last step
           </h1>

@@ -9,7 +9,6 @@ import {
   formatCurrency,
   MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER,
 } from "@/lib/loan-form";
-import { assessCredit } from "@/lib/credit-score";
 import { buildDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
@@ -2158,7 +2157,6 @@ export function Step8_Review({
     onModalOpenChange?.(false);
   }, [onModalOpenChange]);
 
-  const declaredIncome = parseInt(formData.monthlyIncome.replace(/,/g, ""), 10) || 0;
   const demoMyInfo = useMemo(() => buildDemoReviewMyInfo(), []);
   const noaRecords = useMemo(() => {
     const rows =
@@ -2178,37 +2176,6 @@ export function Step8_Review({
     });
   }, [formData.cpfContributions, demoMyInfo.cpfContributions]);
   const reviewDob = formData.dob || demoMyInfo.dob;
-  const incomeAssessment = useMemo(() => {
-    return assessCredit({
-      dob: reviewDob,
-      idType: formData.idType || "pr",
-      cpfContributions: cpfRecords,
-      noaHistory: noaRecords,
-      selfDeclaredMonthlyIncome: declaredIncome,
-      requestedLoanAmount: formData.amount,
-      moneylenderNoLoans: formData.moneylenderNoLoans,
-      moneylenderLoanAmount: formData.moneylenderLoanAmount,
-      moneylenderPaymentHistory: formData.moneylenderPaymentHistory,
-      authMethod: "singpass",
-    });
-  }, [
-    reviewDob,
-    declaredIncome,
-    formData.idType,
-    cpfRecords,
-    noaRecords,
-    formData.amount,
-    formData.moneylenderNoLoans,
-    formData.moneylenderLoanAmount,
-    formData.moneylenderPaymentHistory,
-  ]);
-
-  const incomeSourceLabel =
-    incomeAssessment?.incomeSource === "cpf"
-      ? "CPF contributions"
-      : incomeAssessment?.incomeSource === "noa"
-        ? "Notice of Assessment"
-        : "Self-declared";
 
   const dobLabel = reviewDob
     ? new Date(`${reviewDob}T00:00:00`).toLocaleDateString("en-SG", {
@@ -2255,41 +2222,6 @@ export function Step8_Review({
               onSave={(v) => updateField("email", v)}
             />
           </Card>
-        </section>
-
-        <section>
-          <SectionLabel>Income</SectionLabel>
-          <Card>
-            <CardRow>
-              <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
-                Monthly income
-              </span>
-              <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
-                {formatCurrency(incomeAssessment.verifiedMonthlyIncome)}
-              </span>
-            </CardRow>
-            <CardRow>
-              <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
-                Source
-              </span>
-              <span className="text-right text-[17px] font-semibold text-[var(--text-primary)]">
-                {incomeSourceLabel}
-              </span>
-            </CardRow>
-            {declaredIncome > 0 && (
-              <CardRow>
-                <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
-                  You declared
-                </span>
-                <span className="tabular-nums text-[17px] text-[var(--text-primary)]">
-                  {formatCurrency(declaredIncome)} / mo
-                </span>
-              </CardRow>
-            )}
-          </Card>
-          <p className="mt-2 px-1 text-[13px] leading-[1.4] text-[var(--text-secondary)]">
-            {incomeAssessment.explanation}
-          </p>
         </section>
 
         {noaRecords.length > 0 && (

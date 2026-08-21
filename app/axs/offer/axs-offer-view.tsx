@@ -208,7 +208,7 @@ function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
               <p
                 className="tabular-nums leading-none"
                 style={{
-                  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                  fontFamily: "var(--font-quicksand), system-ui, sans-serif",
                   fontSize: "clamp(2.2rem, 9vw, 3rem)",
                   fontWeight: 800,
                   letterSpacing: "-0.04em",
@@ -382,7 +382,7 @@ export function AxsOfferView() {
 
         <h1
           style={{
-            fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+            fontFamily: "var(--font-quicksand), system-ui, sans-serif",
             fontSize: "clamp(1.6rem, 5.5vw, 2.1rem)",
             fontWeight: 800,
             letterSpacing: "-0.04em",
@@ -443,7 +443,7 @@ export function AxsOfferView() {
             <span
               className="tabular-nums font-bold"
               style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                fontFamily: "var(--font-quicksand), system-ui, sans-serif",
                 fontSize: "1.25rem",
                 letterSpacing: "-0.03em",
                 color: "var(--text-primary)",
@@ -469,7 +469,7 @@ export function AxsOfferView() {
             <span
               className="font-bold"
               style={{
-                fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+                fontFamily: "var(--font-quicksand), system-ui, sans-serif",
                 fontSize: "1.25rem",
                 letterSpacing: "-0.03em",
                 color: "var(--text-primary)",

@@ -21,6 +21,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { buildPaymentSchedule } from "@/lib/offer-plans";
 import { SignaturePad } from "./signature-pad";
@@ -1171,12 +1172,13 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
 
   return (
     <ApplyIosShell
-      sidebarTitle="One last step."
+      sidebarTitle="Confirm your loan terms"
       sidebarSubtitle="Review your selected plan and accept the loan terms to secure your funds."
+      progressStep={APPLY_PROGRESS.confirmTerms}
     >
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
-          Your loan is approved
+          Confirm your loan terms
         </h1>
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
           Review your plan details and accept the terms below to proceed.

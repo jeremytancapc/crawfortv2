@@ -14,7 +14,6 @@ import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
 
 const MOBILE_APP_URL = "https://crawfort.com/mobileapp";
 
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const FULL_DAY_LABELS = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
@@ -22,12 +21,6 @@ const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
-
-function formatDisplayDate(isoDate: string): string {
-  const [y, mo, d] = isoDate.split("-").map(Number);
-  const date = new Date(y, mo - 1, d);
-  return `${DAY_LABELS[date.getDay()]}, ${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
-}
 
 /** Split parts for the calendar chip + headline in the ticket card. */
 function getDateParts(isoDate: string) {
@@ -48,78 +41,6 @@ function formatDisplayTime(slot: string): string {
   return `${hour}:${m.toString().padStart(2, "0")}${period}`;
 }
 
-type BringItem = { title: string; titleSuffix?: string; sub?: string; subItems?: string[] };
-
-type BringGroup = {
-  mustHave: BringItem[];
-  goodToHave?: BringItem[];
-};
-
-/** Previous 3 full calendar months, e.g. "Apr, May & Jun". */
-function lastThreeMonthsLabel(): string {
-  const now = new Date();
-  const months: string[] = [];
-  for (let i = 3; i >= 1; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(MONTH_LABELS[d.getMonth()]);
-  }
-  return `${months[0]}, ${months[1]} & ${months[2]}`;
-}
-
-function getWhatToBring(): { sg_pr: BringGroup; foreigner: BringGroup } {
-  const months = lastThreeMonthsLabel();
-  return {
-    sg_pr: {
-      mustHave: [
-        { title: "NRIC", sub: "Physical card or digital Singpass" },
-        { title: "Singpass app", sub: "Installed on your phone" },
-      ],
-      goodToHave: [
-        {
-          title: "Last 3 months of income proof",
-          titleSuffix: `(${months})`,
-          subItems: [
-            "Payslips",
-            "PHV platform / gig worker statements",
-            "Bank statements",
-          ],
-        },
-      ],
-    },
-    foreigner: {
-      mustHave: [
-        { title: "Work Pass", sub: "WP / SP / EP / LTVP, 3+ months validity" },
-        { title: "Singpass app", sub: "Installed on your phone" },
-        { title: `Payslips (${months})`, sub: "Latest 3 months" },
-        { title: "Proof of SG address", sub: "Bank / utility / mobile bill, dated within 30 days" },
-      ],
-    },
-  };
-}
-
-function formatItemForShare(item: BringItem): string[] {
-  const fullTitle = item.titleSuffix ? `${item.title} ${item.titleSuffix}` : item.title;
-  if (item.subItems?.length) {
-    return [fullTitle, ...item.subItems.map((s) => `  • ${s}`)];
-  }
-  return [`• ${fullTitle}${item.sub ? ` - ${item.sub}` : ""}`];
-}
-
-function formatThingsToBringForShare(idType: "sg_pr" | "foreigner"): string {
-  const group = getWhatToBring()[idType];
-  const lines: string[] = ["Must have:"];
-  for (const item of group.mustHave) {
-    lines.push(...formatItemForShare(item));
-  }
-  if (group.goodToHave?.length) {
-    lines.push("", "Good to have (can help increase your loan amount):");
-    for (const item of group.goodToHave) {
-      lines.push(...formatItemForShare(item));
-    }
-  }
-  return lines.join("\n");
-}
-
 interface BookingConfirmedViewProps {
   booking: StoredBookingConfirmation;
 }
@@ -133,37 +54,6 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
   };
-
-  const idType = booking.idType === "foreigner" ? "foreigner" : "sg_pr";
-
-  const thingsToBringLines = formatThingsToBringForShare(idType);
-
-  const appointmentMessage = [
-    "[ CF Money Appointment ]",
-    "",
-    `Application Ref: ${booking.cfh5Id}`,
-    "",
-    `Date: ${formatDisplayDate(booking.date)}`,
-    `Time: ${formatDisplayTime(booking.time)}`,
-    "",
-    "-- Location --",
-    "1 North Bridge Road, High Street Centre",
-    "#01-35, Singapore 179094",
-    "City Hall MRT (Exit B) or Clarke Quay MRT (Exit E)",
-    "https://maps.app.goo.gl/Cs9Av94qW3NHh7wY6",
-    "",
-    "-- Things to bring --",
-    thingsToBringLines,
-  ].join("\n");
-
-  const handleShare = () => {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      navigator.share({ text: appointmentMessage }).catch(() => {});
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(appointmentMessage)}`, "_blank");
-    }
-  };
-
 
   const { month, day, weekday, full } = getDateParts(booking.date);
 
@@ -199,11 +89,28 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
           </div>
         </div>
 
-        <div className="flex items-start gap-2 border-t border-[var(--border-subtle)] px-5 py-3">
-          <ClockCountdown size={16} weight="regular" className="mt-px shrink-0 text-[var(--text-tertiary)]" />
-          <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
-            Kindly arrive on time so we can serve you promptly.
-          </p>
+        <div className="flex flex-col gap-2.5 border-t border-[var(--border-subtle)] px-5 py-3">
+          <div className="flex items-start gap-2">
+            <ClockCountdown
+              size={16}
+              weight="fill"
+              className="mt-px shrink-0 text-brand-blue"
+            />
+            <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
+              Kindly arrive on time so we can serve you promptly.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <WhatsappLogo
+              size={16}
+              weight="fill"
+              className="mt-px shrink-0"
+              style={{ color: "oklch(0.58 0.16 148)" }}
+            />
+            <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
+              We will send you the appointment details via WhatsApp soon.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-dashed border-white/25 bg-black px-5 py-3">
@@ -229,33 +136,6 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
         </div>
       </section>
 
-      {/* WhatsApp ---------------------------------------------------------- */}
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5">
-        <div className="flex items-center gap-3">
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-            style={{ background: "oklch(0.72 0.17 145 / 0.16)" }}
-          >
-            <WhatsappLogo size={22} weight="fill" style={{ color: "oklch(0.58 0.16 148)" }} />
-          </span>
-          <p className="text-[16px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
-            Details are on the way
-          </p>
-        </div>
-        <p className="mt-3 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-          We&apos;ll WhatsApp your appointment time, our office address and the
-          documents to bring to the number on your application.
-        </p>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-[var(--border-medium)] bg-[var(--surface-elevated)] px-4 text-[15px] font-semibold text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-secondary)] active:scale-[0.98]"
-        >
-          <WhatsappLogo size={18} weight="fill" />
-          Save details on WhatsApp
-        </button>
-      </section>
-
       {/* Crawfort app ------------------------------------------------------ */}
       <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5">
         <div className="flex items-center gap-3">
@@ -279,18 +159,39 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
           Set it up before you come in so we can serve you faster on the day.
           You&apos;ll keep using it after your loan starts.
         </p>
-        <p className="mt-3.5 text-[12px] font-semibold text-[var(--text-tertiary)]">
-          Also used for
-        </p>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {["Loan contract", "Payments", "Loan details"].map((label) => (
-            <span
-              key={label}
-              className="rounded-full bg-[var(--surface-secondary)] px-2.5 py-1 text-[12px] font-semibold text-[var(--text-secondary)]"
-            >
-              {label}
-            </span>
-          ))}
+        <div className="mt-4 flex items-center gap-2">
+          <a
+            href={MOBILE_APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
+          >
+            {/* Official Apple badge — do not restyle the artwork. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/download-on-app-store.svg"
+              alt="Download on the App Store"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+            />
+          </a>
+          <a
+            href={MOBILE_APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="-ml-1 transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
+          >
+            {/* Official Google badge — extra PNG padding, sized to match Apple. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/get-it-on-google-play.png"
+              alt="Get it on Google Play"
+              width={155}
+              height={58}
+              className="h-[58px] w-auto"
+            />
+          </a>
         </div>
         <a
           href={MOBILE_APP_URL}

@@ -7,6 +7,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { CustomOfferDisplay } from "@/lib/custom-offer-display";
 
 interface Props {
@@ -25,14 +26,14 @@ const NEXT_STEPS = [
 ];
 
 export function CustomOfferReceivedView({ offer }: Props) {
-  const { fullName, leadId, amount, tenure } = offer;
-  const firstName = fullName ? fullName.split(" ")[0] : null;
+  const { leadId, amount, tenure } = offer;
   const cfh5Ref = leadId ? `CFH5-${shortRef(leadId)}` : null;
 
   return (
     <ApplyIosShell
-      sidebarTitle="Request received."
+      sidebarTitle="Wait for our call"
       sidebarSubtitle="Our team will call and WhatsApp you shortly to confirm your custom offer."
+      progressStep={APPLY_PROGRESS.choosePlan}
     >
       <div className="flex flex-1 flex-col gap-8 px-5 pb-8 pt-7 animate-fade-up">
 
@@ -52,7 +53,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
             {/* Heading */}
             <div className="flex flex-col gap-2">
               <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
-                {firstName ? `Thanks, ${firstName}.` : "Thanks for your request."}
+                Wait for our call
               </h2>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
                 We&apos;ve received your request for{" "}
