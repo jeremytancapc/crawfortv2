@@ -6,7 +6,6 @@ import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 import {
   Card,
   CardRow,
-  GateStepNav,
   MobileGateHeader,
   MobileGateSheet,
   PrimaryButton,
@@ -149,8 +148,6 @@ export function VerifyIncomeForm({
     <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet>
-      <GateStepNav nav={stepNav} />
-
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
           {showResults ? "Confirm your income" : "Upload your income proof"}

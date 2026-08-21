@@ -12,7 +12,6 @@ import {
 } from "@/app/loan-application-form";
 import {
   ApplyProgressPanel,
-  GateStepNav,
   MobileGateHeader,
   MobileGateSheet,
   PrimaryButton,
@@ -269,8 +268,6 @@ export function ReviewForm({ initialData }: Props) {
             <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
-              <GateStepNav nav={stepNav} />
-
               {stepMeta && (
                 <div className="shrink-0 px-5 pb-6 pt-7">
                   <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">

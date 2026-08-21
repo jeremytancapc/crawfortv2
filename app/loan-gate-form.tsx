@@ -14,7 +14,6 @@ import {
 } from "@/app/loan-application-form";
 import { GateStepAmount } from "@/app/apply-gate/gate-step-amount";
 import {
-  GateStepNav,
   MobileGateHeader,
   MobileGateSheet,
   PrimaryButton,
@@ -164,10 +163,13 @@ export function LoanGateForm({
   const canGoBack = !step3RedirectPending;
   const canGoForward = Boolean(canProceed) && step < GATE_LAST_STEP;
   const showActionBar = step !== 3;
-  const stepNav: StepNavControls = {
-    back: { onClick: handleBack, disabled: step === 1 || !canGoBack },
-    next: { onClick: handleNext, disabled: mounted && !canGoForward },
-  };
+  const stepNav: StepNavControls | undefined =
+    step === 1
+      ? undefined
+      : {
+          back: { onClick: handleBack, disabled: !canGoBack },
+          next: { onClick: handleNext, disabled: mounted && !canGoForward },
+        };
   const progressStep =
     step === 1
       ? APPLY_PROGRESS.amount
@@ -187,8 +189,6 @@ export function LoanGateForm({
     <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={progressStep} />
       <MobileGateSheet>
-      <GateStepNav nav={stepNav} />
-
       {stepMeta && (
         <div className="shrink-0 px-5 pb-6 pt-7">
           <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
@@ -227,23 +227,21 @@ export function LoanGateForm({
         </div>
       </div>
 
-      <StickyFooter nav={stepNav}>
-        {showActionBar ? (
-          <>
-            <div className="mb-3 flex items-baseline justify-between gap-3">
-              <span className="text-[13px] text-[var(--text-secondary)]">
-                Est. monthly repayment
-              </span>
-              <span className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">
-                {formatCurrency(monthlyRepayment)}
-              </span>
-            </div>
-            <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
-              Continue
-            </PrimaryButton>
-          </>
-        ) : null}
-      </StickyFooter>
+      {showActionBar ? (
+        <StickyFooter nav={stepNav}>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <span className="text-[13px] text-[var(--text-secondary)]">
+              Est. monthly repayment
+            </span>
+            <span className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">
+              {formatCurrency(monthlyRepayment)}
+            </span>
+          </div>
+          <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
+            Continue
+          </PrimaryButton>
+        </StickyFooter>
+      ) : null}
       </MobileGateSheet>
     </div>
   );
