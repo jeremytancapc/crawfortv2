@@ -508,6 +508,99 @@ input[type="range"]::-moz-range-thumb {
   animation-fill-mode: forwards;
 }
 
+/* ─── Plan row ───────────────────────────────────────────────────────────────
+   Desktop gets three even columns. Everything below it becomes a lane: the
+   chosen card takes 46% of the row and overlaps its neighbours, which is the
+   only way its container-query type climbs off the floors ~110px of column
+   forces on a phone. The other two stay whole and scale down behind it. Lane
+   widths come from flex, so the row never scrolls and the chosen card can sit
+   at either end without spilling. */
+
+.plan-lane {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+}
+
+.plan-lane-card {
+  height: 100%;
+}
+
+@media (max-width: 1023.98px) {
+  /* Darker edges than the desktop grid: a lane card overlaps its neighbours,
+     so its outline is what separates the three, not the gap between them. */
+  .plan-lane {
+    display: flex;
+    gap: 0;
+    --plan-ring-color: rgba(0, 0, 0, 0.72);
+  }
+
+  .plan-lane-item {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    transition: flex-basis 300ms cubic-bezier(0.22, 1, 0.36, 1),
+                margin 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .plan-lane-item[data-active="true"] {
+    flex: 0 0 46%;
+    z-index: 2;
+  }
+
+  /* Pull in only on sides that have a neighbour to overlap. */
+  .plan-lane-item[data-active="true"]:not(:first-child) {
+    margin-left: -3.5%;
+  }
+
+  .plan-lane-item[data-active="true"]:not(:last-child) {
+    margin-right: -3.5%;
+  }
+
+  /* The cards either side stay whole — header, features, pick bar — and scale
+     down as a set, so they read as two more options standing behind this one
+     rather than fragments of a card. Scaling from the centre also lifts their
+     text clear of the card in front, so nothing looks sliced off. */
+  .plan-lane-item:not([data-active="true"]) .plan-lane-card {
+    transform: scale(0.85);
+  }
+
+  .plan-lane-card {
+    transform-origin: center;
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Feature rows are pre-sized for a two-line wrap so row N lines up across all
+     three columns on desktop. Lane cards differ in width, so that alignment is
+     off the table anyway — spread each card's own rows through the height it
+     has instead of holding space open for a wrap that no longer happens. */
+  .plan-lane .plan-features {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: none;
+    grid-auto-rows: auto;
+    align-content: space-evenly;
+    row-gap: 0.625rem;
+  }
+
+  /* A peeking card can't be flipped — a tap brings it forward first — so its
+     details face never shows in the lane. Taking it out of the sizing grid
+     stops that face's narrow, tall layout from padding every card in the row
+     out to a height nothing on screen needs. */
+  .plan-lane-item:not([data-active="true"]) .plan-card-back {
+    position: absolute;
+    inset: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .plan-lane-item,
+    .plan-lane-card {
+      transition: none;
+    }
+  }
+}
+
 /* ─── Approval theme - Quicksand headings, clean finance aesthetic ─── */
 
 .approval-theme {

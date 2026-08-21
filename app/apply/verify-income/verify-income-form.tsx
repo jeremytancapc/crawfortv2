@@ -155,7 +155,7 @@ export function VerifyIncomeForm({
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
           {showResults
             ? "Check the last 3 months we read from your documents."
-            : "Upload your payslips or bank statements as income proof."}
+            : "We accept payslips, income statements and bank statements."}
         </p>
       </div>
 
