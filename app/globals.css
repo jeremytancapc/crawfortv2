@@ -536,39 +536,27 @@ input[type="range"]::-moz-range-thumb {
     --plan-ring-color: rgba(0, 0, 0, 0.72);
   }
 
+  /* Every item keeps the same one-third layout box at all times - selecting a
+     card never changes flex-basis or margin. Only `transform` (translateX +
+     scale, both set inline per-card as --lane-x/--lane-scale) moves the active
+     card forward and tucks its neighbours in behind it. Because the layout box
+     itself is inert, this never triggers reflow or a container-query text
+     resize mid-transition - the growth/shrink is pure compositor work, so it
+     stays smooth even on slower phones. */
   .plan-lane-item {
     position: relative;
     flex: 1 1 0;
     min-width: 0;
-    transition: flex-basis 300ms cubic-bezier(0.22, 1, 0.36, 1),
-                margin 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .plan-lane-item[data-active="true"] {
-    flex: 0 0 46%;
     z-index: 2;
   }
 
-  /* Pull in only on sides that have a neighbour to overlap. */
-  .plan-lane-item[data-active="true"]:not(:first-child) {
-    margin-left: -3.5%;
-  }
-
-  .plan-lane-item[data-active="true"]:not(:last-child) {
-    margin-right: -3.5%;
-  }
-
-  /* The cards either side stay whole — header, features, pick bar — and scale
-     down as a set, so they read as two more options standing behind this one
-     rather than fragments of a card. Scaling from the centre also lifts their
-     text clear of the card in front, so nothing looks sliced off. */
-  .plan-lane-item:not([data-active="true"]) .plan-lane-card {
-    transform: scale(0.85);
-  }
-
   .plan-lane-card {
-    transform-origin: center;
-    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform: translateX(var(--lane-x, 0%)) scale(var(--lane-scale, 1));
+    transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
   }
 
   /* Feature rows are pre-sized for a two-line wrap so row N lines up across all

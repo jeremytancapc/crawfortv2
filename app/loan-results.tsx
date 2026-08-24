@@ -474,6 +474,30 @@ function shortPlanName(title: string): string {
  *  Kept in step with the `.plan-lane` media query. */
 const LANE_MEDIA_QUERY = "(max-width: 1023.98px)";
 
+/** How far the peeking lane cards shrink and tuck in behind the active one.
+ *  Purely visual (translateX + scale, composited) - the layout box behind
+ *  every card stays a fixed third of the lane at all times, so switching
+ *  cards never triggers a real resize/reflow (which is what made the old
+ *  flex-basis/margin version feel jittery: every frame forced the
+ *  container-query text inside each card to re-measure).
+ *
+ *  The active card is never scaled up: every card's height is stretched to
+ *  match the row (`align-items: stretch`), so growing one card's `transform`
+ *  grows it past that shared row height too, with nothing to clip the
+ *  overflow - it bleeds into whatever sits above/below the lane. Its ring,
+ *  shadow and "Popular" badge already make it read as the front card; only
+ *  the two peeking cards shrink, which is always safe since shrinking can
+ *  only pull a card further inside its own box, never past it. A card two
+ *  slots from the active one (only reachable when the active card sits at
+ *  either end of the three) tucks in further so it still reads as "directly
+ *  behind" its nearer neighbour rather than drifting off. */
+function laneCardTransform(offsetFromActive: number): { x: string; scale: number } {
+  if (offsetFromActive === 0) return { x: "0%", scale: 1 };
+  const pull = Math.abs(offsetFromActive) >= 2 ? 36 : 20;
+  const towardActive = offsetFromActive < 0 ? 1 : -1;
+  return { x: `${towardActive * pull}%`, scale: 0.8 };
+}
+
 const FLIP_DURATION = 0.55;
 
 /** Reserved strip above every card body. The "Popular" tab occupies this slot
@@ -1373,11 +1397,16 @@ function PlanPicker({
   const [lanePlanId, setLanePlanId] = useState<OfferPlan["id"] | undefined>(
     () => plans.find((plan) => plan.badge)?.id ?? plans[Math.floor(plans.length / 2)]?.id,
   );
+  const activeLaneIndex = plans.findIndex((plan) => plan.id === lanePlanId);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="plan-lane">
-        {plans.map((plan, index) => (
+        {plans.map((plan, index) => {
+          const { x: laneX, scale: laneScale } = laneCardTransform(
+            activeLaneIndex === -1 ? 0 : index - activeLaneIndex,
+          );
+          return (
           <div
             key={plan.id}
             className="plan-lane-item"
@@ -1386,7 +1415,13 @@ function PlanPicker({
             {/* RevealOnScroll writes its own transform, so the lane's scale
                 needs a layer of its own to sit on. */}
             <RevealOnScroll className="h-full" delay={index * 0.06}>
-              <div className="plan-lane-card">
+              <div
+                className="plan-lane-card"
+                style={{
+                  ["--lane-x" as string]: laneX,
+                  ["--lane-scale" as string]: laneScale,
+                }}
+              >
                 <PlanCard
                   plan={plan}
                   isSelected={selectedPlanId === plan.id}
@@ -1410,7 +1445,8 @@ function PlanPicker({
               </div>
             </RevealOnScroll>
           </div>
-        ))}
+          );
+        })}
       </div>
       <RevealOnScroll>
       <CustomOfferCard
