@@ -88,8 +88,8 @@ const APPLY_PROGRESS_HINTS = new Map<number, ApplyProgressHint>([
   [
     APPLY_PROGRESS.choosePlan,
     {
-      title: "Choose your repayment plan",
-      detail: "Pick the monthly amount that fits.",
+      title: "Confirm your loan amount",
+      detail: "Choose the amount and repayment plan that fits.",
     },
   ],
   [
