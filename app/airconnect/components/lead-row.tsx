@@ -8,6 +8,7 @@ import { formatDueLabel, formatRelativeTime, getDueBucket, maskPhone } from "@/l
 import { StatusPill } from "./status-pill";
 import { CopyPhoneButton } from "./copy-phone-button";
 import { QuickActions, type QuickActionsHandle } from "./quick-actions";
+import { EligibilityDisplay, LeadTagsPicker } from "./lead-tags";
 
 export type LeadRowHandle = QuickActionsHandle;
 
@@ -60,36 +61,44 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
           : "border-[var(--border-subtle)] hover:shadow-sm",
       ].join(" ")}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-sm font-bold text-[var(--text-primary)]">{lead.name}</span>
-            <StatusPill status={lead.status} />
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
-            <span className="inline-flex items-center gap-0.5">
-              {maskPhone(lead.phone)}
-              <CopyPhoneButton phone={lead.phone} />
-            </span>
-            <span aria-hidden>&middot;</span>
-            <span>{lead.source}</span>
-            {lead.loanAmountLabel && (
-              <>
-                <span aria-hidden>&middot;</span>
-                <span className="font-semibold">{lead.loanAmountLabel}</span>
-              </>
+      <div className="grid grid-cols-2">
+        <div className="min-w-0">
+          <div className="pr-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate text-sm font-bold text-[var(--text-primary)]">{lead.name}</span>
+              <StatusPill status={lead.status} />
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
+              <span className="inline-flex items-center gap-0.5">
+                {maskPhone(lead.phone)}
+                <CopyPhoneButton phone={lead.phone} />
+              </span>
+              <span aria-hidden>&middot;</span>
+              <span>{lead.source}</span>
+              {lead.loanAmountLabel && (
+                <>
+                  <span aria-hidden>&middot;</span>
+                  <span className="font-semibold">{lead.loanAmountLabel}</span>
+                </>
+              )}
+            </div>
+            {lastNote && (
+              <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
+                <span className="font-semibold text-[var(--text-tertiary)]">{NOTE_KIND_LABEL[lastNote.kind] ?? "Note"}: </span>
+                {lastNote.text}
+              </p>
             )}
+            <div className="mt-2">
+              {lead.followUpAt && <p className={`text-xs font-semibold ${dueColor}`}>{formatDueLabel(lead.followUpAt, now)}</p>}
+              <p className="text-[11px] text-[var(--text-tertiary)]">Updated {formatRelativeTime(lead.updatedAt, now)}</p>
+            </div>
           </div>
-          {lastNote && (
-            <p className="mt-1 truncate text-xs text-[var(--text-secondary)]">
-              <span className="font-semibold text-[var(--text-tertiary)]">{NOTE_KIND_LABEL[lastNote.kind] ?? "Note"}: </span>
-              {lastNote.text}
-            </p>
-          )}
+          <EligibilityDisplay flush className="-ml-3" />
         </div>
-        <div className="shrink-0 text-right">
-          {lead.followUpAt && <p className={`text-xs font-semibold ${dueColor}`}>{formatDueLabel(lead.followUpAt, now)}</p>}
-          <p className="text-[11px] text-[var(--text-tertiary)]">Updated {formatRelativeTime(lead.updatedAt, now)}</p>
+
+        <div className="min-w-0 border-l border-[var(--border-subtle)] pl-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]">Customer Info</p>
+          <LeadTagsPicker lead={lead} />
         </div>
       </div>
 

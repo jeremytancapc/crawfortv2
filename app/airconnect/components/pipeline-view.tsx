@@ -6,6 +6,7 @@ import { STATUS_LABELS, STATUS_ORDER, type Lead, type LeadStatus } from "@/lib/a
 import { useAirConnect } from "../airconnect-store";
 import { formatDueLabel, formatRelativeTime, maskPhone } from "@/lib/airconnect/helpers";
 import { QuickActions } from "./quick-actions";
+import { LeadTagSummary } from "./lead-tags";
 
 const COLUMN_ACCENT: Record<LeadStatus, string> = {
   new: "border-t-slate-400",
@@ -47,6 +48,7 @@ function PipelineCard({ lead, alignRight, now }: { lead: Lead; alignRight: boole
         <p className="mt-1 text-[11px] font-semibold text-[var(--text-secondary)]">{formatDueLabel(lead.followUpAt, now)}</p>
       )}
       {lastNote && <p className="mt-1 line-clamp-2 text-[11px] text-[var(--text-tertiary)]">{lastNote.text}</p>}
+      <LeadTagSummary tags={lead.tags} />
       <p className="mt-1 text-[10px] text-[var(--text-tertiary)]">Updated {formatRelativeTime(lead.updatedAt, now)}</p>
 
       <div className="mt-2 border-t border-[var(--border-subtle)] pt-2">

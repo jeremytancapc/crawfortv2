@@ -49,6 +49,30 @@ export interface Appointment {
   createdAt: string; // ISO timestamp
 }
 
+export type ResidencyTag = "sg-pr" | "foreigner";
+export type EmploymentTag = "employed" | "self-employed";
+export type IncomeDocTag = "cpf" | "noa" | "payslip" | "bank-statement";
+
+export type OutstandingTag =
+  | { kind: "none" }
+  | { kind: "amount"; label: string };
+
+export type EligibilityTag =
+  | "ascend-approved"
+  | "ascend-pending-docs"
+  | "h5-approved-with-appt"
+  | "h5-approved-without-appt"
+  | "h5-system-rejected"
+  | "h5-customer-reject"
+  | "h5-customer-never-completed";
+
+export interface LeadTags {
+  residency: ResidencyTag | null;
+  employment: EmploymentTag | null;
+  incomeDocs: IncomeDocTag[];
+  outstanding: OutstandingTag | null;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -63,6 +87,8 @@ export interface Lead {
   appointment: Appointment | null;
   notes: NoteEntry[];
   loanAmountLabel: string | null;
+  tags: LeadTags;
+  eligibility: EligibilityTag | null;
 }
 
 export type ViewMode = "queue" | "pipeline" | "table";

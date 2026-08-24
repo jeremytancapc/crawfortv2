@@ -5,12 +5,13 @@
  * the workspace with ssr: false to avoid hydration mismatches).
  */
 
-import type { Agent, AgentId, Lead, LeadSource, LeadStatus, NoteEntry } from "./types";
+import type { Agent, AgentId, EligibilityTag, IncomeDocTag, Lead, LeadSource, LeadStatus, LeadTags, NoteEntry } from "./types";
+import { ELIGIBILITY_OPTIONS, emptyLeadTags } from "./tags";
 
 export const AGENTS: Agent[] = [
-  { id: "agent-a", name: "Agent A", initials: "AA", colorHex: "#0033AA" },
-  { id: "agent-b", name: "Agent B", initials: "AB", colorHex: "#0F9D8A" },
-  { id: "agent-c", name: "Agent C", initials: "AC", colorHex: "#B45309" },
+  { id: "agent-a", name: "Heryana", initials: "H", colorHex: "#0033AA" },
+  { id: "agent-b", name: "Willi", initials: "W", colorHex: "#0F9D8A" },
+  { id: "agent-c", name: "Radah", initials: "R", colorHex: "#B45309" },
 ];
 
 const NAMES = [
@@ -85,6 +86,25 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+const INCOME_DOCS: IncomeDocTag[] = ["cpf", "noa", "payslip", "bank-statement"];
+
+function seedTags(rng: () => number, status: LeadStatus): LeadTags {
+  if (status === "new" || rng() > 0.62) return emptyLeadTags();
+
+  const docs = INCOME_DOCS.filter(() => rng() > 0.62);
+  return {
+    residency: rng() > 0.22 ? "sg-pr" : "foreigner",
+    employment: rng() > 0.28 ? "employed" : "self-employed",
+    incomeDocs: docs.length > 0 ? docs : rng() > 0.5 ? [pick(INCOME_DOCS, rng)] : [],
+    outstanding: rng() > 0.45 ? { kind: "none" } : { kind: "amount", label: pick(AMOUNTS, rng) },
+  };
+}
+
+function seedEligibility(rng: () => number, status: LeadStatus): EligibilityTag | null {
+  if (status === "new" && rng() > 0.35) return null;
+  return pick(ELIGIBILITY_OPTIONS, rng).id;
+}
+
 function formatPhone(rng: () => number): string {
   const prefix = rng() > 0.5 ? "8" : "9";
   const rest = String(Math.floor(rng() * 9000000) + 1000000);
@@ -96,7 +116,7 @@ function makeNote(id: string, kind: NoteEntry["kind"], text: string, authorId: A
 }
 
 /**
- * Builds ~60 leads spread across Agents A, B, C with realistic status mix and
+ * Builds ~60 leads spread across Heryana, Willi, and Radah with realistic status mix and
  * follow-up times distributed across overdue / due-today / upcoming buckets.
  */
 export function buildMockLeads(now: Date = new Date()): Lead[] {
@@ -177,6 +197,8 @@ export function buildMockLeads(now: Date = new Date()): Lead[] {
       appointment,
       notes,
       loanAmountLabel: rng() > 0.25 ? pick(AMOUNTS, rng) : null,
+      tags: seedTags(rng, status),
+      eligibility: seedEligibility(rng, status),
     });
   });
 

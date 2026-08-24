@@ -185,18 +185,16 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
           />
         </div>
 
-        {size === "compact" && (
-          <button
-            type="button"
-            onClick={pushNextWorkingDay}
-            disabled={isDone}
-            title={`Push to next working day (D) — ${nextDay.label}`}
-            className={[BASE_BTN, sizing, "bg-[var(--brand-blue-hex)] text-white shadow-sm hover:opacity-90"].join(" ")}
-          >
-            <SkipForward size={iconSize} weight="fill" />
-            Next day
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={pushNextWorkingDay}
+          disabled={isDone}
+          title={`Push to next working day (D) — ${nextDay.label}`}
+          className={[BASE_BTN, sizing, "bg-[var(--brand-blue-hex)] text-white shadow-sm hover:opacity-90"].join(" ")}
+        >
+          <SkipForward size={iconSize} weight="fill" />
+          Next day
+        </button>
 
         <div className="relative">
           <button
@@ -219,23 +217,6 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
           />
         </div>
       </div>
-
-      {size !== "compact" && (
-        <button
-          type="button"
-          onClick={pushNextWorkingDay}
-          disabled={isDone}
-          title={`Push to next working day (D) — ${nextDay.label}`}
-          className={[
-            BASE_BTN,
-            "mt-1.5 w-full justify-center px-3 py-2.5 text-sm shadow-sm",
-            "bg-[var(--brand-blue-hex)] text-white hover:opacity-90",
-          ].join(" ")}
-        >
-          <SkipForward size={16} weight="fill" />
-          Push to {nextDay.label}
-        </button>
-      )}
 
       {showOutcome && (
         <OutcomeChips
