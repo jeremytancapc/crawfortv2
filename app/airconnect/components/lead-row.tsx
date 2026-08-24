@@ -8,7 +8,7 @@ import { formatDueLabel, formatRelativeTime, getDueBucket, maskPhone } from "@/l
 import { StatusPill } from "./status-pill";
 import { CopyPhoneButton } from "./copy-phone-button";
 import { QuickActions, type QuickActionsHandle } from "./quick-actions";
-import { EligibilityDisplay, LeadTagsPicker } from "./lead-tags";
+import { EligibilityDisplay, LeadTagsPicker, SectionBar } from "./lead-tags";
 
 export type LeadRowHandle = QuickActionsHandle;
 
@@ -61,13 +61,19 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
           : "border-[var(--border-subtle)] hover:shadow-sm",
       ].join(" ")}
     >
-      <div className="grid grid-cols-2">
+      <div className="-mx-3 -mt-3 grid grid-cols-2 overflow-hidden rounded-t-[11px]">
+        <SectionBar tone="name" flush large>
+          {lead.name}
+        </SectionBar>
+        <SectionBar tone="info" flush>
+          Customer Info
+        </SectionBar>
+      </div>
+
+      <div className="grid grid-cols-2 pt-2.5">
         <div className="min-w-0">
           <div className="pr-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-sm font-bold text-[var(--text-primary)]">{lead.name}</span>
-              <StatusPill status={lead.status} />
-            </div>
+            <StatusPill status={lead.status} />
             <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
               <span className="inline-flex items-center gap-0.5">
                 {maskPhone(lead.phone)}
@@ -97,7 +103,6 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
         </div>
 
         <div className="min-w-0 border-l border-[var(--border-subtle)] pl-3">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]">Customer Info</p>
           <LeadTagsPicker lead={lead} />
         </div>
       </div>

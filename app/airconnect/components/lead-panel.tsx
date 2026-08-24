@@ -9,7 +9,7 @@ import type { Lead, NoteKind } from "@/lib/airconnect/types";
 import { StatusPill } from "./status-pill";
 import { CopyPhoneButton } from "./copy-phone-button";
 import { QuickActions } from "./quick-actions";
-import { EligibilityDisplay, LeadTagsPicker } from "./lead-tags";
+import { EligibilityDisplay, LeadTagsPicker, SectionBar } from "./lead-tags";
 import { QUICK_PHRASES } from "./note-popover";
 
 const NOTE_KIND_ICON: Record<NoteKind, typeof NotePencil> = {
@@ -107,7 +107,9 @@ function LeadFacts({ lead, now }: { lead: Lead; now: Date }) {
       </div>
 
       <div className="mt-3">
-        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]">Customer Info</p>
+        <SectionBar tone="info" className="mb-2">
+          Customer Info
+        </SectionBar>
         <LeadTagsPicker lead={lead} />
       </div>
 
