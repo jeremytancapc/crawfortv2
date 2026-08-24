@@ -681,7 +681,7 @@ function PlanCard({
         WebkitBackfaceVisibility: "hidden",
       }}
       aria-pressed={isSelected}
-      aria-label={`${shortPlanName(plan.title)}${isPopular ? ", most popular" : ""}: ${plan.pitch}, ${formatCurrency(plan.monthlyInstalment)} a month over ${plan.tenure} months. Shows the full breakdown.`}
+      aria-label={`${shortPlanName(plan.title)}${isPopular ? ", most popular" : ""}: ${plan.pitch}, ${formatCurrency(plan.monthlyInstalment)} a month over ${plan.tenure} months.${isSelected ? " Tap again for the full breakdown." : ""}`}
       aria-hidden={isFlipped}
       tabIndex={isFlipped ? -1 : 0}
     >
@@ -789,6 +789,14 @@ function PlanCard({
               </li>
             ))}
           </ul>
+          {isSelected && (
+            <p
+              className={`mt-auto pb-1 text-center font-medium leading-none tracking-[-0.01em] ${TYPE.label}`}
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Tap again for more details
+            </p>
+          )}
         </div>
 
         {/* CTA footer - doubles as the selection indicator: resting cards
@@ -1384,14 +1392,18 @@ function PlanPicker({
                   isSelected={selectedPlanId === plan.id}
                   isFlipped={flippedPlanId === plan.id}
                   onSelect={() => {
-                    onPlanSelect(plan.id);
-                    setLanePlanId(plan.id);
                     // A peeking card comes forward on its first tap, so the
                     // breakdown only ever flips in at full width.
                     const comesForward =
                       plan.id !== lanePlanId &&
                       window.matchMedia(LANE_MEDIA_QUERY).matches;
-                    setFlippedPlanId(comesForward ? null : plan.id);
+                    if (comesForward || selectedPlanId !== plan.id) {
+                      onPlanSelect(plan.id);
+                      setLanePlanId(plan.id);
+                      setFlippedPlanId(null);
+                      return;
+                    }
+                    setFlippedPlanId(plan.id);
                   }}
                   onFlipBack={() => setFlippedPlanId(null)}
                 />
@@ -1973,7 +1985,7 @@ export function LoanResults({
         {/* Plan picker — its own section, with the intro copy that used to live
             in the hero now anchoring this section instead of a divider banner. */}
         {!isExpired && (
-          <div className="flex flex-col gap-2 sm:gap-5">
+          <div className="flex flex-col gap-4 sm:gap-5">
             <RevealOnScroll>
             <div ref={planHintRef} className="flex flex-col gap-2.5 sm:gap-3">
               <div
@@ -1984,11 +1996,9 @@ export function LoanResults({
                     "linear-gradient(90deg, transparent 0%, var(--border-medium) 12%, var(--border-medium) 88%, transparent 100%)",
                 }}
               />
-              <div className="flex flex-col gap-1">
-                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  Tap a plan to see the rate, fees and total repayable.
-                </p>
-              </div>
+              <h2 className="pb-3 text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+                Choose your loan plan
+              </h2>
             </div>
             </RevealOnScroll>
             <PlanPicker

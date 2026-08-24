@@ -163,7 +163,6 @@ export function VerifyIncomeForm({
         {showResults ? (
           <div key="results" className="animate-fade-up flex flex-col gap-6">
             <section>
-              <SectionLabel>Last 3 months</SectionLabel>
               <Card>
                 {incomeMonths.map((month) => (
                   <CardRow key={month.label}>
