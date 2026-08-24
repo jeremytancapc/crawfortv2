@@ -227,6 +227,49 @@ function EligibilityColumn({
   );
 }
 
+const SECTION_TONE = {
+  name: "bg-slate-800",
+  info: "bg-teal-800",
+  eligibility: "bg-[var(--brand-blue-hex)]",
+} as const;
+
+export function SectionBar({
+  children,
+  tone,
+  flush,
+  large,
+  className,
+}: {
+  children: ReactNode;
+  tone: keyof typeof SECTION_TONE;
+  flush?: boolean;
+  large?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={[
+        "flex items-center justify-center",
+        SECTION_TONE[tone],
+        flush ? "px-3 py-1.5" : "rounded-md px-2 py-1",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <p
+        className={
+          large
+            ? "text-center text-base font-bold leading-snug text-white"
+            : "text-center text-[9px] font-bold tracking-[0.16em] text-white uppercase"
+        }
+      >
+        {children}
+      </p>
+    </div>
+  );
+}
+
 export function EligibilityDisplay({
   className,
   flush,
@@ -239,9 +282,9 @@ export function EligibilityDisplay({
 
   return (
     <div className={["mt-2", className].filter(Boolean).join(" ")}>
-      <div className={flush ? "bg-[var(--brand-blue-hex)] px-3 py-1" : "rounded-md bg-[var(--brand-blue-hex)] px-2 py-1"}>
-        <p className="text-center text-[9px] font-bold tracking-[0.16em] text-white uppercase">Eligibility</p>
-      </div>
+      <SectionBar tone="eligibility" flush={flush}>
+        Eligibility
+      </SectionBar>
       <div className={flush ? "grid grid-cols-2 gap-1.5 px-3 pt-2" : "mt-1.5 grid grid-cols-2 gap-3"}>
         <EligibilityColumn title="Ascend" options={ascend} />
         <div className="min-w-0 border-l border-[var(--border-subtle)] pl-1.5">

@@ -33,6 +33,14 @@ export function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/** Monday 00:00 of the Mon–Sun week containing `date`. */
+export function startOfWeekMonday(date: Date): Date {
+  const d = startOfDay(date);
+  const weekday = d.getDay();
+  const offset = weekday === 0 ? -6 : 1 - weekday;
+  return addDays(d, offset);
+}
+
 export function isSameCalendarDay(a: Date, b: Date): boolean {
   return toDateKey(a) === toDateKey(b);
 }
