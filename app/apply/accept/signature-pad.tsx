@@ -229,7 +229,7 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
           boxShadow: `inset 0 0 0 1px ${isSigned ? "oklch(0.7 0.12 152 / 0.35)" : "oklch(0.55 0.16 258 / 0.28)"}`,
         }}
       >
-        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
           {!isSigned && (
             <motion.span
               aria-hidden="true"
@@ -237,20 +237,20 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
               style={{ background: "var(--brand-blue-hex, #0033AA)" }}
               animate={
                 prefersReducedMotion
-                  ? { opacity: 0.35 }
-                  : { opacity: [0.35, 0, 0.35], scale: [1, 1.6, 1.6] }
+                  ? { opacity: 0.25 }
+                  : { opacity: [0.25, 0, 0.25], scale: [1, 1.25, 1.25] }
               }
               transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
             />
           )}
           <span
-            className="relative flex h-9 w-9 items-center justify-center rounded-full"
+            className="relative flex h-7 w-7 items-center justify-center rounded-full"
             style={{ background: isSigned ? "#16a34a" : "var(--brand-blue-hex, #0033AA)" }}
           >
             {isSigned ? (
-              <SealCheck size={16} weight="fill" style={{ color: "#ffffff" }} />
+              <SealCheck size={13} weight="fill" style={{ color: "#ffffff" }} />
             ) : (
-              <PenNib size={16} weight="bold" style={{ color: "#ffffff" }} />
+              <PenNib size={13} weight="bold" style={{ color: "#ffffff" }} />
             )}
           </span>
         </span>
