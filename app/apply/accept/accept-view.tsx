@@ -14,7 +14,7 @@ import {
   ShieldCheck,
 } from "@phosphor-icons/react";
 
-import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { ApplyIosShell, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { SignaturePad } from "./signature-pad";
@@ -571,14 +571,6 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               transition={REVEAL_TRANSITION}
             >
               <NextStepsBanner />
-              <button
-                type="button"
-                onClick={startTerms}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-              >
-                Confirm loan terms
-                <ArrowRight size={16} weight="bold" />
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -602,31 +594,46 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                   onCleared={() => setSignatureDataUrl(null)}
                 />
               </div>
-
-              {/* Opens the appointment reminder first; navigation only happens
-                  once the customer acknowledges it below. */}
-              <button
-                type="button"
-                disabled={!canProceed}
-                onClick={() => setShowAppointmentReminder(true)}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-              >
-                Next: Get your funds
-                <ArrowRight size={16} weight="bold" />
-              </button>
-
-              {!canProceed && (
-                <p
-                  className="text-center text-[11px] -mt-3"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Please sign above to continue.
-                </p>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Anchored to the bottom rather than sitting inline, like every other
+          terminal CTA in the apply funnel - null children while the deck is
+          active hides the bar entirely, handing that space back to the
+          cards being swiped through. */}
+      <StickyFooter>
+        {hasConfirmedTerms ? (
+          <div className="flex flex-col gap-2">
+            {!canProceed && (
+              <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                Please sign above to continue.
+              </p>
+            )}
+            {/* Opens the appointment reminder first; navigation only happens
+                once the customer acknowledges it below. */}
+            <button
+              type="button"
+              disabled={!canProceed}
+              onClick={() => setShowAppointmentReminder(true)}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+            >
+              Next: Get your funds
+              <ArrowRight size={16} weight="bold" />
+            </button>
+          </div>
+        ) : !hasStartedTerms ? (
+          <button
+            type="button"
+            onClick={startTerms}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+          >
+            Confirm loan terms
+            <ArrowRight size={16} weight="bold" />
+          </button>
+        ) : null}
+      </StickyFooter>
 
       <AnimatePresence>
         {showAppointmentReminder && (

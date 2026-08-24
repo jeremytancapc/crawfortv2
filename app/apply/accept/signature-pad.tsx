@@ -217,19 +217,56 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col items-center gap-1.5 text-center pt-1">
-        <div className="flex items-center gap-2">
-          <PenNib size={16} weight="bold" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+      {/* A plain caption reads as decoration this late in the flow, when it's
+          actually the one remaining blocker before the offer is accepted -
+          so it gets the same "can't miss it" callout treatment as a required
+          form field: a filled panel, an icon badge, and (while still unsigned)
+          a soft pulse to keep drawing the eye back to it. */}
+      <div
+        className="flex items-center gap-3 rounded-[var(--radius-md)] px-3.5 py-3 transition-colors duration-300"
+        style={{
+          background: isSigned ? "oklch(0.95 0.045 152)" : "oklch(0.95 0.03 258)",
+          boxShadow: `inset 0 0 0 1px ${isSigned ? "oklch(0.7 0.12 152 / 0.35)" : "oklch(0.55 0.16 258 / 0.28)"}`,
+        }}
+      >
+        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+          {!isSigned && (
+            <motion.span
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full"
+              style={{ background: "var(--brand-blue-hex, #0033AA)" }}
+              animate={
+                prefersReducedMotion
+                  ? { opacity: 0.35 }
+                  : { opacity: [0.35, 0, 0.35], scale: [1, 1.6, 1.6] }
+              }
+              transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+            />
+          )}
           <span
-            className="text-[13px] font-bold tracking-[0.14em] uppercase"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: isSigned ? "#16a34a" : "var(--brand-blue-hex, #0033AA)" }}
+          >
+            {isSigned ? (
+              <SealCheck size={16} weight="fill" style={{ color: "#ffffff" }} />
+            ) : (
+              <PenNib size={16} weight="bold" style={{ color: "#ffffff" }} />
+            )}
+          </span>
+        </span>
+        <div className="flex flex-col items-start gap-0.5 text-left">
+          <span
+            className="text-[14px] font-bold leading-tight tracking-[0.02em]"
             style={{ color: "var(--text-primary)" }}
           >
-            Sign to accept
+            {isSigned ? "Signature captured" : "Your signature is required"}
+          </span>
+          <span className="text-[12.5px] leading-snug font-medium" style={{ color: "var(--text-secondary)" }}>
+            {isSigned
+              ? "You're all set - re-sign below if you need to make changes."
+              : "Draw your signature below to accept this offer."}
           </span>
         </div>
-        <span className="text-[12.5px] leading-snug font-medium" style={{ color: "var(--text-secondary)" }}>
-          Draw your signature below to confirm this offer
-        </span>
       </div>
 
       <motion.div
