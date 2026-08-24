@@ -8,6 +8,7 @@ import type {
   Lead,
   LeadSource,
   LeadStatus,
+  LeadTags,
   Toast,
   ViewMode,
 } from "@/lib/airconnect/types";
@@ -56,6 +57,7 @@ type Action =
   | { type: "SNOOZE_LEAD"; leadId: string; until: string; label: string }
   | { type: "MARK_DONE"; leadId: string }
   | { type: "SET_STATUS"; leadId: string; status: LeadStatus }
+  | { type: "SET_LEAD_TAGS"; leadId: string; patch: Partial<LeadTags> }
   | { type: "UNDO_TOAST"; toastId: string }
   | { type: "DISMISS_TOAST"; toastId: string };
 
@@ -301,6 +303,19 @@ function airconnectReducer(state: AirConnectState, action: Action): AirConnectSt
       return { ...state, leads };
     }
 
+    case "SET_LEAD_TAGS": {
+      const lead = state.leads.find((l) => l.id === action.leadId);
+      if (!lead) return state;
+
+      const leads = updateLead(state.leads, lead.id, (l) => ({
+        ...l,
+        tags: { ...l.tags, ...action.patch },
+        updatedAt: now.toISOString(),
+      }));
+
+      return { ...state, leads };
+    }
+
     case "UNDO_TOAST": {
       const toast = state.toasts.find((t) => t.id === action.toastId);
       if (!toast) return state;
@@ -340,6 +355,7 @@ interface AirConnectContextValue {
   snoozeLead: (leadId: string, until: string, label: string) => void;
   markDone: (leadId: string) => void;
   setStatus: (leadId: string, status: LeadStatus) => void;
+  setLeadTags: (leadId: string, patch: Partial<LeadTags>) => void;
   undoToast: (toastId: string) => void;
   dismissToast: (toastId: string) => void;
 }
@@ -396,6 +412,7 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
   const snoozeLead = useCallback((leadId: string, until: string, label: string) => dispatch({ type: "SNOOZE_LEAD", leadId, until, label }), []);
   const markDone = useCallback((leadId: string) => dispatch({ type: "MARK_DONE", leadId }), []);
   const setStatus = useCallback((leadId: string, status: LeadStatus) => dispatch({ type: "SET_STATUS", leadId, status }), []);
+  const setLeadTags = useCallback((leadId: string, patch: Partial<LeadTags>) => dispatch({ type: "SET_LEAD_TAGS", leadId, patch }), []);
   const undoToast = useCallback((toastId: string) => dispatch({ type: "UNDO_TOAST", toastId }), []);
   const dismissToast = useCallback((toastId: string) => dispatch({ type: "DISMISS_TOAST", toastId }), []);
 
@@ -417,10 +434,11 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
       snoozeLead,
       markDone,
       setStatus,
+      setLeadTags,
       undoToast,
       dismissToast,
     }),
-    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, undoToast, dismissToast]
+    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, setLeadTags, undoToast, dismissToast]
   );
 
   return <AirConnectContext.Provider value={value}>{children}</AirConnectContext.Provider>;

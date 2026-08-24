@@ -7,6 +7,7 @@ import { useAirConnect } from "../airconnect-store";
 import { formatDueLabel, formatRelativeTime, maskPhone } from "@/lib/airconnect/helpers";
 import { StatusPill } from "./status-pill";
 import { QuickActions } from "./quick-actions";
+import { LeadTagSummary } from "./lead-tags";
 
 type SortKey = "name" | "status" | "followUpAt" | "updatedAt" | "source";
 
@@ -124,6 +125,7 @@ function TableRow({ lead, now }: { lead: Lead; now: Date }) {
           {lead.name}
         </button>
         <span className="text-xs text-[var(--text-tertiary)]">{maskPhone(lead.phone)}</span>
+        <LeadTagSummary tags={lead.tags} />
       </td>
       <td className="border-b border-[var(--border-subtle)] px-3 py-2.5">
         <StatusPill status={lead.status} />

@@ -58,7 +58,7 @@ export function TopBar() {
                   className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black text-white"
                   style={{ backgroundColor: agent.colorHex }}
                 >
-                  {agent.initials.slice(1)}
+                  {agent.initials}
                 </span>
                 {agent.name}
               </button>
