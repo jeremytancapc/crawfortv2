@@ -5,7 +5,7 @@
  * the workspace with ssr: false to avoid hydration mismatches).
  */
 
-import type { Agent, AgentId, EligibilityTag, IncomeDocTag, Lead, LeadSource, LeadStatus, LeadTags, NoteEntry } from "./types";
+import type { Agent, AgentId, EligibilityTag, ForeignerDocTag, IncomeDocTag, Lead, LeadSource, LeadStatus, LeadTags, NoteEntry, QualifyingReason } from "./types";
 import { ELIGIBILITY_OPTIONS, emptyLeadTags } from "./tags";
 
 export const AGENTS: Agent[] = [
@@ -64,6 +64,14 @@ function pick<T>(arr: T[], rng: () => number): T {
   return arr[Math.floor(rng() * arr.length)];
 }
 
+/** Nudges a date off Sunday (the only non-working day) onto Monday, same time of day. */
+function avoidSunday(date: Date): Date {
+  if (date.getDay() !== 0) return date;
+  const d = new Date(date);
+  d.setDate(d.getDate() + 1);
+  return d;
+}
+
 function weightedStatus(rng: () => number): LeadStatus {
   const total = STATUS_POOL.reduce((sum, s) => sum + s.weight, 0);
   let roll = rng() * total;
@@ -87,22 +95,48 @@ function mulberry32(seed: number): () => number {
 }
 
 const INCOME_DOCS: IncomeDocTag[] = ["cpf", "noa", "payslip", "bank-statement"];
+const FOREIGNER_DOCS: ForeignerDocTag[] = ["por", "wp-over-3m"];
+const MONTHLY_INCOMES = ["2,200", "2,800", "3,500", "4,000", "4,800", "5,500", "6,200", "7,000"];
 
 function seedTags(rng: () => number, status: LeadStatus): LeadTags {
   if (status === "new" || rng() > 0.62) return emptyLeadTags();
 
   const docs = INCOME_DOCS.filter(() => rng() > 0.62);
+  const residency = rng() > 0.22 ? "sg-pr" : "foreigner";
+  const foreignerDocs = residency === "foreigner" ? FOREIGNER_DOCS.filter(() => rng() > 0.45) : [];
+
   return {
-    residency: rng() > 0.22 ? "sg-pr" : "foreigner",
+    residency,
     employment: rng() > 0.28 ? "employed" : "self-employed",
     incomeDocs: docs.length > 0 ? docs : rng() > 0.5 ? [pick(INCOME_DOCS, rng)] : [],
+    foreignerDocs,
     outstanding: rng() > 0.45 ? { kind: "none" } : { kind: "amount", label: pick(AMOUNTS, rng) },
+    monthlyIncome: rng() > 0.3 ? pick(MONTHLY_INCOMES, rng) : null,
   };
 }
 
 function seedEligibility(rng: () => number, status: LeadStatus): EligibilityTag | null {
   if (status === "new" && rng() > 0.35) return null;
   return pick(ELIGIBILITY_OPTIONS, rng).id;
+}
+
+// Roughly mirrors the simulated 20 / 15 / 10 / 5 split shown on the Qualifying drill-down chips.
+const QUALIFYING_REASON_POOL: { reason: QualifyingReason; weight: number }[] = [
+  { reason: "no-reply", weight: 20 },
+  { reason: "interest-rate-fees", weight: 15 },
+  { reason: "bad-timing", weight: 10 },
+  { reason: "didnt-book", weight: 5 },
+];
+
+function seedQualifyingReason(rng: () => number, status: LeadStatus): QualifyingReason | null {
+  if (status !== "qualifying") return null;
+  const total = QUALIFYING_REASON_POOL.reduce((sum, s) => sum + s.weight, 0);
+  let roll = rng() * total;
+  for (const entry of QUALIFYING_REASON_POOL) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.reason;
+  }
+  return "no-reply";
 }
 
 function formatPhone(rng: () => number): string {
@@ -150,13 +184,13 @@ export function buildMockLeads(now: Date = new Date()): Lead[] {
         dueDate = new Date(startOfToday.getTime() + minutesIntoDay * 60_000);
       } else {
         // upcoming: 1-6 days ahead
-        dueDate = new Date(now.getTime() + Math.floor(rng() * 6 + 1) * 24 * 3600_000);
+        dueDate = avoidSunday(new Date(now.getTime() + Math.floor(rng() * 6 + 1) * 24 * 3600_000));
       }
       followUpAt = dueDate.toISOString();
     }
 
     if (status === "booked" || (status === "pending-booking" && rng() > 0.5)) {
-      const apptDate = new Date(now.getTime() + Math.floor(rng() * 10 - 2) * 24 * 3600_000);
+      const apptDate = avoidSunday(new Date(now.getTime() + Math.floor(rng() * 10 - 2) * 24 * 3600_000));
       appointment = {
         id: `appt-${idx}`,
         dateISO: apptDate.toISOString().slice(0, 10),
@@ -199,6 +233,7 @@ export function buildMockLeads(now: Date = new Date()): Lead[] {
       loanAmountLabel: rng() > 0.25 ? pick(AMOUNTS, rng) : null,
       tags: seedTags(rng, status),
       eligibility: seedEligibility(rng, status),
+      qualifyingReason: seedQualifyingReason(rng, status),
     });
   });
 

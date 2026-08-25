@@ -5,12 +5,15 @@ import type { Lead, LeadTags } from "@/lib/airconnect/types";
 import {
   ELIGIBILITY_OPTIONS,
   EMPLOYMENT_OPTIONS,
+  FOREIGNER_DOC_OPTIONS,
   INCOME_DOC_OPTIONS,
   RESIDENCY_OPTIONS,
+  formatMonthlyIncomeLabel,
   formatOutstandingLabel,
   outstandingAmountLabel,
   selectedTagLabels,
   toggleExclusive,
+  toggleForeignerDoc,
   toggleIncomeDoc,
 } from "@/lib/airconnect/tags";
 import { useAirConnect } from "../airconnect-store";
@@ -18,6 +21,7 @@ import { useAirConnect } from "../airconnect-store";
 const TRACK = "rounded-lg bg-slate-200 p-0.5 ring-1 ring-slate-300/80";
 const SEGMENT_ON = "bg-white text-[var(--brand-blue-hex)] shadow-sm ring-1 ring-slate-200";
 const SEGMENT_OFF = "text-slate-600 hover:bg-white/50 hover:text-slate-800";
+const DIVIDE = "divide-x divide-slate-400/50";
 
 function Category({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -29,7 +33,7 @@ function Category({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function SegmentTrack({ children }: { children: ReactNode }) {
-  return <div className={`grid grid-cols-2 gap-0.5 ${TRACK}`}>{children}</div>;
+  return <div className={`grid grid-cols-2 ${DIVIDE} ${TRACK}`}>{children}</div>;
 }
 
 function Segment({
@@ -60,7 +64,7 @@ function Segment({
 }
 
 function DocTrack({ children }: { children: ReactNode }) {
-  return <div className={`flex flex-wrap gap-0.5 ${TRACK}`}>{children}</div>;
+  return <div className={`flex flex-wrap ${DIVIDE} ${TRACK}`}>{children}</div>;
 }
 
 function DocChip({
@@ -94,10 +98,12 @@ export function LeadTagsPicker({ lead, className }: { lead: Lead; className?: st
   const { setLeadTags } = useAirConnect();
   const tags = lead.tags;
   const [amountDraft, setAmountDraft] = useState(outstandingAmountLabel(tags.outstanding));
+  const [incomeDraft, setIncomeDraft] = useState(tags.monthlyIncome ?? "");
 
   useEffect(() => {
     setAmountDraft(outstandingAmountLabel(lead.tags.outstanding));
-  }, [lead.id, lead.tags.outstanding]);
+    setIncomeDraft(lead.tags.monthlyIncome ?? "");
+  }, [lead.id, lead.tags.outstanding, lead.tags.monthlyIncome]);
 
   function patch(next: Partial<LeadTags>) {
     setLeadTags(lead.id, next);
@@ -109,7 +115,14 @@ export function LeadTagsPicker({ lead, className }: { lead: Lead; className?: st
     patch({ outstanding: label ? { kind: "amount", label } : null });
   }
 
+  function commitIncome(raw: string) {
+    const label = formatMonthlyIncomeLabel(raw);
+    setIncomeDraft(label);
+    patch({ monthlyIncome: label || null });
+  }
+
   const amountActive = tags.outstanding?.kind === "amount";
+  const isForeigner = tags.residency === "foreigner";
 
   return (
     <div className={["flex flex-col gap-2.5", className].filter(Boolean).join(" ")}>
@@ -141,7 +154,36 @@ export function LeadTagsPicker({ lead, className }: { lead: Lead; className?: st
         </SegmentTrack>
       </Category>
 
-      <Category label="Docs">
+      <Category label="Monthly Income">
+        <label className="relative block">
+          <span className="sr-only">Monthly income</span>
+          <input
+            value={incomeDraft}
+            onChange={(event) => {
+              const value = event.target.value;
+              setIncomeDraft(value);
+              const trimmed = value.trim();
+              patch({ monthlyIncome: trimmed || null });
+            }}
+            onBlur={() => commitIncome(incomeDraft)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                (event.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder="$ / mo"
+            title="Monthly income"
+            className={[
+              "h-7 w-full rounded-lg bg-slate-200 px-1.5 text-center text-[10px] font-semibold outline-none ring-1 ring-slate-300/80",
+              tags.monthlyIncome ? "text-[var(--brand-blue-hex)]" : "text-slate-600",
+              "placeholder:text-slate-400 focus:bg-white focus:text-[var(--brand-blue-hex)] focus:shadow-sm focus:ring-1 focus:ring-slate-200",
+            ].join(" ")}
+          />
+        </label>
+      </Category>
+
+      <Category label="Income Docs">
         <DocTrack>
           {INCOME_DOC_OPTIONS.map((option) => (
             <DocChip
@@ -155,6 +197,23 @@ export function LeadTagsPicker({ lead, className }: { lead: Lead; className?: st
           ))}
         </DocTrack>
       </Category>
+
+      {isForeigner && (
+        <Category label="Foreigner Docs">
+          <DocTrack>
+            {FOREIGNER_DOC_OPTIONS.map((option) => (
+              <DocChip
+                key={option.id}
+                title={option.title}
+                pressed={tags.foreignerDocs.includes(option.id)}
+                onClick={() => patch({ foreignerDocs: toggleForeignerDoc(tags.foreignerDocs, option.id) })}
+              >
+                {option.label}
+              </DocChip>
+            ))}
+          </DocTrack>
+        </Category>
+      )}
 
       <Category label="Outstanding">
         <SegmentTrack>

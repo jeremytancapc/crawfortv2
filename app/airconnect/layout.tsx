@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { inter } from "../fonts";
 
 export const metadata: Metadata = {
   title: "AirConnect",
@@ -15,10 +16,7 @@ export const viewport: Viewport = {
 
 export default function AirConnectLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 flex flex-col bg-[var(--surface-primary)]">
-      <div className="shrink-0 bg-amber-50 px-4 py-1.5 text-center text-[11px] font-semibold text-amber-800 lg:hidden">
-        AirConnect works best on a desktop, in landscape, at 1280px width or wider.
-      </div>
+    <div className={`${inter.variable} ${inter.className} airconnect-root fixed inset-0 flex flex-col bg-[var(--surface-primary)]`}>
       <div className="min-h-0 flex-1">{children}</div>
     </div>
   );

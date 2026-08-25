@@ -46,13 +46,13 @@ export function isSameCalendarDay(a: Date, b: Date): boolean {
 }
 
 /**
- * Next weekday (Mon–Fri) after `from`, at 09:00 local.
- * Singapore call-centre week; public holidays are not modelled.
+ * Next working day (Mon–Sat) after `from`, at 09:00 local.
+ * Singapore call-centre week runs 6 days; only Sunday is off. Public holidays are not modelled.
  */
 export function nextWorkingDay(from: Date): Date {
   const d = startOfDay(from);
   d.setDate(d.getDate() + 1);
-  while (d.getDay() === 0 || d.getDay() === 6) {
+  while (d.getDay() === 0) {
     d.setDate(d.getDate() + 1);
   }
   d.setHours(9, 0, 0, 0);
