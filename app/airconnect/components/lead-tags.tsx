@@ -16,6 +16,7 @@ import {
   toggleForeignerDoc,
   toggleIncomeDoc,
 } from "@/lib/airconnect/tags";
+import { assignedAgentForLead } from "@/lib/airconnect/mock-data";
 import { useAirConnect } from "../airconnect-store";
 
 const TRACK = "rounded-lg bg-slate-200 p-0.5 ring-1 ring-slate-300/80";
@@ -26,7 +27,7 @@ const DIVIDE = "divide-x divide-slate-400/50";
 function Category({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div role="group" aria-label={label} className="min-w-0">
-      <p className="mb-1 text-[9px] font-bold tracking-[0.14em] text-slate-500 uppercase">{label}</p>
+      <p className="mb-0.5 text-[9px] font-bold tracking-[0.12em] text-slate-500 uppercase">{label}</p>
       {children}
     </div>
   );
@@ -85,7 +86,7 @@ function DocChip({
       title={title}
       onClick={onClick}
       className={[
-        "h-7 min-w-[2.75rem] flex-1 rounded-md px-1.5 text-[10px] font-semibold tracking-tight transition-colors",
+        "h-7 min-w-[2.5rem] flex-1 rounded-md px-1.5 text-[10px] font-semibold tracking-tight transition-colors",
         pressed ? SEGMENT_ON : SEGMENT_OFF,
       ].join(" ")}
     >
@@ -125,7 +126,7 @@ export function LeadTagsPicker({ lead, className }: { lead: Lead; className?: st
   const isForeigner = tags.residency === "foreigner";
 
   return (
-    <div className={["flex flex-col gap-2.5", className].filter(Boolean).join(" ")}>
+    <div className={["flex flex-col gap-2", className].filter(Boolean).join(" ")}>
       <Category label="Residency">
         <SegmentTrack>
           {RESIDENCY_OPTIONS.map((option) => (
@@ -268,13 +269,13 @@ function EligibilityColumn({
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-1.5 text-[9px] font-bold tracking-[0.14em] text-slate-500 uppercase">{title}</p>
-      <div className="flex flex-col items-start gap-1">
+      <p className="mb-1 text-[9px] font-bold tracking-[0.12em] text-slate-500 uppercase">{title}</p>
+      <div className="flex flex-col items-start gap-0.5">
         {options.map((option) => (
           <span
             key={option.id}
             className={[
-              "inline-flex max-w-full rounded-md px-1.5 py-1 text-[10px] font-semibold leading-snug",
+              "inline-flex max-w-full rounded px-1.5 py-0.5 text-[10px] font-semibold leading-snug",
               option.className,
             ].join(" ")}
           >
@@ -297,20 +298,26 @@ export function SectionBar({
   tone,
   flush,
   large,
+  plain,
+  barClass,
+  textClass,
   className,
 }: {
   children: ReactNode;
   tone: keyof typeof SECTION_TONE;
   flush?: boolean;
   large?: boolean;
+  plain?: boolean;
+  barClass?: string;
+  textClass?: string;
   className?: string;
 }) {
   return (
     <div
       className={[
         "flex items-center justify-center",
-        SECTION_TONE[tone],
-        flush ? "px-3 py-1.5" : "rounded-md px-2 py-1",
+        barClass ?? SECTION_TONE[tone],
+        flush ? (plain ? "px-3 py-2" : "px-3 py-1.5") : "rounded-md px-2 py-1",
         className,
       ]
         .filter(Boolean)
@@ -319,8 +326,10 @@ export function SectionBar({
       <p
         className={
           large
-            ? "text-center text-base font-bold leading-snug text-white"
-            : "text-center text-[9px] font-bold tracking-[0.16em] text-white uppercase"
+            ? "text-center text-[13px] font-bold leading-snug text-white"
+            : plain
+              ? ["text-center text-[15px] font-bold tracking-tight", textClass ?? "text-white"].join(" ")
+              : "text-center text-[9px] font-bold tracking-[0.14em] text-white uppercase"
         }
       >
         {children}
@@ -330,19 +339,22 @@ export function SectionBar({
 }
 
 export function EligibilityDisplay({
+  lead,
   className,
   flush,
 }: {
+  lead: Lead;
   className?: string;
   flush?: boolean;
 }) {
   const ascend = ELIGIBILITY_OPTIONS.filter((option) => option.id.startsWith("ascend-"));
   const h5 = ELIGIBILITY_OPTIONS.filter((option) => option.id.startsWith("h5-"));
+  const agent = assignedAgentForLead(lead.id);
 
   return (
-    <div className={["mt-2", className].filter(Boolean).join(" ")}>
-      <SectionBar tone="eligibility" flush={flush}>
-        Eligibility
+    <div className={["mt-1.5", className].filter(Boolean).join(" ")}>
+      <SectionBar tone="eligibility" flush={flush} plain barClass={agent.barClass} textClass={agent.textClass}>
+        {agent.name}
       </SectionBar>
       <div className={flush ? "grid grid-cols-2 gap-1.5 px-3 pt-2" : "mt-1.5 grid grid-cols-2 gap-3"}>
         <EligibilityColumn title="Ascend" options={ascend} />

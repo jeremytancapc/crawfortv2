@@ -41,8 +41,6 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
   }));
 
   const bucket = getDueBucket(lead, now);
-  const dueColor =
-    bucket === "overdue" ? "text-red-600" : bucket === "today" ? "text-[var(--brand-blue-hex)]" : "text-[var(--text-tertiary)]";
   const lastNote = lead.notes[0];
 
   return (
@@ -55,10 +53,10 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
       data-lead-id={lead.id}
       onClick={() => selectLead(lead.id)}
       className={[
-        "group cursor-pointer rounded-xl border bg-white p-3 transition-shadow",
+        "group relative cursor-pointer rounded-xl border p-3 transition-colors transition-shadow",
         isSelected
-          ? "border-[var(--brand-blue-hex)] shadow-md ring-2 ring-[var(--brand-blue-hex)]/15"
-          : "border-[var(--border-subtle)] hover:shadow-sm",
+          ? "border-[var(--brand-blue-hex)] bg-[oklch(0.96_0.02_260)] shadow-md ring-1 ring-[var(--brand-blue-hex)]"
+          : "border-[var(--border-subtle)] bg-white hover:shadow-sm",
       ].join(" ")}
     >
       <div className="-mx-3 -mt-3 grid grid-cols-2 overflow-hidden rounded-t-[11px]">
@@ -70,11 +68,27 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
         </SectionBar>
       </div>
 
-      <div className="grid grid-cols-2 pt-2.5">
+      <div className="grid grid-cols-2 gap-x-3 pt-2.5">
         <div className="min-w-0">
-          <div className="pr-3">
-            <StatusPill status={lead.status} />
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
+          <div className="space-y-2 pr-3">
+            <div className="flex items-start justify-between gap-2">
+              <StatusPill status={lead.status} />
+              {lead.followUpAt && (
+                <span
+                  className={[
+                    "inline-flex max-w-[58%] shrink-0 items-center justify-center rounded-md px-1.5 py-1 text-right text-[10px] font-bold leading-tight",
+                    bucket === "overdue"
+                      ? "bg-red-600 text-white"
+                      : bucket === "today"
+                        ? "bg-[var(--brand-blue-hex)] text-white"
+                        : "bg-slate-100 text-slate-600",
+                  ].join(" ")}
+                >
+                  {formatDueLabel(lead.followUpAt, now)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--text-tertiary)]">
               <span className="inline-flex items-center gap-0.5">
                 {maskPhone(lead.phone)}
                 <CopyPhoneButton phone={lead.phone} />
@@ -89,17 +103,17 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
               )}
             </div>
             {lastNote && (
-              <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
+              <p className="text-[12px] leading-snug text-[var(--text-secondary)]">
                 <span className="font-semibold text-[var(--text-tertiary)]">{NOTE_KIND_LABEL[lastNote.kind] ?? "Note"}: </span>
                 {lastNote.text}
               </p>
             )}
-            <div className="mt-2">
-              {lead.followUpAt && <p className={`text-xs font-semibold ${dueColor}`}>{formatDueLabel(lead.followUpAt, now)}</p>}
-              <p className="text-[11px] text-[var(--text-tertiary)]">Updated {formatRelativeTime(lead.updatedAt, now)}</p>
+            <div className="flex flex-col gap-0.5 text-[11px] text-[var(--text-tertiary)]">
+              <p>Created {formatRelativeTime(lead.createdAt, now)}</p>
+              <p>Updated {formatRelativeTime(lead.updatedAt, now)}</p>
             </div>
           </div>
-          <EligibilityDisplay flush className="-ml-3" />
+          <EligibilityDisplay lead={lead} flush className="-ml-3" />
         </div>
 
         <div className="min-w-0 border-l border-[var(--border-subtle)] pl-3">
@@ -108,7 +122,7 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
       </div>
 
       <div className="mt-2.5 border-t border-[var(--border-subtle)] pt-2.5" onClick={(e) => e.stopPropagation()}>
-        <QuickActions ref={qaRef} lead={lead} />
+        <QuickActions ref={qaRef} lead={lead} size="compact" />
       </div>
     </motion.div>
   );

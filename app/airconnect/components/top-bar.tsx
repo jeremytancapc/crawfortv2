@@ -49,6 +49,15 @@ const QUEUE_TYPES: {
     countBg: "bg-white/25 text-white",
     countBgActive: "bg-white/35 text-white",
   },
+  {
+    id: "submitted",
+    label: "Ascend / H5 submitted",
+    count: 18,
+    fill: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
+    fillActive: "bg-emerald-800 text-white shadow-sm ring-2 ring-emerald-950/50 ring-offset-2 ring-offset-[oklch(0.97_0.015_260)]",
+    countBg: "bg-white/25 text-white",
+    countBgActive: "bg-white/35 text-white",
+  },
 ];
 
 const QUALIFYING_REASON_COUNTS: Record<QualifyingReason, number> = {
@@ -121,24 +130,30 @@ export function TopBar() {
 
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-subtle)] bg-white">
-      <div className="flex items-stretch gap-3 bg-[oklch(0.97_0.015_260)] px-3 py-2">
-        <div className="min-w-[15rem] shrink-0 basis-[22rem]">
+      <div className="flex items-stretch gap-5 bg-[oklch(0.97_0.015_260)] px-5 py-3.5">
+        <div className="min-w-[18rem] shrink-0 basis-[29rem]">
           <DateStrip selected={state.queueDate} todayKey={todayKey} counts={dateCounts} onSelect={handleSelectDate} />
         </div>
 
-        <div className="scrollbar-thin min-w-0 flex-1 self-start overflow-x-auto">
-          <table className="w-full min-w-[26rem] border-collapse bg-white text-center text-[11px] leading-tight">
+        <div className="scrollbar-thin -my-2 min-w-0 flex-1 overflow-x-auto">
+          <table className="h-full w-full min-w-[22rem] table-fixed border-collapse bg-white text-center text-[11px] leading-tight">
             <caption className="sr-only">Agent performance today, this week, and this month</caption>
+            <colgroup>
+              <col className="w-14" />
+              {PERF_COLUMNS.map((col) => (
+                <col key={col.key} />
+              ))}
+            </colgroup>
             <thead>
-              <tr className="bg-slate-50">
-                <th className="border border-[var(--border-subtle)] px-2 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]">
+              <tr>
+                <th className="border border-black bg-black px-1 py-1 text-left text-[9px] font-bold uppercase tracking-tight text-white break-words leading-[1.15]">
                   Performance
                 </th>
                 {PERF_COLUMNS.map((col) => (
                   <th
                     key={col.key}
                     title={col.title}
-                    className="border border-[var(--border-subtle)] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]"
+                    className="border border-black bg-black px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white"
                   >
                     {col.label}
                   </th>
@@ -154,7 +169,9 @@ export function TopBar() {
                 ] as const
               ).map(([label, row, isToday]) => (
                 <tr key={label} className={isToday ? "text-[var(--brand-blue-hex)]" : "text-[var(--text-secondary)]"}>
-                  <th className="border border-[var(--border-subtle)] bg-slate-50 px-2 py-1 text-left font-bold">{label}</th>
+                  <th className="border border-black bg-black px-1 py-1 text-left font-bold text-white">
+                    {label}
+                  </th>
                   {PERF_COLUMNS.map((col) => (
                     <td
                       key={col.key}
@@ -174,7 +191,7 @@ export function TopBar() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border-subtle)] px-4 py-1.5">
+      <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] px-5 py-2.5">
         {QUEUE_TYPES.map((type) => {
           const active = state.queueTypeFilter === type.id;
           return (
@@ -184,7 +201,7 @@ export function TopBar() {
               onClick={() => toggleType(type.id)}
               aria-pressed={active}
               className={[
-                "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors",
+                "flex h-6 items-center gap-1.5 rounded-md px-2 text-[11px] font-bold transition-colors",
                 active ? type.fillActive : type.fill,
               ].join(" ")}
             >
@@ -201,7 +218,7 @@ export function TopBar() {
           );
         })}
 
-        <div className="mx-1 h-6 w-px shrink-0 bg-[var(--border-subtle)]" aria-hidden="true" />
+        <div className="mx-1.5 h-5 w-px shrink-0 bg-[var(--border-subtle)]" aria-hidden="true" />
 
         {QUALIFYING_REASONS.map((reason) => {
           const active = state.qualifyingReasonFilter === reason;
