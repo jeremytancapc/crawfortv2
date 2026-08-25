@@ -177,7 +177,6 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
           <SnoozeMenu
             open={panel === "snooze"}
             onClose={() => setPanel(null)}
-            align={align}
             onSnooze={(until, label) => {
               snoozeLead(lead.id, until, label);
               setPanel(null);

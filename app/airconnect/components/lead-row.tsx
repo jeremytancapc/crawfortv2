@@ -77,11 +77,9 @@ export const LeadRow = forwardRef<LeadRowHandle, LeadRowProps>(function LeadRow(
                 <span
                   className={[
                     "inline-flex max-w-[58%] shrink-0 items-center justify-center rounded-md px-1.5 py-1 text-right text-[10px] font-bold leading-tight",
-                    bucket === "overdue"
-                      ? "bg-red-600 text-white"
-                      : bucket === "today"
-                        ? "bg-[var(--brand-blue-hex)] text-white"
-                        : "bg-slate-100 text-slate-600",
+                    bucket === "today"
+                      ? "bg-[var(--brand-blue-hex)] text-white"
+                      : "bg-slate-100 text-slate-600",
                   ].join(" ")}
                 >
                   {formatDueLabel(lead.followUpAt, now)}

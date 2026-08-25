@@ -23,15 +23,6 @@ const QUEUE_TYPES: {
   countBgActive: string;
 }[] = [
   {
-    id: "overdue",
-    label: "Overdue",
-    count: 3,
-    fill: "bg-red-600 text-white shadow-sm hover:bg-red-700",
-    fillActive: "bg-red-700 text-white shadow-sm ring-2 ring-red-950/50 ring-offset-2 ring-offset-[oklch(0.97_0.015_260)]",
-    countBg: "bg-white/25 text-white",
-    countBgActive: "bg-white/35 text-white",
-  },
-  {
     id: "assigned",
     label: "Assigned",
     count: 40,
@@ -95,8 +86,7 @@ export function TopBar() {
   const dateCounts = useMemo(() => {
     const counts: Record<string, DayTypeCounts> = {};
     const bump = (key: string, lead: Lead) => {
-      const current = counts[key] ?? { overdue: 0, assigned: 0, qualifying: 0 };
-      if (getDueBucket(lead, now) === "overdue") current.overdue += 1;
+      const current = counts[key] ?? { assigned: 0, qualifying: 0 };
       if (lead.status === "assigned") current.assigned += 1;
       if (lead.status === "qualifying") current.qualifying += 1;
       counts[key] = current;
@@ -106,7 +96,7 @@ export function TopBar() {
       if (!ACTIVE_QUEUE_STATUSES.includes(lead.status)) return;
       if (!lead.followUpAt) return;
       const bucket = getDueBucket(lead, now);
-      if (bucket === "overdue" || bucket === "today") bump(todayKey, lead);
+      if (bucket === "today") bump(todayKey, lead);
       const key = toDateKey(new Date(lead.followUpAt));
       if (key !== todayKey) bump(key, lead);
     });

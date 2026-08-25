@@ -252,7 +252,7 @@ function makeNote(id: string, kind: NoteEntry["kind"], text: string, authorId: A
 
 /**
  * Builds ~60 leads spread across Heryana, Willi, and Radah with realistic status mix and
- * follow-up times distributed across overdue / due-today / upcoming buckets.
+ * follow-up times distributed across due-today / upcoming buckets.
  */
 export function buildMockLeads(now: Date = new Date()): Lead[] {
   const rng = mulberry32(20260814);
@@ -277,7 +277,7 @@ export function buildMockLeads(now: Date = new Date()): Lead[] {
       const bucket = rng();
       let dueDate: Date;
       if (bucket < 0.32) {
-        // overdue: 1-48 hours in the past
+        // already due: 1-48 hours in the past, still shown on today's queue
         dueDate = new Date(now.getTime() - Math.floor(rng() * 47 + 1) * 3600_000);
       } else if (bucket < 0.66) {
         // due today: somewhere between start of day and +8h from now

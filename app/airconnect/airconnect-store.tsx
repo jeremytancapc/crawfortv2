@@ -28,7 +28,6 @@ export interface AirConnectState {
   search: string;
   statusFilter: LeadStatus | "all";
   sourceFilter: LeadSource | "all";
-  overdueOnly: boolean;
   queueTypeFilter: QueueTypeFilter;
   /** Drill-down within the "qualifying" chip; only meaningful when queueTypeFilter is "qualifying". */
   qualifyingReasonFilter: QualifyingReasonFilter;
@@ -37,7 +36,7 @@ export interface AirConnectState {
   queueDate: string;
   toasts: Toast[];
   activityCounts: Record<AgentId, ActivityCounts>;
-  /** Lead ids that were overdue/due-today for each agent at initial load - fixed baseline for the progress ring. */
+  /** Lead ids that were due today for each agent at initial load - fixed baseline for the progress ring. */
   dailyBaseline: Record<AgentId, string[]>;
 }
 
@@ -53,7 +52,6 @@ type Action =
   | { type: "SET_SEARCH"; query: string }
   | { type: "SET_STATUS_FILTER"; status: LeadStatus | "all" }
   | { type: "SET_SOURCE_FILTER"; source: LeadSource | "all" }
-  | { type: "TOGGLE_OVERDUE_ONLY" }
   | { type: "SET_QUEUE_TYPE_FILTER"; filter: QueueTypeFilter }
   | { type: "SET_QUALIFYING_REASON_FILTER"; reason: QualifyingReasonFilter }
   | { type: "SELECT_LEAD"; leadId: string | null }
@@ -99,7 +97,7 @@ function nextVisibleQueueLeadId(state: AirConnectState, excludeId: string, now: 
     if (!lead.followUpAt) return false;
     if (viewingToday) {
       const bucket = getDueBucket(lead, now);
-      return bucket === "overdue" || bucket === "today";
+      return bucket === "today";
     }
     return toDateKey(new Date(lead.followUpAt)) === state.queueDate;
   });
@@ -132,9 +130,6 @@ function airconnectReducer(state: AirConnectState, action: Action): AirConnectSt
 
     case "SET_SOURCE_FILTER":
       return { ...state, sourceFilter: action.source };
-
-    case "TOGGLE_OVERDUE_ONLY":
-      return { ...state, overdueOnly: !state.overdueOnly };
 
     case "SET_QUEUE_TYPE_FILTER":
       return {
@@ -389,7 +384,6 @@ interface AirConnectContextValue {
   setSearch: (query: string) => void;
   setStatusFilter: (status: LeadStatus | "all") => void;
   setSourceFilter: (source: LeadSource | "all") => void;
-  toggleOverdueOnly: () => void;
   setQueueTypeFilter: (filter: QueueTypeFilter) => void;
   setQualifyingReasonFilter: (reason: QualifyingReasonFilter) => void;
   selectLead: (leadId: string | null) => void;
@@ -420,7 +414,7 @@ function buildInitialState(leads: Lead[]): AirConnectState {
 
   leads.forEach((lead) => {
     const bucket = getDueBucket(lead, now);
-    if (bucket === "overdue" || bucket === "today") {
+    if (bucket === "today") {
       dailyBaseline[lead.agentId].push(lead.id);
     }
   });
@@ -432,7 +426,6 @@ function buildInitialState(leads: Lead[]): AirConnectState {
     search: "",
     statusFilter: "all",
     sourceFilter: "all",
-    overdueOnly: false,
     queueTypeFilter: "all",
     qualifyingReasonFilter: "all",
     selectedLeadId: null,
@@ -451,7 +444,6 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
   const setSearch = useCallback((query: string) => dispatch({ type: "SET_SEARCH", query }), []);
   const setStatusFilter = useCallback((status: LeadStatus | "all") => dispatch({ type: "SET_STATUS_FILTER", status }), []);
   const setSourceFilter = useCallback((source: LeadSource | "all") => dispatch({ type: "SET_SOURCE_FILTER", source }), []);
-  const toggleOverdueOnly = useCallback(() => dispatch({ type: "TOGGLE_OVERDUE_ONLY" }), []);
   const setQueueTypeFilter = useCallback((filter: QueueTypeFilter) => dispatch({ type: "SET_QUEUE_TYPE_FILTER", filter }), []);
   const setQualifyingReasonFilter = useCallback(
     (reason: QualifyingReasonFilter) => dispatch({ type: "SET_QUALIFYING_REASON_FILTER", reason }),
@@ -479,7 +471,6 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
       setSearch,
       setStatusFilter,
       setSourceFilter,
-      toggleOverdueOnly,
       setQueueTypeFilter,
       setQualifyingReasonFilter,
       selectLead,
@@ -496,7 +487,7 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
       undoToast,
       dismissToast,
     }),
-    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, setQueueTypeFilter, setQualifyingReasonFilter, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, setCloseReason, setLeadTags, undoToast, dismissToast]
+    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, setQueueTypeFilter, setQualifyingReasonFilter, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, setCloseReason, setLeadTags, undoToast, dismissToast]
   );
 
   return <AirConnectContext.Provider value={value}>{children}</AirConnectContext.Provider>;
