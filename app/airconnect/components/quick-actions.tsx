@@ -8,7 +8,7 @@ import {
   CalendarPlus,
   ClockCountdown,
   SkipForward,
-  DotsThreeVertical,
+  TagSimple,
 } from "@phosphor-icons/react";
 import type { Lead } from "@/lib/airconnect/types";
 import { nextWorkingDayPreset, parseDateKey } from "@/lib/airconnect/helpers";
@@ -45,7 +45,7 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
   { lead, size = "default", align = "left", onOutcomeChipsChange },
   ref
 ) {
-  const { state, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, setStatus } = useAirConnect();
+  const { state, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, setCloseReason } = useAirConnect();
   const [panel, setPanel] = useState<PanelKind>(null);
   const [showOutcome, setShowOutcome] = useState(false);
 
@@ -200,18 +200,18 @@ export const QuickActions = forwardRef<QuickActionsHandle, QuickActionsProps>(fu
           <button
             type="button"
             onClick={() => togglePanel("status")}
-            title="More status options"
-            className="inline-flex items-center justify-center rounded-lg p-1.5 text-[var(--text-tertiary)] hover:bg-slate-100 hover:text-[var(--text-secondary)]"
+            title="Change status (blacklist / give up)"
+            className={[BASE_BTN, sizing, "border border-[var(--border-medium)] bg-white text-slate-700 hover:border-[var(--brand-blue-hex)] hover:text-[var(--brand-blue-hex)]"].join(" ")}
           >
-            <DotsThreeVertical size={iconSize + 2} weight="bold" />
+            <TagSimple size={iconSize} weight="bold" />
+            Change Status
           </button>
           <StatusMenu
             open={panel === "status"}
             onClose={() => setPanel(null)}
-            align={align}
-            currentStatus={lead.status}
-            onSelect={(status) => {
-              setStatus(lead.id, status);
+            currentReason={lead.closeReason}
+            onSelect={(reason) => {
+              setCloseReason(lead.id, reason);
               setPanel(null);
             }}
           />

@@ -5,14 +5,37 @@
  * the workspace with ssr: false to avoid hydration mismatches).
  */
 
-import type { Agent, AgentId, EligibilityTag, ForeignerDocTag, IncomeDocTag, Lead, LeadSource, LeadStatus, LeadTags, NoteEntry, QualifyingReason } from "./types";
+import type { Agent, AgentId, CloseReason, EligibilityTag, ForeignerDocTag, IncomeDocTag, Lead, LeadSource, LeadStatus, LeadTags, NoteEntry, QualifyingReason } from "./types";
+import { CLOSE_REASON_ORDER } from "./types";
 import { ELIGIBILITY_OPTIONS, emptyLeadTags } from "./tags";
 
 export const AGENTS: Agent[] = [
-  { id: "agent-a", name: "Heryana", initials: "H", colorHex: "#0033AA" },
-  { id: "agent-b", name: "Willi", initials: "W", colorHex: "#0F9D8A" },
-  { id: "agent-c", name: "Radah", initials: "R", colorHex: "#B45309" },
+  { id: "agent-a", name: "Heryana", initials: "H", colorHex: "#FFD100" },
+  { id: "agent-b", name: "Willi", initials: "W", colorHex: "#0033AA" },
+  { id: "agent-c", name: "Radah", initials: "R", colorHex: "#3F3F46" },
 ];
+
+const AGENT_BAR_CLASS: Record<AgentId, string> = {
+  "agent-a": "bg-[#FFD100]",
+  "agent-b": "bg-[var(--brand-blue-hex)]",
+  "agent-c": "bg-zinc-700",
+};
+
+const AGENT_TEXT_CLASS: Record<AgentId, string> = {
+  "agent-a": "text-zinc-950",
+  "agent-b": "text-white",
+  "agent-c": "text-white",
+};
+
+/** Stable per-lead pick so Heryana / Willi / Radah mix in a single queue. */
+export function assignedAgentForLead(leadId: string): Agent & { barClass: string; textClass: string } {
+  let hash = 0;
+  for (let i = 0; i < leadId.length; i += 1) {
+    hash = (hash + leadId.charCodeAt(i) * (i + 1)) % AGENTS.length;
+  }
+  const agent = AGENTS[hash] ?? AGENTS[0];
+  return { ...agent, barClass: AGENT_BAR_CLASS[agent.id], textClass: AGENT_TEXT_CLASS[agent.id] };
+}
 
 const NAMES = [
   "Ahmad Syafiq Bin Zulkifli", "Choi Ai Jin", "Muhammad Assyafiee Bin Rahman",
@@ -120,6 +143,11 @@ function seedEligibility(rng: () => number, status: LeadStatus): EligibilityTag 
   return pick(ELIGIBILITY_OPTIONS, rng).id;
 }
 
+function seedCloseReason(rng: () => number, status: LeadStatus): CloseReason | null {
+  if (status !== "not-eligible") return null;
+  return pick(CLOSE_REASON_ORDER, rng);
+}
+
 // Roughly mirrors the simulated 20 / 15 / 10 / 5 split shown on the Qualifying drill-down chips.
 const QUALIFYING_REASON_POOL: { reason: QualifyingReason; weight: number }[] = [
   { reason: "no-reply", weight: 20 },
@@ -137,6 +165,79 @@ function seedQualifyingReason(rng: () => number, status: LeadStatus): Qualifying
     if (roll <= 0) return entry.reason;
   }
   return "no-reply";
+}
+
+interface TalkingPointScenario {
+  painPoint: string;
+  aiSuggestedReply: string;
+}
+
+const SCENARIOS_BY_REASON: Record<QualifyingReason, TalkingPointScenario[]> = {
+  "no-reply": [
+    {
+      painPoint: "Gone quiet after the first call - hasn't replied to the last 2 follow-ups.",
+      aiSuggestedReply: "Hi, just checking in - still keen on the loan? Happy to go through the numbers whenever suits you, even a quick 5 min call.",
+    },
+    {
+      painPoint: "Read the WhatsApp message but hasn't replied - may be hesitant to commit.",
+      aiSuggestedReply: "Hey, no rush at all - let me know if you have any questions about the offer, I'm here to help whenever you're ready.",
+    },
+  ],
+  "interest-rate-fees": [
+    {
+      painPoint: "Thinks the interest rate is higher than what banks are offering.",
+      aiSuggestedReply: "I hear you - our rate factors in same-day approval with no income proof needed. Want me to break down the total repayment so it's easy to compare?",
+    },
+    {
+      painPoint: "Worried the processing fee eats into the amount he actually receives.",
+      aiSuggestedReply: "Totally fair concern - the fee is a one-time 2% and it's already reflected in the amount I quoted, so there's no surprise deduction later.",
+    },
+  ],
+  "bad-timing": [
+    {
+      painPoint: "Says it's not a good time right now - juggling other commitments.",
+      aiSuggestedReply: "No worries - when would be a better time to check back in? I can also hold today's rate for a few more days if that helps.",
+    },
+    {
+      painPoint: "Wants to wait until after payday before deciding.",
+      aiSuggestedReply: "Makes sense - want me to set a reminder to follow up right after your payday so you don't lose the offer?",
+    },
+  ],
+  "didnt-book": [
+    {
+      painPoint: "Agreed to proceed but hasn't picked an appointment slot yet.",
+      aiSuggestedReply: "Great that you're keen! I've got a slot tomorrow at 2pm or Thursday at 11am - which works better for you?",
+    },
+    {
+      painPoint: "Keeps postponing the booking call.",
+      aiSuggestedReply: "Totally understand things get busy - it only takes 15 min. Would a call today after 6pm work instead?",
+    },
+  ],
+};
+
+const GENERIC_SCENARIOS: TalkingPointScenario[] = [
+  {
+    painPoint: "Hasn't confirmed if the quoted amount covers what he needs.",
+    aiSuggestedReply: "Just to confirm - does the amount I quoted cover what you need, or should I check if we can go higher?",
+  },
+  {
+    painPoint: "Comparing this offer against another lender before deciding.",
+    aiSuggestedReply: "No problem taking your time to compare - want me to send a quick summary of our rate and fees so it's easy to line up side by side?",
+  },
+  {
+    painPoint: "Unsure if his income documents are enough to qualify.",
+    aiSuggestedReply: "Good question - a recent payslip and 3 months of CPF is usually enough. Want me to check with the assessor once you send them over?",
+  },
+];
+
+function seedTalkingPoint(rng: () => number, status: LeadStatus, qualifyingReason: QualifyingReason | null): TalkingPointScenario | null {
+  if (status === "qualifying" && qualifyingReason) {
+    return pick(SCENARIOS_BY_REASON[qualifyingReason], rng);
+  }
+  if ((status === "assigned" || status === "no-response" || status === "pending-booking") && rng() > 0.35) {
+    return pick(GENERIC_SCENARIOS, rng);
+  }
+  return null;
 }
 
 function formatPhone(rng: () => number): string {
@@ -218,6 +319,9 @@ export function buildMockLeads(now: Date = new Date()): Lead[] {
       );
     }
 
+    const qualifyingReason = seedQualifyingReason(rng, status);
+    const talkingPoint = seedTalkingPoint(rng, status, qualifyingReason);
+
     leads.push({
       id: `lead-${idx + 1}`,
       name,
@@ -233,7 +337,10 @@ export function buildMockLeads(now: Date = new Date()): Lead[] {
       loanAmountLabel: rng() > 0.25 ? pick(AMOUNTS, rng) : null,
       tags: seedTags(rng, status),
       eligibility: seedEligibility(rng, status),
-      qualifyingReason: seedQualifyingReason(rng, status),
+      qualifyingReason,
+      painPoint: talkingPoint?.painPoint ?? null,
+      aiSuggestedReply: talkingPoint?.aiSuggestedReply ?? null,
+      closeReason: seedCloseReason(rng, status),
     });
   });
 

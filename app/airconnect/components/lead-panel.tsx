@@ -2,7 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Phone, CalendarCheck, NotePencil, ChatCircleText, TagSimple, ClockCountdown, UserFocus } from "@phosphor-icons/react";
+import {
+  X,
+  Phone,
+  CalendarCheck,
+  NotePencil,
+  ChatCircleText,
+  ChatCircleDots,
+  Sparkle,
+  TagSimple,
+  ClockCountdown,
+  UserFocus,
+  Copy,
+  Check,
+  PaperPlaneTilt,
+} from "@phosphor-icons/react";
 import { useAirConnect } from "../airconnect-store";
 import { formatDueLabel, formatRelativeTime } from "@/lib/airconnect/helpers";
 import type { Lead, NoteKind } from "@/lib/airconnect/types";
@@ -103,7 +117,7 @@ function LeadFacts({ lead, now }: { lead: Lead; now: Date }) {
       </div>
 
       <div className="mt-3">
-        <EligibilityDisplay />
+        <EligibilityDisplay lead={lead} />
       </div>
 
       <div className="mt-3">
@@ -175,6 +189,89 @@ function LeadDetailBody({ lead, now, actionAlign }: { lead: Lead; now: Date; act
   );
 }
 
+function PainPointCard({ painPoint }: { painPoint: string | null }) {
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+      <div className="mb-1 flex items-center gap-1.5">
+        <ChatCircleDots size={14} weight="fill" className="text-amber-600" />
+        <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Customer&apos;s Pain Point</p>
+      </div>
+      <p className="text-sm leading-snug text-amber-900">
+        {painPoint ?? "No open objections yet - lead hasn't been engaged on a blocker."}
+      </p>
+    </div>
+  );
+}
+
+function AiReplyCard({ lead, aiSuggestedReply }: { lead: Lead; aiSuggestedReply: string | null }) {
+  const { sendMessage } = useAirConnect();
+  const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function copyReply() {
+    if (!aiSuggestedReply) return;
+    try {
+      await navigator.clipboard.writeText(aiSuggestedReply);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard can fail in insecure contexts; leave the button unchanged.
+    }
+  }
+
+  function send() {
+    if (!aiSuggestedReply) return;
+    sendMessage(lead.id, "AI Suggested Reply", aiSuggestedReply);
+    setSent(true);
+    window.setTimeout(() => setSent(false), 1500);
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--brand-teal-hex)]/30 bg-[var(--brand-teal-hex)]/5 px-3 py-2.5">
+      <div className="mb-1 flex items-center gap-1.5">
+        <Sparkle size={14} weight="fill" className="text-[var(--brand-teal-hex)]" />
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[#0a8a78]">AI Suggested Reply</p>
+      </div>
+      <p className="text-sm leading-snug text-[var(--text-primary)]">
+        {aiSuggestedReply ?? "No suggestion yet - add a note once you've spoken with the customer."}
+      </p>
+      {aiSuggestedReply && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={copyReply}
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-medium)] bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:border-[var(--brand-teal-hex)] hover:text-[#0a8a78]"
+          >
+            {copied ? <Check size={12} weight="bold" className="text-emerald-600" /> : <Copy size={12} weight="bold" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            type="button"
+            onClick={send}
+            className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-teal-hex)] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+          >
+            <PaperPlaneTilt size={12} weight="bold" />
+            {sent ? "Sent" : "Send"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TalkingPointBody({ lead, actionAlign }: { lead: Lead; actionAlign: "left" | "right" }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <PainPointCard painPoint={lead.painPoint} />
+      <AiReplyCard lead={lead} aiSuggestedReply={lead.aiSuggestedReply} />
+      <div>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]">Quick actions</p>
+        <QuickActions lead={lead} align={actionAlign} size="compact" />
+      </div>
+    </div>
+  );
+}
+
 function EmptyDetail() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
@@ -212,15 +309,28 @@ export function LeadPanel({ variant = "overlay" }: LeadPanelProps) {
       <aside className="flex h-full min-h-0 flex-col bg-white">
         {lead ? (
           <>
-            <div className="shrink-0 border-b border-[var(--border-subtle)] px-5 py-4">
-              <h2 className="truncate text-base font-bold text-[var(--text-primary)]">{lead.name}</h2>
+            <div className="shrink-0 border-b border-[var(--border-subtle)] px-5 py-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="min-w-0 truncate text-sm font-bold text-[var(--text-primary)]">{lead.name}</h2>
+                <a
+                  href={`tel:${lead.phone}`}
+                  className="shrink-0 text-xs font-semibold text-[var(--brand-blue-hex)] hover:underline"
+                >
+                  {lead.phone}
+                </a>
+              </div>
               <div className="mt-1 flex items-center gap-2">
                 <StatusPill status={lead.status} />
                 <span className="text-xs text-[var(--text-tertiary)]">{lead.source}</span>
+                {lead.followUpAt && (
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                    {formatDueLabel(lead.followUpAt, now)}
+                  </span>
+                )}
               </div>
             </div>
             <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <LeadDetailBody lead={lead} now={now} actionAlign="right" />
+              <TalkingPointBody lead={lead} actionAlign="right" />
             </div>
           </>
         ) : (

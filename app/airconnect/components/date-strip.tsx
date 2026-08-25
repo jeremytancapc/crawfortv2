@@ -101,7 +101,7 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
 
   return (
     <div>
-      <div className="mb-1 flex items-center gap-1.5">
+      <div className="mb-2 flex items-center gap-1.5">
         <p className="shrink-0 text-[11px] font-semibold tracking-tight text-[var(--brand-blue-hex)]">
           {formatRangeLabel(weekStart, weekEnd)}
         </p>
@@ -134,14 +134,14 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
         />
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 overflow-hidden rounded-md ring-1 ring-slate-300">
         {WEEKDAYS.map((label, i) => {
           const isOffDay = i === 6; // Sunday only - Saturday is a working day
           return (
             <div
               key={label}
               className={[
-                "text-center text-[8px] font-black uppercase tracking-[0.06em]",
+                "border-b border-slate-300 bg-slate-100 py-0.5 text-center text-[8px] font-black uppercase tracking-[0.06em]",
                 isOffDay ? "text-slate-500" : "text-[var(--brand-blue-hex)]",
               ].join(" ")}
             >
@@ -206,19 +206,19 @@ function DayCell({
       aria-pressed={isSelected}
       aria-label={dayAriaLabel(date, holidayName, types, isToday)}
       className={[
-        "flex min-h-[2.5rem] flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-0.5 transition-colors",
+        "flex min-h-[2.5rem] flex-col items-center justify-center gap-0.5 border-b border-r border-slate-300 px-0.5 py-0.5 transition-colors [&:nth-child(7n)]:border-r-0",
         isPast ? "cursor-not-allowed opacity-40" : "",
         isHoliday
           ? isSelected
-            ? "bg-red-600 text-white ring-2 ring-[var(--brand-blue-hex)]"
+            ? "bg-red-600 text-white ring-2 ring-inset ring-[var(--brand-blue-hex)]"
             : "bg-red-600 text-white hover:bg-red-700"
           : isSelected
-            ? "bg-[var(--brand-blue-hex)] text-white shadow-sm"
+            ? "bg-[var(--brand-blue-hex)] text-white"
             : isToday
-              ? "bg-white ring-2 ring-[var(--brand-blue-hex)]"
+              ? "bg-white ring-2 ring-inset ring-[var(--brand-blue-hex)]"
               : isOffDay
-                ? "bg-slate-200 ring-1 ring-slate-400 hover:bg-slate-300"
-                : "bg-white ring-1 ring-slate-300 hover:bg-[oklch(0.93_0.04_260)]",
+                ? "bg-slate-200 hover:bg-slate-300"
+                : "bg-white hover:bg-[oklch(0.93_0.04_260)]",
       ].join(" ")}
     >
       <span

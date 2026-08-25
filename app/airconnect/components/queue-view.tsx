@@ -5,7 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import { WarningCircle, CalendarCheck } from "@phosphor-icons/react";
 import { useAirConnect } from "../airconnect-store";
 import { getDueBucket, parseDateKey, toDateKey } from "@/lib/airconnect/helpers";
-import { ACTIVE_QUEUE_STATUSES, type Lead } from "@/lib/airconnect/types";
+import { ACTIVE_QUEUE_STATUSES, isAscendH5Submitted, type Lead } from "@/lib/airconnect/types";
 import { LeadRow, type LeadRowHandle } from "./lead-row";
 import { KeyboardLegend } from "./keyboard-legend";
 import { EmptyState } from "./empty-state";
@@ -76,12 +76,14 @@ export function QueueView() {
         if (state.queueTypeFilter === "overdue" || state.overdueOnly) return bucket === "overdue";
         if (state.queueTypeFilter === "assigned") return inTodayQueue && lead.status === "assigned";
         if (state.queueTypeFilter === "qualifying") return inTodayQueue && matchesQualifying(lead);
+        if (state.queueTypeFilter === "submitted") return inTodayQueue && isAscendH5Submitted(lead.eligibility);
         return inTodayQueue;
       }
       if (state.queueTypeFilter === "overdue") return false;
       const onSelectedDate = toDateKey(new Date(lead.followUpAt as string)) === state.queueDate;
       if (state.queueTypeFilter === "assigned") return onSelectedDate && lead.status === "assigned";
       if (state.queueTypeFilter === "qualifying") return onSelectedDate && matchesQualifying(lead);
+      if (state.queueTypeFilter === "submitted") return onSelectedDate && isAscendH5Submitted(lead.eligibility);
       return onSelectedDate;
     });
   }, [baseFiltered, viewingToday, state.overdueOnly, state.queueTypeFilter, state.qualifyingReasonFilter, state.queueDate, now]);
@@ -198,7 +200,7 @@ export function QueueView() {
       <SearchBar />
 
       <div className="flex min-h-0 flex-1">
-        <div ref={listRef} className="scrollbar-thin min-w-0 flex-1 overflow-y-auto px-4 py-4">
+        <div ref={listRef} className="scrollbar-thin min-w-0 flex-1 overflow-y-auto px-5 py-5">
           {filtered.length === 0 ? (
             <EmptyState
               hasFilters={hasActiveFilters}
@@ -207,7 +209,7 @@ export function QueueView() {
               onJumpToToday={!viewingToday ? () => setQueueDate(todayKey) : undefined}
             />
           ) : (
-            <div className="flex flex-col gap-6 pb-8">
+            <div className="flex flex-col gap-8 pb-10">
               {sections.map(({ key, leads }) => {
                 if (leads.length === 0) return null;
                 const meta = SECTION_META[key];
@@ -215,12 +217,12 @@ export function QueueView() {
                 const label = key === "today" && !viewingToday ? dateLabel ?? meta.label : meta.label;
                 return (
                   <section key={key}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <Icon size={16} weight="fill" className={meta.color} />
-                      <h2 className={`text-sm font-bold ${meta.color}`}>{label}</h2>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{leads.length}</span>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Icon size={15} weight="fill" className={meta.color} />
+                      <h2 className={`text-[13px] font-bold ${meta.color}`}>{label}</h2>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{leads.length}</span>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-3.5">
                       <AnimatePresence initial={false}>
                         {leads.map((lead) => (
                           <LeadRow
@@ -245,7 +247,7 @@ export function QueueView() {
           )}
         </div>
 
-        <div className="w-[35%] min-w-[18rem] max-w-[26rem] shrink-0 border-l border-[var(--border-subtle)]">
+        <div className="w-[34%] min-w-[17rem] max-w-[24rem] shrink-0 border-l border-[var(--border-subtle)] bg-white">
           <LeadPanel variant="inline" />
         </div>
       </div>

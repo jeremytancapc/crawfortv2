@@ -68,6 +68,20 @@ export type EligibilityTag =
   | "h5-customer-reject"
   | "h5-customer-never-completed";
 
+/** Submitted to Ascend or H5 (excludes never-completed). */
+export const SUBMITTED_ELIGIBILITY_TAGS: readonly EligibilityTag[] = [
+  "ascend-approved",
+  "ascend-pending-docs",
+  "h5-approved-with-appt",
+  "h5-approved-without-appt",
+  "h5-system-rejected",
+  "h5-customer-reject",
+];
+
+export function isAscendH5Submitted(eligibility: EligibilityTag | null): boolean {
+  return eligibility !== null && (SUBMITTED_ELIGIBILITY_TAGS as readonly string[]).includes(eligibility);
+}
+
 export interface LeadTags {
   residency: ResidencyTag | null;
   employment: EmploymentTag | null;
@@ -97,12 +111,18 @@ export interface Lead {
   eligibility: EligibilityTag | null;
   /** Only set when status is "qualifying" - why the lead is stalled there. */
   qualifyingReason: QualifyingReason | null;
+  /** What's currently blocking the deal, shown as the live talking point for the agent. */
+  painPoint: string | null;
+  /** AI-drafted reply addressing the pain point, ready to copy or send as-is. */
+  aiSuggestedReply: string | null;
+  /** Why the lead was closed out as not-eligible - set via the "close reason" menu. */
+  closeReason: CloseReason | null;
 }
 
 export type ViewMode = "queue" | "pipeline" | "table";
 
 /** Primary queue chips for today's work. Overdue is a due-bucket; the others are statuses. */
-export type QueueTypeFilter = "all" | "overdue" | "assigned" | "qualifying";
+export type QueueTypeFilter = "all" | "overdue" | "assigned" | "qualifying" | "submitted";
 
 /** Why a "qualifying" lead hasn't converted yet - drill-down chips under the Qualifying filter. */
 export type QualifyingReason = "no-reply" | "interest-rate-fees" | "bad-timing" | "didnt-book";
@@ -114,6 +134,63 @@ export const QUALIFYING_REASON_LABELS: Record<QualifyingReason, string> = {
   "interest-rate-fees": "Interest Rate / Fees",
   "bad-timing": "Bad Timing",
   "didnt-book": "Didn't Book",
+};
+
+/** Why a lead is closed out for good - sets status to "not-eligible" when chosen. */
+export type CloseReason =
+  | "blacklisted-invalid-number"
+  | "blacklisted-do-not-call"
+  | "blacklisted-bankrupt"
+  | "blacklisted-existing-customer"
+  | "blacklisted-foreigner-not-eligible"
+  | "blacklisted-others"
+  | "give-up-already-got-loan"
+  | "give-up-high-outstanding-loan"
+  | "give-up-income-too-low"
+  | "give-up-not-interested"
+  | "give-up-not-keen-with-ml"
+  | "give-up-no-income-proof"
+  | "give-up-trouble-maker"
+  | "give-up-underage"
+  | "give-up-unemployed"
+  | "give-up-others";
+
+export const CLOSE_REASON_ORDER: CloseReason[] = [
+  "blacklisted-invalid-number",
+  "blacklisted-do-not-call",
+  "blacklisted-bankrupt",
+  "blacklisted-existing-customer",
+  "blacklisted-foreigner-not-eligible",
+  "blacklisted-others",
+  "give-up-already-got-loan",
+  "give-up-high-outstanding-loan",
+  "give-up-income-too-low",
+  "give-up-not-interested",
+  "give-up-not-keen-with-ml",
+  "give-up-no-income-proof",
+  "give-up-trouble-maker",
+  "give-up-underage",
+  "give-up-unemployed",
+  "give-up-others",
+];
+
+export const CLOSE_REASON_LABELS: Record<CloseReason, string> = {
+  "blacklisted-invalid-number": "Blacklisted - Did Not Apply / Wrong Number",
+  "blacklisted-do-not-call": "Blacklisted - Do Not Call",
+  "blacklisted-bankrupt": "Blacklisted - DRS / Bankrupt",
+  "blacklisted-existing-customer": "Blacklisted - Existing Customer",
+  "blacklisted-foreigner-not-eligible": "Blacklisted - Foreigner - Not Eligible",
+  "blacklisted-others": "Blacklisted - Others",
+  "give-up-already-got-loan": "Give Up - Already Got Loan",
+  "give-up-high-outstanding-loan": "Give Up - High Outstanding Loan",
+  "give-up-income-too-low": "Give Up - Income Too Low",
+  "give-up-not-interested": "Give Up - Not Interested",
+  "give-up-not-keen-with-ml": "Give Up - Not Keen with ML",
+  "give-up-no-income-proof": "Give Up - No Income Proof",
+  "give-up-trouble-maker": "Give Up - Trouble Maker",
+  "give-up-underage": "Give Up - Underage",
+  "give-up-unemployed": "Give Up - Unemployed",
+  "give-up-others": "Give Up - Others",
 };
 
 export interface ActivityCounts {

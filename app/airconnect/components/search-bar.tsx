@@ -8,15 +8,17 @@ export function SearchBar() {
   const { state, setSearch } = useAirConnect();
 
   return (
-    <div className="flex w-full items-center gap-3 border-4 border-black bg-white px-4 py-2.5">
-      <MagnifyingGlass size={16} weight="bold" className="shrink-0 text-[var(--brand-blue-hex)]" />
-      <input
-        value={state.search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search name or phone..."
-        aria-label="Search name or phone"
-        className="w-full bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
-      />
+    <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-5 py-3">
+      <div className="flex items-center gap-2.5 rounded-lg border border-[var(--border-subtle)] bg-white px-3 py-2">
+        <MagnifyingGlass size={14} weight="bold" className="shrink-0 text-[var(--text-tertiary)]" />
+        <input
+          value={state.search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search name or phone..."
+          aria-label="Search name or phone"
+          className="w-full bg-transparent text-[13px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+        />
+      </div>
     </div>
   );
 }

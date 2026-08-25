@@ -5,6 +5,7 @@ import type {
   AgentId,
   ActivityCounts,
   CallOutcome,
+  CloseReason,
   Lead,
   LeadSource,
   LeadStatus,
@@ -15,7 +16,7 @@ import type {
   ViewMode,
 } from "@/lib/airconnect/types";
 import { AGENTS } from "@/lib/airconnect/mock-data";
-import { ACTIVE_QUEUE_STATUSES } from "@/lib/airconnect/types";
+import { ACTIVE_QUEUE_STATUSES, CLOSE_REASON_LABELS } from "@/lib/airconnect/types";
 import { applyCallOutcome, CALL_OUTCOME_LABELS, getDueBucket, toDateKey } from "@/lib/airconnect/helpers";
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ type Action =
   | { type: "SNOOZE_LEAD"; leadId: string; until: string; label: string }
   | { type: "MARK_DONE"; leadId: string }
   | { type: "SET_STATUS"; leadId: string; status: LeadStatus }
+  | { type: "SET_CLOSE_REASON"; leadId: string; reason: CloseReason }
   | { type: "SET_LEAD_TAGS"; leadId: string; patch: Partial<LeadTags> }
   | { type: "UNDO_TOAST"; toastId: string }
   | { type: "DISMISS_TOAST"; toastId: string };
@@ -320,6 +322,31 @@ function airconnectReducer(state: AirConnectState, action: Action): AirConnectSt
       return { ...state, leads };
     }
 
+    case "SET_CLOSE_REASON": {
+      const lead = state.leads.find((l) => l.id === action.leadId);
+      if (!lead) return state;
+
+      const label = CLOSE_REASON_LABELS[action.reason];
+      const leads = updateLead(state.leads, lead.id, (l) => ({
+        ...l,
+        status: "not-eligible",
+        closeReason: action.reason,
+        followUpAt: null,
+        updatedAt: now.toISOString(),
+        notes: [
+          { id: makeNoteId(), kind: "status", text: `Status changed to not eligible (${label}).`, authorId: state.currentAgentId, createdAt: now.toISOString() },
+          ...l.notes,
+        ],
+      }));
+
+      return {
+        ...state,
+        leads,
+        selectedLeadId: state.selectedLeadId === lead.id ? null : state.selectedLeadId,
+        toasts: pushToast(state.toasts, { kind: "status", message: `${lead.name.split(" ")[0]} closed - ${label}`, undoSnapshot: lead }),
+      };
+    }
+
     case "SET_LEAD_TAGS": {
       const lead = state.leads.find((l) => l.id === action.leadId);
       if (!lead) return state;
@@ -374,6 +401,7 @@ interface AirConnectContextValue {
   snoozeLead: (leadId: string, until: string, label: string) => void;
   markDone: (leadId: string) => void;
   setStatus: (leadId: string, status: LeadStatus) => void;
+  setCloseReason: (leadId: string, reason: CloseReason) => void;
   setLeadTags: (leadId: string, patch: Partial<LeadTags>) => void;
   undoToast: (toastId: string) => void;
   dismissToast: (toastId: string) => void;
@@ -438,6 +466,7 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
   const snoozeLead = useCallback((leadId: string, until: string, label: string) => dispatch({ type: "SNOOZE_LEAD", leadId, until, label }), []);
   const markDone = useCallback((leadId: string) => dispatch({ type: "MARK_DONE", leadId }), []);
   const setStatus = useCallback((leadId: string, status: LeadStatus) => dispatch({ type: "SET_STATUS", leadId, status }), []);
+  const setCloseReason = useCallback((leadId: string, reason: CloseReason) => dispatch({ type: "SET_CLOSE_REASON", leadId, reason }), []);
   const setLeadTags = useCallback((leadId: string, patch: Partial<LeadTags>) => dispatch({ type: "SET_LEAD_TAGS", leadId, patch }), []);
   const undoToast = useCallback((toastId: string) => dispatch({ type: "UNDO_TOAST", toastId }), []);
   const dismissToast = useCallback((toastId: string) => dispatch({ type: "DISMISS_TOAST", toastId }), []);
@@ -462,11 +491,12 @@ export function AirConnectProvider({ leads, children }: { leads: Lead[]; childre
       snoozeLead,
       markDone,
       setStatus,
+      setCloseReason,
       setLeadTags,
       undoToast,
       dismissToast,
     }),
-    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, setQueueTypeFilter, setQualifyingReasonFilter, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, setLeadTags, undoToast, dismissToast]
+    [state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly, setQueueTypeFilter, setQualifyingReasonFilter, selectLead, setQueueDate, setCallOutcome, addNote, sendMessage, bookAppointment, snoozeLead, markDone, setStatus, setCloseReason, setLeadTags, undoToast, dismissToast]
   );
 
   return <AirConnectContext.Provider value={value}>{children}</AirConnectContext.Provider>;
