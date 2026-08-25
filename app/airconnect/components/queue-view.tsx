@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { WarningCircle, CalendarCheck } from "@phosphor-icons/react";
+import { CalendarCheck } from "@phosphor-icons/react";
 import { useAirConnect } from "../airconnect-store";
 import { getDueBucket, parseDateKey, toDateKey } from "@/lib/airconnect/helpers";
 import { ACTIVE_QUEUE_STATUSES, isAscendH5Submitted, type Lead } from "@/lib/airconnect/types";
@@ -12,10 +12,9 @@ import { EmptyState } from "./empty-state";
 import { SearchBar } from "./search-bar";
 import { LeadPanel } from "./lead-panel";
 
-const SECTION_META: Record<"overdue" | "today", { label: string; icon: typeof WarningCircle; color: string }> = {
-  overdue: { label: "Overdue", icon: WarningCircle, color: "text-red-600" },
+const SECTION_META = {
   today: { label: "Due Today", icon: CalendarCheck, color: "text-[var(--brand-blue-hex)]" },
-};
+} as const;
 
 function isTypingTarget(el: EventTarget | null): boolean {
   return el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
@@ -55,7 +54,6 @@ export function QueueView() {
     Boolean(state.search.trim()) ||
     state.statusFilter !== "all" ||
     state.sourceFilter !== "all" ||
-    state.overdueOnly ||
     state.queueTypeFilter !== "all" ||
     state.qualifyingReasonFilter !== "all";
 
@@ -72,37 +70,39 @@ export function QueueView() {
     return baseFiltered.filter((lead) => {
       if (viewingToday) {
         const bucket = getDueBucket(lead, now);
-        const inTodayQueue = bucket === "overdue" || bucket === "today";
-        if (state.queueTypeFilter === "overdue" || state.overdueOnly) return bucket === "overdue";
+        const inTodayQueue = bucket === "today";
         if (state.queueTypeFilter === "assigned") return inTodayQueue && lead.status === "assigned";
         if (state.queueTypeFilter === "qualifying") return inTodayQueue && matchesQualifying(lead);
         if (state.queueTypeFilter === "submitted") return inTodayQueue && isAscendH5Submitted(lead.eligibility);
         return inTodayQueue;
       }
-      if (state.queueTypeFilter === "overdue") return false;
       const onSelectedDate = toDateKey(new Date(lead.followUpAt as string)) === state.queueDate;
       if (state.queueTypeFilter === "assigned") return onSelectedDate && lead.status === "assigned";
       if (state.queueTypeFilter === "qualifying") return onSelectedDate && matchesQualifying(lead);
       if (state.queueTypeFilter === "submitted") return onSelectedDate && isAscendH5Submitted(lead.eligibility);
       return onSelectedDate;
     });
-  }, [baseFiltered, viewingToday, state.overdueOnly, state.queueTypeFilter, state.qualifyingReasonFilter, state.queueDate, now]);
+  }, [baseFiltered, viewingToday, state.queueTypeFilter, state.qualifyingReasonFilter, state.queueDate, now]);
 
   const groups = useMemo(() => {
-    const overdue: Lead[] = [];
-    const due: Lead[] = [];
-    filtered.forEach((lead) => {
-      if (viewingToday && getDueBucket(lead, now) === "overdue") overdue.push(lead);
-      else due.push(lead);
-    });
-    const byDue = (a: Lead, b: Lead) => new Date(a.followUpAt as string).getTime() - new Date(b.followUpAt as string).getTime();
-    overdue.sort(byDue);
-    due.sort(byDue);
-    return { overdue, today: due };
-  }, [filtered, viewingToday, now]);
+    const due = [...filtered].sort(
+      (a, b) => new Date(a.followUpAt as string).getTime() - new Date(b.followUpAt as string).getTime()
+    );
+    return { today: due };
+  }, [filtered]);
+
+  const qualifyingCountForDay = useMemo(() => {
+    return state.leads.filter((lead) => {
+      if (lead.agentId !== state.currentAgentId) return false;
+      if (lead.status !== "qualifying") return false;
+      if (!lead.followUpAt) return false;
+      if (viewingToday) return getDueBucket(lead, now) === "today";
+      return toDateKey(new Date(lead.followUpAt)) === state.queueDate;
+    }).length;
+  }, [state.leads, state.currentAgentId, viewingToday, state.queueDate, now]);
 
   const flatOrder = useMemo(
-    () => [...groups.overdue, ...groups.today].map((l) => l.id),
+    () => groups.today.map((l) => l.id),
     [groups]
   );
 
@@ -188,12 +188,7 @@ export function QueueView() {
     ? undefined
     : viewedDate.toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "short" });
 
-  const sections: { key: "overdue" | "today"; leads: Lead[] }[] = viewingToday
-    ? [
-        { key: "overdue", leads: groups.overdue },
-        { key: "today", leads: groups.today },
-      ]
-    : [{ key: "today", leads: groups.today }];
+  const sections: { key: "today"; leads: Lead[] }[] = [{ key: "today", leads: groups.today }];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -220,7 +215,9 @@ export function QueueView() {
                     <div className="mb-3 flex items-center gap-2">
                       <Icon size={15} weight="fill" className={meta.color} />
                       <h2 className={`text-[13px] font-bold ${meta.color}`}>{label}</h2>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{leads.length}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                        {qualifyingCountForDay}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-3.5">
                       <AnimatePresence initial={false}>

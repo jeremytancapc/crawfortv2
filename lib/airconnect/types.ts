@@ -121,8 +121,8 @@ export interface Lead {
 
 export type ViewMode = "queue" | "pipeline" | "table";
 
-/** Primary queue chips for today's work. Overdue is a due-bucket; the others are statuses. */
-export type QueueTypeFilter = "all" | "overdue" | "assigned" | "qualifying" | "submitted";
+/** Primary queue chips for today's work. */
+export type QueueTypeFilter = "all" | "assigned" | "qualifying" | "submitted";
 
 /** Why a "qualifying" lead hasn't converted yet - drill-down chips under the Qualifying filter. */
 export type QualifyingReason = "no-reply" | "interest-rate-fees" | "bad-timing" | "didnt-book";

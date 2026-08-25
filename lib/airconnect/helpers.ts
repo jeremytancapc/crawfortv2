@@ -5,7 +5,7 @@
 
 import type { CallOutcome, Lead, LeadStatus } from "./types";
 
-export type DueBucket = "overdue" | "today" | "upcoming" | null;
+export type DueBucket = "today" | "upcoming" | null;
 
 export function startOfDay(date: Date): Date {
   const d = new Date(date);
@@ -68,7 +68,6 @@ export function endOfDay(date: Date): Date {
 export function getDueBucket(lead: Lead, now: Date): DueBucket {
   if (!lead.followUpAt) return null;
   const due = new Date(lead.followUpAt);
-  if (due < now) return "overdue";
   if (due <= endOfDay(now)) return "today";
   return "upcoming";
 }
@@ -112,12 +111,9 @@ export function formatDayLabel(iso: string, now: Date): string {
   return date.toLocaleDateString("en-SG", { weekday: "short", day: "numeric", month: "short" });
 }
 
-/** e.g. "Overdue - 2h ago", "Today, 3:30 pm", "Tomorrow, 9:00 am" */
+/** e.g. "Today, 3:30 pm", "Tomorrow, 9:00 am" */
 export function formatDueLabel(iso: string, now: Date): string {
-  const bucket = getDueBucket({ followUpAt: iso } as Lead, now);
-  const clock = formatClockTime(iso);
-  if (bucket === "overdue") return `Overdue - ${formatRelativeTime(iso, now)}`;
-  return `${formatDayLabel(iso, now)}, ${clock}`;
+  return `${formatDayLabel(iso, now)}, ${formatClockTime(iso)}`;
 }
 
 /** Masks a phone number, keeping only the last 4 digits, e.g. "**** 5135" */

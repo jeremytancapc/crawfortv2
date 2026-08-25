@@ -4,7 +4,6 @@ import { addDays, parseDateKey, startOfWeekMonday, toDateKey } from "@/lib/airco
 import { sgPublicHolidayName } from "@/lib/sg-public-holidays";
 
 export interface DayTypeCounts {
-  overdue: number;
   assigned: number;
   qualifying: number;
 }
@@ -16,10 +15,9 @@ interface DateStripProps {
   onSelect: (dateKey: string) => void;
 }
 
-const EMPTY_COUNTS: DayTypeCounts = { overdue: 0, assigned: 0, qualifying: 0 };
+const EMPTY_COUNTS: DayTypeCounts = { assigned: 0, qualifying: 0 };
 
 const TYPE_PILLS = [
-  { key: "overdue" as const, className: "bg-red-100 text-red-700" },
   { key: "assigned" as const, className: "bg-blue-100 text-[var(--brand-blue-hex)]" },
   { key: "qualifying" as const, className: "bg-violet-100 text-violet-700" },
 ];
@@ -48,7 +46,7 @@ function formatRangeLabel(start: Date, end: Date): string {
   return `${startLabel} – ${endLabel}`;
 }
 
-const SIMULATED_TODAY = { overdue: 3, assigned: 40, qualifying: 50 } as const;
+const SIMULATED_TODAY = { assigned: 40, qualifying: 50 } as const;
 
 function dayAriaLabel(date: Date, holidayName: string | undefined, types: DayTypeCounts, isToday: boolean): string {
   const base = date.toLocaleDateString("en-SG", {
@@ -59,7 +57,7 @@ function dayAriaLabel(date: Date, holidayName: string | undefined, types: DayTyp
   const bits = [base];
   if (isToday) bits.push("today");
   if (holidayName) bits.push(`${holidayName}, public holiday`);
-  bits.push(`${types.overdue} overdue, ${types.assigned} assigned, ${types.qualifying} qualifying`);
+  bits.push(`${types.assigned} assigned, ${types.qualifying} qualifying`);
   return bits.join(", ");
 }
 
