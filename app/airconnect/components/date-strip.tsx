@@ -103,6 +103,7 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
     <div>
       <div className="mb-2 flex items-center gap-1.5">
         <p className="shrink-0 text-[11px] font-semibold tracking-tight text-[var(--brand-blue-hex)]">
+          <span>Calendar </span>
           {formatRangeLabel(weekStart, weekEnd)}
         </p>
         <button

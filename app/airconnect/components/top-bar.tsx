@@ -147,7 +147,7 @@ export function TopBar() {
             <thead>
               <tr>
                 <th className="border border-black bg-black px-1 py-1 text-left text-[9px] font-bold uppercase tracking-tight text-white break-words leading-[1.15]">
-                  Performance
+                  {now.toLocaleDateString("en-SG", { month: "long" })}
                 </th>
                 {PERF_COLUMNS.map((col) => (
                   <th
