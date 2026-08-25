@@ -8,6 +8,7 @@ import { formatDueLabel, formatRelativeTime, maskPhone } from "@/lib/airconnect/
 import { StatusPill } from "./status-pill";
 import { QuickActions } from "./quick-actions";
 import { LeadTagSummary } from "./lead-tags";
+import { SearchBar } from "./search-bar";
 
 type SortKey = "name" | "status" | "followUpAt" | "updatedAt" | "source";
 
@@ -70,7 +71,9 @@ export function TableView() {
   }
 
   return (
-    <div className="scrollbar-thin h-full overflow-auto px-6 py-5">
+    <div className="flex h-full min-h-0 flex-col">
+      <SearchBar />
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-auto px-6 py-5">
       <table className="w-full min-w-[900px] border-separate border-spacing-0 text-sm">
         <thead className="sticky top-0 z-10 bg-[var(--surface-primary)]">
           <tr>
@@ -106,6 +109,7 @@ export function TableView() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

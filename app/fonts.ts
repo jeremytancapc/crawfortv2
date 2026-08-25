@@ -1,4 +1,10 @@
-import { Quicksand, Nunito } from "next/font/google";
+import { Inter, Quicksand, Nunito } from "next/font/google";
+
+export const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const quicksand = Quicksand({
   subsets: ["latin"],

@@ -9,7 +9,7 @@ import { ACTIVE_QUEUE_STATUSES, type Lead } from "@/lib/airconnect/types";
 import { LeadRow, type LeadRowHandle } from "./lead-row";
 import { KeyboardLegend } from "./keyboard-legend";
 import { EmptyState } from "./empty-state";
-import { DateStrip } from "./date-strip";
+import { SearchBar } from "./search-bar";
 import { LeadPanel } from "./lead-panel";
 
 const SECTION_META: Record<"overdue" | "today", { label: string; icon: typeof WarningCircle; color: string }> = {
@@ -38,7 +38,7 @@ function matchesQueueFilters(lead: Lead, state: ReturnType<typeof useAirConnect>
 }
 
 export function QueueView() {
-  const { state, setSearch, setStatusFilter, setSourceFilter, setQueueDate, selectLead } = useAirConnect();
+  const { state, setSearch, setStatusFilter, setSourceFilter, setQueueTypeFilter, setQueueDate, selectLead } = useAirConnect();
   const [now, setNow] = useState(() => new Date());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, LeadRowHandle>>(new Map());
@@ -51,39 +51,40 @@ export function QueueView() {
 
   const todayKey = toDateKey(now);
   const viewingToday = state.queueDate === todayKey;
-  const hasActiveFilters = Boolean(state.search.trim()) || state.statusFilter !== "all" || state.sourceFilter !== "all" || state.overdueOnly;
+  const hasActiveFilters =
+    Boolean(state.search.trim()) ||
+    state.statusFilter !== "all" ||
+    state.sourceFilter !== "all" ||
+    state.overdueOnly ||
+    state.queueTypeFilter !== "all" ||
+    state.qualifyingReasonFilter !== "all";
 
   const baseFiltered = useMemo(
     () => state.leads.filter((lead) => matchesQueueFilters(lead, state)),
     [state]
   );
 
-  const dateCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    baseFiltered.forEach((lead) => {
-      if (!lead.followUpAt) return;
-      const bucket = getDueBucket(lead, now);
-      if (bucket === "overdue" || bucket === "today") {
-        counts[todayKey] = (counts[todayKey] ?? 0) + 1;
-      }
-      const key = toDateKey(new Date(lead.followUpAt));
-      if (key !== todayKey) {
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-    });
-    return counts;
-  }, [baseFiltered, now, todayKey]);
+  const matchesQualifying = (lead: Lead) =>
+    lead.status === "qualifying" &&
+    (state.qualifyingReasonFilter === "all" || lead.qualifyingReason === state.qualifyingReasonFilter);
 
   const filtered = useMemo(() => {
     return baseFiltered.filter((lead) => {
       if (viewingToday) {
-        if (state.overdueOnly) return getDueBucket(lead, now) === "overdue";
         const bucket = getDueBucket(lead, now);
-        return bucket === "overdue" || bucket === "today";
+        const inTodayQueue = bucket === "overdue" || bucket === "today";
+        if (state.queueTypeFilter === "overdue" || state.overdueOnly) return bucket === "overdue";
+        if (state.queueTypeFilter === "assigned") return inTodayQueue && lead.status === "assigned";
+        if (state.queueTypeFilter === "qualifying") return inTodayQueue && matchesQualifying(lead);
+        return inTodayQueue;
       }
-      return toDateKey(new Date(lead.followUpAt as string)) === state.queueDate;
+      if (state.queueTypeFilter === "overdue") return false;
+      const onSelectedDate = toDateKey(new Date(lead.followUpAt as string)) === state.queueDate;
+      if (state.queueTypeFilter === "assigned") return onSelectedDate && lead.status === "assigned";
+      if (state.queueTypeFilter === "qualifying") return onSelectedDate && matchesQualifying(lead);
+      return onSelectedDate;
     });
-  }, [baseFiltered, viewingToday, state.overdueOnly, state.queueDate, now]);
+  }, [baseFiltered, viewingToday, state.overdueOnly, state.queueTypeFilter, state.qualifyingReasonFilter, state.queueDate, now]);
 
   const groups = useMemo(() => {
     const overdue: Lead[] = [];
@@ -177,6 +178,7 @@ export function QueueView() {
     setSearch("");
     setStatusFilter("all");
     setSourceFilter("all");
+    setQueueTypeFilter("all");
   }
 
   const viewedDate = parseDateKey(state.queueDate);
@@ -193,7 +195,7 @@ export function QueueView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <DateStrip selected={state.queueDate} todayKey={todayKey} counts={dateCounts} onSelect={setQueueDate} />
+      <SearchBar />
 
       <div className="flex min-h-0 flex-1">
         <div ref={listRef} className="scrollbar-thin min-w-0 flex-1 overflow-y-auto px-4 py-4">

@@ -7,6 +7,7 @@ import { useAirConnect } from "../airconnect-store";
 import { formatDueLabel, formatRelativeTime, maskPhone } from "@/lib/airconnect/helpers";
 import { QuickActions } from "./quick-actions";
 import { LeadTagSummary } from "./lead-tags";
+import { SearchBar } from "./search-bar";
 
 const COLUMN_ACCENT: Record<LeadStatus, string> = {
   new: "border-t-slate-400",
@@ -79,7 +80,9 @@ export function PipelineView() {
   }, [state.leads, state.currentAgentId, state.sourceFilter, state.search]);
 
   return (
-    <div className="scrollbar-thin h-full overflow-x-auto overflow-y-hidden px-6 py-5">
+    <div className="flex h-full min-h-0 flex-col">
+      <SearchBar />
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-6 py-5">
       <div className="flex h-full gap-4">
         {STATUS_ORDER.map((status, colIdx) => {
           const leads = leadsByStatus.get(status) ?? [];
@@ -109,6 +112,7 @@ export function PipelineView() {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

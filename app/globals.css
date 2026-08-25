@@ -62,6 +62,17 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+.airconnect-root,
+.airconnect-root button,
+.airconnect-root input,
+.airconnect-root select,
+.airconnect-root textarea,
+.airconnect-root table,
+.airconnect-root th,
+.airconnect-root td {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Subtle float animation for decorative emoji/icons */
 @keyframes float {
   0%, 100% { transform: translateY(0); }

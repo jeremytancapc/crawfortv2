@@ -52,6 +52,8 @@ export interface Appointment {
 export type ResidencyTag = "sg-pr" | "foreigner";
 export type EmploymentTag = "employed" | "self-employed";
 export type IncomeDocTag = "cpf" | "noa" | "payslip" | "bank-statement";
+/** Extra supporting docs only collected for foreign-national leads. */
+export type ForeignerDocTag = "por" | "wp-over-3m";
 
 export type OutstandingTag =
   | { kind: "none" }
@@ -70,7 +72,11 @@ export interface LeadTags {
   residency: ResidencyTag | null;
   employment: EmploymentTag | null;
   incomeDocs: IncomeDocTag[];
+  /** Only meaningful when residency is "foreigner". */
+  foreignerDocs: ForeignerDocTag[];
   outstanding: OutstandingTag | null;
+  /** Free-typed monthly income, e.g. "4,500". */
+  monthlyIncome: string | null;
 }
 
 export interface Lead {
@@ -89,9 +95,26 @@ export interface Lead {
   loanAmountLabel: string | null;
   tags: LeadTags;
   eligibility: EligibilityTag | null;
+  /** Only set when status is "qualifying" - why the lead is stalled there. */
+  qualifyingReason: QualifyingReason | null;
 }
 
 export type ViewMode = "queue" | "pipeline" | "table";
+
+/** Primary queue chips for today's work. Overdue is a due-bucket; the others are statuses. */
+export type QueueTypeFilter = "all" | "overdue" | "assigned" | "qualifying";
+
+/** Why a "qualifying" lead hasn't converted yet - drill-down chips under the Qualifying filter. */
+export type QualifyingReason = "no-reply" | "interest-rate-fees" | "bad-timing" | "didnt-book";
+
+export type QualifyingReasonFilter = "all" | QualifyingReason;
+
+export const QUALIFYING_REASON_LABELS: Record<QualifyingReason, string> = {
+  "no-reply": "No Reply",
+  "interest-rate-fees": "Interest Rate / Fees",
+  "bad-timing": "Bad Timing",
+  "didnt-book": "Didn't Book",
+};
 
 export interface ActivityCounts {
   calls: number;

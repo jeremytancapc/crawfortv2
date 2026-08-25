@@ -1,15 +1,28 @@
 "use client";
 
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { addDays, parseDateKey, startOfWeekMonday, toDateKey } from "@/lib/airconnect/helpers";
 import { sgPublicHolidayName } from "@/lib/sg-public-holidays";
+
+export interface DayTypeCounts {
+  overdue: number;
+  assigned: number;
+  qualifying: number;
+}
 
 interface DateStripProps {
   selected: string;
   todayKey: string;
-  counts: Record<string, number>;
+  counts: Record<string, DayTypeCounts>;
   onSelect: (dateKey: string) => void;
 }
+
+const EMPTY_COUNTS: DayTypeCounts = { overdue: 0, assigned: 0, qualifying: 0 };
+
+const TYPE_PILLS = [
+  { key: "overdue" as const, className: "bg-red-100 text-red-700" },
+  { key: "assigned" as const, className: "bg-blue-100 text-[var(--brand-blue-hex)]" },
+  { key: "qualifying" as const, className: "bg-violet-100 text-violet-700" },
+];
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -35,7 +48,9 @@ function formatRangeLabel(start: Date, end: Date): string {
   return `${startLabel} – ${endLabel}`;
 }
 
-function dayAriaLabel(date: Date, holidayName: string | undefined, count: number, isToday: boolean): string {
+const SIMULATED_TODAY = { overdue: 3, assigned: 40, qualifying: 50 } as const;
+
+function dayAriaLabel(date: Date, holidayName: string | undefined, types: DayTypeCounts, isToday: boolean): string {
   const base = date.toLocaleDateString("en-SG", {
     weekday: "long",
     day: "numeric",
@@ -44,13 +59,35 @@ function dayAriaLabel(date: Date, holidayName: string | undefined, count: number
   const bits = [base];
   if (isToday) bits.push("today");
   if (holidayName) bits.push(`${holidayName}, public holiday`);
-  bits.push(`${count} follow-up${count === 1 ? "" : "s"}`);
+  bits.push(`${types.overdue} overdue, ${types.assigned} assigned, ${types.qualifying} qualifying`);
   return bits.join(", ");
 }
 
+function TypeCountPills({ types, muted }: { types: DayTypeCounts; muted: boolean }) {
+  const pills = TYPE_PILLS.filter((pill) => types[pill.key] > 0);
+  if (pills.length === 0) {
+    return (
+      <span className={`text-[9px] font-semibold leading-none ${muted ? "text-white/80" : "text-slate-400"}`}>0</span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center justify-center gap-0.5">
+      {pills.map((pill) => (
+        <span
+          key={pill.key}
+          className={`inline-flex min-w-[1rem] items-center justify-center rounded-full px-1 py-[1px] text-[8px] font-black leading-none tabular-nums ${pill.className}`}
+        >
+          {types[pill.key]}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /**
- * Two-week Mon–Sun calendar for the queue. Row 1 is the week containing
- * the selected date; row 2 is the following week.
+ * Compact two-week Mon–Sun calendar for the queue, embedded in the sticky
+ * navbar beside the performance table. Row 1 is the week containing the
+ * selected date; row 2 is the following week.
  */
 export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripProps) {
   const todayMondayKey = mondayKey(parseDateKey(todayKey));
@@ -60,37 +97,27 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
   const weekEnd = addDays(weekStart, 13);
   const thisWeek = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const nextWeek = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i + 7));
-  const canGoBack = anchorKey > todayMondayKey;
-  const prevMonday = toDateKey(addDays(weekStart, -7));
-  const nextMonday = toDateKey(addDays(weekStart, 7));
-
-  function goToWeek(monday: string) {
-    const nextAnchor = clampMonday(monday, todayMondayKey);
-    onSelect(nextAnchor < todayKey ? todayKey : nextAnchor);
-  }
+  const viewingToday = selected === todayKey;
 
   return (
-    <div className="border-b-2 border-[oklch(0.78_0.06_260)] bg-[oklch(0.96_0.025_260)] px-3 py-2.5">
-      <div className="mb-1.5 flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-[12px] font-black tracking-tight text-[var(--brand-blue-hex)]">
+    <div>
+      <div className="mb-1 flex items-center gap-1.5">
+        <p className="shrink-0 text-[11px] font-semibold tracking-tight text-[var(--brand-blue-hex)]">
           {formatRangeLabel(weekStart, weekEnd)}
         </p>
         <button
           type="button"
-          onClick={() => canGoBack && goToWeek(prevMonday)}
-          disabled={!canGoBack}
-          aria-label="Previous week"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--brand-blue-hex)] shadow-sm ring-1 ring-[oklch(0.78_0.06_260)] hover:bg-[oklch(0.93_0.04_260)] disabled:opacity-30"
+          onClick={() => onSelect(todayKey)}
+          disabled={viewingToday}
+          aria-label="Jump to today"
+          className={[
+            "h-6 shrink-0 rounded-md px-2 text-[10px] font-semibold",
+            viewingToday
+              ? "bg-white text-[var(--brand-blue-hex)] shadow-sm ring-1 ring-[oklch(0.78_0.06_260)] disabled:opacity-30"
+              : "bg-[var(--brand-blue-hex)] text-white hover:bg-[oklch(0.28_0.14_260)]",
+          ].join(" ")}
         >
-          <CaretLeft size={16} weight="bold" />
-        </button>
-        <button
-          type="button"
-          onClick={() => goToWeek(nextMonday)}
-          aria-label="Next week"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--brand-blue-hex)] shadow-sm ring-1 ring-[oklch(0.78_0.06_260)] hover:bg-[oklch(0.93_0.04_260)]"
-        >
-          <CaretRight size={16} weight="bold" />
+          Today
         </button>
         <label className="sr-only" htmlFor="queue-date-jump">
           Jump to date
@@ -103,19 +130,19 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
           onChange={(e) => {
             if (e.target.value) onSelect(e.target.value);
           }}
-          className="h-8 w-[8.25rem] shrink-0 rounded-lg border-2 border-[oklch(0.72_0.08_260)] bg-white px-2 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--brand-blue-hex)]"
+          className="h-6 w-[7.25rem] shrink-0 rounded-md border border-[oklch(0.72_0.08_260)] bg-white px-1.5 text-[10px] font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--brand-blue-hex)]"
         />
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {WEEKDAYS.map((label, i) => {
-          const isWeekend = i >= 5;
+          const isOffDay = i === 6; // Sunday only - Saturday is a working day
           return (
             <div
               key={label}
               className={[
-                "pb-0.5 text-center text-[10px] font-black uppercase tracking-[0.08em]",
-                isWeekend ? "text-slate-600" : "text-[var(--brand-blue-hex)]",
+                "text-center text-[8px] font-black uppercase tracking-[0.06em]",
+                isOffDay ? "text-slate-500" : "text-[var(--brand-blue-hex)]",
               ].join(" ")}
             >
               {label}
@@ -129,7 +156,7 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
             date={date}
             todayKey={todayKey}
             selected={selected}
-            count={counts[toDateKey(date)] ?? 0}
+            types={toDateKey(date) === todayKey ? SIMULATED_TODAY : (counts[toDateKey(date)] ?? EMPTY_COUNTS)}
             onSelect={onSelect}
           />
         ))}
@@ -139,7 +166,7 @@ export function DateStrip({ selected, todayKey, counts, onSelect }: DateStripPro
             date={date}
             todayKey={todayKey}
             selected={selected}
-            count={counts[toDateKey(date)] ?? 0}
+            types={toDateKey(date) === todayKey ? SIMULATED_TODAY : (counts[toDateKey(date)] ?? EMPTY_COUNTS)}
             onSelect={onSelect}
           />
         ))}
@@ -152,23 +179,22 @@ function DayCell({
   date,
   todayKey,
   selected,
-  count,
+  types,
   onSelect,
 }: {
   date: Date;
   todayKey: string;
   selected: string;
-  count: number;
+  types: DayTypeCounts;
   onSelect: (dateKey: string) => void;
 }) {
   const key = toDateKey(date);
   const isToday = key === todayKey;
   const isSelected = key === selected;
   const isPast = key < todayKey;
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const isOffDay = date.getDay() === 0; // Sunday only - Saturday is a working day, no leads due on Sundays
   const holidayName = sgPublicHolidayName(key);
   const isHoliday = Boolean(holidayName);
-  const hasWork = count > 0;
 
   return (
     <button
@@ -178,62 +204,35 @@ function DayCell({
       title={holidayName}
       aria-current={isToday ? "date" : undefined}
       aria-pressed={isSelected}
-      aria-label={dayAriaLabel(date, holidayName, count, isToday)}
+      aria-label={dayAriaLabel(date, holidayName, types, isToday)}
       className={[
-        "flex min-h-[3.25rem] flex-col items-center justify-center rounded-lg px-0.5 py-1 transition-colors",
+        "flex min-h-[2.5rem] flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-0.5 transition-colors",
         isPast ? "cursor-not-allowed opacity-40" : "",
-        isSelected && isHoliday
-          ? "bg-red-100 ring-2 ring-[var(--brand-blue-hex)]"
+        isHoliday
+          ? isSelected
+            ? "bg-red-600 text-white ring-2 ring-[var(--brand-blue-hex)]"
+            : "bg-red-600 text-white hover:bg-red-700"
           : isSelected
             ? "bg-[var(--brand-blue-hex)] text-white shadow-sm"
-            : isHoliday
-              ? "bg-red-50 ring-2 ring-red-400 hover:bg-red-100"
-              : isToday
-                ? "bg-white ring-2 ring-[var(--brand-teal-hex)]"
-                : isWeekend
-                  ? "bg-slate-200 ring-1 ring-slate-400 hover:bg-slate-300"
-                  : "bg-white ring-1 ring-slate-300 hover:bg-[oklch(0.93_0.04_260)]",
+            : isToday
+              ? "bg-white ring-2 ring-[var(--brand-blue-hex)]"
+              : isOffDay
+                ? "bg-slate-200 ring-1 ring-slate-400 hover:bg-slate-300"
+                : "bg-white ring-1 ring-slate-300 hover:bg-[oklch(0.93_0.04_260)]",
       ].join(" ")}
     >
-      {isToday && (
-        <span
-          className={[
-            "mb-0.5 text-[8px] font-black uppercase tracking-wider",
-            isSelected && !isHoliday ? "text-white/90" : "text-[var(--brand-blue-hex)]",
-          ].join(" ")}
-        >
-          Today
+      <span
+        className={[
+          "text-[11px] font-black leading-none tabular-nums",
+          isHoliday || isSelected ? "text-white" : "text-slate-950",
+        ].join(" ")}
+      >
+        {date.getDate()}{" "}
+        <span className="text-[8px] font-bold tracking-tight">
+          {date.toLocaleDateString("en-SG", { month: "short" })}
         </span>
-      )}
-      {isHoliday && !isToday && (
-        <span className="mb-0.5 text-[8px] font-black uppercase tracking-wider text-red-600">PH</span>
-      )}
-      <span
-        className={[
-          "text-[15px] font-black leading-none tabular-nums",
-          isHoliday
-            ? "text-red-600"
-            : isSelected
-              ? "text-white"
-              : "text-slate-950",
-        ].join(" ")}
-      >
-        {date.getDate()}
       </span>
-      <span
-        className={[
-          "mt-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums leading-none",
-          hasWork
-            ? isSelected && !isHoliday
-              ? "bg-[var(--brand-teal-hex)] py-0.5 text-[var(--brand-blue-hex)]"
-              : "bg-[oklch(0.88_0.12_178)] py-0.5 text-[var(--brand-blue-hex)]"
-            : isSelected && !isHoliday
-              ? "text-white/70"
-              : "text-slate-500",
-        ].join(" ")}
-      >
-        {count}
-      </span>
+      <TypeCountPills types={types} muted={isHoliday || isSelected} />
     </button>
   );
 }

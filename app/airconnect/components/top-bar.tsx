@@ -1,150 +1,235 @@
 "use client";
 
-import { MagnifyingGlass, FunnelSimple, PhoneCall } from "@phosphor-icons/react";
-import { useAirConnect, useAgents } from "../airconnect-store";
-import { getDueBucket } from "@/lib/airconnect/helpers";
-import { STATUS_LABELS, STATUS_ORDER, type LeadSource, type LeadStatus, type ViewMode } from "@/lib/airconnect/types";
-import { ProgressRing } from "./progress-ring";
+import { useMemo } from "react";
+import { useAirConnect } from "../airconnect-store";
+import { agentPerformance, type PeriodStats } from "@/lib/airconnect/performance";
+import { getDueBucket, toDateKey } from "@/lib/airconnect/helpers";
+import {
+  ACTIVE_QUEUE_STATUSES,
+  QUALIFYING_REASON_LABELS,
+  type Lead,
+  type QualifyingReason,
+  type QueueTypeFilter,
+} from "@/lib/airconnect/types";
+import { DateStrip, type DayTypeCounts } from "./date-strip";
 
-const VIEW_TABS: { id: ViewMode; label: string }[] = [
-  { id: "queue", label: "Today's Queue" },
-  { id: "pipeline", label: "Pipeline" },
-  { id: "table", label: "All Leads" },
+const QUEUE_TYPES: {
+  id: Exclude<QueueTypeFilter, "all">;
+  label: string;
+  count: number;
+  fill: string;
+  fillActive: string;
+  countBg: string;
+  countBgActive: string;
+}[] = [
+  {
+    id: "overdue",
+    label: "Overdue",
+    count: 3,
+    fill: "bg-red-600 text-white shadow-sm hover:bg-red-700",
+    fillActive: "bg-red-700 text-white shadow-sm ring-2 ring-red-950/50 ring-offset-2 ring-offset-[oklch(0.97_0.015_260)]",
+    countBg: "bg-white/25 text-white",
+    countBgActive: "bg-white/35 text-white",
+  },
+  {
+    id: "assigned",
+    label: "Assigned",
+    count: 40,
+    fill: "bg-[var(--brand-blue-hex)] text-white shadow-sm hover:bg-[oklch(0.28_0.14_260)]",
+    fillActive: "bg-[oklch(0.28_0.14_260)] text-white shadow-sm ring-2 ring-blue-950/50 ring-offset-2 ring-offset-[oklch(0.97_0.015_260)]",
+    countBg: "bg-white/25 text-white",
+    countBgActive: "bg-white/35 text-white",
+  },
+  {
+    id: "qualifying",
+    label: "Qualifying",
+    count: 50,
+    fill: "bg-violet-600 text-white shadow-sm hover:bg-violet-700",
+    fillActive: "bg-violet-800 text-white shadow-sm ring-2 ring-violet-950/50 ring-offset-2 ring-offset-[oklch(0.97_0.015_260)]",
+    countBg: "bg-white/25 text-white",
+    countBgActive: "bg-white/35 text-white",
+  },
 ];
 
-const SOURCES: LeadSource[] = ["SEO", "1% Loan", "MoneyRight", "Lendela", "Loanable", "Referral"];
+const QUALIFYING_REASON_COUNTS: Record<QualifyingReason, number> = {
+  "no-reply": 20,
+  "interest-rate-fees": 15,
+  "bad-timing": 10,
+  "didnt-book": 5,
+};
+
+const QUALIFYING_REASONS: QualifyingReason[] = ["no-reply", "interest-rate-fees", "bad-timing", "didnt-book"];
+
+const PERF_COLUMNS: { key: keyof PeriodStats; label: string; title: string }[] = [
+  { key: "appointments", label: "Appts", title: "Appointments booked" },
+  { key: "tur", label: "TUR", title: "Turned up for appointment" },
+  { key: "turPct", label: "TUR%", title: "Turn-ups divided by appointments" },
+  { key: "done", label: "Done", title: "Closed after turning up (~85% of TUR)" },
+  { key: "r", label: "R", title: "Rejected" },
+  { key: "rs", label: "RS", title: "Rescheduled" },
+  { key: "prs", label: "PRS", title: "Pending reschedule" },
+];
+
+function formatStat(key: keyof PeriodStats, value: number): string {
+  return key === "turPct" ? `${value}%` : String(value);
+}
 
 export function TopBar() {
-  const { state, switchAgent, setView, setSearch, setStatusFilter, setSourceFilter, toggleOverdueOnly } = useAirConnect();
-  const agents = useAgents();
-  const now = new Date();
+  const { state, setView, setQueueTypeFilter, setQualifyingReasonFilter, setQueueDate } = useAirConnect();
+  const now = useMemo(() => new Date(), []);
+  const todayKey = toDateKey(now);
+  const performance = useMemo(
+    () => agentPerformance(state.leads, state.currentAgentId, now),
+    [state.leads, state.currentAgentId, now]
+  );
 
-  const baseline = state.dailyBaseline[state.currentAgentId] ?? [];
-  const cleared = baseline.filter((id) => {
-    const lead = state.leads.find((l) => l.id === id);
-    if (!lead) return true;
-    if (lead.status === "done" || lead.status === "not-eligible") return true;
-    const bucket = getDueBucket(lead, now);
-    return bucket !== "overdue" && bucket !== "today";
-  }).length;
-  const total = baseline.length;
-  const counts = state.activityCounts[state.currentAgentId];
+  const dateCounts = useMemo(() => {
+    const counts: Record<string, DayTypeCounts> = {};
+    const bump = (key: string, lead: Lead) => {
+      const current = counts[key] ?? { overdue: 0, assigned: 0, qualifying: 0 };
+      if (getDueBucket(lead, now) === "overdue") current.overdue += 1;
+      if (lead.status === "assigned") current.assigned += 1;
+      if (lead.status === "qualifying") current.qualifying += 1;
+      counts[key] = current;
+    };
+    state.leads.forEach((lead) => {
+      if (lead.agentId !== state.currentAgentId) return;
+      if (!ACTIVE_QUEUE_STATUSES.includes(lead.status)) return;
+      if (!lead.followUpAt) return;
+      const bucket = getDueBucket(lead, now);
+      if (bucket === "overdue" || bucket === "today") bump(todayKey, lead);
+      const key = toDateKey(new Date(lead.followUpAt));
+      if (key !== todayKey) bump(key, lead);
+    });
+    return counts;
+  }, [state.leads, state.currentAgentId, now, todayKey]);
+
+  function toggleType(id: Exclude<QueueTypeFilter, "all">) {
+    setQueueTypeFilter(state.queueTypeFilter === id ? "all" : id);
+    if (state.activeView !== "queue") setView("queue");
+  }
+
+  function toggleQualifyingReason(reason: QualifyingReason) {
+    setQualifyingReasonFilter(state.qualifyingReasonFilter === reason ? "all" : reason);
+    if (state.activeView !== "queue") setView("queue");
+  }
+
+  function handleSelectDate(dateKey: string) {
+    setQueueDate(dateKey);
+    if (state.activeView !== "queue") setView("queue");
+  }
 
   return (
-    <header className="shrink-0 border-b border-[var(--border-subtle)] bg-white">
-      <div className="flex flex-wrap items-center gap-4 px-6 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-blue-hex)]">
-            <PhoneCall size={16} weight="fill" className="text-white" />
-          </div>
-          <span className="text-base font-black tracking-tight text-[var(--text-primary)]">AirConnect</span>
+    <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-subtle)] bg-white">
+      <div className="flex items-stretch gap-3 bg-[oklch(0.97_0.015_260)] px-3 py-2">
+        <div className="min-w-[15rem] shrink-0 basis-[22rem]">
+          <DateStrip selected={state.queueDate} todayKey={todayKey} counts={dateCounts} onSelect={handleSelectDate} />
         </div>
 
-        <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
-          {agents.map((agent) => {
-            const active = agent.id === state.currentAgentId;
-            return (
-              <button
-                key={agent.id}
-                type="button"
-                onClick={() => switchAgent(agent.id)}
-                className={[
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
-                  active ? "bg-white shadow-sm" : "text-slate-500 hover:text-slate-700",
-                ].join(" ")}
-                style={active ? { color: agent.colorHex } : undefined}
-              >
-                <span
-                  className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black text-white"
-                  style={{ backgroundColor: agent.colorHex }}
-                >
-                  {agent.initials}
-                </span>
-                {agent.name}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] px-3 py-1.5">
-          <ProgressRing cleared={cleared} total={total} />
-          <div>
-            <p className="text-xs font-bold text-[var(--text-primary)]">
-              {cleared} of {total} cleared today
-            </p>
-            <p className="text-[11px] text-[var(--text-tertiary)]">
-              {counts.calls} calls &middot; {counts.notes} notes &middot; {counts.booked} booked
-            </p>
-          </div>
-        </div>
-
-        <div className="ml-auto flex w-72 items-center gap-2 rounded-lg border border-[var(--border-subtle)] px-3 py-2">
-          <MagnifyingGlass size={15} className="text-[var(--text-tertiary)]" />
-          <input
-            value={state.search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or phone..."
-            className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-tertiary)]"
-          />
+        <div className="scrollbar-thin min-w-0 flex-1 self-start overflow-x-auto">
+          <table className="w-full min-w-[26rem] border-collapse bg-white text-center text-[11px] leading-tight">
+            <caption className="sr-only">Agent performance today, this week, and this month</caption>
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="border border-[var(--border-subtle)] px-2 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]">
+                  Performance
+                </th>
+                {PERF_COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    title={col.title}
+                    className="border border-[var(--border-subtle)] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)]"
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              {(
+                [
+                  ["Today", performance.today, true],
+                  ["Week", performance.week, false],
+                  ["Month", performance.month, false],
+                ] as const
+              ).map(([label, row, isToday]) => (
+                <tr key={label} className={isToday ? "text-[var(--brand-blue-hex)]" : "text-[var(--text-secondary)]"}>
+                  <th className="border border-[var(--border-subtle)] bg-slate-50 px-2 py-1 text-left font-bold">{label}</th>
+                  {PERF_COLUMNS.map((col) => (
+                    <td
+                      key={col.key}
+                      title={col.title}
+                      className={[
+                        "border border-[var(--border-subtle)] px-2 py-1 font-semibold",
+                        col.key === "turPct" ? "text-[#0a8a78]" : "",
+                      ].join(" ")}
+                    >
+                      {formatStat(col.key, row[col.key])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] px-6 py-2">
-        <nav className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
-          {VIEW_TABS.map((tab) => (
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border-subtle)] px-4 py-1.5">
+        {QUEUE_TYPES.map((type) => {
+          const active = state.queueTypeFilter === type.id;
+          return (
             <button
-              key={tab.id}
+              key={type.id}
               type="button"
-              onClick={() => setView(tab.id)}
+              onClick={() => toggleType(type.id)}
+              aria-pressed={active}
               className={[
-                "rounded-md px-3 py-1.5 text-xs font-bold transition-colors",
-                state.activeView === tab.id ? "bg-white text-[var(--brand-blue-hex)] shadow-sm" : "text-slate-500 hover:text-slate-700",
+                "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors",
+                active ? type.fillActive : type.fill,
               ].join(" ")}
             >
-              {tab.label}
+              <span className="leading-none">{type.label}</span>
+              <span
+                className={[
+                  "inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-black tabular-nums leading-none",
+                  active ? type.countBgActive : type.countBg,
+                ].join(" ")}
+              >
+                {type.count}
+              </span>
             </button>
-          ))}
-        </nav>
+          );
+        })}
 
-        <div className="h-4 w-px bg-[var(--border-subtle)]" />
+        <div className="mx-1 h-6 w-px shrink-0 bg-[var(--border-subtle)]" aria-hidden="true" />
 
-        <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto">
-          <FunnelSimple size={13} className="shrink-0 text-[var(--text-tertiary)]" />
-          <select
-            value={state.statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as LeadStatus | "all")}
-            className="rounded-md border border-[var(--border-subtle)] bg-white px-2 py-1 text-xs font-medium text-[var(--text-secondary)] outline-none"
-          >
-            <option value="all">All statuses</option>
-            {STATUS_ORDER.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
-          <select
-            value={state.sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value as LeadSource | "all")}
-            className="rounded-md border border-[var(--border-subtle)] bg-white px-2 py-1 text-xs font-medium text-[var(--text-secondary)] outline-none"
-          >
-            <option value="all">All sources</option>
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={toggleOverdueOnly}
-            className={[
-              "rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap transition-colors",
-              state.overdueOnly ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200",
-            ].join(" ")}
-          >
-            Overdue only
-          </button>
-        </div>
+        {QUALIFYING_REASONS.map((reason) => {
+          const active = state.qualifyingReasonFilter === reason;
+          return (
+            <button
+              key={reason}
+              type="button"
+              onClick={() => toggleQualifyingReason(reason)}
+              aria-pressed={active}
+              className={[
+                "flex h-6 items-center gap-1 rounded-md px-2 text-[11px] font-semibold transition-colors",
+                active
+                  ? "bg-violet-600 text-white shadow-sm ring-2 ring-violet-950/40 ring-offset-2 ring-offset-[oklch(0.97_0.015_260)]"
+                  : "bg-white text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50",
+              ].join(" ")}
+            >
+              <span className="leading-none">{QUALIFYING_REASON_LABELS[reason]}</span>
+              <span
+                className={[
+                  "inline-flex min-w-[1rem] items-center justify-center rounded-full px-1 py-0.5 text-[9px] font-black tabular-nums leading-none",
+                  active ? "bg-white/30 text-white" : "bg-violet-100 text-violet-700",
+                ].join(" ")}
+              >
+                {QUALIFYING_REASON_COUNTS[reason]}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </header>
   );

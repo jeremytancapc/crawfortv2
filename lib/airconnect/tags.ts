@@ -1,6 +1,7 @@
 import type {
   EligibilityTag,
   EmploymentTag,
+  ForeignerDocTag,
   IncomeDocTag,
   LeadTags,
   OutstandingTag,
@@ -34,12 +35,19 @@ export const INCOME_DOC_OPTIONS: { id: IncomeDocTag; label: string; shortLabel?:
   { id: "bank-statement", label: "Bank Statement", shortLabel: "Bank stmt", title: "Bank Statement" },
 ];
 
+export const FOREIGNER_DOC_OPTIONS: { id: ForeignerDocTag; label: string; title?: string }[] = [
+  { id: "por", label: "POR", title: "Proof of Residence" },
+  { id: "wp-over-3m", label: "WP > 3M", title: "Work Permit valid for more than 3 months" },
+];
+
 export function emptyLeadTags(): LeadTags {
   return {
     residency: null,
     employment: null,
     incomeDocs: [],
+    foreignerDocs: [],
     outstanding: null,
+    monthlyIncome: null,
   };
 }
 
@@ -47,8 +55,16 @@ export function toggleExclusive<T>(current: T | null, next: T): T | null {
   return current === next ? null : next;
 }
 
+function toggleInList<T>(list: T[], item: T): T[] {
+  return list.includes(item) ? list.filter((entry) => entry !== item) : [...list, item];
+}
+
 export function toggleIncomeDoc(docs: IncomeDocTag[], doc: IncomeDocTag): IncomeDocTag[] {
-  return docs.includes(doc) ? docs.filter((item) => item !== doc) : [...docs, doc];
+  return toggleInList(docs, doc);
+}
+
+export function toggleForeignerDoc(docs: ForeignerDocTag[], doc: ForeignerDocTag): ForeignerDocTag[] {
+  return toggleInList(docs, doc);
 }
 
 /** Normalise free-typed outstanding amounts to the CRM's 5K-style labels when possible. */
@@ -73,6 +89,18 @@ export function outstandingAmountLabel(outstanding: OutstandingTag | null): stri
   return outstanding?.kind === "amount" ? outstanding.label : "";
 }
 
+/** Normalise a free-typed monthly income into a comma-grouped number, e.g. "4500" -> "4,500". */
+export function formatMonthlyIncomeLabel(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+
+  const digits = trimmed.replace(/[^0-9.]/g, "");
+  const numeric = Number(digits);
+  if (!digits || !Number.isFinite(numeric)) return trimmed;
+
+  return numeric.toLocaleString("en-SG");
+}
+
 export function selectedTagLabels(tags: LeadTags): string[] {
   const labels: string[] = [];
   const residency = RESIDENCY_OPTIONS.find((option) => option.id === tags.residency);
@@ -80,9 +108,14 @@ export function selectedTagLabels(tags: LeadTags): string[] {
 
   if (residency) labels.push(residency.label);
   if (employment) labels.push(employment.label);
+  if (tags.monthlyIncome) labels.push(`Income $${tags.monthlyIncome}/mo`);
 
   INCOME_DOC_OPTIONS.forEach((option) => {
     if (tags.incomeDocs.includes(option.id)) labels.push(option.title ?? option.label);
+  });
+
+  FOREIGNER_DOC_OPTIONS.forEach((option) => {
+    if (tags.foreignerDocs.includes(option.id)) labels.push(option.title ?? option.label);
   });
 
   if (tags.outstanding?.kind === "none") labels.push("No OS");
