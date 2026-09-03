@@ -18,8 +18,10 @@ import {
   Feather,
   Star,
   SlidersHorizontal,
+  HandTap,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import { CreditGauge } from "@/app/credit-gauge";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -202,10 +204,47 @@ interface OfferCardProps {
   onWithdrawAmountChange: (amount: number) => void;
 }
 
-const RING_RESERVED_COLOR = "#F5C518";
+/** Legend swatch for the gauge's locked ticks. The ticks themselves run lighter
+ *  (see credit-gauge.tsx); a 10px dot needs more ink to read as the same grey. */
+const GAUGE_LOCKED_SWATCH = "rgba(60, 60, 67, 0.28)";
 
 /** --offer-accent is tuned for icons; text on its tinted chip needs to go darker. */
 const PRE_APPROVED_TEXT = "oklch(0.48 0.08 176)";
+
+/** One of the two figures floating on the arc's end ticks. The dot ties the
+ *  number back to the tick colour it describes. */
+function GaugeStat({
+  dotColor,
+  label,
+  value,
+}: {
+  dotColor: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-[3px] rounded-[9px] px-2 py-1.5"
+      style={{
+        background: "var(--surface-primary)",
+        boxShadow:
+          "0 1px 4px rgba(60, 60, 67, 0.1), inset 0 0 0 1px rgba(60, 60, 67, 0.07)",
+      }}
+    >
+      <span className="flex items-center gap-1 text-[9px] font-medium uppercase leading-none tracking-[0.04em] text-[var(--text-tertiary)]">
+        <span
+          aria-hidden="true"
+          className="size-[5px] shrink-0 rounded-full"
+          style={{ background: dotColor }}
+        />
+        {label}
+      </span>
+      <span className="text-[12px] font-bold leading-none tabular-nums text-[var(--text-primary)]">
+        {value}
+      </span>
+    </div>
+  );
+}
 
 function OfferHeader({
   formData,
@@ -216,18 +255,12 @@ function OfferHeader({
   const [isExplainerOpen, setIsExplainerOpen] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
-  const prefersReducedMotion = useReducedMotion();
 
   const maxWithdraw = formData.amount;
   const minWithdraw = Math.min(MIN_WITHDRAW_AMOUNT, maxWithdraw);
   const limit = creditLimit && creditLimit > maxWithdraw ? creditLimit : maxWithdraw;
-  const structuralReserve = Math.max(0, limit - maxWithdraw);
-  const hasStructuralReserve = structuralReserve > 0;
-  const isAtMax = withdrawAmount >= maxWithdraw;
+  const hasStructuralReserve = limit > maxWithdraw;
   const canAdjust = maxWithdraw > minWithdraw;
-  const sliderPct = canAdjust
-    ? ((withdrawAmount - minWithdraw) / (maxWithdraw - minWithdraw)) * 100
-    : 100;
 
   // Offer expiry date for the footer meta strip (static label, not a live clock).
   const renewalDate = useMemo(() => computeExpiry(new Date()), []);
@@ -239,17 +272,14 @@ function OfferHeader({
     setAmountRaw(String(clamped));
   };
 
-  // Share of the limit that is spendable now. The split bar is the only place
-  // the two halves appear as proportions rather than figures.
-  const availablePct =
-    limit > 0 ? Math.max(0, Math.min(1, maxWithdraw / limit)) * 100 : 100;
-
   return (
-    /* One card, read top down: the ceiling they were approved for, how it
-       splits, then the single figure they set today. */
+    /* One card: the gauge carries the whole story - the arc is the total
+       limit, the coloured ticks are what's available today, and the figure
+       in the middle is what they're taking. Expiry and the explainer sit
+       below as rows of the same card. */
     <RevealOnScroll>
       <div className="ios-card">
-        <div className="flex flex-col items-center px-5 pb-6 pt-6">
+        <div className="flex flex-col items-center px-5 pb-5 pt-6">
           <span
             className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none"
             style={{ background: "var(--offer-accent-ring)", color: PRE_APPROVED_TEXT }}
@@ -258,129 +288,97 @@ function OfferHeader({
             Pre-approved
           </span>
 
-          <span className="ios-display-amount mt-3.5 text-[52px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
-            {formatCurrency(limit)}
-          </span>
-          <span className="mt-2.5 text-[15px] leading-tight text-[var(--text-secondary)]">
-            Total credit limit
-          </span>
-
-          {hasStructuralReserve && (
-            <div className="mt-5 w-full">
+          <div className="mt-4 w-full">
+            <CreditGauge
+              value={withdrawAmount}
+              maxToday={maxWithdraw}
+              limit={limit}
+              min={minWithdraw}
+              step={WITHDRAW_STEP}
+              onChange={commitAmount}
+              disabled={!canAdjust}
+              ariaLabel="Amount to withdraw today. Drag the dial or use arrow keys."
+            >
+              {({ value: displayValue, isIntro }) => (
+              <div className="flex w-full flex-col items-center">
+              <span className="mt-0.5 text-center text-[11px] font-bold uppercase leading-none tracking-[0.12em] text-[var(--text-tertiary)]">
+                Withdraw today
+              </span>
+              {/* Dashed rule + pencil: without them the figure reads as a
+                  headline rather than a field you can tap and retype. */}
               <div
-                className="h-1.5 w-full overflow-hidden rounded-full"
-                style={{ background: RING_RESERVED_COLOR }}
-                aria-hidden="true"
+                className="ios-display-amount mt-1.5 flex items-baseline justify-center gap-1 pb-1 leading-none"
+                style={
+                  canAdjust
+                    ? { borderBottom: "1.5px dashed var(--border-medium)" }
+                    : undefined
+                }
               >
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: "var(--accent)" }}
-                  initial={prefersReducedMotion ? false : { width: 0 }}
-                  whileInView={{ width: `${availablePct}%` }}
-                  viewport={SCROLL_VIEWPORT}
-                  transition={{
-                    duration: prefersReducedMotion ? 0 : 0.7,
-                    ease: EASE,
-                    delay: prefersReducedMotion ? 0 : 0.12,
+                <span
+                  aria-hidden="true"
+                  className="text-[24px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]"
+                >
+                  $
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={amountFocused ? amountRaw : displayValue.toLocaleString("en-SG")}
+                  onFocus={() => {
+                    setAmountFocused(true);
+                    setAmountRaw(String(withdrawAmount));
+                  }}
+                  onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
+                  onBlur={() => {
+                    setAmountFocused(false);
+                    commitAmount(parseInt(amountRaw, 10));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                  disabled={!canAdjust}
+                  readOnly={isIntro}
+                  aria-label="Type the amount to withdraw today"
+                  className="ios-display-input border-0 bg-transparent p-0 text-center text-[40px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
+                  style={{
+                    fieldSizing: "content",
+                    width: "auto",
+                    minWidth: `${String(displayValue.toLocaleString("en-SG")).length}ch`,
                   }}
                 />
               </div>
-              {/* Each label sits under its own segment, so position does the
-                  decoding and the bar needs no legend swatches. */}
-              <div className="mt-2.5 flex items-baseline justify-between gap-3">
-                <span className="text-[13px] leading-tight text-[var(--text-primary)]">
-                  <span className="font-semibold tabular-nums">
-                    {formatCurrency(maxWithdraw)}
-                  </span>{" "}
-                  available now
-                </span>
-                <span className="text-right text-[13px] leading-tight text-[var(--text-secondary)]">
-                  <span className="font-semibold tabular-nums">
-                    +{formatCurrency(structuralReserve)}
-                  </span>{" "}
-                  later
-                </span>
+              {/* Kept short: it has to clear the two foot cards either side. */}
+              {canAdjust && (
+                <p className="mt-1.5 flex items-center gap-1 text-[10px] leading-none text-[var(--text-tertiary)]">
+                  <HandTap size={12} weight="fill" className="shrink-0 text-[var(--accent)]" />
+                  Drag or tap to change
+                </p>
+              )}
               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 pb-4 pt-3.5" style={{ borderTop: "1px solid var(--separator)" }}>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[17px] font-semibold leading-tight text-[var(--text-primary)]">
-              Withdraw today
-            </span>
-            <div className="ios-display-amount flex items-baseline leading-none">
-              <span
-                aria-hidden="true"
-                className="text-[20px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]"
-              >
-                $
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountFocused ? amountRaw : withdrawAmount.toLocaleString("en-SG")}
-                onFocus={() => {
-                  setAmountFocused(true);
-                  setAmountRaw(String(withdrawAmount));
-                }}
-                onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
-                onBlur={() => {
-                  setAmountFocused(false);
-                  commitAmount(parseInt(amountRaw, 10));
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                disabled={!canAdjust}
-                aria-label="Amount to withdraw today"
-                className="ios-display-input border-0 bg-transparent p-0 text-right text-[28px] font-bold leading-none tracking-[-0.02em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
-                style={{ fieldSizing: "content", width: "auto", minWidth: "2ch" }}
-              />
-            </div>
+              )}
+            </CreditGauge>
           </div>
 
-          {canAdjust && (
-            <>
-              <div
-                className="ios-slider-wrap"
-                style={{ ["--slider-pct" as string]: `${sliderPct}%` }}
-              >
-                <div className="ios-slider-track" aria-hidden="true">
-                  <div className="ios-slider-fill" />
-                </div>
-                <input
-                  type="range"
-                  className="ios-slider w-full"
-                  min={minWithdraw}
-                  max={maxWithdraw}
-                  step={1}
-                  value={withdrawAmount}
-                  onChange={(e) => {
-                    const val = clampWithdrawAmount(parseInt(e.target.value, 10), maxWithdraw);
-                    onWithdrawAmountChange(val);
-                    setAmountRaw(String(val));
-                  }}
-                  aria-label="Slide to choose a lower withdrawal amount"
-                />
-              </div>
-              <div className="flex h-5 items-center justify-between text-[13px] leading-none text-[var(--text-secondary)]">
-                <span className="tabular-nums">{formatCurrency(minWithdraw)}</span>
-                {isAtMax ? (
-                  <span className="tabular-nums">{formatCurrency(maxWithdraw)}</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => commitAmount(maxWithdraw)}
-                    className="font-semibold tabular-nums text-[var(--accent)] underline underline-offset-2"
-                  >
-                    Use max {formatCurrency(maxWithdraw)}
-                  </button>
-                )}
-              </div>
-            </>
-          )}
+          {/* Sit under the arc's two ends, so each figure lines up with the
+              point on the scale it describes. */}
+          <div
+            className={`mt-1 flex w-full max-w-[300px] gap-2 ${
+              hasStructuralReserve ? "justify-between" : "justify-center"
+            }`}
+          >
+            {hasStructuralReserve && (
+              <GaugeStat
+                dotColor="var(--brand-blue-hex)"
+                label="Approved"
+                value={formatCurrency(maxWithdraw)}
+              />
+            )}
+            <GaugeStat
+              dotColor={GAUGE_LOCKED_SWATCH}
+              label="Total limit"
+              value={formatCurrency(limit)}
+            />
+          </div>
         </div>
 
         <div className="ios-row" style={{ borderTop: "1px solid var(--separator)" }}>
@@ -412,18 +410,18 @@ function OfferHeader({
               />
             </button>
             {isExplainerOpen && (
-              /* Swatches match the split bar above, so the explainer reads as a
-                 key to it rather than a wall of text. */
+              /* Swatches match the gauge ticks above, so the explainer reads as
+                 a key to the arc rather than a wall of text. */
               <dl className="flex flex-col gap-3 px-4 pb-4">
                 {[
                   {
-                    color: "var(--accent)",
-                    term: "Available now",
+                    color: "var(--brand-blue-hex)",
+                    term: "Approved",
                     detail:
                       "Paid into your bank after you finish every step, including your in-person appointment.",
                   },
                   {
-                    color: RING_RESERVED_COLOR,
+                    color: GAUGE_LOCKED_SWATCH,
                     term: "Unlocks later",
                     detail:
                       "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
@@ -1008,10 +1006,22 @@ function CustomCardFrame({
  *  glyph bleeding off the top-right corner as a watermark, then the headline
  *  the state wants to lead with (a title while choosing, the estimated
  *  instalment once the request is set). */
-function CustomCardHeader({ children }: { children: ReactNode }) {
+function CustomCardHeader({
+  children,
+  compact = false,
+  trailing,
+}: {
+  children: ReactNode;
+  compact?: boolean;
+  trailing?: ReactNode;
+}) {
   return (
     <div
-      className="relative flex shrink-0 flex-col gap-2 px-4 pt-4 pb-3.5"
+      className={
+        compact
+          ? "relative flex shrink-0 items-center gap-3 px-3.5 py-2.5"
+          : "relative flex shrink-0 flex-col gap-2 px-4 pt-4 pb-3.5"
+      }
       style={{
         background: PANEL_GRADIENTS.custom,
         boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
@@ -1020,30 +1030,38 @@ function CustomCardHeader({ children }: { children: ReactNode }) {
       <SlidersHorizontal
         aria-hidden="true"
         weight="fill"
-        className="pointer-events-none absolute -right-4 -top-5 h-[5.5rem] w-[5.5rem]"
-        style={{ color: WATERMARK_TINTS.custom, opacity: 0.24 }}
+        className={
+          compact
+            ? "pointer-events-none absolute -right-3 -top-4 h-16 w-16"
+            : "pointer-events-none absolute -right-4 -top-5 h-[5.5rem] w-[5.5rem]"
+        }
+        style={{ color: WATERMARK_TINTS.custom, opacity: compact ? 0.18 : 0.24 }}
       />
 
-      <div className="relative flex items-center gap-2">
-        <span
-          className="text-[13px] font-semibold leading-none tracking-[-0.01em]"
-          style={{ color: "var(--text-primary)" }}
-        >
-          Your own plan
-        </span>
-        <span
-          className="rounded-full px-2 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
-          style={{
-            background: "oklch(1 0 0 / 0.6)",
-            color: WATERMARK_TINTS.custom,
-            boxShadow: "inset 0 0 0 1px oklch(0.52 0.13 305 / 0.22)",
-          }}
-        >
-          Tentative
-        </span>
+      <div className={`relative min-w-0 ${compact ? "flex flex-1 flex-col gap-1" : "contents"}`}>
+        <div className="relative flex items-center gap-2">
+          <span
+            className={`${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-none tracking-[-0.01em]`}
+            style={{ color: "var(--text-primary)" }}
+          >
+            Your own plan
+          </span>
+          <span
+            className="rounded-full px-2 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
+            style={{
+              background: "oklch(1 0 0 / 0.6)",
+              color: WATERMARK_TINTS.custom,
+              boxShadow: "inset 0 0 0 1px oklch(0.52 0.13 305 / 0.22)",
+            }}
+          >
+            Tentative
+          </span>
+        </div>
+
+        <div className="relative">{children}</div>
       </div>
 
-      <div className="relative">{children}</div>
+      {trailing ? <div className="relative shrink-0">{trailing}</div> : null}
     </div>
   );
 }
@@ -1157,43 +1175,29 @@ function CustomOfferCard({
       <button
         type="button"
         onClick={onSelect}
-        className="group block w-full transition-transform duration-200 active:scale-[0.99]"
+        aria-expanded={false}
+        className="group mx-auto block w-4/5 transition-transform duration-200 active:scale-[0.99] lg:w-full"
         aria-label="Customise your own loan plan. Sends a tentative request, not a confirmed offer."
       >
         <CustomCardFrame isSelected={false}>
-          <CustomCardHeader>
+          <CustomCardHeader
+            compact
+            trailing={
+              <CaretDown
+                size={18}
+                weight="bold"
+                className="shrink-0"
+                style={{ color: "#000000" }}
+              />
+            }
+          >
             <span
-              className="text-[20px] font-extrabold leading-tight tracking-[-0.03em]"
+              className="min-w-0 text-[15px] font-extrabold leading-tight tracking-[-0.03em]"
               style={{ color: "var(--text-primary)" }}
             >
               Customise your own loan plan
             </span>
           </CustomCardHeader>
-
-          <div className="flex flex-col gap-2.5 px-4 pt-3.5 pb-3.5">
-            <ul className="flex flex-col gap-1.5">
-              <CustomCardPoint
-                special
-                spin={!prefersReducedMotion}
-                text="Set your own amount and tenure"
-              />
-              <CustomCardPoint text="Our team follows up on what's possible" />
-            </ul>
-            <TentativeRequestNote />
-          </div>
-
-          <div
-            className="flex shrink-0 items-center justify-center gap-1.5 px-4 py-3 transition-[filter] duration-200 group-hover:brightness-[0.98]"
-            style={{ background: CTA_GHOST_BG, boxShadow: `inset 0 1px 0 0 ${HAIRLINE}` }}
-          >
-            <span
-              className="text-[13px] font-semibold leading-none"
-              style={{ color: "var(--brand-blue-hex)" }}
-            >
-              Start my custom plan
-            </span>
-            <ArrowRight size={13} weight="bold" style={{ color: "var(--brand-blue-hex)" }} />
-          </div>
         </CustomCardFrame>
       </button>
     );
