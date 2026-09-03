@@ -30,7 +30,7 @@ export function ApprovalView({ formData }: Props) {
   return (
     <ApplyIosShell
       sidebarTitle="Confirm your loan amount"
-      sidebarSubtitle="Choose the loan amount and repayment period that works best for you."
+      sidebarSubtitle="Choose the loan amount that works best for you."
       progressStep={APPLY_PROGRESS.choosePlan}
     >
       <motion.div
@@ -44,7 +44,7 @@ export function ApprovalView({ formData }: Props) {
           Confirm your loan amount
         </h1>
         <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
-          Choose the loan amount and repayment period that works best for you.
+          Choose the loan amount that works best for you.
         </p>
       </motion.div>
 

@@ -401,7 +401,10 @@ function DeckCardFace({
           <button
             type="button"
             onClick={onConfirm}
-            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+            style={{
+              background: isConfirmed ? BRAND_BLUE : SUCCESS_GREEN,
+            }}
           >
             {isConfirmed ? (
               <>

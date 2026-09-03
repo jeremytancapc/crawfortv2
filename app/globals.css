@@ -999,6 +999,38 @@ body:has(.theme-ios) {
   background: rgba(60, 60, 67, 0.12);
 }
 
+/* Credit gauge ----------------------------------------------------------- */
+
+/* The whole arc box is the drag surface; stop the page scrolling under a
+   finger and stop long-press callouts on iOS. */
+.credit-gauge-arc {
+  touch-action: none;
+  cursor: grab;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.credit-gauge-arc:active {
+  cursor: grabbing;
+}
+
+/* Lifts the handle off the ticks so it reads as a grabbable control. */
+.credit-gauge-knob {
+  filter: drop-shadow(0 2px 4px oklch(0.32 0.14 260 / 0.3));
+}
+
+.credit-gauge[data-disabled="true"] .credit-gauge-arc {
+  cursor: default;
+}
+
+/* Keyboard users drive the sr-only range; show the ring on the arc they can
+   see, not on the hidden control. */
+.credit-gauge:has(.credit-gauge-range:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 20px;
+}
+
 /* Amount slider ---------------------------------------------------------- */
 
 /* The visual track is thin, but the whole 44px band is draggable. */
