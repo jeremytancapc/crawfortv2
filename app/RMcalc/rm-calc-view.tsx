@@ -864,21 +864,24 @@ export function RmCalcView() {
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap justify-between gap-x-6 gap-y-1 text-sm text-blue-200">
-                {/* General info — what the loan is */}
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-left">
-                  <span>
+                {/* General info — what the loan is. flex-nowrap keeps this
+                    pair on one line; only the whole group drops to its own
+                    row (never splitting into two), capping the block at 2
+                    rows total on tablet-width screens and up. */}
+                <div className="flex flex-nowrap gap-x-4 gap-y-1 text-left">
+                  <span className="whitespace-nowrap">
                     Loan amount: <strong className="text-white">{formatCurrency(effectiveAmount)}</strong>
                   </span>
-                  <span>
+                  <span className="whitespace-nowrap">
                     Number of Instalments: <strong className="text-white">{paymentCount}</strong>
                   </span>
                 </div>
                 {/* Cost of borrowing — what it costs */}
-                <div className="flex flex-wrap justify-end gap-x-6 gap-y-1 text-right">
-                  <span>
+                <div className="flex flex-nowrap justify-end gap-x-4 gap-y-1 text-right">
+                  <span className="whitespace-nowrap">
                     Total interest paid: <strong className="text-white">{formatCurrency(schedule.totalInterest)}</strong>
                   </span>
-                  <span>
+                  <span className="whitespace-nowrap">
                     Total repayment: <strong className="text-white">{formatCurrency(schedule.totalPayment)}</strong>
                   </span>
                 </div>
