@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { LoanFormData } from "@/lib/loan-form";
 
@@ -81,12 +82,13 @@ export function BookingView({ formData }: Props) {
       <div className="flex-1 px-5 pb-8">
         <AppointmentBooking
           formData={formData}
-          onBack={() => router.push("/apply/approval")}
+          onBack={() => router.push("/apply/accept")}
           onConfirm={handleConfirm}
           onBookedRedirect
           hideHeaderOnMobile
         />
       </div>
+      <ApplyStepNavFooter id="book" />
     </ApplyIosShell>
   );
 }

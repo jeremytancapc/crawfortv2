@@ -14,9 +14,9 @@ import {
   StepperRow,
 } from "@/app/apply-gate/ios-ui";
 
-const MIN_AMOUNT = 500;
+const MIN_AMOUNT = 1000;
 const MAX_AMOUNT = 100000;
-const AMOUNT_STEP = 500;
+const AMOUNT_STEP = 100;
 
 /** Shorter labels than the funnel defaults - the segments are narrow on a phone. */
 const URGENCY_SHORT_LABELS: Record<string, string> = {
@@ -27,7 +27,7 @@ const URGENCY_SHORT_LABELS: Record<string, string> = {
 
 function clampAmount(value: number): number {
   const bounded = Math.min(Math.max(value, MIN_AMOUNT), MAX_AMOUNT);
-  return Math.round(bounded / AMOUNT_STEP) * AMOUNT_STEP;
+  return Math.min(MAX_AMOUNT, Math.ceil(bounded / AMOUNT_STEP) * AMOUNT_STEP);
 }
 
 /** Index of the tenure option matching `tenure`, or the closest one for restored sessions. */
@@ -92,8 +92,9 @@ export function GateStepAmount({
     [formData.tenure],
   );
 
+  const sliderAmount = Math.min(MAX_AMOUNT, Math.max(MIN_AMOUNT, formData.amount));
   const sliderPercentage =
-    ((formData.amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
+    ((sliderAmount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
 
   const amountDisplay = amountFocused
     ? amountRaw
@@ -148,7 +149,7 @@ export function GateStepAmount({
               min={MIN_AMOUNT}
               max={MAX_AMOUNT}
               step={AMOUNT_STEP}
-              value={formData.amount}
+              value={sliderAmount}
               onChange={handleSliderChange}
               aria-label="Adjust loan amount"
               className="ios-slider w-full"
@@ -156,7 +157,7 @@ export function GateStepAmount({
           </div>
 
           <div className="flex justify-between text-[13px] text-[var(--text-secondary)]">
-            <span>$500</span>
+            <span>$1,000</span>
             <span>${MAX_AMOUNT.toLocaleString("en-SG")}+</span>
           </div>
         </Card>

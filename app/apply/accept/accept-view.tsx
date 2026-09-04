@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import type { Transition } from "motion/react";
@@ -15,7 +15,8 @@ import {
 } from "@phosphor-icons/react";
 
 import { ApplyIosShell, StickyFooter } from "@/app/apply-gate/ios-ui";
-import { APPLY_PROGRESS } from "@/lib/apply-progress";
+import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
+import { APPLY_PROGRESS, applyProgressAlong } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { SignaturePad } from "./signature-pad";
 import { TermsDeck } from "./terms-deck";
@@ -479,6 +480,7 @@ interface AcceptViewProps {
 
 export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const router = useRouter();
+  const stepNav = useApplyStepNav("accept");
 
   // The page moves through three states, each of which hands its space to the
   // next: read the receipt, work through the terms deck, sign. Only one of
@@ -486,8 +488,24 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const [hasStartedTerms, setHasStartedTerms] = useState(false);
   const [isPlanExpanded, setIsPlanExpanded] = useState(true);
   const [hasConfirmedTerms, setHasConfirmedTerms] = useState(false);
+  const [termsConfirmed, setTermsConfirmed] = useState(0);
+  const [termsTotal, setTermsTotal] = useState(0);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [showAppointmentReminder, setShowAppointmentReminder] = useState(false);
+
+  const handleTermsProgress = useCallback((confirmed: number, total: number) => {
+    setTermsConfirmed(confirmed);
+    setTermsTotal(total);
+  }, []);
+
+  const progressStep = useMemo(() => {
+    if (termsTotal <= 0 || termsConfirmed <= 0) return APPLY_PROGRESS.confirmTerms;
+    return applyProgressAlong(
+      APPLY_PROGRESS.confirmTerms,
+      APPLY_PROGRESS.book,
+      (termsConfirmed / termsTotal) * 0.9,
+    );
+  }, [termsConfirmed, termsTotal]);
 
   const canProceed = hasConfirmedTerms && signatureDataUrl !== null;
 
@@ -521,7 +539,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
     <ApplyIosShell
       sidebarTitle="Confirm your loan terms"
       sidebarSubtitle="Review your selected plan and accept the loan terms to secure your funds."
-      progressStep={APPLY_PROGRESS.confirmTerms}
+      progressStep={progressStep}
     >
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
@@ -557,6 +575,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                   plan={plan}
                   acceptedAt={acceptedAt}
                   onComplete={() => setHasConfirmedTerms(true)}
+                  onConfirmedCountChange={handleTermsProgress}
                 />
               </div>
               {!hasConfirmedTerms && <TermsFootnoteCard />}
@@ -603,7 +622,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
           terminal CTA in the apply funnel - null children while the deck is
           active hides the bar entirely, handing that space back to the
           cards being swiped through. */}
-      <StickyFooter>
+      <StickyFooter nav={stepNav}>
         {hasConfirmedTerms ? (
           <div className="flex flex-col gap-2">
             {!canProceed && (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { LoanFormData as FormData } from "@/lib/loan-form";
 import {
   initialLoanFormData as initialFormData,
@@ -18,10 +19,10 @@ import {
   MobileGateSheet,
   PrimaryButton,
   StickyFooter,
-  type StepNavControls,
 } from "@/app/apply-gate/ios-ui";
+import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
-import { setApplyProgressStep } from "@/lib/apply-progress-store";
+import { persistGateStep, readPersistedGateStep } from "@/lib/apply-step-nav";
 
 const GATE_LAST_STEP = 3;
 
@@ -49,8 +50,18 @@ export function LoanGateForm({
 }: {
   initialApplySession?: Partial<FormData> | null;
 }) {
+  const router = useRouter();
   const [history, setHistory] = useState<number[]>([1]);
   const step = history[history.length - 1];
+
+  useLayoutEffect(() => {
+    const resumed = readPersistedGateStep();
+    if (resumed !== 1) setHistory([resumed]);
+  }, []);
+
+  useEffect(() => {
+    persistGateStep(step);
+  }, [step]);
 
   const navigateTo = useCallback((next: number) => {
     setHistory((h) => [...h, next]);
@@ -91,7 +102,7 @@ export function LoanGateForm({
     switch (step) {
       case 1:
         return (
-          formData.amount >= 500 &&
+          formData.amount >= 1000 &&
           formData.tenure > 0 &&
           formData.urgency !== ""
         );
@@ -155,21 +166,46 @@ export function LoanGateForm({
     }
   }, [step, formData.monthlyIncome, incomeHighWarningShown, navigateTo, scrollToTop]);
 
-  const handleBack = useCallback(() => {
-    window.history.back();
-  }, []);
-
   const stepMeta = GATE_STEP_META[step];
-  const canGoBack = !step3RedirectPending;
-  const canGoForward = Boolean(canProceed) && step < GATE_LAST_STEP;
-  const showActionBar = step !== 3;
-  const stepNav: StepNavControls | undefined =
-    step === 1
-      ? undefined
-      : {
-          back: { onClick: handleBack, disabled: !canGoBack },
-          next: { onClick: handleNext, disabled: mounted && !canGoForward },
-        };
+  const gateStepId = step === 1 ? "amount" : step === 2 ? "income" : "singpass";
+  const applyNav = useApplyStepNav(gateStepId, {
+    onBack: () => {
+      if (step === 3) {
+        navigateTo(SHOW_INCOME_STEP ? 2 : 1);
+        scrollToTop();
+        return;
+      }
+      if (step === 2) {
+        navigateTo(1);
+        scrollToTop();
+      }
+    },
+    onNext: () => {
+      if (step === 1) {
+        navigateTo(SHOW_INCOME_STEP ? 2 : 3);
+        scrollToTop();
+        return;
+      }
+      if (step === 2) {
+        navigateTo(3);
+        scrollToTop();
+        return;
+      }
+      if (step === 3) {
+        router.push("/apply/verify-income");
+      }
+    },
+  });
+  const stepNav = {
+    back: {
+      ...applyNav.back,
+      disabled: step3RedirectPending || applyNav.back?.disabled,
+    },
+    next: {
+      ...applyNav.next,
+      disabled: step3RedirectPending || applyNav.next?.disabled,
+    },
+  };
   const progressStep =
     step === 1
       ? APPLY_PROGRESS.amount
@@ -177,16 +213,10 @@ export function LoanGateForm({
         ? APPLY_PROGRESS.income
         : APPLY_PROGRESS.singpass;
 
-  // The desktop sidebar lives outside this form, so publish the step for it.
-  useEffect(() => {
-    setApplyProgressStep(progressStep);
-    return () => setApplyProgressStep(null);
-  }, [progressStep]);
-
   return (
     /* Carries its own theme scope so the variant landing pages (/foreigner,
        /vcsa-sg) render the same gate without adopting theme-ios wholesale. */
-    <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
+    <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={progressStep} />
       <MobileGateSheet>
       {stepMeta && (
@@ -200,7 +230,7 @@ export function LoanGateForm({
         </div>
       )}
 
-      <div className="flex-1 px-5 pb-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
         <div key={step} className="animate-fade-up">
           {step === 1 && (
             <GateStepAmount formData={formData} updateField={updateField} />
@@ -227,21 +257,40 @@ export function LoanGateForm({
         </div>
       </div>
 
-      {showActionBar ? (
-        <StickyFooter nav={stepNav}>
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <span className="text-[13px] text-[var(--text-secondary)]">
-              Est. monthly repayment
-            </span>
-            <span className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">
-              {formatCurrency(monthlyRepayment)}
-            </span>
-          </div>
-          <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
-            Continue
-          </PrimaryButton>
-        </StickyFooter>
-      ) : null}
+      <StickyFooter
+        nav={stepNav}
+        banner={
+          step === 3 ? undefined : (
+            <div
+              className="flex w-full items-center justify-center gap-1.5 px-5 py-2"
+              style={{
+                background: "color-mix(in srgb, var(--brand-teal-hex) 22%, transparent)",
+                boxShadow: "inset 0 -1px 0 0 color-mix(in srgb, var(--brand-teal-hex) 28%, transparent)",
+              }}
+            >
+              <span className="text-[13px] leading-none text-[var(--text-secondary)]">
+                Est. monthly repayment
+              </span>
+              <span className="text-[13px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
+                {formatCurrency(monthlyRepayment)}
+              </span>
+            </div>
+          )
+        }
+      >
+        {step === 3 ? undefined : (
+          <>
+            <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
+              Continue
+            </PrimaryButton>
+            {step === 1 && formData.urgency === "" ? (
+              <p className="mt-2 text-center text-[13px] leading-snug text-[var(--text-secondary)]">
+                Select your preferred payout time above to continue
+              </p>
+            ) : null}
+          </>
+        )}
+      </StickyFooter>
       </MobileGateSheet>
     </div>
   );

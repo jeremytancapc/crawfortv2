@@ -808,6 +808,43 @@ body:has(.theme-fresh)::before {
      --surface-sunken are consumed from inline styles, so keep a reference. */
   --_theme-ios-keep-alive: var(--accent) var(--surface-sunken) var(--offer-accent)
     var(--offer-accent-ring);
+
+  /* Extra inset on phones and tablets so form content is not edge-to-edge.
+     Desktop (lg) keeps the existing 20px page padding only. */
+  --ios-edge-gutter: 1.75rem;
+}
+
+@media (min-width: 500px) {
+  .theme-ios {
+    --ios-edge-gutter: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .theme-ios {
+    --ios-edge-gutter: 0px;
+  }
+}
+
+.theme-ios .ios-apply-sheet {
+  padding-left: var(--ios-edge-gutter);
+  padding-right: var(--ios-edge-gutter);
+}
+
+/* Footer stays edge-to-edge so the back/next arrows can sit outboard of the CTA. */
+.theme-ios .ios-apply-sheet > .ios-sticky-footer {
+  margin-left: calc(-1 * var(--ios-edge-gutter));
+  margin-right: calc(-1 * var(--ios-edge-gutter));
+}
+
+.theme-ios .ios-footer-cta {
+  margin-left: var(--ios-edge-gutter);
+  margin-right: var(--ios-edge-gutter);
+}
+
+.theme-ios .ios-apply-gutter {
+  padding-left: calc(1.25rem + var(--ios-edge-gutter));
+  padding-right: calc(1.25rem + var(--ios-edge-gutter));
 }
 
 .theme-ios h1,
@@ -1138,6 +1175,34 @@ input[type="range"].ios-slider::-moz-range-thumb {
 
 .ios-sticky-footer:has(.ios-sticky-footer-banner:not(:empty)) {
   border-top: none;
+}
+
+.ios-sticky-footer--bannered {
+  border-radius: 20px 20px 0 0;
+}
+
+/* Narrow progress pill: sit on the action bar, no full-width white ledge. */
+.ios-sticky-footer--progress {
+  background: transparent;
+}
+
+.ios-sticky-footer--progress .ios-sticky-footer-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  background: transparent;
+  pointer-events: none;
+}
+
+.ios-sticky-footer--progress .ios-sticky-footer-banner > * {
+  pointer-events: auto;
+  transform: translateY(1px);
+}
+
+.ios-sticky-footer--progress .ios-sticky-footer-action {
+  background: var(--surface-elevated);
+  border-top: 1px solid var(--separator);
 }
 
 .ios-sticky-footer-action {

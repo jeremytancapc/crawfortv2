@@ -21,6 +21,7 @@ import {
   HandTap,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
+import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { CreditGauge } from "@/app/credit-gauge";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
@@ -1874,6 +1875,7 @@ export function LoanResults({
   onCustomOfferSubmitted,
   creditLimit,
 }: LoanResultsProps) {
+  const stepNav = useApplyStepNav("approval");
   const [showModal, setShowModal] = useState(false);
   const { parts: expiryParts } = useCountdownParts();
   const isExpired = expiryParts.expired;
@@ -2067,16 +2069,17 @@ export function LoanResults({
       </div>
 
       <StickyFooter
+        nav={stepNav}
         banner={
-          <AnimatePresence mode="wait" initial={false}>
-            {selectionLabel && selectedPlanId ? (
+          selectionLabel && selectedPlanId ? (
+            <AnimatePresence mode="wait" initial={false}>
               <SelectedPlanStrip
                 key={selectedPlanId}
                 planId={selectedPlanId}
                 label={selectionLabel}
               />
-            ) : null}
-          </AnimatePresence>
+            </AnimatePresence>
+          ) : undefined
         }
       >
         <AnimatePresence mode="wait" initial={false}>

@@ -73,7 +73,7 @@ export default async function ForeignerPage() {
         </div>
 
         {/* Mobile-only footer */}
-        <footer className="hero-chrome lg:hidden px-5 pb-10 pt-12 text-[var(--text-on-brand)]">
+        <footer className="hero-chrome ios-apply-gutter lg:hidden pb-10 pt-12 text-[var(--text-on-brand)]">
           <Image
             src="/images/crawfort-white.png"
             alt="Crawfort"

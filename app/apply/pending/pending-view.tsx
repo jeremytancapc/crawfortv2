@@ -7,6 +7,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { PendingDisplay } from "@/lib/pending-display";
 
@@ -134,6 +135,7 @@ export function PendingView({ pending }: Props) {
             </p>
 
       </div>
+      <ApplyStepNavFooter id="pending" />
     </ApplyIosShell>
   );
 }

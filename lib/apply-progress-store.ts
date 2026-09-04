@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 /**
  * The gate keeps its step in client state, but the desktop sidebar that shows
@@ -31,4 +31,12 @@ export function useApplyProgressStep(fallback: number): number {
     () => publishedStep ?? fallback,
     () => fallback,
   );
+}
+
+/** Publish the live step for the footer progress strip (and desktop sidebar). */
+export function usePublishApplyProgress(step: number | null): void {
+  useEffect(() => {
+    setApplyProgressStep(step);
+    return () => setApplyProgressStep(null);
+  }, [step]);
 }
