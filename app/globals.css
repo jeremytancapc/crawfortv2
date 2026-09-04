@@ -1181,23 +1181,71 @@ input[type="range"].ios-slider::-moz-range-thumb {
   border-radius: 20px 20px 0 0;
 }
 
-/* Narrow progress pill: sit on the action bar, no full-width white ledge. */
+/* Keep last page content above the progress chip; spacer matches the sheet. */
+.ios-apply-sheet:has(.ios-sticky-footer--progress) > .flex-1:not(.ios-apply-fit) {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 5rem;
+}
+
+.ios-apply-sheet:has(.ios-sticky-footer--progress) > .ios-apply-fit {
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0.75rem;
+}
+
+.ios-income-fit .ios-row {
+  min-height: 0;
+  padding-top: clamp(0.4rem, 1.5vh, 0.75rem);
+  padding-bottom: clamp(0.4rem, 1.5vh, 0.75rem);
+}
+
+.ios-income-fit-label {
+  font-size: clamp(0.9375rem, 1.15vh + 0.7rem, 1.0625rem);
+}
+
+.ios-income-fit-meta {
+  font-size: clamp(0.75rem, 0.7vh + 0.62rem, 0.8125rem);
+}
+
+.ios-income-fit-avg {
+  padding-top: clamp(0.5rem, 1.4vh, 0.875rem);
+  padding-bottom: clamp(0.5rem, 1.4vh, 0.875rem);
+}
+
+.ios-income-fit-avg-label {
+  font-size: clamp(0.9375rem, 1.15vh + 0.7rem, 1.0625rem);
+}
+
+.ios-income-fit-avg-value {
+  font-size: clamp(1.0625rem, 1.4vh + 0.75rem, 1.25rem);
+}
+
+@media (max-height: 720px) {
+  .ios-sticky-footer--progress .ios-sticky-footer-banner {
+    height: 2.75rem;
+  }
+}
+
 .ios-sticky-footer--progress {
-  background: transparent;
+  background: none;
 }
 
 .ios-sticky-footer--progress .ios-sticky-footer-banner {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  background: transparent;
+  position: relative;
+  z-index: 1;
+  height: 4.25rem;
+  background: var(--surface-primary);
   pointer-events: none;
 }
 
 .ios-sticky-footer--progress .ios-sticky-footer-banner > * {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
   pointer-events: auto;
-  transform: translateY(1px);
+  transform: translate(-50%, 1px);
 }
 
 .ios-sticky-footer--progress .ios-sticky-footer-action {

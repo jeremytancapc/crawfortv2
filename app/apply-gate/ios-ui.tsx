@@ -137,7 +137,7 @@ export function ApplyIosShell({
       <main className="flex flex-1 flex-col overflow-x-clip">
         <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
-            <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
+            <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
                 {children}
@@ -364,7 +364,7 @@ function ApplyProgressFooterStrip({
   return (
     <div
       ref={wrapRef}
-      className="relative mx-auto w-[min(22.5rem,calc(100%-2.5rem))] lg:hidden"
+      className="relative w-[min(22.5rem,calc(100vw-2.5rem))] lg:hidden"
     >
       <button
         type="button"
