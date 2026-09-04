@@ -16,8 +16,8 @@ import {
   MobileGateSheet,
   PrimaryButton,
   StickyFooter,
-  type StepNavControls,
 } from "@/app/apply-gate/ios-ui";
+import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
 import { trackDisplayStep, trackEvent } from "@/lib/analytics";
@@ -193,8 +193,6 @@ export function ReviewForm({ initialData }: Props) {
         ? APPLY_PROGRESS.reviewInfo
         : APPLY_PROGRESS.completeApp;
   const stepMeta = REVIEW_STEP_META[step];
-  const canGoForward =
-    Boolean(canProceed) && !submitOverlay && !isLegalModalOpen;
 
   const handlePrimary = () => {
     if (step === 8) {
@@ -217,10 +215,9 @@ export function ReviewForm({ initialData }: Props) {
           : "Submit Application"
         : "Continue";
 
-  const stepNav: StepNavControls = {
-    back: { onClick: handleBack },
-    next: { onClick: handlePrimary, disabled: mounted && !canGoForward },
-  };
+  const stepNav = useApplyStepNav("review", {
+    onBack: handleBack,
+  });
 
   return (
     <div className="theme-ios flex min-h-[100dvh] flex-col bg-[var(--surface-primary)] lg:flex-row">
@@ -336,7 +333,7 @@ export function ReviewForm({ initialData }: Props) {
 
 function IosLegalFooter() {
   return (
-    <footer className="px-5 pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
+    <footer className="ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
         CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
         the laws of Singapore. Customers are advised to read the{" "}

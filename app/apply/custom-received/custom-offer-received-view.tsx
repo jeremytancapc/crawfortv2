@@ -7,6 +7,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { CustomOfferDisplay } from "@/lib/custom-offer-display";
 
@@ -126,6 +127,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
             </p>
 
       </div>
+      <ApplyStepNavFooter id="customReceived" />
     </ApplyIosShell>
   );
 }

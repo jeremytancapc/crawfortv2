@@ -70,7 +70,7 @@ export default async function VCSASGPage() {
         </div>
 
         {/* Mobile-only footer */}
-        <footer className="lg:hidden bg-brand-blue px-5 pb-10 pt-12 text-[var(--text-on-brand)]">
+        <footer className="ios-apply-gutter lg:hidden bg-brand-blue pb-10 pt-12 text-[var(--text-on-brand)]">
           <Image
             src="/images/cf-money-white.png"
             alt="CF Money"

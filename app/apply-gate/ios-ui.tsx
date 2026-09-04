@@ -19,7 +19,7 @@ import {
   APPLY_PROGRESS_TOTAL,
   applyProgressHint,
 } from "@/lib/apply-progress";
-import { useApplyProgressStep } from "@/lib/apply-progress-store";
+import { useApplyProgressStep, usePublishApplyProgress } from "@/lib/apply-progress-store";
 
 /**
  * Full-bleed brand-blue bar: wordmark on the left, progress meter on the right
@@ -27,13 +27,14 @@ import { useApplyProgressStep } from "@/lib/apply-progress-store";
  */
 export function MobileGateHeader({
   progressStep,
-  progressTotal = APPLY_PROGRESS_TOTAL,
 }: {
   progressStep?: number;
   progressTotal?: number;
 }) {
+  usePublishApplyProgress(progressStep ?? null);
+
   return (
-    <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 bg-[var(--brand-blue-hex)] px-5 py-4 lg:hidden">
+    <header className="ios-apply-gutter relative z-10 flex shrink-0 items-center bg-[var(--brand-blue-hex)] py-4 lg:hidden">
       <Link
         href="/"
         className="flex min-h-11 min-w-0 items-center"
@@ -49,9 +50,6 @@ export function MobileGateHeader({
           priority
         />
       </Link>
-      {progressStep != null ? (
-        <ApplyProgressBadge current={progressStep} total={progressTotal} />
-      ) : null}
     </header>
   );
 }
@@ -60,7 +58,7 @@ export function MobileGateHeader({
 export function MobileGateSheet({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[var(--brand-blue-hex)] lg:bg-transparent">
-      <div className="flex min-h-0 flex-1 flex-col rounded-t-[32px] bg-[var(--surface-primary)] lg:rounded-none">
+      <div className="ios-apply-sheet flex min-h-0 flex-1 flex-col rounded-t-[32px] bg-[var(--surface-primary)] lg:rounded-none">
         {children}
       </div>
     </div>
@@ -70,7 +68,7 @@ export function MobileGateSheet({ children }: { children: ReactNode }) {
 /** Light legal footer used on iOS apply pages instead of the blue hero footer. */
 export function IosLegalFooter() {
   return (
-    <footer className="px-5 pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
+    <footer className="ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
         CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
         the laws of Singapore. Customers are advised to read the{" "}
@@ -178,10 +176,12 @@ function ProgressDots({
   activeDot,
   isPinned,
   isWaiting,
+  onLight = false,
 }: {
   activeDot: number;
   isPinned: boolean;
   isWaiting: boolean;
+  onLight?: boolean;
 }) {
   return (
     <span className="flex items-center gap-[3.5px]" aria-hidden>
@@ -190,10 +190,14 @@ function ProgressDots({
         const isActive = dot === activeDot;
         const fill =
           isActive && isWaiting
-            ? "border-[1.5px] border-white/75"
+            ? onLight
+              ? "border-[1.5px] border-[var(--brand-blue-hex)]/45"
+              : "border-[1.5px] border-white/75"
             : dot <= activeDot
               ? "bg-[var(--brand-teal-hex)]"
-              : "bg-white/30";
+              : onLight
+                ? "bg-[var(--border-medium)]"
+                : "bg-white/30";
 
         return (
           <span
@@ -294,7 +298,140 @@ export function ApplyProgressBadge({
                 {isStart ? "Ready to start" : `${percent}% complete`}
               </p>
               <p className="text-[11px] font-semibold leading-none text-[var(--text-tertiary)]">
-                Step {Math.min(current, total)} of {total}
+                Step {Math.min(Math.floor(current), total)} of {total}
+              </p>
+            </div>
+            <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-[var(--surface-sunken)]">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: isStart ? "8px" : `${percent}%`,
+                  background: "linear-gradient(90deg, #0033AA, #06DEC0)",
+                }}
+              />
+            </div>
+            <p className="mt-3 text-[13px] font-bold leading-tight text-[var(--text-primary)]">
+              {hint.title}
+            </p>
+            <p className="mt-1 text-[12.5px] leading-[1.45] text-[var(--text-secondary)]">
+              {hint.detail}
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Full-bleed strip above the sticky footer — same slot as “plan selected”.
+ * Hidden on desktop, where the sidebar already carries progress.
+ */
+function ApplyProgressFooterStrip({
+  current,
+  total = APPLY_PROGRESS_TOTAL,
+}: {
+  current: number;
+  total?: number;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const detailId = useId();
+
+  const percent = progressPercent(current, total);
+  const isStart = current <= APPLY_PROGRESS_START;
+  const isWaitingForVisit =
+    current >= APPLY_PROGRESS_APPOINTMENT && current < total;
+  const label = isStart ? "Start" : isWaitingForVisit ? "Appointment" : `${percent}%`;
+  const hint = applyProgressHint(current);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!wrapRef.current?.contains(event.target as Node)) setIsOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div
+      ref={wrapRef}
+      className="relative mx-auto w-[min(22.5rem,calc(100%-2.5rem))] lg:hidden"
+    >
+      <button
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        aria-expanded={isOpen}
+        aria-describedby={isOpen ? detailId : undefined}
+        aria-label={
+          isStart
+            ? "Application not started yet. Show what happens next"
+            : isWaitingForVisit
+              ? `Application progress ${percent} percent, appointment outstanding. Show what is left`
+              : `Application progress ${percent} percent. Show what is left`
+        }
+        className="flex w-full items-center gap-2.5 rounded-t-2xl px-3.5 py-1.5"
+        style={{
+          background: "color-mix(in srgb, var(--brand-blue-hex) 10%, white)",
+        }}
+      >
+        <span className="shrink-0 text-[12px] font-semibold leading-none text-[var(--brand-blue-hex)]">
+          Progress
+        </span>
+        <span
+          className="flex min-w-0 flex-1 items-center gap-1"
+          aria-hidden
+        >
+          {Array.from({ length: total }, (_, index) => {
+            const step = index + 1;
+            const filledThrough = Math.max(1, Math.ceil((percent / 100) * total));
+            const isFilled = step <= filledThrough;
+            const isActive = step === filledThrough;
+            return (
+              <span
+                key={step}
+                className="h-1 min-w-0 flex-1 rounded-full"
+                style={{
+                  background: isActive && isWaitingForVisit
+                    ? "color-mix(in srgb, var(--brand-blue-hex) 45%, white)"
+                    : isFilled
+                      ? "var(--brand-teal-hex)"
+                      : "color-mix(in srgb, var(--brand-blue-hex) 14%, transparent)",
+                }}
+              />
+            );
+          })}
+        </span>
+        <span className="shrink-0 text-[12px] font-semibold leading-none tabular-nums text-[var(--brand-blue-hex)]">
+          {label}
+        </span>
+      </button>
+
+      {isOpen ? (
+        <div
+          role="tooltip"
+          id={detailId}
+          className="absolute bottom-full left-1/2 z-40 mb-2.5 w-[min(17.5rem,calc(100vw-2.5rem))] -translate-x-1/2 animate-fade-up rounded-[16px] bg-[var(--surface-elevated)] p-3.5 text-left shadow-[0_14px_36px_rgba(0,0,20,0.22)] ring-1 ring-black/[0.06]"
+        >
+          <span
+            className="absolute -bottom-1 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 rounded-[3px] bg-[var(--surface-elevated)]"
+            aria-hidden
+          />
+          <div className="relative">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[15px] font-bold leading-none text-[var(--brand-blue-hex)]">
+                {isStart ? "Ready to start" : `${percent}% complete`}
+              </p>
+              <p className="text-[11px] font-semibold leading-none text-[var(--text-tertiary)]">
+                Step {Math.min(Math.floor(current), total)} of {total}
               </p>
             </div>
             <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-[var(--surface-sunken)]">
@@ -345,7 +482,7 @@ export function ApplyProgressPanel({
           {percent}%
         </p>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/55">
-          Step {Math.min(current, total)} of {total}
+          Step {Math.min(Math.floor(current), total)} of {total}
         </p>
       </div>
 
@@ -452,8 +589,10 @@ function StepNavButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      tabIndex={disabled ? -1 : undefined}
       aria-label={isBack ? "Previous step" : "Next step"}
-      className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30 lg:hidden"
+      className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-0"
+      aria-hidden={disabled}
     >
       <Icon size={20} weight="bold" />
     </button>
@@ -600,30 +739,43 @@ export function StickyFooter({
   const hasBanner = banner != null;
   const hasAction = children != null && children !== false;
   const hasNav = nav != null;
+  const liveStep = useApplyProgressStep(0);
+  const showProgressBanner = !hasBanner && liveStep > 0;
 
   if (!hasAction && !hasNav) return null;
 
   return (
     <>
-      {hasAction ? (
+      {hasAction || hasNav ? (
         <div
           className="hidden shrink-0 lg:block"
           style={{ height: hasBanner ? 120 : 84 }}
           aria-hidden
         />
       ) : null}
-      {/* A nav-only bar exists for mobile alone: desktop keeps its controls up top. */}
-      <div className={`ios-sticky-footer${hasAction ? "" : " lg:hidden"}`}>
-        {hasBanner ? <div className="ios-sticky-footer-banner">{banner}</div> : null}
+      <div
+        className={[
+          "ios-sticky-footer",
+          hasBanner ? "ios-sticky-footer--bannered" : "",
+          showProgressBanner ? "ios-sticky-footer--progress" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {hasBanner || showProgressBanner ? (
+          <div className="ios-sticky-footer-banner">
+            {hasBanner ? banner : <ApplyProgressFooterStrip current={liveStep} />}
+          </div>
+        ) : null}
         <div className="ios-sticky-footer-action">
           {hasNav ? (
-            <div className="flex items-end gap-2.5">
+            <div className="flex items-start gap-4">
               <StepNavButton
                 direction="back"
                 onClick={nav.back?.onClick}
                 disabled={nav.back?.disabled || !nav.back?.onClick}
               />
-              <div className="min-w-0 flex-1">{children}</div>
+              <div className="ios-footer-cta min-w-0 flex-1">{children}</div>
               <StepNavButton
                 direction="next"
                 onClick={nav.next?.onClick}

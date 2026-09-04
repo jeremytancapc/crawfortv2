@@ -11,8 +11,8 @@ import {
   PrimaryButton,
   SectionLabel,
   StickyFooter,
-  type StepNavControls,
 } from "@/app/apply-gate/ios-ui";
+import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
@@ -111,9 +111,7 @@ export function VerifyIncomeForm({
     setFiles((prev) => prev.filter((file) => file.id !== id));
   }, []);
 
-  const handleBack = useCallback(() => {
-    window.history.back();
-  }, []);
+  const applyNav = useApplyStepNav("verify");
 
   const handleUpload = useCallback(() => {
     setIsProcessing(true);
@@ -138,10 +136,15 @@ export function VerifyIncomeForm({
     };
   }, []);
 
-  // Forward only ever happens through the footer action on this step.
-  const stepNav: StepNavControls = {
-    back: { onClick: handleBack, disabled: isProcessing },
-    next: { disabled: true },
+  const stepNav = {
+    back: {
+      ...applyNav.back,
+      disabled: isProcessing || applyNav.back?.disabled,
+    },
+    next: {
+      ...applyNav.next,
+      disabled: isProcessing || applyNav.next?.disabled,
+    },
   };
 
   return (

@@ -78,7 +78,7 @@ function ApplyLandingLayout({
 
 function LandingLegalFooter() {
   return (
-    <footer className="px-5 pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
+    <footer className="ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
         CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
         the laws of Singapore. Customers are advised to read the{" "}

@@ -53,7 +53,6 @@ import {
 
 const CARD_SWIPE_DISTANCE = "104%";
 const CARD_SWIPE_TRANSITION: Transition = { duration: 0.34, ease: [0.32, 0.72, 0, 1] };
-const CROSSFADE_TRANSITION: Transition = { duration: 0.18, ease: "easeOut" };
 /** Long enough for the swipe and the card-height change to finish before we
  *  check whether the new card left its own controls off screen. */
 const CARD_SWIPE_SETTLE_MS = 400;
@@ -89,8 +88,6 @@ type DeckCardKind = "keyTerm" | "schedule" | "disbursement";
 
 interface DeckCard {
   id: string;
-  /** Section name shown in the deck's persistent header. */
-  section: string;
   kind: DeckCardKind;
   Icon: Icon;
   iconTint: string;
@@ -111,7 +108,6 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
   return [
     ...KEY_TERM_ACKS.map((ack) => ({
       id: ack.key,
-      section: "Loan acceptance terms",
       kind: "keyTerm" as const,
       Icon: ack.Icon,
       iconTint: BRAND_BLUE,
@@ -121,7 +117,6 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
     })),
     {
       id: "paymentSchedule",
-      section: "Payment schedule",
       kind: "schedule" as const,
       Icon: CalendarCheck,
       iconTint: BRAND_BLUE,
@@ -130,7 +125,6 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
     },
     {
       id: "disbursement",
-      section: "Funds disbursement",
       kind: "disbursement" as const,
       Icon: CurrencyCircleDollar,
       iconTint: "#0d9488",
@@ -424,62 +418,6 @@ function DeckCardFace({
   );
 }
 
-// ── Deck chrome ───────────────────────────────────────────────────────────────
-
-function DeckHeader({
-  section,
-  position,
-  total,
-  confirmedCount,
-}: {
-  section: string;
-  position: number;
-  total: number;
-  confirmedCount: number;
-}) {
-  return (
-    <div className="flex flex-col gap-2 px-0.5 pb-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <span
-          className="text-[11px] font-bold tracking-[0.12em] uppercase"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          {section}
-        </span>
-        <span
-          className="shrink-0 text-[11px] font-bold tabular-nums tracking-[0.06em]"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          {position} of {total}
-        </span>
-      </div>
-      <div
-        className="flex gap-1.5"
-        role="progressbar"
-        aria-label="Terms confirmed"
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={confirmedCount}
-      >
-        {Array.from({ length: total }, (_, index) => (
-          <span
-            key={index}
-            className="h-[3px] flex-1 rounded-full transition-colors duration-300"
-            style={{
-              background:
-                index < confirmedCount
-                  ? SUCCESS_GREEN
-                  : index === position - 1
-                    ? BRAND_BLUE
-                    : "var(--border-medium)",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /** Ghosted card edges peeking out below the front card, so it's obvious more
  *  cards are waiting without spelling it out a second time. */
 function DeckStackLayers({ remaining }: { remaining: number }) {
@@ -515,9 +453,16 @@ interface TermsDeckProps {
   /** Fires once every card has been confirmed. Confirmations are one-way, so
    *  this is called exactly once. */
   onComplete: () => void;
+  /** Fires on mount and after each confirmation so the header progress can move. */
+  onConfirmedCountChange?: (confirmed: number, total: number) => void;
 }
 
-export function TermsDeck({ plan, acceptedAt, onComplete }: TermsDeckProps) {
+export function TermsDeck({
+  plan,
+  acceptedAt,
+  onComplete,
+  onConfirmedCountChange,
+}: TermsDeckProps) {
   const prefersReducedMotion = useReducedMotion();
   const cards = useMemo(() => buildDeckCards(plan, acceptedAt), [plan, acceptedAt]);
   const total = cards.length;
@@ -546,6 +491,10 @@ export function TermsDeck({ plan, acceptedAt, onComplete }: TermsDeckProps) {
   }, []);
 
   useEffect(() => () => cardObserverRef.current?.disconnect(), []);
+
+  useEffect(() => {
+    onConfirmedCountChange?.(confirmedCount, total);
+  }, [confirmedCount, total, onConfirmedCountChange]);
 
   // Cards swap in place, so the page normally shouldn't move at all. The one
   // exception is a card tall enough to push its own buttons off screen (the
@@ -586,35 +535,11 @@ export function TermsDeck({ plan, acceptedAt, onComplete }: TermsDeckProps) {
 
   return (
     <div ref={deckRef} className="flex flex-col">
-      <AnimatePresence mode="wait" initial={false}>
-        {activeCard ? (
-          <motion.div
-            key="header"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={CROSSFADE_TRANSITION}
-          >
-            <DeckHeader
-              section={activeCard.section}
-              position={cursor + 1}
-              total={total}
-              confirmedCount={confirmedCount}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="complete"
-            className="px-0.5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={CROSSFADE_TRANSITION}
-          >
-            <DashedDivider />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isCollapsed ? (
+        <div className="px-0.5">
+          <DashedDivider />
+        </div>
+      ) : null}
 
       <div className="relative">
         <DeckStackLayers remaining={total - cursor - 1} />

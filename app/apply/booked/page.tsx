@@ -3,6 +3,7 @@ import { getBookingConfirmation } from "@/lib/booking-confirmation";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 import { BookingConfirmedView } from "@/app/booking-confirmed-view";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ export default async function BookedPage() {
       <div className="flex-1 px-5 pb-8">
         <BookingConfirmedView booking={booking} />
       </div>
+      <ApplyStepNavFooter id="booked" />
     </ApplyIosShell>
   );
 }

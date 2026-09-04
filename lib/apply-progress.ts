@@ -123,10 +123,29 @@ const APPLY_PROGRESS_HINTS = new Map<number, ApplyProgressHint>([
 ]);
 
 export function applyProgressHint(step: number): ApplyProgressHint {
+  if (step > APPLY_PROGRESS.confirmTerms && step < APPLY_PROGRESS.book) {
+    return {
+      title: "Confirm your loan terms",
+      detail: "Agree to each term to continue.",
+    };
+  }
   return (
-    APPLY_PROGRESS_HINTS.get(step) ?? {
+    APPLY_PROGRESS_HINTS.get(Math.floor(step)) ?? {
       title: "Continue",
       detail: "Finish this step.",
     }
   );
+}
+
+/**
+ * Progress between two waypoints. `fraction` 0–1 is how far the current
+ * page's clicks have moved toward the next page.
+ */
+export function applyProgressAlong(
+  from: number,
+  to: number,
+  fraction: number,
+): number {
+  const t = Math.min(1, Math.max(0, fraction));
+  return from + (to - from) * t;
 }
