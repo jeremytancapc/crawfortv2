@@ -23,12 +23,6 @@ interface OfferCardProps {
   variant?: OfferVariant;
 }
 
-const toneClass: Record<NonNullable<OfferCell["tone"]>, string> = {
-  default: "text-[var(--rm-ink)]",
-  mint: "text-[var(--rm-mint-ink)]",
-  blue: "text-[var(--rm-blue)]",
-};
-
 /**
  * Radio-style offer card: title row with a round indicator, then a 3×2 grid of
  * label/value pairs. Whole card is the hit target.
@@ -69,7 +63,7 @@ export function OfferCard({
           <span
             aria-hidden
             className={cn(
-              "grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors",
+              "rm-offer-radio grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors",
               selected
                 ? "border-[var(--rm-blue)] bg-[var(--rm-blue)] text-white"
                 : "border-[var(--rm-line-strong)] bg-white",
@@ -90,15 +84,18 @@ export function OfferCard({
         <dl className="mt-3.5 grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-3.5 lg:pl-8">
           {cells.map((cell) => (
             <div key={cell.label} className="min-w-0">
-              <dt className="text-[11.5px] font-medium leading-tight text-[var(--rm-ink-3)]">{cell.label}</dt>
-              <dd
-                className={cn(
-                  "mt-1.5 whitespace-nowrap font-bold leading-none tabular-nums",
-                  cell.emphasis ? "text-[19px]" : "text-[15px]",
-                  toneClass[cell.tone ?? "default"],
+              <dt className="text-[14px] font-medium leading-tight text-[var(--rm-ink-3)]">{cell.label}</dt>
+              <dd className="mt-1.5 whitespace-nowrap text-[19px] font-bold leading-none tabular-nums text-[var(--rm-ink)]">
+                {cell.tone && cell.tone !== "default" ? (
+                  <span
+                    className={cn("rm-highlight", cell.tone === "mint" && "text-[#0b0f1a]")}
+                    data-tone={cell.tone}
+                  >
+                    {cell.value}
+                  </span>
+                ) : (
+                  cell.value
                 )}
-              >
-                {cell.value}
               </dd>
             </div>
           ))}

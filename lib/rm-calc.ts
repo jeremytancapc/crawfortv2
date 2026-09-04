@@ -40,7 +40,7 @@ export const DEFAULT_FEE_PCT = 10;
 export const MIN_FEE_PCT = 0;
 /** Processing fee cannot exceed the 10% licensed-moneylender cap. */
 export const MAX_FEE_PCT = DEFAULT_FEE_PCT;
-export const MIN_LOAN_AMOUNT = 500;
+export const MIN_LOAN_AMOUNT = 300;
 /** Hard ceiling for staff-entered max approved amount. */
 export const MAX_APPROVED_CAP = 200_000;
 export const AMOUNT_STEP = 100;

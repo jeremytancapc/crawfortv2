@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useId, useEffect, useRef } from "react";
 import Image from "next/image";
-import { ArrowCounterClockwise, CaretDown, Eye, EyeSlash, Plus, X } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CaretDown, Eye, Plus, User, X } from "@phosphor-icons/react";
 import {
   GRADE_CONFIG,
   GRADES,
@@ -80,6 +80,8 @@ interface OfferCellsInput {
   monthlyRate: number;
   maxTenure: number;
   frequency: Frequency;
+  /** Custom terms highlights the instalment; presets highlight discounted levers. */
+  highlightInstalment?: boolean;
 }
 
 /** Six label/value pairs for an offer card, with discounted levers in mint. */
@@ -91,6 +93,7 @@ function buildOfferCells({
   monthlyRate,
   maxTenure,
   frequency,
+  highlightInstalment = false,
 }: OfferCellsInput): OfferCell[] {
   const instalmentLabel =
     frequency === "monthly"
@@ -101,12 +104,17 @@ function buildOfferCells({
   const isLongest = frequency !== "payday" && tenureMonths === maxTenure;
 
   return [
-    { label: instalmentLabel, value: formatCurrency(schedule.rows[0]?.payment ?? 0), emphasis: true },
+    {
+      label: instalmentLabel,
+      value: formatCurrency(schedule.rows[0]?.payment ?? 0),
+      emphasis: true,
+      tone: highlightInstalment ? "mint" : "default",
+    },
     { label: "Loan amount", value: formatCurrencyWhole(amount) },
     {
       label: "Interest rate",
       value: `${fmtPct(monthlyRate * 100)}%/mo`,
-      tone: monthlyRate < MONTHLY_RATE - 1e-9 ? "mint" : "default",
+      tone: !highlightInstalment && monthlyRate < MONTHLY_RATE - 1e-9 ? "mint" : "default",
     },
     {
       label: "Processing fee",
@@ -114,7 +122,11 @@ function buildOfferCells({
       tone: feePct < DEFAULT_FEE_PCT - 1e-9 ? "mint" : "default",
     },
     { label: "Total interest", value: formatCurrency(schedule.totalInterest) },
-    { label: "Tenure", value: tenureLabel(tenureMonths), tone: isLongest ? "blue" : "default" },
+    {
+      label: "Tenure",
+      value: tenureLabel(tenureMonths),
+      tone: !highlightInstalment && isLongest ? "blue" : "default",
+    },
   ];
 }
 
@@ -382,6 +394,7 @@ export function RmCalcView() {
         monthlyRate,
         maxTenure,
         frequency,
+        highlightInstalment: true,
       }),
     [schedule, effectiveAmount, effectiveTenure, feePct, monthlyRate, maxTenure, frequency],
   );
@@ -402,15 +415,20 @@ export function RmCalcView() {
               className="h-6 w-auto object-contain object-left md:h-7"
               priority
             />
-            <span className="text-[22px] leading-none md:text-[26px]">Loan Plans</span>
+            <span className="text-[24px] leading-none md:text-[28px]">Loan Plans</span>
           </h1>
           <button
             type="button"
             onClick={() => setStaffOpen((o) => !o)}
             aria-pressed={staffOpen}
-            className="flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur transition-colors hover:bg-white/15 active:bg-white/20"
+            className={cn(
+              "flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition-[background-color,box-shadow,transform] active:scale-[0.98]",
+              staffOpen
+                ? "bg-[#E11D48] text-white shadow-[0_0_0_3px_rgba(225,29,72,0.45),0_8px_18px_-6px_rgba(225,29,72,0.85)] hover:bg-[#BE123C]"
+                : "bg-[var(--rm-mint)] text-[var(--rm-ink)] shadow-[0_0_0_3px_rgba(6,222,192,0.35),0_8px_18px_-6px_rgba(6,222,192,0.55)] hover:bg-[#05c9ad]",
+            )}
           >
-            {staffOpen ? <Eye size={16} weight="bold" /> : <EyeSlash size={16} weight="bold" />}
+            {staffOpen ? <Eye size={16} weight="bold" /> : <User size={16} weight="bold" />}
             <span>{staffOpen ? "Staff view" : "Customer view"}</span>
           </button>
         </header>
@@ -424,8 +442,8 @@ export function RmCalcView() {
             aria-labelledby="calc-heading"
             className="flex flex-col gap-7 px-6 py-7 md:px-7 md:py-9 lg:px-9"
           >
-            <h2 id="calc-heading" className="text-[22px] leading-tight text-balance md:text-[24px]">
-              Enter customer approved plan
+            <h2 id="calc-heading" className="text-[22px] leading-tight text-balance">
+              {staffOpen ? "Enter customer approved plan" : "Adjust Loan amount and Tenure"}
             </h2>
 
             {/* Staff-only pricing controls */}
@@ -520,31 +538,27 @@ export function RmCalcView() {
 
             {/* Loan amount */}
             <div className="flex flex-col gap-1">
-              <div className="flex items-end justify-between gap-4">
-                <UnderlineField
-                  id={amountId}
-                  label="Loan amount"
-                  prefix="S$"
-                  emphasis
-                  className="flex-1"
-                  value={effectiveAmount.toLocaleString("en-SG")}
-                  onCommit={(raw) => {
-                    const parsed = parseInt(raw, 10);
-                    if (isNaN(parsed)) return;
-                    const snapped = Math.round(parsed / AMOUNT_STEP) * AMOUNT_STEP;
-                    handleLoanAmountChange(snapped);
-                  }}
-                />
-                <span className="pb-2 text-[13px] font-medium text-[var(--rm-ink-3)]">
-                  up to {formatCurrencyWhole(effectiveMaxAmount)}
-                </span>
-              </div>
+              <UnderlineField
+                id={amountId}
+                label="Loan amount"
+                prefix="S$"
+                emphasis
+                value={effectiveAmount.toLocaleString("en-SG")}
+                onCommit={(raw) => {
+                  const parsed = parseInt(raw, 10);
+                  if (isNaN(parsed)) return;
+                  const snapped = Math.round(parsed / AMOUNT_STEP) * AMOUNT_STEP;
+                  handleLoanAmountChange(snapped);
+                }}
+              />
               <Slider
                 ariaLabel="Loan amount"
                 min={MIN_LOAN_AMOUNT}
                 max={effectiveMaxAmount}
                 step={AMOUNT_STEP}
                 value={effectiveAmount}
+                minLabel={formatCurrencyWhole(MIN_LOAN_AMOUNT)}
+                maxLabel={formatCurrencyWhole(effectiveMaxAmount)}
                 onChange={handleLoanAmountChange}
               />
             </div>
@@ -570,6 +584,8 @@ export function RmCalcView() {
                 step={1}
                 value={effectiveTenure}
                 disabled={isPayday}
+                minLabel="1 month"
+                maxLabel={maxTenure === 1 ? "1 month" : `${maxTenure} months`}
                 onChange={handleTenureChange}
               />
             </div>
@@ -651,7 +667,7 @@ export function RmCalcView() {
             className="flex flex-col gap-5 bg-[var(--rm-panel)] px-6 py-7 md:px-7 md:py-9 lg:px-8"
           >
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <h2 id="offers-heading" className="text-[20px] leading-none">
+              <h2 id="offers-heading" className="text-[22px] leading-tight">
                 Choose an offer
               </h2>
               <div className="flex items-center gap-2">
