@@ -364,7 +364,7 @@ function ApplyProgressFooterStrip({
   return (
     <div
       ref={wrapRef}
-      className="relative w-[min(22.5rem,calc(100vw-2.5rem))] lg:hidden"
+      className="relative mx-auto w-[min(22.5rem,calc(100vw-2.5rem))] lg:hidden"
     >
       <button
         type="button"
