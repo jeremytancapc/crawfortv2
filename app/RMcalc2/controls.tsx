@@ -216,27 +216,47 @@ interface SliderProps {
   step: number;
   disabled?: boolean;
   ariaLabel: string;
+  minLabel?: string;
+  maxLabel?: string;
   onChange: (v: number) => void;
 }
 
-export function Slider({ value, min, max, step, disabled, ariaLabel, onChange }: SliderProps) {
+export function Slider({
+  value,
+  min,
+  max,
+  step,
+  disabled,
+  ariaLabel,
+  minLabel,
+  maxLabel,
+  onChange,
+}: SliderProps) {
   const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
-    <div className="rm-slider-wrap" style={{ "--slider-pct": `${pct}%` } as React.CSSProperties}>
-      <div className="rm-slider-track" aria-hidden>
-        <div className="rm-slider-fill" />
+    <div className="flex flex-col">
+      <div className="rm-slider-wrap" style={{ "--slider-pct": `${pct}%` } as React.CSSProperties}>
+        <div className="rm-slider-track" aria-hidden>
+          <div className="rm-slider-fill" />
+        </div>
+        <input
+          type="range"
+          className="rm-slider"
+          aria-label={ariaLabel}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
       </div>
-      <input
-        type="range"
-        className="rm-slider"
-        aria-label={ariaLabel}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+      {(minLabel || maxLabel) && (
+        <div className="flex justify-between text-[12px] font-medium text-[var(--rm-ink-3)]">
+          <span>{minLabel}</span>
+          <span>{maxLabel}</span>
+        </div>
+      )}
     </div>
   );
 }
