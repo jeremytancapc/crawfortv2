@@ -1235,17 +1235,17 @@ input[type="range"].ios-slider::-moz-range-thumb {
 .ios-sticky-footer--progress .ios-sticky-footer-banner {
   position: relative;
   z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
   height: 4.25rem;
   background: var(--surface-primary);
   pointer-events: none;
 }
 
 .ios-sticky-footer--progress .ios-sticky-footer-banner > * {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
   pointer-events: auto;
-  transform: translate(-50%, 1px);
+  transform: translateY(1px);
 }
 
 .ios-sticky-footer--progress .ios-sticky-footer-action {
