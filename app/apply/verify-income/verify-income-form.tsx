@@ -148,45 +148,69 @@ export function VerifyIncomeForm({
   };
 
   return (
-    <div className="theme-ios flex min-h-[100svh] flex-col lg:min-h-[calc(100dvh-5rem)]">
+    <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet>
-      <div className="shrink-0 px-5 pb-6 pt-7">
-        <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+      <div
+        className={
+          showResults
+            ? "shrink-0 px-5 pb-3 pt-5"
+            : "shrink-0 px-5 pb-6 pt-7"
+        }
+      >
+        <h1
+          className={
+            showResults
+              ? "text-[clamp(1.375rem,4.6vh,1.875rem)] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]"
+              : "text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]"
+          }
+        >
           {showResults ? "Confirm your income" : "Upload your income proof"}
         </h1>
-        <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+        <p
+          className={
+            showResults
+              ? "mt-1 text-[clamp(0.9375rem,2.2vh,1.0625rem)] leading-[1.4] text-[var(--text-secondary)]"
+              : "mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]"
+          }
+        >
           {showResults
             ? "Check the last 3 months we read from your documents."
             : "We accept payslips, income statements and bank statements."}
         </p>
       </div>
 
-      <div className="flex-1 px-5 pb-8">
+      <div
+        className={
+          showResults
+            ? "ios-apply-fit flex min-h-0 flex-1 flex-col justify-center px-5"
+            : "flex-1 px-5 pb-8"
+        }
+      >
         {showResults ? (
-          <div key="results" className="animate-fade-up flex flex-col gap-6">
+          <div key="results" className="ios-income-fit w-full animate-fade-up">
             <section>
               <Card>
                 {incomeMonths.map((month) => (
                   <CardRow key={month.label}>
                     <span className="min-w-0">
-                      <span className="block text-[17px] leading-tight text-[var(--text-primary)]">
+                      <span className="ios-income-fit-label block leading-tight text-[var(--text-primary)]">
                         {month.month} {month.year}
                       </span>
-                      <span className="mt-0.5 block truncate text-[13px] text-[var(--text-secondary)]">
+                      <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
                         {month.employer}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
+                    <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
                       {formatCurrency(month.amount)}
                     </span>
                   </CardRow>
                 ))}
-                <div className="flex items-center justify-between gap-3 bg-brand-teal/14 px-4 py-3.5">
-                  <span className="text-[17px] font-semibold leading-tight text-[var(--brand-blue-hex)]">
+                <div className="ios-income-fit-avg flex items-center justify-between gap-3 bg-brand-teal/14 px-4">
+                  <span className="ios-income-fit-avg-label font-semibold leading-tight text-[var(--brand-blue-hex)]">
                     Monthly average
                   </span>
-                  <span className="text-[20px] font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
+                  <span className="ios-income-fit-avg-value font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
                     {formatCurrency(averageIncome)}
                   </span>
                 </div>

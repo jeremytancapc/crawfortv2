@@ -279,16 +279,9 @@ export function LoanGateForm({
         }
       >
         {step === 3 ? undefined : (
-          <>
-            <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
-              Continue
-            </PrimaryButton>
-            {step === 1 && formData.urgency === "" ? (
-              <p className="mt-2 text-center text-[13px] leading-snug text-[var(--text-secondary)]">
-                Select your preferred payout time above to continue
-              </p>
-            ) : null}
-          </>
+          <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
+            Continue
+          </PrimaryButton>
         )}
       </StickyFooter>
       </MobileGateSheet>
