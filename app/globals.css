@@ -1138,6 +1138,11 @@ body:has(.theme-ios) {
 
 /* The whole arc box is the drag surface; stop the page scrolling under a
    finger and stop long-press callouts on iOS. */
+.credit-gauge,
+.credit-gauge-arc {
+  overflow: visible;
+}
+
 .credit-gauge-arc {
   touch-action: none;
   cursor: grab;

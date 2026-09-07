@@ -10,18 +10,21 @@ import {
 import { useInView, useReducedMotion } from "motion/react";
 
 // ── Geometry ──────────────────────────────────────────────────────────────────
-// Arc opens downward. t in [0, 1] runs left -> top -> right, so the sweep is
-// centred on 90° (straight up) and each end dips a little below horizontal.
+// True 180° semicircle. t in [0, 1] runs left → top → right, and both ends
+// sit on the same horizontal through the centre so the dial reads as a flat
+// baseline, not a horseshoe that dips past it.
 
-const VIEW_W = 320;
-const VIEW_H = 182;
-const CX = 160;
-const CY = 150;
-const OUTER_R = 140;
-const INNER_R = 124;
-const TICK_COUNT = 48;
-const SWEEP_DEG = 200;
-const START_DEG = 90 + SWEEP_DEG / 2;
+const VIEW_W = 360;
+const VIEW_H = 200;
+const VIEW_PAD_X = 38;
+const VIEW_PAD_TOP = 14;
+const CX = 180;
+const CY = 178;
+const OUTER_R = 160;
+const INNER_R = 142;
+const TICK_COUNT = 49;
+const SWEEP_DEG = 180;
+const START_DEG = 180;
 
 const TICK_STROKE = 4.5;
 /** Radius the drag handle rides on - the middle of the tick band. */
@@ -31,14 +34,22 @@ const KNOB_SIZE = 13;
  *  from both the lit gradient and the locked grey. */
 const AVAILABLE_STROKE = "oklch(0.70 0.13 245)";
 const LOCKED_STROKE = "rgba(60, 60, 67, 0.22)";
-const TICK_TRANSITION = "opacity 80ms linear";
+const TICK_TRANSITION = "opacity 120ms linear";
 /** Pause so the empty (all-grey) tank is visible before the fill starts. */
-const INTRO_HOLD_MS = 280;
-/** Continuous ease-out fill + count-up. */
-const INTRO_FILL_MS = 1400;
+const INTRO_HOLD_MS = 240;
+/** Rise to the visual middle of the arc. */
+const INTRO_UP_MS = 1600;
+/** Brief rest at the crest so the turnaround reads as a choice, not a bounce. */
+const INTRO_CREST_MS = 220;
+/** Ease back down to halfway along the approved side. */
+const INTRO_DOWN_MS = 1500;
 
-function easeOutCubic(t: number): number {
-  return 1 - (1 - t) ** 3;
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+function lerp(from: number, to: number, t: number): number {
+  return from + (to - from) * t;
 }
 
 function angleAt(t: number): number {
@@ -58,7 +69,7 @@ interface Tick {
 }
 
 const TICKS: Tick[] = Array.from({ length: TICK_COUNT }, (_, i) => {
-  const deg = angleAt((i + 0.5) / TICK_COUNT);
+  const deg = angleAt(i / (TICK_COUNT - 1));
   const inner = polar(INNER_R, deg);
   const outer = polar(OUTER_R, deg);
   const r = (n: number) => Math.round(n * 100) / 100;
@@ -67,9 +78,10 @@ const TICKS: Tick[] = Array.from({ length: TICK_COUNT }, (_, i) => {
 
 /** Map a pointer position (in the SVG's client box) to a 0..1 share of the arc. */
 function pointerToFraction(clientX: number, clientY: number, rect: DOMRect): number {
-  const scale = rect.width / VIEW_W;
-  const dx = clientX - (rect.left + CX * scale);
-  const dy = rect.top + CY * scale - clientY;
+  const boxW = VIEW_W + VIEW_PAD_X * 2;
+  const scale = rect.width / boxW;
+  const dx = clientX - (rect.left + (VIEW_PAD_X + CX) * scale);
+  const dy = rect.top + (VIEW_PAD_TOP + CY) * scale - clientY;
   let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
   // Anything below the centre on the left half belongs to the left end, not
   // to a wrapped-around value past the right end.
@@ -80,6 +92,84 @@ function pointerToFraction(clientX: number, clientY: number, rect: DOMRect): num
 
 function clampInt(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
+}
+
+/** First labeled stick - a round thousand so the left end reads as a floor,
+ *  not as zero. */
+const FLOOR_MARK = 1000;
+/** Landmark ticks stay inside the same ring as the minors - a hair longer,
+ *  never an antenna past the rim. */
+const MAJOR_INNER_R = INNER_R - 3;
+const MAJOR_OUTER_R = OUTER_R + 3;
+/** Two marks closer than this share one stick; keep the later / more important. */
+const MARK_MERGE_T = 0.07;
+
+function formatMarkAmount(amount: number): string {
+  return `$${Math.round(amount).toLocaleString("en-SG")}`;
+}
+
+interface ScaleMark {
+  t: number;
+  amount: number;
+  label: string;
+  /** Past the approved end - drawn in the locked grey so the reserve reads. */
+  isLocked: boolean;
+  /** The approved cap itself: the stick the intro parks under at the crest. */
+  isApproved: boolean;
+}
+
+function buildScaleMarks(maxToday: number, limit: number): ScaleMark[] {
+  const safeLimit = limit > 0 ? limit : 1;
+  const candidates = [
+    { amount: FLOOR_MARK, isApproved: false },
+    { amount: maxToday / 2, isApproved: false },
+    { amount: maxToday, isApproved: true },
+    { amount: safeLimit * 0.75, isApproved: false },
+    { amount: safeLimit, isApproved: false },
+  ];
+
+  const marks: ScaleMark[] = [];
+  for (const candidate of candidates) {
+    if (candidate.amount <= 0 || candidate.amount > safeLimit + 0.5) continue;
+    const t = Math.min(1, Math.max(0, candidate.amount / safeLimit));
+    const last = marks[marks.length - 1];
+    if (last && t - last.t < MARK_MERGE_T) {
+      if (candidate.isApproved || candidate.amount === safeLimit) {
+        marks[marks.length - 1] = {
+          t,
+          amount: candidate.amount,
+          label: formatMarkAmount(candidate.amount),
+          isLocked: candidate.amount > maxToday + 0.5,
+          isApproved: candidate.isApproved,
+        };
+      }
+      continue;
+    }
+    marks.push({
+      t,
+      amount: candidate.amount,
+      label: formatMarkAmount(candidate.amount),
+      isLocked: candidate.amount > maxToday + 0.5,
+      isApproved: candidate.isApproved,
+    });
+  }
+  return marks;
+}
+
+function markLabelStyle(t: number): { x: number; y: number; anchor: "start" | "middle" | "end" } {
+  const deg = angleAt(t);
+  if (t < 0.08) {
+    const end = polar(OUTER_R, 180);
+    return { x: end.x - 7, y: end.y, anchor: "end" };
+  }
+  if (t > 0.92) {
+    const end = polar(OUTER_R, 0);
+    return { x: end.x + 7, y: end.y, anchor: "start" };
+  }
+  const point = polar(OUTER_R + 13, deg);
+  if (t < 0.38) return { x: point.x - 1, y: point.y, anchor: "end" };
+  if (t > 0.62) return { x: point.x + 1, y: point.y, anchor: "start" };
+  return { x: point.x, y: point.y - 1, anchor: "middle" };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -117,18 +207,25 @@ export function CreditGauge({
   const prefersReducedMotion = useReducedMotion();
   const svgRef = useRef<SVGSVGElement>(null);
   const isInView = useInView(svgRef, { once: true, amount: 0.2 });
+  const onChangeRef = useRef(onChange);
   const gradientId = "credit-gauge-fill";
 
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   // Intro: wait until the card is on screen, hold on an empty tank, then
-  // ease one progress value from 0 → 1 so the ticks and the dollar figure
-  // rise on the same curve.
-  const [progress, setProgress] = useState(0);
+  // ride the needle up to the visual middle of the arc and back down to
+  // halfway along the approved side - so the first thing the customer sees
+  // is that the dial moves, and that it does not have to sit at the max.
+  const [displayAmount, setDisplayAmount] = useState(0);
   const [isIntro, setIsIntro] = useState(true);
   const [canPlay, setCanPlay] = useState(false);
+  const [showFullAvailable, setShowFullAvailable] = useState(false);
   const skipIntro = () => {
     setIsIntro(false);
     setCanPlay(true);
-    setProgress(1);
+    setShowFullAvailable(true);
   };
 
   const safeLimit = limit > 0 ? limit : 1;
@@ -146,7 +243,7 @@ export function CreditGauge({
   // during render - only after mount, or the input's disabled/readOnly
   // attributes hydrate as a mismatch.
   useEffect(() => {
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || disabled) {
       skipIntro();
       return;
     }
@@ -156,10 +253,14 @@ export function CreditGauge({
     }
     const fallback = window.setTimeout(() => setCanPlay(true), 1200);
     return () => window.clearTimeout(fallback);
-  }, [isInView, prefersReducedMotion]);
+  }, [isInView, prefersReducedMotion, disabled]);
 
   useEffect(() => {
-    if (!canPlay || !isIntro || prefersReducedMotion) return;
+    if (!canPlay || !isIntro || prefersReducedMotion || disabled) return;
+
+    const peakAmount = Math.min(maxToday, safeLimit / 2);
+    const restAmount = clampInt(Math.round(maxToday / 2 / step) * step, min, maxToday);
+    const hasOvershoot = peakAmount - restAmount > step;
 
     let raf = 0;
     let start: number | null = null;
@@ -167,35 +268,71 @@ export function CreditGauge({
     const frame = (now: number) => {
       if (start === null) start = now;
       const elapsed = now - start;
+
       if (elapsed < INTRO_HOLD_MS) {
-        setProgress(0);
+        setDisplayAmount(0);
         raf = requestAnimationFrame(frame);
         return;
       }
-      const t = Math.min(1, (elapsed - INTRO_HOLD_MS) / INTRO_FILL_MS);
-      setProgress(easeOutCubic(t));
-      if (t < 1) {
+
+      const afterHold = elapsed - INTRO_HOLD_MS;
+      if (afterHold < INTRO_UP_MS) {
+        const t = easeInOutCubic(afterHold / INTRO_UP_MS);
+        setDisplayAmount(lerp(0, hasOvershoot ? peakAmount : restAmount, t));
         raf = requestAnimationFrame(frame);
         return;
       }
+
+      if (!hasOvershoot) {
+        setDisplayAmount(restAmount);
+        onChangeRef.current(restAmount);
+        skipIntro();
+        return;
+      }
+
+      const afterUp = afterHold - INTRO_UP_MS;
+      if (afterUp < INTRO_CREST_MS) {
+        setDisplayAmount(peakAmount);
+        setShowFullAvailable(true);
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+
+      const afterCrest = afterUp - INTRO_CREST_MS;
+      if (afterCrest < INTRO_DOWN_MS) {
+        setShowFullAvailable(true);
+        const t = easeInOutCubic(afterCrest / INTRO_DOWN_MS);
+        setDisplayAmount(lerp(peakAmount, restAmount, t));
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+
+      setDisplayAmount(restAmount);
+      onChangeRef.current(restAmount);
       skipIntro();
     };
 
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [canPlay, isIntro, prefersReducedMotion]);
+  }, [canPlay, isIntro, prefersReducedMotion, disabled, maxToday, min, step, safeLimit]);
 
-  const fillCount = Math.round(progress * availableCount);
+  const fillCount =
+    displayAmount <= 0
+      ? 0
+      : clampInt(Math.round((displayAmount / safeLimit) * TICK_COUNT), 1, availableCount || TICK_COUNT);
   const litCount = isIntro ? fillCount : liveLitCount;
-  // During the fill, ticks ahead of the wave stay grey so the blue reads as
-  // liquid moving into an empty tank. After the intro, unused-available ticks
-  // take the mid-blue.
-  const shownAvailable = isIntro ? fillCount : availableCount;
-  const displayValue = isIntro ? Math.round(progress * maxToday) : value;
+  // During the rise, ticks ahead of the wave stay grey so the blue reads as
+  // liquid moving into an empty tank. From the crest down, the rest of the
+  // approved side lights mid-blue - that leftover band is what teaches that
+  // the needle can still move.
+  const shownAvailable = isIntro && !showFullAvailable ? fillCount : availableCount;
+  const displayValue = isIntro ? Math.round(displayAmount) : value;
+  const knobAmount = isIntro ? displayAmount : value;
 
   // Handle rides the crest of the fill, then parks on the chosen amount. It is
   // the main signal that the dial can be dragged at all.
-  const knob = polar(KNOB_R, angleAt(Math.min(1, displayValue / safeLimit)));
+  const knob = polar(KNOB_R, angleAt(Math.min(1, knobAmount / safeLimit)));
+  const scaleMarks = buildScaleMarks(maxToday, safeLimit);
 
   const isDraggingRef = useRef(false);
 
@@ -232,11 +369,11 @@ export function CreditGauge({
   };
 
   return (
-    <div className="credit-gauge relative mx-auto w-full max-w-[300px]" data-disabled={disabled}>
+    <div className="credit-gauge relative mx-auto w-[calc(100%+2rem)] max-w-[440px] -mx-4" data-disabled={disabled}>
       <div className="relative">
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        viewBox={`${-VIEW_PAD_X} ${-VIEW_PAD_TOP} ${VIEW_W + VIEW_PAD_X * 2} ${VIEW_H + VIEW_PAD_TOP}`}
         className="credit-gauge-arc block h-auto w-full select-none"
         aria-hidden="true"
         onPointerDown={handlePointerDown}
@@ -295,6 +432,48 @@ export function CreditGauge({
           );
         })}
 
+        {/* Landmark ticks share the minor ring - just a longer, darker hash -
+            so the scale reads without sticks hanging off the rim. */}
+        {scaleMarks.map((mark) => {
+          const deg = angleAt(mark.t);
+          const inner = polar(MAJOR_INNER_R, deg);
+          const outer = polar(MAJOR_OUTER_R, deg);
+          const label = markLabelStyle(mark.t);
+          const stroke = mark.isLocked
+            ? "rgba(60, 60, 67, 0.45)"
+            : mark.isApproved
+              ? "var(--brand-blue-hex)"
+              : "oklch(0.48 0.13 245)";
+          return (
+            <g key={mark.label} pointerEvents="none">
+              <line
+                x1={inner.x}
+                y1={inner.y}
+                x2={outer.x}
+                y2={outer.y}
+                stroke={stroke}
+                strokeWidth={mark.isApproved ? 2.75 : 2}
+                strokeLinecap="round"
+              />
+              <text
+                x={label.x}
+                y={label.y}
+                textAnchor={label.anchor}
+                dominantBaseline="middle"
+                fill={mark.isLocked ? "var(--text-tertiary)" : "var(--text-primary)"}
+                style={{
+                  fontSize: 10,
+                  fontWeight: mark.isApproved ? 700 : 600,
+                  letterSpacing: "-0.02em",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {mark.label}
+              </text>
+            </g>
+          );
+        })}
+
         {/* Drag handle. pointer-events stay off so the whole arc keeps taking
             the drag, not just this circle. */}
         {!disabled && (
@@ -321,11 +500,16 @@ export function CreditGauge({
       {/* Centre readout. Everything here lets pointer events fall through to
           the arc except the controls themselves - a full-width wrapper that
           caught them would kill dragging across the middle of the dial. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[40%] flex flex-col items-center justify-start text-center [&_button]:pointer-events-auto [&_input]:pointer-events-auto">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[46%] flex flex-col items-center justify-start text-center [&_button]:pointer-events-auto [&_input]:pointer-events-auto">
         {children({ value: displayValue, isIntro })}
       </div>
 
       </div>
+
+      <p className="sr-only">
+        Scale from {formatMarkAmount(FLOOR_MARK)} up to {formatMarkAmount(safeLimit)},
+        with {formatMarkAmount(maxToday)} approved today.
+      </p>
 
       <input
         type="range"
