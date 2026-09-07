@@ -459,7 +459,7 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
         <button
           type="button"
           onClick={onAcknowledge}
-          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+          className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
         >
           <ShieldCheck size={16} weight="bold" />
           I understand
@@ -542,10 +542,10 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       progressStep={progressStep}
     >
       <div className="shrink-0 px-5 pb-6 pt-7">
-        <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+        <h1 className="ios-type-title">
           Confirm loan terms
         </h1>
-        <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+        <p className="ios-type-subtitle mt-1.5">
           Review and accept your terms below.
         </p>
       </div>
@@ -636,7 +636,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               type="button"
               disabled={!canProceed}
               onClick={() => setShowAppointmentReminder(true)}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+              className="ios-type-cta flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
             >
               Next: Get your funds
               <ArrowRight size={16} weight="bold" />
@@ -646,7 +646,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
           <button
             type="button"
             onClick={startTerms}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+            className="ios-type-cta flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
           >
             Confirm loan terms
             <ArrowRight size={16} weight="bold" />

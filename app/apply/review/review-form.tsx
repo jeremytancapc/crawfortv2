@@ -267,10 +267,10 @@ export function ReviewForm({ initialData }: Props) {
               <MobileGateSheet>
               {stepMeta && (
                 <div className="shrink-0 px-5 pb-6 pt-7">
-                  <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+                  <h1 className="ios-type-title">
                     {stepMeta.title}
                   </h1>
-                  <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+                  <p className="ios-type-subtitle mt-1.5">
                     {stepMeta.subtitle}
                   </p>
                 </div>

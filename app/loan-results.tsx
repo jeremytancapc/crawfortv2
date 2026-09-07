@@ -2003,12 +2003,12 @@ export function LoanResults({
         {isExpired && (
           <RevealOnScroll className="flex flex-col gap-2">
             <h1
-              className="text-[26px] font-bold leading-tight tracking-[-0.022em] sm:text-3xl"
+              className="ios-type-title"
               style={{ color: "#7f1d1d" }}
             >
               Your offer has expired.
             </h1>
-            <p className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p className="ios-type-subtitle" style={{ color: "var(--text-secondary)" }}>
               This loan offer is no longer valid. Start a new application to get a fresh offer.
             </p>
           </RevealOnScroll>
@@ -2038,7 +2038,7 @@ export function LoanResults({
                     "linear-gradient(90deg, transparent 0%, var(--border-medium) 12%, var(--border-medium) 88%, transparent 100%)",
                 }}
               />
-              <h2 className="pb-3 text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+              <h2 className="ios-type-title pb-3">
                 Choose your loan plan
               </h2>
             </div>

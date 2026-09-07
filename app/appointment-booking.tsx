@@ -483,10 +483,10 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-brand-blue/[0.06]">
             <CalendarBlank size={18} weight="duotone" className="text-brand-blue" />
           </div>
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
+          <h2 className="ios-type-title">
             Book your appointment
           </h2>
-          <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
+          <p className="ios-type-subtitle max-w-[42ch] sm:max-w-none">
             The visit only takes around 30 minutes.
           </p>
         </div>
@@ -1090,7 +1090,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             }
           }}
           disabled={!canConfirm || isBooking}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[15px] font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+          className="ios-type-cta flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
         >
           {isBooking ? (
             <>

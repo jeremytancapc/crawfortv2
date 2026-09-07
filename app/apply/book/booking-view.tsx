@@ -72,10 +72,10 @@ export function BookingView({ formData }: Props) {
       progressStep={APPLY_PROGRESS.book}
     >
       <div className="shrink-0 px-5 pb-4 pt-7">
-        <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+        <h1 className="ios-type-title">
           Book your appointment
         </h1>
-        <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+        <p className="ios-type-subtitle mt-1.5">
           The visit only takes around 30 minutes.
         </p>
       </div>

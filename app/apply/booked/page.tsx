@@ -30,11 +30,11 @@ export default async function BookedPage() {
             <span className="absolute inset-0 rounded-full bg-emerald-400/50 animate-staff-presence-ping-green" />
             <span className="relative h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_3px_rgba(16,185,129,0.55)] animate-staff-presence-glow-green" />
           </span>
-          <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+          <h1 className="ios-type-title">
             Your funds are reserved
           </h1>
         </div>
-        <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+        <p className="ios-type-subtitle mt-1.5">
           Your appointment reference and visit time are below.
         </p>
       </div>
