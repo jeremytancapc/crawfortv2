@@ -520,83 +520,143 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ─── Plan row ───────────────────────────────────────────────────────────────
-   Desktop gets three even columns. Everything below it becomes a lane: the
-   chosen card takes 46% of the row and overlaps its neighbours, which is the
-   only way its container-query type climbs off the floors ~110px of column
-   forces on a phone. The other two stay whole and scale down behind it. Lane
-   widths come from flex, so the row never scrolls and the chosen card can sit
-   at either end without spilling. */
+   Three even columns at every width. A repayment plan only means anything next
+   to the other two, so no card ever collapses, scrolls away or gives up its
+   share of the row. What marks the customer's pick is depth instead: it scales
+   up out of the tray the three sit in, which on a phone also lifts its type a
+   notch above what a third of the row would otherwise allow, since every size
+   step inside the card is a container query against the card itself. */
+
+.plan-lane-tray {
+  border-radius: 22px;
+  background: linear-gradient(180deg, var(--surface-secondary) 0%, oklch(0.93 0.005 260) 100%);
+  padding: 6px;
+  /* The forward card is taller than the tray by design - it grows past both
+     edges. This is the clearance that keeps it off the section above and the
+     custom-plan card below. */
+  margin-block: 0.75rem;
+}
+
+/* On a phone the row is the one thing on this page worth reaching into the
+   page gutter for: a third of a narrow screen leaves the cards nothing to
+   spare, and every pixel reclaimed here lands in all three of them. */
+@media (max-width: 639.98px) {
+  .plan-lane-tray {
+    margin-inline: -0.75rem;
+  }
+}
 
 .plan-lane {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
-  gap: 12px;
+  gap: 6px;
 }
 
+.plan-lane-item {
+  position: relative;
+  min-width: 0;
+}
+
+.plan-lane-item[data-active="true"] {
+  z-index: 2;
+}
+
+/* Its own layer: RevealOnScroll writes a transform of its own on the wrapper
+   above, so the scale needs somewhere to live that the entrance animation is
+   not already using. Scaling rather than re-sizing keeps this off the layout -
+   the row's columns never move, and the card's own container queries never
+   re-measure mid-animation. */
 .plan-lane-card {
   height: 100%;
+  transform: scale(var(--lane-scale, 1));
+  /* Lands with a touch of overshoot, so picking a plan feels like the card
+     stepping forward rather than a size swap. */
+  transition: transform 420ms cubic-bezier(0.34, 1.36, 0.64, 1);
 }
 
-@media (max-width: 1023.98px) {
-  /* Darker edges than the desktop grid: a lane card overlaps its neighbours,
-     so its outline is what separates the three, not the gap between them. */
+.plan-lane-item[data-active="true"] .plan-lane-card {
+  --lane-scale: 1.12;
+}
+
+@media (min-width: 640px) {
+  .plan-lane-tray {
+    padding: 12px;
+  }
+
   .plan-lane {
-    display: flex;
-    gap: 0;
-    --plan-ring-color: rgba(0, 0, 0, 0.72);
+    gap: 12px;
   }
 
-  /* Every item keeps the same one-third layout box at all times - selecting a
-     card never changes flex-basis or margin. Only `transform` (translateX +
-     scale, both set inline per-card as --lane-x/--lane-scale) moves the active
-     card forward and tucks its neighbours in behind it. Because the layout box
-     itself is inert, this never triggers reflow or a container-query text
-     resize mid-transition - the growth/shrink is pure compositor work, so it
-     stays smooth even on slower phones. */
-  .plan-lane-item {
-    position: relative;
-    flex: 1 1 0;
-    min-width: 0;
+  /* Full-size columns need far less of a nudge to read as the front card, and
+     a big card scaled this far starts to look soft. */
+  .plan-lane-item[data-active="true"] .plan-lane-card {
+    --lane-scale: 1.06;
   }
+}
 
-  .plan-lane-item[data-active="true"] {
-    z-index: 2;
-  }
+/* Both faces of a card share one grid cell, so the taller of the two - the
+   five-figure breakdown - is what the card's height actually is. That leaves
+   the sales face with slack it was previously banking above the CTA. Stretching
+   the list into it spreads the bullets through the card instead, and since the
+   rows are a fixed size and every card in the row is the same height, row N
+   still lands on the same line across all three. */
+.plan-features {
+  flex: 1;
+  min-height: 0;
+  align-content: space-evenly;
+}
 
+@media (prefers-reduced-motion: reduce) {
   .plan-lane-card {
-    transform: translateX(var(--lane-x, 0%)) scale(var(--lane-scale, 1));
-    transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
+    transition: none;
+  }
+}
+
+.plan-breakdown-row + .plan-breakdown-row {
+  border-top: 1px solid var(--plan-hairline);
+}
+
+/* The details face carries five stacked figures against the sales face's four
+   bullets, which makes it the taller of the two - and since both faces share
+   one grid cell, the taller one is what the card's height is, flipped or not.
+   Past this width it has the room to run them in two columns instead, which
+   takes about 60px of empty sales face off the bottom of every card. The
+   bullets need no such treatment: a second column of four would cost the
+   reading and buy nothing. */
+@container (min-width: 190px) {
+  .plan-breakdown {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, auto);
+    align-content: center;
+    column-gap: 0.75rem;
   }
 
-  /* Feature rows are pre-sized for a two-line wrap so row N lines up across all
-     three columns on desktop. Lane cards differ in width, so that alignment is
-     off the table anyway — spread each card's own rows through the height it
-     has instead of holding space open for a wrap that no longer happens. */
-  .plan-lane .plan-features {
-    flex: 1;
-    min-height: 0;
-    grid-template-rows: none;
-    grid-auto-rows: auto;
-    align-content: space-evenly;
-    row-gap: 0.625rem;
+  /* Top of the second column, so it opens on a rule-free row like the first. */
+  .plan-breakdown-row:nth-child(4) {
+    border-top: none;
   }
 
-  /* A peeking card can't be flipped — a tap brings it forward first — so its
-     details face never shows in the lane. Taking it out of the sizing grid
-     stops that face's narrow, tall layout from padding every card in the row
-     out to a height nothing on screen needs. */
-  .plan-lane-item:not([data-active="true"]) .plan-card-back {
-    position: absolute;
-    inset: 0;
+  /* Half-width columns are narrow enough that the longest labels wrap, and a
+     wrapped label costs a whole row of card height. Dropping the label a step
+     below the figure it names buys most of them back onto one line - and the
+     figures are what this face is for. */
+  .plan-breakdown-row {
+    padding-block: 0.25rem;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .plan-lane-item,
-    .plan-lane-card {
-      transition: none;
-    }
+  .plan-breakdown-row dt {
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+  }
+
+  .plan-back-header {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
 }
 

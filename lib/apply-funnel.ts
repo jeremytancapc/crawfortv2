@@ -145,7 +145,11 @@ function pathMatchesStage(path: string, stage: ApplyFunnelStage): boolean {
     case "book":
       return path.startsWith("/apply/book");
     case "approval":
-      return path.startsWith("/apply/approval");
+      return (
+        path.startsWith("/apply/approval") ||
+        path.startsWith("/apply/choose-plan") ||
+        path.startsWith("/apply/custom-received")
+      );
     case "pending":
       return path.startsWith("/apply/pending");
     case "review":
@@ -180,8 +184,11 @@ export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
     return null;
   }
 
-  // Book: allow approval while offer not yet accepted (same session stage).
-  if (stage === "book" && path.startsWith("/apply/approval")) {
+  // Book: allow the offer pages while the offer is not yet accepted.
+  if (
+    stage === "book" &&
+    (path.startsWith("/apply/approval") || path.startsWith("/apply/choose-plan"))
+  ) {
     return null;
   }
 

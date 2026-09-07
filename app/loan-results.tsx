@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Warning,
@@ -23,6 +24,14 @@ import {
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { CreditGauge } from "@/app/credit-gauge";
+import {
+  clampWithdrawAmount,
+  MIN_WITHDRAW_AMOUNT,
+  readStoredWithdrawAmount,
+  storeWithdrawAmount,
+  WITHDRAW_STEP,
+} from "@/lib/withdraw-amount";
+import NumberFlow from "@number-flow/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -142,25 +151,6 @@ function ordinalSuffix(n: number): string {
 
 // ── Withdraw-today amount adjuster ────────────────────────────────────────────
 
-const MIN_WITHDRAW_AMOUNT = 500;
-const WITHDRAW_STEP = 100;
-
-/** Clamp a user-entered/dragged amount to [min(500, max), max], snapped to the nearest $100.
- *  The true max is always reachable even when it isn't a $100 boundary (e.g. $9,393). */
-function clampWithdrawAmount(raw: number, max: number): number {
-  const safeMax = Math.max(max, 0);
-  const floor = Math.min(MIN_WITHDRAW_AMOUNT, safeMax);
-  if (!Number.isFinite(raw)) return safeMax;
-  if (raw >= safeMax) return safeMax;
-
-  // Max often isn't on a step boundary. Once the drag/input crosses the last
-  // stepped value below max, jump to the exact maximum so the thumb can finish.
-  const lastStep = Math.floor(safeMax / WITHDRAW_STEP) * WITHDRAW_STEP;
-  if (lastStep < safeMax && raw > lastStep) return safeMax;
-
-  const snapped = Math.round(raw / WITHDRAW_STEP) * WITHDRAW_STEP;
-  return Math.min(Math.max(snapped, floor), safeMax);
-}
 
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -170,27 +160,48 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 const SCROLL_VIEWPORT = { once: true, amount: 0.28, margin: "0px 0px -56px 0px" } as const;
 
-/** Fade-up once the block actually enters the viewport — not on page load. */
+/** Fade-up once the block actually enters the viewport — not on page load.
+ *  `settleFromBlur` swaps the rise for a drop out of focus, which suits a set
+ *  of cards coming in one after another better than three things sliding up. */
 function RevealOnScroll({
   children,
   className,
   delay = 0,
+  settleFromBlur = false,
 }: {
   children: ReactNode;
   className?: string;
   delay?: number;
+  settleFromBlur?: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
   return (
     <motion.div
+      ref={ref}
       className={className}
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={
+        prefersReducedMotion
+          ? false
+          : settleFromBlur
+            ? { opacity: 0, y: -20, filter: "blur(10px)" }
+            : { opacity: 0, y: 18 }
+      }
+      whileInView={
+        settleFromBlur
+          ? { opacity: 1, y: 0, filter: "blur(0px)" }
+          : { opacity: 1, y: 0 }
+      }
       viewport={SCROLL_VIEWPORT}
       transition={{
         duration: prefersReducedMotion ? 0 : 0.5,
         ease: EASE,
         delay: prefersReducedMotion ? 0 : delay,
+      }}
+      onAnimationComplete={() => {
+        // A settled block has no use for the blur(0px) motion leaves behind,
+        // and every filter costs a render surface for as long as it is there.
+        if (settleFromBlur && ref.current) ref.current.style.filter = "";
       }}
     >
       {children}
@@ -468,35 +479,6 @@ function shortPlanName(title: string): string {
   return title.replace(/\s+Plan$/i, "");
 }
 
-/** Widths where globals.css runs the plan cards as a lane - one card forward,
- *  the other two peeking behind it - instead of the even 3-up desktop grid.
- *  Kept in step with the `.plan-lane` media query. */
-const LANE_MEDIA_QUERY = "(max-width: 1023.98px)";
-
-/** How far the peeking lane cards shrink and tuck in behind the active one.
- *  Purely visual (translateX + scale, composited) - the layout box behind
- *  every card stays a fixed third of the lane at all times, so switching
- *  cards never triggers a real resize/reflow (which is what made the old
- *  flex-basis/margin version feel jittery: every frame forced the
- *  container-query text inside each card to re-measure).
- *
- *  The active card is never scaled up: every card's height is stretched to
- *  match the row (`align-items: stretch`), so growing one card's `transform`
- *  grows it past that shared row height too, with nothing to clip the
- *  overflow - it bleeds into whatever sits above/below the lane. Its ring,
- *  shadow and "Popular" badge already make it read as the front card; only
- *  the two peeking cards shrink, which is always safe since shrinking can
- *  only pull a card further inside its own box, never past it. A card two
- *  slots from the active one (only reachable when the active card sits at
- *  either end of the three) tucks in further so it still reads as "directly
- *  behind" its nearer neighbour rather than drifting off. */
-function laneCardTransform(offsetFromActive: number): { x: string; scale: number } {
-  if (offsetFromActive === 0) return { x: "0%", scale: 1 };
-  const pull = Math.abs(offsetFromActive) >= 2 ? 36 : 20;
-  const towardActive = offsetFromActive < 0 ? 1 : -1;
-  return { x: `${towardActive * pull}%`, scale: 0.8 };
-}
-
 const FLIP_DURATION = 0.55;
 
 /** Reserved strip above every card body. The "Popular" tab occupies this slot
@@ -545,20 +527,31 @@ const PLAN_INK = {
   custom: "oklch(0.40 0.14 305)",
 } satisfies Record<OfferPlan["id"], string>;
 
-/* Three cards share one narrow column - barely 100px each at 360px - so type is
-   sized against the card itself (@container on the card root) rather than the
-   viewport. Every step caps out once the column stops growing, and the floors
-   are set to keep the price row inside the panel at the narrowest width. */
+/* Type is sized against the card itself (@container on the card root) rather
+   than the viewport, because a card's width depends on whether it is the open
+   one in the phone accordion (~220px), a desktop third (~165px) or a collapsed
+   spine. Caps are set for the open card, so every step tops out before the
+   card stops growing; the floors keep the price row inside the panel while a
+   card is mid-collapse. */
 const TYPE = {
-  planName: "text-[clamp(0.6rem,10cqi,1rem)]",
-  price: "text-[clamp(0.9375rem,16cqi,1.625rem)]",
-  priceUnit: "text-[clamp(0.5rem,7.8cqi,0.8125rem)]",
-  cta: "text-[clamp(0.5625rem,8.6cqi,0.875rem)]",
-  body: "text-[clamp(0.625rem,9cqi,0.875rem)]",
-  label: "text-[clamp(0.5rem,7cqi,0.6875rem)]",
-  pill: "text-[clamp(0.5rem,6.5cqi,0.6875rem)]",
-  icon: "h-[clamp(0.625rem,9.5cqi,1rem)] w-[clamp(0.625rem,9.5cqi,1rem)]",
+  planName: "text-[clamp(0.6rem,10cqi,1.125rem)]",
+  price: "text-[clamp(0.9375rem,16cqi,1.875rem)]",
+  priceUnit: "text-[clamp(0.5rem,7.8cqi,0.875rem)]",
+  cta: "text-[clamp(0.5625rem,8.6cqi,0.9375rem)]",
+  body: "text-[clamp(0.625rem,9cqi,0.9375rem)]",
+  label: "text-[clamp(0.5rem,7cqi,0.75rem)]",
+  pill: "text-[clamp(0.4375rem,6.5cqi,0.6875rem)]",
+  icon: "h-[clamp(0.625rem,9.5cqi,1.125rem)] w-[clamp(0.625rem,9.5cqi,1.125rem)]",
 } as const;
+
+/** Matches formatCurrency's output, as the digit-rolling price has to build the
+ *  same string itself. */
+const PRICE_FORMAT = {
+  style: "currency",
+  currency: "SGD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+} as const satisfies Intl.NumberFormatOptions;
 
 /* Slots sized for two lines of TYPE.body, so a pitch or bullet that wraps on a
    narrow card can't knock the three cards out of step. Written out in full
@@ -626,7 +619,13 @@ function PlanCard({
   const [ctaPulse, setCtaPulse] = useState(0);
 
   return (
-    <div className="@container relative h-full w-full">
+    <div
+      className="@container relative h-full w-full"
+      /* Dividers on the breakdown face are drawn in CSS: which rows need one
+         depends on how many columns that face is running at this card's
+         width, which only CSS knows. */
+      style={{ ["--plan-hairline" as string]: HAIRLINE }}
+    >
       {/* Ring + shadow live outside the flip so they frame the card as one unit
           and stay crisp while the faces rotate. */}
       <div
@@ -754,27 +753,25 @@ function PlanCard({
           </span>
 
           {/* The monthly figure carries the most weight; tenure moves into the
-              feature list below so nothing competes with it. */}
-          <motion.div
-            key={plan.monthlyInstalment}
-            initial={{ opacity: 0.3 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.25, ease: EASE }}
-            className="flex items-baseline gap-0.5 whitespace-nowrap"
-          >
-            <span
-              className={`tabular-nums font-extrabold leading-none tracking-[-0.04em] ${TYPE.price}`}
+              feature list below so nothing competes with it. Its digits roll
+              rather than cut, so editing the amount above reads as the same
+              three plans repricing instead of three cards being replaced. */}
+          <div className="flex items-baseline gap-0.5 whitespace-nowrap">
+            <NumberFlow
+              value={plan.monthlyInstalment}
+              locales="en-SG"
+              format={PRICE_FORMAT}
+              className={`font-extrabold leading-none tracking-[-0.04em] ${TYPE.price}`}
               style={{ color: "var(--text-primary)" }}
-            >
-              {formatCurrency(plan.monthlyInstalment)}
-            </span>
+              transformTiming={{ duration: 600, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}
+            />
             <span
               className={`font-semibold leading-none ${TYPE.priceUnit}`}
               style={{ color: "var(--text-tertiary)" }}
             >
               /mo
             </span>
-          </motion.div>
+          </div>
 
         </div>
 
@@ -884,7 +881,7 @@ function PlanCard({
                 "sell" vs "detail" moods, matching the black "Tap to go back"
                 footer below. */}
             <div
-              className="flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
+              className="plan-back-header flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
               style={{
                 background: "#0a0a0a",
                 boxShadow: "inset 0 -1px 0 0 oklch(1 0 0 / 0.12)",
@@ -923,20 +920,17 @@ function PlanCard({
               className="flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4"
               style={{ background: "var(--surface-elevated)" }}
             >
-              <dl className="flex min-h-0 flex-1 flex-col justify-center">
+              <dl className="plan-breakdown flex min-h-0 flex-1 flex-col justify-center">
                 {[
                   { label: "Monthly instalment", value: `${formatCurrency(plan.monthlyInstalment)}/mo` },
                   { label: "Tenure", value: `${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}` },
                   { label: "Interest rate", value: `Up to ${formatRate(plan.monthlyRate)}/mo` },
                   { label: "Processing fee", value: `Up to ${OFFER_MAX_PROCESSING_FEE_PCT}%` },
                   { label: "Total repayable", value: formatCurrency(plan.totalRepayment) },
-                ].map((row, index) => (
+                ].map((row) => (
                   <div
                     key={row.label}
-                    className="flex flex-col gap-px py-[3px] sm:py-1.5"
-                    style={{
-                      borderTop: index === 0 ? "none" : `1px solid ${HAIRLINE}`,
-                    }}
+                    className="plan-breakdown-row flex flex-col gap-px py-[3px] sm:py-1.5"
                   >
                     <dt
                       className={`font-bold uppercase leading-tight tracking-[0.07em] ${TYPE.label}`}
@@ -1397,61 +1391,49 @@ function PlanPicker({
 }: PlanPickerProps) {
   const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
 
-  // Which card holds the lane below desktop. The popular plan starts centred,
-  // so the row opens on the one most customers pick.
-  const [lanePlanId, setLanePlanId] = useState<OfferPlan["id"] | undefined>(
-    () => plans.find((plan) => plan.badge)?.id ?? plans[Math.floor(plans.length / 2)]?.id,
-  );
-  const activeLaneIndex = plans.findIndex((plan) => plan.id === lanePlanId);
+  // Which card stands forward in the row. The customer's pick claims it; until
+  // they make one the popular plan holds it, so the row always leads on
+  // something rather than sitting flat. A custom request lives in its own card
+  // below, so it leaves the row's shape alone.
+  const frontPlanId = plans.some((plan) => plan.id === selectedPlanId)
+    ? selectedPlanId
+    : plans.find((plan) => plan.badge)?.id;
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="plan-lane">
-        {plans.map((plan, index) => {
-          const { x: laneX, scale: laneScale } = laneCardTransform(
-            activeLaneIndex === -1 ? 0 : index - activeLaneIndex,
-          );
-          return (
-          <div
-            key={plan.id}
-            className="plan-lane-item"
-            data-active={plan.id === lanePlanId}
-          >
-            {/* RevealOnScroll writes its own transform, so the lane's scale
-                needs a layer of its own to sit on. */}
-            <RevealOnScroll className="h-full" delay={index * 0.06}>
-              <div
-                className="plan-lane-card"
-                style={{
-                  ["--lane-x" as string]: laneX,
-                  ["--lane-scale" as string]: laneScale,
-                }}
-              >
-                <PlanCard
-                  plan={plan}
-                  isSelected={selectedPlanId === plan.id}
-                  isFlipped={flippedPlanId === plan.id}
-                  onSelect={() => {
-                    // A peeking card comes forward on its first tap, so the
-                    // breakdown only ever flips in at full width.
-                    const comesForward =
-                      plan.id !== lanePlanId &&
-                      window.matchMedia(LANE_MEDIA_QUERY).matches;
-                    if (comesForward || selectedPlanId !== plan.id) {
-                      onPlanSelect(plan.id);
-                      setLanePlanId(plan.id);
-                      setFlippedPlanId(null);
-                      return;
-                    }
-                    setFlippedPlanId(plan.id);
-                  }}
-                  onFlipBack={() => setFlippedPlanId(null)}
-                />
-              </div>
-            </RevealOnScroll>
-          </div>
-          );
-        })}
+      <div className="plan-lane-tray">
+        <div className="plan-lane">
+          {plans.map((plan, index) => (
+            <div
+              key={plan.id}
+              className="plan-lane-item"
+              data-active={plan.id === frontPlanId}
+            >
+              {/* Cards settle in one after another, out of a blur - the row
+                  assembles itself instead of appearing all at once. */}
+              <RevealOnScroll className="h-full" delay={index * 0.12} settleFromBlur>
+                <div className="plan-lane-card">
+                  <PlanCard
+                    plan={plan}
+                    isSelected={selectedPlanId === plan.id}
+                    isFlipped={flippedPlanId === plan.id}
+                    onSelect={() => {
+                      // First tap picks the plan and brings it forward; tapping
+                      // the card that is already forward turns it over.
+                      if (selectedPlanId !== plan.id) {
+                        onPlanSelect(plan.id);
+                        setFlippedPlanId(null);
+                        return;
+                      }
+                      setFlippedPlanId(plan.id);
+                    }}
+                    onFlipBack={() => setFlippedPlanId(null)}
+                  />
+                </div>
+              </RevealOnScroll>
+            </div>
+          ))}
+        </div>
       </div>
       <RevealOnScroll>
       <CustomOfferCard
@@ -1859,7 +1841,7 @@ function CustomOfferConfirmModal({
 interface LoanResultsProps {
   formData: FormData;
   monthlyRepayment: number;
-  onAccept: () => void;
+  onAccept: (withdrawAmount: number) => void;
   /** Called instead of `onAccept` once a custom offer request has been submitted.
    *  Falls back to `onAccept` when not provided. */
   onCustomOfferSubmitted?: () => void;
@@ -1867,6 +1849,12 @@ interface LoanResultsProps {
   /** Originally requested amount. When greater than `formData.amount`, the header
    *  presents `formData.amount` as "available today" against this as the credit limit. */
   creditLimit?: number;
+  /** Amount page confirms the figure; plan page picks a repayment schedule. */
+  phase: "amount" | "plan";
+  initialWithdrawAmount?: number;
+  /** When set, the plan page is controlled by the header amount editor. */
+  amount?: number;
+  onAmountChange?: (amount: number) => void;
 }
 
 export function LoanResults({
@@ -1874,15 +1862,57 @@ export function LoanResults({
   onAccept,
   onCustomOfferSubmitted,
   creditLimit,
+  phase,
+  initialWithdrawAmount,
+  amount,
+  onAmountChange,
 }: LoanResultsProps) {
-  const stepNav = useApplyStepNav("approval");
+  const router = useRouter();
+  const isPlanPhase = phase === "plan";
   const [showModal, setShowModal] = useState(false);
   const { parts: expiryParts } = useCountdownParts();
   const isExpired = expiryParts.expired;
 
-  const planHintRef = useRef<HTMLDivElement>(null);
+  const [internalAmount, setInternalAmount] = useState(
+    () => amount ?? initialWithdrawAmount ?? formData.amount,
+  );
+  const withdrawAmount = amount ?? internalAmount;
+  const setWithdrawAmount = onAmountChange ?? setInternalAmount;
 
-  const [withdrawAmount, setWithdrawAmount] = useState(formData.amount);
+  useEffect(() => {
+    if (amount != null) return;
+    if (initialWithdrawAmount != null) {
+      storeWithdrawAmount(initialWithdrawAmount);
+      return;
+    }
+    const stored = readStoredWithdrawAmount(formData.amount);
+    if (stored != null) setWithdrawAmount(stored);
+  }, [amount, formData.amount, initialWithdrawAmount, setWithdrawAmount]);
+
+  const persistAmount = useCallback(async (amount: number) => {
+    storeWithdrawAmount(amount);
+    if (!formData.leadId) return;
+    try {
+      await fetch("/api/apply/select-amount", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadId: formData.leadId, amount }),
+      });
+    } catch {
+      // Navigation still proceeds; select-plan writes the figure again later.
+    }
+  }, [formData.leadId]);
+
+  const handleConfirmAmount = useCallback(() => {
+    storeWithdrawAmount(withdrawAmount);
+    void persistAmount(withdrawAmount);
+    onAccept(withdrawAmount);
+    router.push(`/apply/choose-plan?amount=${withdrawAmount}`);
+  }, [persistAmount, withdrawAmount, onAccept, router]);
+
+  const stepNav = useApplyStepNav(isPlanPhase ? "choosePlan" : "approval", {
+    onNext: isPlanPhase ? undefined : () => { void handleConfirmAmount(); },
+  });
   const plans = buildOfferPlans(withdrawAmount);
   const [selectedPlanId, setSelectedPlanId] = useState<OfferPlan["id"] | null>(null);
   const [customAmount, setCustomAmount] = useState("");
@@ -1943,8 +1973,8 @@ export function LoanResults({
         setIsSavingPlan(false);
       }
     }
-    onAccept();
-  }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept]);
+    onAccept(withdrawAmount);
+  }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept, withdrawAmount]);
 
   /** "Review Offer" opens a confirm-and-explain modal for custom requests instead of accepting immediately. */
   const handleReviewOfferClick = useCallback(() => {
@@ -1973,18 +2003,24 @@ export function LoanResults({
       }
     }
     setIsCustomModalOpen(false);
-    (onCustomOfferSubmitted ?? onAccept)();
-  }, [getSelectedPlanPayload, formData.leadId, onCustomOfferSubmitted, onAccept]);
+    if (onCustomOfferSubmitted) {
+      onCustomOfferSubmitted();
+      return;
+    }
+    onAccept(withdrawAmount);
+  }, [getSelectedPlanPayload, formData.leadId, onCustomOfferSubmitted, onAccept, withdrawAmount]);
 
-  const footerHint = hasNoSelection
-    ? "Select a repayment plan to continue"
-    : isCustomSelected && hasInvalidCustomInput
-      ? "Enter the loan amount and tenure for your custom plan."
-      : null;
+  const footerHint = !isPlanPhase
+    ? null
+    : hasNoSelection
+      ? "Select a repayment plan to continue"
+      : isCustomSelected && hasInvalidCustomInput
+        ? "Enter the loan amount and tenure for your custom plan."
+        : null;
 
   /** Only once the choice is actually actionable - a custom request still
    *  missing its figures keeps showing the hint instead. */
-  const selectionLabel = footerHint
+  const selectionLabel = !isPlanPhase || footerHint
     ? null
     : isCustomSelected
       ? "Your own plan selected"
@@ -2014,35 +2050,19 @@ export function LoanResults({
           </RevealOnScroll>
         )}
 
-        {/* Confirmed offer header */}
-        <div style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
-          <OfferHeader
-            formData={formData}
-            creditLimit={creditLimit}
-            withdrawAmount={withdrawAmount}
-            onWithdrawAmountChange={setWithdrawAmount}
-          />
-        </div>
+        {!isPlanPhase && (
+          <div style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
+            <OfferHeader
+              formData={formData}
+              creditLimit={creditLimit}
+              withdrawAmount={withdrawAmount}
+              onWithdrawAmountChange={setWithdrawAmount}
+            />
+          </div>
+        )}
 
-        {/* Plan picker — its own section, with the intro copy that used to live
-            in the hero now anchoring this section instead of a divider banner. */}
-        {!isExpired && (
+        {!isExpired && isPlanPhase && (
           <div className="flex flex-col gap-4 sm:gap-5">
-            <RevealOnScroll>
-            <div ref={planHintRef} className="flex flex-col gap-2.5 sm:gap-3">
-              <div
-                aria-hidden="true"
-                className="h-px w-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, transparent 0%, var(--border-medium) 12%, var(--border-medium) 88%, transparent 100%)",
-                }}
-              />
-              <h2 className="ios-type-title pb-3">
-                Choose your loan plan
-              </h2>
-            </div>
-            </RevealOnScroll>
             <PlanPicker
               selectedPlanId={selectedPlanId}
               onPlanSelect={setSelectedPlanId}
@@ -2055,15 +2075,16 @@ export function LoanResults({
           </div>
         )}
 
-        {/* Offer validity disclaimer */}
-        <RevealOnScroll>
-        <p
-          className="text-[11px] leading-relaxed"
-          style={{ color: "var(--text-secondary)", position: "relative", zIndex: 1, textAlign: "center" }}
-        >
-          {OFFER_CONFIRMATION_DISCLAIMER}
-        </p>
-        </RevealOnScroll>
+        {isPlanPhase && (
+          <RevealOnScroll>
+          <p
+            className="text-[11px] leading-relaxed"
+            style={{ color: "var(--text-secondary)", position: "relative", zIndex: 1, textAlign: "center" }}
+          >
+            {OFFER_CONFIRMATION_DISCLAIMER}
+          </p>
+          </RevealOnScroll>
+        )}
 
       </div>
       </div>
@@ -2100,12 +2121,16 @@ export function LoanResults({
           <PrimaryButton onClick={() => { window.location.href = "/"; }}>
             Start a New Application
           </PrimaryButton>
-        ) : (
+        ) : isPlanPhase ? (
           <PrimaryButton
             onClick={handleReviewOfferClick}
             disabled={hasNoSelection || hasInvalidCustomInput || isSavingPlan}
           >
             {isSavingPlan ? "Saving plan…" : "Review Offer"}
+          </PrimaryButton>
+        ) : (
+          <PrimaryButton onClick={handleConfirmAmount}>
+            Continue
           </PrimaryButton>
         )}
       </StickyFooter>

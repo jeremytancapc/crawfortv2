@@ -1,5 +1,5 @@
 /**
- * Loan offer plan math and definitions for the /apply/approval confirmation page.
+ * Loan offer plan math and definitions for the /apply/choose-plan page.
  *
  * Interest rates here are specific to the offer page - the earlier funnel uses
  * ESTIMATED_MONTHLY_INTEREST_RATE (3.92%) from lib/loan-form.ts as an estimate.

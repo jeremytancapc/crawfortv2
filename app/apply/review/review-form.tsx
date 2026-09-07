@@ -38,20 +38,20 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
     subtitle: "We need this to verify your identity and eligibility.",
   },
   5: {
-    title: "Complete your application",
-    subtitle: "Get your application status sent to you.",
+    title: "Get instant updates",
+    subtitle: "We'll WhatsApp you as soon as there's news.",
   },
   6: {
     title: "Confirm extra details",
     subtitle: "Almost done. This helps us finalise your application.",
   },
   7: {
-    title: "Complete your application",
-    subtitle: "Get your application status sent to you.",
+    title: "Get instant updates",
+    subtitle: "We'll WhatsApp you as soon as there's news.",
   },
   8: {
     title: "Confirm your info",
-    subtitle: "Make sure everything looks right before you continue.",
+    subtitle: "Check your details.",
   },
 };
 
@@ -252,7 +252,7 @@ export function ReviewForm({ initialData }: Props) {
             {stepMeta?.title ?? "Confirm your info"}
           </p>
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            {stepMeta?.subtitle ?? "Make sure everything looks right before you continue."}
+            {stepMeta?.subtitle ?? "Check your details."}
           </p>
         </div>
         <ApplyProgressPanel current={progressStep} total={APPLY_PROGRESS_TOTAL} />

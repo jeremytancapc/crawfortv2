@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
 import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
+import { SHOW_BANKRUPTCY_DECLARATION } from "@/lib/apply-progress";
 import {
   CheckCircle,
   ShieldCheck,
@@ -36,6 +37,7 @@ import {
   WhatsappLogo,
   PencilSimple,
   Check,
+  FileText,
 } from "@phosphor-icons/react";
 
 /** 1-2: loan + income · 3: Singpass vs manual · 4: identity · 8: review · 5: contact · 7: bankruptcy · 9: moneylender loans */
@@ -1837,6 +1839,80 @@ function LegalModal({
 
 // ─── Step 8 ───────────────────────────────────────────────────────────────────
 
+function DeclarationChoiceCard({
+  selected,
+  icon: Icon,
+  title,
+  subtitle,
+  onClick,
+  expanded,
+}: {
+  selected: boolean;
+  icon: React.ComponentType<{
+    size?: number;
+    weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone";
+    className?: string;
+  }>;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+  expanded?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      aria-expanded={expanded}
+      className="flex w-full items-center gap-3.5 rounded-[20px] border-[1.5px] px-4 py-[17px] text-left transition-all duration-200 active:scale-[0.99]"
+      style={{
+        borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
+        background: selected ? "var(--brand-blue-hex)" : "var(--surface-elevated)",
+      }}
+    >
+      <span
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+        style={{
+          background: selected
+            ? "color-mix(in srgb, white 16%, transparent)"
+            : "var(--surface-sunken)",
+        }}
+      >
+        <Icon
+          size={22}
+          weight="duotone"
+          className={selected ? "text-white" : "text-[var(--text-primary)]"}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className="font-display block text-[17px] leading-tight"
+          style={{ color: selected ? "white" : "var(--text-primary)" }}
+        >
+          {title}
+        </span>
+        <span
+          className="mt-0.5 block text-[13px] font-medium leading-snug"
+          style={{ color: selected ? "rgba(255,255,255,0.72)" : "var(--text-secondary)" }}
+        >
+          {subtitle}
+        </span>
+      </span>
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+        style={{
+          background: selected ? "white" : "transparent",
+          border: selected ? "none" : "1.5px solid var(--border-medium)",
+        }}
+      >
+        {selected && (
+          <Check size={15} weight="bold" className="text-[var(--brand-blue-hex)]" />
+        )}
+      </span>
+    </button>
+  );
+}
+
 export function Step7_BankruptcyDeclaration({
   formData,
   updateField,
@@ -1854,91 +1930,46 @@ export function Step7_BankruptcyDeclaration({
   const [recordExpanded, setRecordExpanded] = useState(hasRecord);
   const expanded = recordExpanded || hasRecord;
 
+  useEffect(() => {
+    if (SHOW_BANKRUPTCY_DECLARATION) return;
+    if (formData.bankruptcyDeclaration === "clear") return;
+    updateField("bankruptcyDeclaration", "clear");
+  }, [formData.bankruptcyDeclaration, updateField]);
+
+  if (!SHOW_BANKRUPTCY_DECLARATION) return null;
+
   return (
     <div>
       <div className="flex flex-col gap-5">
         <div>
-          <div className="mb-3">
-            <label className="ios-type-label block w-full text-[var(--text-primary)]">
-              Choose the one that applies to you
-            </label>
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            {/* Not bankrupt option - the answer ~99% of applicants give, so it leads and stands out */}
-            <button
-              type="button"
+          <div className="flex flex-col gap-2.5" role="group" aria-label="Bankruptcy, DRS or self-exclusion">
+            <DeclarationChoiceCard
+              selected={isClear}
+              icon={ShieldCheck}
+              title="Nothing to Declare"
+              subtitle="No bankruptcy, DRS or self-exclusion"
               onClick={() => {
                 updateField("bankruptcyDeclaration", "clear");
                 setRecordExpanded(false);
               }}
-              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-4 text-left transition-all duration-200 active:scale-[0.99]"
-              style={{
-                borderColor: isClear ? "oklch(0.55 0.15 145)" : "var(--border-subtle)",
-                background:  isClear ? "oklch(0.55 0.15 145 / 0.06)" : "var(--surface-elevated)",
-                boxShadow:   isClear ? "none" : "0 1px 2px oklch(0 0 0 / 0.04)",
-              }}
-            >
-              <span
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
-                style={{
-                  borderColor: isClear ? "oklch(0.55 0.15 145)" : "var(--border-medium)",
-                  background:  isClear ? "oklch(0.55 0.15 145)" : "transparent",
-                }}
-              >
-                {isClear && <CheckCircle size={16} weight="fill" color="white" />}
-              </span>
-              <span
-                className="ios-type-option"
-                style={{ color: isClear ? "oklch(0.40 0.12 145)" : "var(--text-primary)" }}
-              >
-                I do not have any active bankruptcy, DRS, or self-exclusion records.
-              </span>
-            </button>
+            />
 
-            {/* Generic "I have a record" option - expands to the two specific choices below */}
-            <button
-              type="button"
+            <DeclarationChoiceCard
+              selected={expanded}
+              expanded={expanded}
+              icon={FileText}
+              title="Something to declare"
+              subtitle="I have one of these to declare"
               onClick={() => {
                 setRecordExpanded(true);
                 if (formData.bankruptcyDeclaration === "clear") {
                   updateField("bankruptcyDeclaration", "");
                 }
               }}
-              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
-              style={{
-                borderColor: expanded ? "oklch(0.65 0.18 25)" : "var(--border-subtle)",
-                background:  expanded ? "oklch(0.65 0.18 25 / 0.06)" : "var(--surface-elevated)",
-              }}
-            >
-              <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
-                style={{
-                  borderColor: expanded ? "oklch(0.65 0.18 25)" : "var(--border-medium)",
-                  background:  "transparent",
-                }}
-              >
-                {expanded && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "oklch(0.65 0.18 25)" }} />}
-              </span>
-              <span
-                className="ios-type-option flex-1"
-                style={{ color: expanded ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
-              >
-                I have a bankruptcy, DRS, or self-exclusion record.
-              </span>
-              <CaretDown
-                size={14}
-                weight="bold"
-                className="shrink-0 transition-transform duration-200"
-                style={{
-                  color: expanded ? "oklch(0.65 0.18 25)" : "var(--text-tertiary)",
-                  transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                }}
-              />
-            </button>
+            />
 
             {expanded && (
-              <div className="animate-fade-up ml-3 flex flex-col gap-2 border-l-2 pl-4" style={{ borderColor: "var(--border-subtle)" }}>
+              <div className="animate-fade-up flex flex-col gap-2">
                 {/* Discharged bankrupt option - blue when selected */}
                 <button
                   type="button"
