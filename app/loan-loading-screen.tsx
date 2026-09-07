@@ -191,7 +191,7 @@ export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenPr
           >
             {STATUS_MESSAGES[statusIndex]}
           </p>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          <p className="ios-type-subtitle mt-2">
             This usually takes a few seconds.
           </p>
         </div>

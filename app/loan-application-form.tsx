@@ -180,11 +180,11 @@ function StepHeader({
           <Icon size={18} weight="duotone" className="text-brand-blue sm:hidden" />
           <Icon size={22} weight="duotone" className="text-brand-blue hidden sm:block" />
         </div>
-        <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
+        <h2 className="ios-type-title">
           {title}
         </h2>
       </div>
-      <p className="mt-3 text-base leading-relaxed text-[var(--text-secondary)] max-w-[42ch] sm:max-w-none">
+      <p className="ios-type-subtitle mt-3 max-w-[42ch] sm:max-w-none">
         {subtitle}
       </p>
     </div>
@@ -280,7 +280,7 @@ function InputField({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
-        <label className="text-base font-medium text-[var(--text-primary)]">
+        <label className="ios-type-label text-[var(--text-primary)]">
           {label}
         </label>
         {tooltip && (
@@ -329,7 +329,7 @@ function InputField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => { setTouched(true); onBlur?.(); }}
-          className={`min-w-0 flex-1 border-0 bg-transparent text-base text-[var(--text-primary)] outline-none transition-all duration-200 placeholder:text-[var(--text-tertiary)] ${
+          className={`min-w-0 flex-1 border-0 bg-transparent text-[17px] text-[var(--text-primary)] outline-none transition-all duration-200 placeholder:text-[var(--text-tertiary)] ${
             prefix ? "py-2 sm:py-3 pl-0" : "px-4 py-2 sm:py-3"
           }`}
         />
@@ -356,7 +356,7 @@ function SelectableChip({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[var(--radius-md)] border px-4 py-2.5 text-sm font-medium transition-all duration-200"
+      className="ios-type-option rounded-[var(--radius-md)] border px-4 py-2.5 transition-all duration-200"
       style={{
         borderColor: selected
           ? "var(--brand-blue-hex)"
@@ -834,7 +834,7 @@ export function Step4_Identity({
     <div>
       <div className="flex flex-col gap-3 sm:gap-5">
         <div>
-          <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
+          <label className="ios-type-label mb-2 block text-[var(--text-primary)]">
             I am a
           </label>
           <div className="flex flex-wrap gap-2">
@@ -904,7 +904,7 @@ function Step5_Employment({
 
       <div className="flex flex-col gap-5">
         <div>
-          <label className="mb-3 block text-sm font-medium text-[var(--text-primary)]">
+          <label className="ios-type-label mb-3 block text-[var(--text-primary)]">
             Employment Status
           </label>
           <div className="flex flex-wrap gap-2">
@@ -943,7 +943,7 @@ export function Step6_Contact({
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <label className="text-base font-medium text-[var(--text-primary)]">
+            <label className="ios-type-label text-[var(--text-primary)]">
               WhatsApp Mobile Number
             </label>
             <div
@@ -965,7 +965,7 @@ export function Step6_Contact({
               value={formData.mobile}
               onChange={(e) => updateField("mobile", e.target.value)}
               onBlur={() => setPhoneTouched(true)}
-              className="min-w-0 flex-1 border-0 bg-transparent py-2 sm:py-3 pl-0 text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+              className="min-w-0 flex-1 border-0 bg-transparent py-2 sm:py-3 pl-0 text-[17px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
             />
           </div>
           {phoneError && (
@@ -1058,7 +1058,7 @@ function SearchableSelect({
 
   return (
     <div className="flex flex-col gap-2" ref={containerRef}>
-      <label className="text-base font-medium text-[var(--text-primary)]">{label}</label>
+      <label className="ios-type-label text-[var(--text-primary)]">{label}</label>
       <div className="relative">
         <button
           type="button"
@@ -1859,7 +1859,7 @@ export function Step7_BankruptcyDeclaration({
       <div className="flex flex-col gap-5">
         <div>
           <div className="mb-3">
-            <label className="block w-full text-base font-medium text-[var(--text-primary)]">
+            <label className="ios-type-label block w-full text-[var(--text-primary)]">
               Choose the one that applies to you
             </label>
           </div>
@@ -1889,7 +1889,7 @@ export function Step7_BankruptcyDeclaration({
                 {isClear && <CheckCircle size={16} weight="fill" color="white" />}
               </span>
               <span
-                className="text-[15px] font-semibold leading-snug"
+                className="ios-type-option"
                 style={{ color: isClear ? "oklch(0.40 0.12 145)" : "var(--text-primary)" }}
               >
                 I do not have any active bankruptcy, DRS, or self-exclusion records.
@@ -1921,7 +1921,7 @@ export function Step7_BankruptcyDeclaration({
                 {expanded && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "oklch(0.65 0.18 25)" }} />}
               </span>
               <span
-                className="flex-1 text-sm"
+                className="ios-type-option flex-1"
                 style={{ color: expanded ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
               >
                 I have a bankruptcy, DRS, or self-exclusion record.
@@ -1959,7 +1959,7 @@ export function Step7_BankruptcyDeclaration({
                     {isDischarged && <CheckCircle size={14} weight="fill" color="white" />}
                   </span>
                   <span
-                    className="text-sm"
+                    className="ios-type-option"
                     style={{ color: isDischarged ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
                   >
                     I have previously been discharged from bankruptcy (within the last 5 years).
@@ -1969,7 +1969,7 @@ export function Step7_BankruptcyDeclaration({
                 {isDischarged && (
                   <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
                     <Warning size={16} weight="fill" className="mt-0.5 shrink-0 text-brand-blue" />
-                    <p className="text-sm text-brand-blue leading-snug">
+                    <p className="ios-type-body text-brand-blue">
                       Please bring along your bankruptcy/DRS discharge letter to the appointment.
                     </p>
                   </div>
@@ -1995,7 +1995,7 @@ export function Step7_BankruptcyDeclaration({
                     {isActive && <CheckCircle size={14} weight="fill" color="white" />}
                   </span>
                   <span
-                    className="text-sm"
+                    className="ios-type-option"
                     style={{ color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
                   >
                     I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).
@@ -2005,7 +2005,7 @@ export function Step7_BankruptcyDeclaration({
                 {isActive && (
                   <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3">
                     <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-red-500" />
-                    <p className="text-sm text-red-700 leading-snug">
+                    <p className="ios-type-body text-red-700">
                       We are currently not able to issue loans if you are not discharged from bankruptcy or DRS status.
                     </p>
                   </div>

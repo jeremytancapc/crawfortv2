@@ -808,7 +808,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[var(--accent)] text-[17px] font-semibold text-white transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-30"
+      className="ios-type-cta flex h-[52px] w-full items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-30"
     >
       {children}
     </button>

@@ -34,12 +34,12 @@ export function RejectedResult() {
         className="flex flex-col gap-4 rounded-[var(--radius-md)] px-5 py-5"
         style={{ background: "oklch(0.65 0.22 20 / 0.04)" }}
       >
-        <p className="text-sm leading-relaxed text-[var(--text-secondary)] text-center">
+        <p className="text-[17px] leading-[1.4] text-[var(--text-secondary)] text-center">
           At this time, your application does not meet our credit criteria. We
           encourage you to try again after{" "}
           <span className="font-semibold text-[var(--text-primary)]">3 months</span>.
         </p>
-        <p className="text-sm leading-relaxed text-[var(--text-secondary)] text-center">
+        <p className="text-[17px] leading-[1.4] text-[var(--text-secondary)] text-center">
           If you have any questions or need help, our team is here for you.
         </p>
       </div>

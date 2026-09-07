@@ -53,10 +53,10 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
             {/* Heading */}
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
+              <h1 className="ios-type-title">
                 Wait for our call
-              </h2>
-              <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+              </h1>
+              <p className="ios-type-body text-[var(--text-secondary)]">
                 We&apos;ve received your request for{" "}
                 <span className="font-semibold text-[var(--text-primary)]">
                   S${amount.toLocaleString()}
@@ -86,7 +86,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
             {/* What happens next */}
             <div className="flex flex-col gap-3">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">What happens next</p>
+              <p className="ios-type-option text-[var(--text-primary)]">What happens next</p>
               <ul className="flex flex-col gap-2.5">
                 {NEXT_STEPS.map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -96,7 +96,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
                       className="mt-0.5 shrink-0"
                       style={{ color: "#e07b4a" }}
                     />
-                    <span className="text-sm leading-snug text-[var(--text-secondary)]">{step}</span>
+                    <span className="ios-type-body text-[var(--text-secondary)]">{step}</span>
                   </li>
                 ))}
               </ul>
@@ -106,7 +106,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
             {/* WhatsApp - official channel for follow-up */}
             <div className="flex flex-col gap-3">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Get in touch</p>
+              <p className="ios-type-option text-[var(--text-primary)]">Get in touch</p>
               <a
                 href="https://wa.me/6560119380?text=Hi%20I%20just%20requested%20a%20custom%20loan%20offer"
                 target="_blank"
@@ -115,7 +115,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
               >
                 <WhatsappLogo size={22} weight="duotone" className="shrink-0 text-brand-blue" />
                 <div>
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">WhatsApp us</p>
+                  <p className="ios-type-option text-[var(--text-primary)]">WhatsApp us</p>
                   <p className="text-xs text-[var(--text-tertiary)]">6011 9380 · Mon - Sat, 10:30am - 7:30pm</p>
                 </div>
               </a>

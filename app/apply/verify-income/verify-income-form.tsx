@@ -151,29 +151,11 @@ export function VerifyIncomeForm({
     <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet>
-      <div
-        className={
-          showResults
-            ? "shrink-0 px-5 pb-3 pt-5"
-            : "shrink-0 px-5 pb-6 pt-7"
-        }
-      >
-        <h1
-          className={
-            showResults
-              ? "text-[clamp(1.375rem,4.6vh,1.875rem)] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]"
-              : "text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]"
-          }
-        >
+      <div className="shrink-0 px-5 pb-6 pt-7">
+        <h1 className="ios-type-title">
           {showResults ? "Confirm your income" : "Upload your income proof"}
         </h1>
-        <p
-          className={
-            showResults
-              ? "mt-1 text-[clamp(0.9375rem,2.2vh,1.0625rem)] leading-[1.4] text-[var(--text-secondary)]"
-              : "mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]"
-          }
-        >
+        <p className="ios-type-subtitle mt-1.5">
           {showResults
             ? "Check the last 3 months we read from your documents."
             : "We accept payslips, income statements and bank statements."}

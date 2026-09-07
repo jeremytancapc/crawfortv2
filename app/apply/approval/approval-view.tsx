@@ -40,10 +40,10 @@ export function ApprovalView({ formData }: Props) {
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[var(--text-primary)]">
+        <h1 className="ios-type-title">
           Confirm your loan amount
         </h1>
-        <p className="mt-1.5 text-[17px] leading-[1.4] text-[var(--text-secondary)]">
+        <p className="ios-type-subtitle mt-1.5">
           Choose the loan amount that works best for you.
         </p>
       </motion.div>

@@ -197,7 +197,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
           href={MOBILE_APP_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-full px-4 text-[15px] font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+          className="ios-type-cta mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-full px-4 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
           style={{ background: "var(--brand-blue-hex)" }}
         >
           Get the app
