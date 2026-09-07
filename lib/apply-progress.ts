@@ -7,6 +7,12 @@
  */
 export const SHOW_INCOME_STEP = false;
 
+/**
+ * Flip SHOW_BANKRUPTCY_DECLARATION to put the Nothing / Something to declare
+ * cards back on the complete-application step.
+ */
+export const SHOW_BANKRUPTCY_DECLARATION = false;
+
 const OFFSET = SHOW_INCOME_STEP ? 1 : 0;
 
 export const APPLY_PROGRESS = {
@@ -16,11 +22,12 @@ export const APPLY_PROGRESS = {
   verifyOrIdentity: 3 + OFFSET,
   reviewInfo: 4 + OFFSET,
   completeApp: 5 + OFFSET,
-  choosePlan: 6 + OFFSET,
-  confirmTerms: 7 + OFFSET,
-  book: 8 + OFFSET,
-  booked: 9 + OFFSET,
-  visit: 10 + OFFSET,
+  confirmAmount: 6 + OFFSET,
+  choosePlan: 7 + OFFSET,
+  confirmTerms: 8 + OFFSET,
+  book: 9 + OFFSET,
+  booked: 10 + OFFSET,
+  visit: 11 + OFFSET,
 } as const;
 
 /** Last step is attending the appointment in person. */
@@ -86,10 +93,17 @@ const APPLY_PROGRESS_HINTS = new Map<number, ApplyProgressHint>([
     },
   ],
   [
-    APPLY_PROGRESS.choosePlan,
+    APPLY_PROGRESS.confirmAmount,
     {
       title: "Confirm your loan amount",
-      detail: "Choose the amount and repayment plan that fits.",
+      detail: "Choose the amount that works for you.",
+    },
+  ],
+  [
+    APPLY_PROGRESS.choosePlan,
+    {
+      title: "Choose your loan plan",
+      detail: "Pick the repayment plan that fits.",
     },
   ],
   [

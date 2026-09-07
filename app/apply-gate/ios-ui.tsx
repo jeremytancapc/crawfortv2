@@ -22,8 +22,7 @@ import {
 import { useApplyProgressStep, usePublishApplyProgress } from "@/lib/apply-progress-store";
 
 /**
- * Full-bleed brand-blue bar: wordmark on the left, progress meter on the right
- * like a status-bar battery. Mobile apply chrome only.
+ * Full-bleed brand-blue bar with a centered wordmark. Mobile apply chrome only.
  */
 export function MobileGateHeader({
   progressStep,
@@ -34,19 +33,18 @@ export function MobileGateHeader({
   usePublishApplyProgress(progressStep ?? null);
 
   return (
-    <header className="ios-apply-gutter relative z-10 flex shrink-0 items-center bg-[var(--brand-blue-hex)] py-4 lg:hidden">
+    <header className="ios-apply-gutter relative z-10 flex shrink-0 items-center justify-center bg-[var(--brand-blue-hex)] py-4 lg:hidden">
       <Link
         href="/"
-        className="flex min-h-11 min-w-0 items-center"
+        className="flex min-h-11 min-w-0 items-center justify-center"
         aria-label="Crawfort home"
       >
-        {/* Scales down rather than pushing the badge out on narrow phones. */}
         <Image
           src="/images/crawfort-white-color-dot.png"
           alt="Crawfort"
           width={1261}
           height={155}
-          className="h-5 w-auto max-w-full object-contain object-left"
+          className="h-5 w-auto max-w-full object-contain object-center"
           priority
         />
       </Link>
@@ -100,11 +98,17 @@ export function ApplyIosShell({
   sidebarTitle,
   sidebarSubtitle,
   progressStep,
+  wideContent = false,
   children,
 }: {
   sidebarTitle: string;
   sidebarSubtitle: string;
   progressStep?: number;
+  /** Lets a step run wider than the form column on large screens. Every step
+   *  that asks one question at a time reads better in a phone-width column, but
+   *  a step whose whole job is comparing three cards side by side has nothing
+   *  to gain from leaving two thirds of a desktop empty. */
+  wideContent?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -135,8 +139,16 @@ export function ApplyIosShell({
       </aside>
 
       <main className="flex flex-1 flex-col overflow-x-clip">
-        <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
-          <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
+        <div
+          className={`flex flex-1 flex-col lg:justify-start lg:py-10 ${
+            wideContent ? "lg:px-8 xl:px-10" : "lg:px-12 xl:px-20"
+          }`}
+        >
+          <div
+            className={`flex w-full flex-1 flex-col lg:mx-auto lg:flex-none ${
+              wideContent ? "lg:max-w-[1040px]" : "lg:max-w-[520px]"
+            }`}
+          >
             <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
@@ -151,7 +163,7 @@ export function ApplyIosShell({
   );
 }
 
-/** Percent never reads 0 or a premature 100 — the visit is the last 10%. */
+/** Percent never reads 0 or a premature 100 — the visit is the last step. */
 function progressPercent(current: number, total: number): number {
   const ratio = Math.min(1, Math.max(0, current / total));
   return current >= total ? 100 : Math.min(99, Math.max(1, Math.round(ratio * 100)));

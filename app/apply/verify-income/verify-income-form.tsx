@@ -158,7 +158,7 @@ export function VerifyIncomeForm({
         <p className="ios-type-subtitle mt-1.5">
           {showResults
             ? "Check the last 3 months we read from your documents."
-            : "We accept payslips, income statements and bank statements."}
+            : "Payslips, income statements and bank statements."}
         </p>
       </div>
 

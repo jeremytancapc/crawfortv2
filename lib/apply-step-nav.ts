@@ -8,6 +8,7 @@ export type ApplyStepId =
   | "review"
   | "pending"
   | "approval"
+  | "choosePlan"
   | "customReceived"
   | "accept"
   | "book"
@@ -23,6 +24,7 @@ export const APPLY_STEP_HREF: Record<ApplyStepId, string> = {
   review: "/apply/review",
   pending: "/apply/pending",
   approval: "/apply/approval",
+  choosePlan: "/apply/choose-plan",
   customReceived: "/apply/custom-received",
   accept: "/apply/accept",
   book: "/apply/book",
@@ -35,8 +37,8 @@ const GATE_RESUME_KEY = "crawfort-apply-gate-resume";
 /** Linear apply path. Side branches (pending, custom offer) are handled separately. */
 export function applyStepOrder(): ApplyStepId[] {
   return SHOW_INCOME_STEP
-    ? ["amount", "income", "singpass", "verify", "review", "approval", "accept", "book", "booked"]
-    : ["amount", "singpass", "verify", "review", "approval", "accept", "book", "booked"];
+    ? ["amount", "income", "singpass", "verify", "review", "approval", "choosePlan", "accept", "book", "booked"]
+    : ["amount", "singpass", "verify", "review", "approval", "choosePlan", "accept", "book", "booked"];
 }
 
 export function neighborApplySteps(id: ApplyStepId): {
@@ -47,7 +49,7 @@ export function neighborApplySteps(id: ApplyStepId): {
     return { prev: "review", next: "approval" };
   }
   if (id === "customReceived") {
-    return { prev: "approval", next: "accept" };
+    return { prev: "choosePlan", next: "accept" };
   }
   if (id === "review") {
     const next: ApplyStepId = hasVisitedApplyStep("approval")

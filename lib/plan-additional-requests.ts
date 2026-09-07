@@ -1,5 +1,5 @@
 /**
- * Cookie bridge for additional plan requests selected on /apply/approval,
+ * Cookie bridge for additional plan requests selected on /apply/choose-plan,
  * so /apply/accept can display them on the PlanSummaryCard.
  */
 
