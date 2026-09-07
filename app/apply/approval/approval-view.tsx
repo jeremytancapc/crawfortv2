@@ -66,7 +66,7 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
       wideContent={isPlan}
     >
       <motion.div
-        className="shrink-0 px-5 pb-6 pt-7"
+        className="min-w-0 shrink-0 px-5 pb-6 pt-7"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}

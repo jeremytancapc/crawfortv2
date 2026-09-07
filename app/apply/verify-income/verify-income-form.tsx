@@ -369,7 +369,7 @@ function IncomeDocsHint() {
       {open ? (
         <span
           role="tooltip"
-          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2.5rem))] rounded-[var(--radius-md)] bg-gray-900 px-3.5 py-3 text-left shadow-2xl"
+          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,100%)] rounded-[var(--radius-md)] bg-gray-900 px-3.5 py-3 text-left shadow-2xl"
         >
           <ul className="flex list-disc flex-col gap-1.5 pl-4 text-[12px] leading-snug text-white">
             {INCOME_DOC_HINTS.map((item) => (

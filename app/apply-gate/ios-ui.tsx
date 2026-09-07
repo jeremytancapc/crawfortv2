@@ -138,14 +138,14 @@ export function ApplyIosShell({
         <SidebarTrustFeatures />
       </aside>
 
-      <main className="flex flex-1 flex-col overflow-x-clip">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
         <div
-          className={`flex flex-1 flex-col lg:justify-start lg:py-10 ${
+          className={`flex min-w-0 flex-1 flex-col lg:justify-start lg:py-10 ${
             wideContent ? "lg:px-8 xl:px-10" : "lg:px-12 xl:px-20"
           }`}
         >
           <div
-            className={`flex w-full flex-1 flex-col lg:mx-auto lg:flex-none ${
+            className={`flex min-w-0 w-full flex-1 flex-col lg:mx-auto lg:flex-none ${
               wideContent ? "lg:max-w-[1040px]" : "lg:max-w-[520px]"
             }`}
           >
@@ -298,7 +298,7 @@ export function ApplyProgressBadge({
         <div
           role="tooltip"
           id={detailId}
-          className="absolute right-0 top-full z-40 mt-2.5 w-[min(17.5rem,calc(100vw-2.5rem))] animate-fade-up rounded-[16px] bg-[var(--surface-elevated)] p-3.5 text-left shadow-[0_14px_36px_rgba(0,0,20,0.22)] ring-1 ring-black/[0.06]"
+          className="absolute right-0 top-full z-40 mt-2.5 w-[17.5rem] animate-fade-up rounded-[16px] bg-[var(--surface-elevated)] p-3.5 text-left shadow-[0_14px_36px_rgba(0,0,20,0.22)] ring-1 ring-black/[0.06]"
         >
           <span
             className="absolute -top-1 right-4 h-3 w-3 rotate-45 rounded-[3px] bg-[var(--surface-elevated)]"
@@ -376,7 +376,7 @@ function ApplyProgressFooterStrip({
   return (
     <div
       ref={wrapRef}
-      className="relative mx-auto w-[min(22.5rem,calc(100vw-2.5rem))] lg:hidden"
+      className="relative mx-auto w-full max-w-[22.5rem] lg:hidden"
     >
       <button
         type="button"
@@ -431,7 +431,7 @@ function ApplyProgressFooterStrip({
         <div
           role="tooltip"
           id={detailId}
-          className="absolute bottom-full left-1/2 z-40 mb-2.5 w-[min(17.5rem,calc(100vw-2.5rem))] -translate-x-1/2 animate-fade-up rounded-[16px] bg-[var(--surface-elevated)] p-3.5 text-left shadow-[0_14px_36px_rgba(0,0,20,0.22)] ring-1 ring-black/[0.06]"
+          className="absolute bottom-full left-1/2 z-40 mb-2.5 w-[min(17.5rem,100%)] -translate-x-1/2 animate-fade-up rounded-[16px] bg-[var(--surface-elevated)] p-3.5 text-left shadow-[0_14px_36px_rgba(0,0,20,0.22)] ring-1 ring-black/[0.06]"
         >
           <span
             className="absolute -bottom-1 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 rounded-[3px] bg-[var(--surface-elevated)]"

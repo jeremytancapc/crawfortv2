@@ -1031,6 +1031,8 @@ body:has(.theme-ios) {
 .ios-card {
   background: var(--surface-elevated);
   border-radius: var(--radius-card);
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -1138,12 +1140,15 @@ body:has(.theme-ios) {
 
 /* The whole arc box is the drag surface; stop the page scrolling under a
    finger and stop long-press callouts on iOS. */
-.credit-gauge,
-.credit-gauge-arc {
-  overflow: visible;
+.credit-gauge {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .credit-gauge-arc {
+  max-width: 100%;
+  min-width: 0;
   touch-action: none;
   cursor: grab;
   -webkit-touch-callout: none;
