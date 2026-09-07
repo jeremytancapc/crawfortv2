@@ -63,9 +63,9 @@ function ApplyLandingLayout({
         <SidebarTrustFeatures />
       </aside>
 
-      <main className="flex flex-1 flex-col overflow-x-clip">
-        <div className="flex flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
-          <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+        <div className="flex min-w-0 flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
+          <div className="flex min-w-0 w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
             <LoanApplicationForm initialApplySession={initialGateSession} />
           </div>
         </div>

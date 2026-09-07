@@ -369,12 +369,12 @@ export function CreditGauge({
   };
 
   return (
-    <div className="credit-gauge relative mx-auto w-[calc(100%+2rem)] max-w-[440px] -mx-4" data-disabled={disabled}>
+    <div className="credit-gauge relative mx-auto w-full min-w-0 max-w-full" data-disabled={disabled}>
       <div className="relative">
       <svg
         ref={svgRef}
         viewBox={`${-VIEW_PAD_X} ${-VIEW_PAD_TOP} ${VIEW_W + VIEW_PAD_X * 2} ${VIEW_H + VIEW_PAD_TOP}`}
-        className="credit-gauge-arc block h-auto w-full select-none"
+        className="credit-gauge-arc block h-auto w-full max-w-full min-w-0 select-none"
         aria-hidden="true"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

@@ -251,8 +251,8 @@ function OfferHeader({
        below as rows of the same card. */
     <RevealOnScroll>
       <div className="ios-card">
-        <div className="flex flex-col items-center px-5 pb-5 pt-6">
-          <div className="w-full">
+        <div className="flex w-full min-w-0 flex-col items-center px-5 pb-5 pt-6">
+          <div className="w-full min-w-0">
             <CreditGauge
               value={withdrawAmount}
               maxToday={maxWithdraw}
@@ -1944,8 +1944,8 @@ export function LoanResults({
 
   return (
     <>
-      <div className="flex-1 px-5 pb-8">
-      <div className="relative z-[1] flex flex-col gap-5">
+      <div className="min-w-0 flex-1 px-5 pb-8">
+      <div className="relative z-[1] flex min-w-0 flex-col gap-5">
 
         {/* Expiry notice only. The confirmed-offer heading lives in the page
             shell at every breakpoint, so repeating it here would double it up. */}
@@ -1964,7 +1964,7 @@ export function LoanResults({
         )}
 
         {!isPlanPhase && (
-          <div style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
+          <div className="min-w-0" style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
             <OfferHeader
               formData={formData}
               creditLimit={creditLimit}
