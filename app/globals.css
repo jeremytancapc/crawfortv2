@@ -1289,15 +1289,18 @@ input[type="range"].ios-slider::-moz-range-thumb {
   border-radius: 20px 20px 0 0;
 }
 
-/* Keep last page content above the progress chip; spacer matches the sheet. */
-.ios-apply-sheet:has(.ios-sticky-footer--progress) > .flex-1:not(.ios-apply-fit) {
+/* The sheet is a locked 100dvh column. The flex-1 child has to be the
+   scroller - including after a plan is picked, when the footer is --bannered
+   instead of --progress. */
+.ios-apply-sheet:has(.ios-sticky-footer) > .flex-1:not(.ios-apply-fit) {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 5rem;
 }
 
-.ios-apply-sheet:has(.ios-sticky-footer--progress) > .ios-apply-fit {
+.ios-apply-sheet:has(.ios-sticky-footer) > .ios-apply-fit {
   min-height: 0;
   overflow: hidden;
   padding-bottom: 0.75rem;
