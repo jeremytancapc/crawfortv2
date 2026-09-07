@@ -16,8 +16,10 @@ import { useInView, useReducedMotion } from "motion/react";
 
 const VIEW_W = 360;
 const VIEW_H = 200;
-const VIEW_PAD_X = 38;
-const VIEW_PAD_TOP = 14;
+const VIEW_PAD_X = 52;
+const VIEW_PAD_TOP = 28;
+const VIEW_BOX_W = VIEW_W + VIEW_PAD_X * 2;
+const VIEW_BOX_H = VIEW_H + VIEW_PAD_TOP;
 const CX = 180;
 const CY = 178;
 const OUTER_R = 160;
@@ -78,8 +80,7 @@ const TICKS: Tick[] = Array.from({ length: TICK_COUNT }, (_, i) => {
 
 /** Map a pointer position (in the SVG's client box) to a 0..1 share of the arc. */
 function pointerToFraction(clientX: number, clientY: number, rect: DOMRect): number {
-  const boxW = VIEW_W + VIEW_PAD_X * 2;
-  const scale = rect.width / boxW;
+  const scale = rect.width / VIEW_BOX_W;
   const dx = clientX - (rect.left + (VIEW_PAD_X + CX) * scale);
   const dy = rect.top + (VIEW_PAD_TOP + CY) * scale - clientY;
   let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -160,16 +161,31 @@ function markLabelStyle(t: number): { x: number; y: number; anchor: "start" | "m
   const deg = angleAt(t);
   if (t < 0.08) {
     const end = polar(OUTER_R, 180);
-    return { x: end.x - 7, y: end.y, anchor: "end" };
+    return { x: end.x - 8, y: end.y, anchor: "end" };
   }
   if (t > 0.92) {
     const end = polar(OUTER_R, 0);
-    return { x: end.x + 7, y: end.y, anchor: "start" };
+    return { x: end.x + 8, y: end.y, anchor: "start" };
   }
-  const point = polar(OUTER_R + 13, deg);
-  if (t < 0.38) return { x: point.x - 1, y: point.y, anchor: "end" };
-  if (t > 0.62) return { x: point.x + 1, y: point.y, anchor: "start" };
-  return { x: point.x, y: point.y - 1, anchor: "middle" };
+  const point = polar(OUTER_R + 20, deg);
+  if (t < 0.38) return { x: point.x - 2, y: point.y, anchor: "end" };
+  if (t > 0.62) return { x: point.x + 2, y: point.y, anchor: "start" };
+  return { x: point.x, y: point.y - 3, anchor: "middle" };
+}
+
+/** CSS box for an HTML landmark - SVG text scales with the viewBox and
+ *  shrinks to ~6px on a phone-width gauge. */
+function markLabelBox(t: number): { left: string; top: string; transform: string } {
+  const { x, y, anchor } = markLabelStyle(t);
+  const left = ((x + VIEW_PAD_X) / VIEW_BOX_W) * 100;
+  const top = ((y + VIEW_PAD_TOP) / VIEW_BOX_H) * 100;
+  const transform =
+    anchor === "end"
+      ? "translate(-100%, -50%)"
+      : anchor === "start"
+        ? "translate(0, -50%)"
+        : "translate(-50%, -50%)";
+  return { left: `${left}%`, top: `${top}%`, transform };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -373,7 +389,7 @@ export function CreditGauge({
       <div className="relative">
       <svg
         ref={svgRef}
-        viewBox={`${-VIEW_PAD_X} ${-VIEW_PAD_TOP} ${VIEW_W + VIEW_PAD_X * 2} ${VIEW_H + VIEW_PAD_TOP}`}
+        viewBox={`${-VIEW_PAD_X} ${-VIEW_PAD_TOP} ${VIEW_BOX_W} ${VIEW_BOX_H}`}
         className="credit-gauge-arc block h-auto w-full max-w-full min-w-0 select-none"
         aria-hidden="true"
         onPointerDown={handlePointerDown}
@@ -438,7 +454,6 @@ export function CreditGauge({
           const deg = angleAt(mark.t);
           const inner = polar(MAJOR_INNER_R, deg);
           const outer = polar(MAJOR_OUTER_R, deg);
-          const label = markLabelStyle(mark.t);
           const stroke = mark.isLocked
             ? "rgba(60, 60, 67, 0.45)"
             : mark.isApproved
@@ -455,21 +470,6 @@ export function CreditGauge({
                 strokeWidth={mark.isApproved ? 2.75 : 2}
                 strokeLinecap="round"
               />
-              <text
-                x={label.x}
-                y={label.y}
-                textAnchor={label.anchor}
-                dominantBaseline="middle"
-                fill={mark.isLocked ? "var(--text-tertiary)" : "var(--text-primary)"}
-                style={{
-                  fontSize: 10,
-                  fontWeight: mark.isApproved ? 700 : 600,
-                  letterSpacing: "-0.02em",
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {mark.label}
-              </text>
             </g>
           );
         })}
@@ -496,6 +496,30 @@ export function CreditGauge({
           </g>
         )}
       </svg>
+
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        {scaleMarks.map((mark) => {
+          const box = markLabelBox(mark.t);
+          return (
+            <span
+              key={mark.label}
+              className={`absolute whitespace-nowrap text-[14px] leading-none tracking-[-0.02em] tabular-nums ${
+                mark.isApproved ? "font-bold" : "font-semibold"
+              }`}
+              style={{
+                left: box.left,
+                top: box.top,
+                transform: box.transform,
+                color: mark.isLocked
+                  ? "var(--text-tertiary)"
+                  : "var(--text-primary)",
+              }}
+            >
+              {mark.label}
+            </span>
+          );
+        })}
+      </div>
 
       {/* Centre readout. Everything here lets pointer events fall through to
           the arc except the controls themselves - a full-width wrapper that
