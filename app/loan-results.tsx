@@ -10,7 +10,6 @@ import {
   X,
   TrendUp,
   CheckCircle,
-  SealCheck,
   CaretDown,
   PencilSimple,
   CalendarBlank,
@@ -220,51 +219,12 @@ interface OfferCardProps {
  *  (see credit-gauge.tsx); a 10px dot needs more ink to read as the same grey. */
 const GAUGE_LOCKED_SWATCH = "rgba(60, 60, 67, 0.28)";
 
-/** --offer-accent is tuned for icons; text on its tinted chip needs to go darker. */
-const PRE_APPROVED_TEXT = "oklch(0.48 0.08 176)";
-
-/** One of the two figures floating on the arc's end ticks. The dot ties the
- *  number back to the tick colour it describes. */
-function GaugeStat({
-  dotColor,
-  label,
-  value,
-}: {
-  dotColor: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div
-      className="flex flex-col gap-[3px] rounded-[9px] px-2 py-1.5"
-      style={{
-        background: "var(--surface-primary)",
-        boxShadow:
-          "0 1px 4px rgba(60, 60, 67, 0.1), inset 0 0 0 1px rgba(60, 60, 67, 0.07)",
-      }}
-    >
-      <span className="flex items-center gap-1 text-[9px] font-medium uppercase leading-none tracking-[0.04em] text-[var(--text-tertiary)]">
-        <span
-          aria-hidden="true"
-          className="size-[5px] shrink-0 rounded-full"
-          style={{ background: dotColor }}
-        />
-        {label}
-      </span>
-      <span className="text-[12px] font-bold leading-none tabular-nums text-[var(--text-primary)]">
-        {value}
-      </span>
-    </div>
-  );
-}
-
 function OfferHeader({
   formData,
   creditLimit,
   withdrawAmount,
   onWithdrawAmountChange,
 }: OfferCardProps) {
-  const [isExplainerOpen, setIsExplainerOpen] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
 
@@ -292,15 +252,7 @@ function OfferHeader({
     <RevealOnScroll>
       <div className="ios-card">
         <div className="flex flex-col items-center px-5 pb-5 pt-6">
-          <span
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none"
-            style={{ background: "var(--offer-accent-ring)", color: PRE_APPROVED_TEXT }}
-          >
-            <SealCheck size={13} weight="fill" />
-            Pre-approved
-          </span>
-
-          <div className="mt-4 w-full">
+          <div className="w-full">
             <CreditGauge
               value={withdrawAmount}
               maxToday={maxWithdraw}
@@ -313,11 +265,9 @@ function OfferHeader({
             >
               {({ value: displayValue, isIntro }) => (
               <div className="flex w-full flex-col items-center">
-              <span className="mt-0.5 text-center text-[11px] font-bold uppercase leading-none tracking-[0.12em] text-[var(--text-tertiary)]">
-                Withdraw today
+              <span className="rounded-full bg-[var(--brand-blue-hex)] px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.1em] text-white">
+                Approved amount
               </span>
-              {/* Dashed rule + pencil: without them the figure reads as a
-                  headline rather than a field you can tap and retype. */}
               <div
                 className="ios-display-amount mt-1.5 flex items-baseline justify-center gap-1 pb-1 leading-none"
                 style={
@@ -359,7 +309,6 @@ function OfferHeader({
                   }}
                 />
               </div>
-              {/* Kept short: it has to clear the two foot cards either side. */}
               {canAdjust && (
                 <p className="mt-1.5 flex items-center gap-1 text-[10px] leading-none text-[var(--text-tertiary)]">
                   <HandTap size={12} weight="fill" className="shrink-0 text-[var(--accent)]" />
@@ -369,27 +318,6 @@ function OfferHeader({
               </div>
               )}
             </CreditGauge>
-          </div>
-
-          {/* Sit under the arc's two ends, so each figure lines up with the
-              point on the scale it describes. */}
-          <div
-            className={`mt-1 flex w-full max-w-[300px] gap-2 ${
-              hasStructuralReserve ? "justify-between" : "justify-center"
-            }`}
-          >
-            {hasStructuralReserve && (
-              <GaugeStat
-                dotColor="var(--brand-blue-hex)"
-                label="Approved"
-                value={formatCurrency(maxWithdraw)}
-              />
-            )}
-            <GaugeStat
-              dotColor={GAUGE_LOCKED_SWATCH}
-              label="Total limit"
-              value={formatCurrency(limit)}
-            />
           </div>
         </div>
 
@@ -404,59 +332,44 @@ function OfferHeader({
         </div>
 
         {hasStructuralReserve && (
-          <div style={{ borderTop: "1px solid var(--separator)" }}>
-            <button
-              type="button"
-              onClick={() => setIsExplainerOpen((open) => !open)}
-              aria-expanded={isExplainerOpen}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
-            >
-              <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
-                How your credit limit works
-              </span>
-              <CaretDown
-                size={14}
-                weight="bold"
-                className="shrink-0 text-[var(--text-tertiary)] transition-transform duration-200"
-                style={{ transform: isExplainerOpen ? "rotate(180deg)" : "none" }}
-              />
-            </button>
-            {isExplainerOpen && (
-              /* Swatches match the gauge ticks above, so the explainer reads as
-                 a key to the arc rather than a wall of text. */
-              <dl className="flex flex-col gap-3 px-4 pb-4">
-                {[
-                  {
-                    color: "var(--brand-blue-hex)",
-                    term: "Approved",
-                    detail:
-                      "Paid into your bank after you finish every step, including your in-person appointment.",
-                  },
-                  {
-                    color: GAUGE_LOCKED_SWATCH,
-                    term: "Unlocks later",
-                    detail:
-                      "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
-                  },
-                ].map((row) => (
-                  <div key={row.term} className="flex items-start gap-2.5">
-                    <span
-                      aria-hidden="true"
-                      className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ background: row.color }}
-                    />
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <dt className="text-[14px] font-semibold leading-tight text-[var(--text-primary)]">
-                        {row.term}
-                      </dt>
-                      <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-                        {row.detail}
-                      </dd>
-                    </div>
+          <div className="px-4 pb-4 pt-3.5" style={{ borderTop: "1px solid var(--separator)" }}>
+            <p className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
+              How your credit limit works
+            </p>
+            {/* Swatches match the gauge ticks above, so the explainer reads as
+                a key to the arc rather than a wall of text. */}
+            <dl className="mt-3 flex flex-col gap-3">
+              {[
+                {
+                  color: "var(--brand-blue-hex)",
+                  term: "Approved",
+                  detail:
+                    "Paid into your bank after you finish every step, including your in-person appointment.",
+                },
+                {
+                  color: GAUGE_LOCKED_SWATCH,
+                  term: "Unlocks later",
+                  detail:
+                    "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
+                },
+              ].map((row) => (
+                <div key={row.term} className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: row.color }}
+                  />
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <dt className="text-[14px] font-semibold leading-tight text-[var(--text-primary)]">
+                      {row.term}
+                    </dt>
+                    <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+                      {row.detail}
+                    </dd>
                   </div>
-                ))}
-              </dl>
-            )}
+                </div>
+              ))}
+            </dl>
           </div>
         )}
       </div>
