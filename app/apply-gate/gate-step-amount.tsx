@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LoanFormData as FormData } from "@/lib/loan-form";
 import {
   TENURE_OPTIONS,
@@ -51,9 +51,13 @@ function nearestTenureIndex(tenure: number): number {
 export function GateStepAmount({
   formData,
   updateField,
+  urgencyNeedsInput = false,
+  attentionNonce = 0,
 }: {
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
+  urgencyNeedsInput?: boolean;
+  attentionNonce?: number;
 }) {
   const [amountRaw, setAmountRaw] = useState(String(formData.amount));
   const [amountFocused, setAmountFocused] = useState(false);
@@ -108,6 +112,16 @@ export function GateStepAmount({
       })),
     [],
   );
+
+  useEffect(() => {
+    if (!urgencyNeedsInput) return;
+    const el = document.getElementById("gate-field-urgency");
+    if (!el) return;
+    el.classList.remove("is-zooming");
+    void el.offsetWidth;
+    el.classList.add("is-zooming");
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [urgencyNeedsInput, attentionNonce]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -183,14 +197,28 @@ export function GateStepAmount({
         </Card>
       </section>
 
-      <section>
+      <section
+        id="gate-field-urgency"
+        className={urgencyNeedsInput ? "ios-field-needs-input" : undefined}
+      >
         <SectionLabel>Your preferred payout time</SectionLabel>
         <SegmentedControl<UrgencyValue>
           options={urgencyOptions}
           value={formData.urgency as UrgencyValue | ""}
           onChange={(value) => updateField("urgency", value)}
           ariaLabel="When do you need the funds"
+          invalid={urgencyNeedsInput}
+          describedBy={urgencyNeedsInput ? "gate-urgency-hint" : undefined}
         />
+        {urgencyNeedsInput ? (
+          <p
+            id="gate-urgency-hint"
+            className="mt-2 px-1 text-[13px] font-medium leading-snug text-[#D70015]"
+            role="alert"
+          >
+            Choose a preferred payout time to continue.
+          </p>
+        ) : null}
       </section>
     </div>
   );

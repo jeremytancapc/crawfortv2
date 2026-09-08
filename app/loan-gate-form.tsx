@@ -73,15 +73,14 @@ export function LoanGateForm({
   }));
   const [incomeHighWarningShown, setIncomeHighWarningShown] = useState(false);
   const [incomeConfirmed, setIncomeConfirmed] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [urgencyNeedsInput, setUrgencyNeedsInput] = useState(false);
+  const [attentionNonce, setAttentionNonce] = useState(0);
   const [step3RedirectPending, setStep3RedirectPending] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const updateField = useCallback(
     <K extends keyof FormData>(key: K, value: FormData[K]) => {
       if (key === "monthlyIncome") { setIncomeHighWarningShown(false); setIncomeConfirmed(false); }
+      if (key === "urgency" && value) setUrgencyNeedsInput(false);
       setFormData((prev) => ({ ...prev, [key]: value }));
     },
     [],
@@ -152,6 +151,11 @@ export function LoanGateForm({
   );
 
   const handleNext = useCallback(() => {
+    if (step === 1 && formData.urgency === "") {
+      setUrgencyNeedsInput(true);
+      setAttentionNonce((n) => n + 1);
+      return;
+    }
     if (step === 2) {
       const incomeNum = parseInt(formData.monthlyIncome, 10);
       if (!Number.isNaN(incomeNum) && incomeNum > 20000 && !incomeHighWarningShown) {
@@ -159,12 +163,21 @@ export function LoanGateForm({
         return;
       }
     }
+    if (!canProceed) return;
     if (step < GATE_LAST_STEP) {
       const next = !SHOW_INCOME_STEP && step + 1 === 2 ? 3 : step + 1;
       navigateTo(next);
       scrollToTop();
     }
-  }, [step, formData.monthlyIncome, incomeHighWarningShown, navigateTo, scrollToTop]);
+  }, [
+    step,
+    formData.urgency,
+    formData.monthlyIncome,
+    incomeHighWarningShown,
+    canProceed,
+    navigateTo,
+    scrollToTop,
+  ]);
 
   const stepMeta = GATE_STEP_META[step];
   const gateStepId = step === 1 ? "amount" : step === 2 ? "income" : "singpass";
@@ -181,19 +194,11 @@ export function LoanGateForm({
       }
     },
     onNext: () => {
-      if (step === 1) {
-        navigateTo(SHOW_INCOME_STEP ? 2 : 3);
-        scrollToTop();
-        return;
-      }
-      if (step === 2) {
-        navigateTo(3);
-        scrollToTop();
-        return;
-      }
       if (step === 3) {
         router.push("/apply/verify-income");
+        return;
       }
+      handleNext();
     },
   });
   const stepNav = {
@@ -233,7 +238,12 @@ export function LoanGateForm({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
         <div key={step} className="animate-fade-up">
           {step === 1 && (
-            <GateStepAmount formData={formData} updateField={updateField} />
+            <GateStepAmount
+              formData={formData}
+              updateField={updateField}
+              urgencyNeedsInput={urgencyNeedsInput}
+              attentionNonce={attentionNonce}
+            />
           )}
           {step === 2 && (
             <Step2_SelfDeclaredIncome
@@ -279,7 +289,7 @@ export function LoanGateForm({
         }
       >
         {step === 3 ? undefined : (
-          <PrimaryButton onClick={handleNext} disabled={mounted && !canProceed}>
+          <PrimaryButton onClick={handleNext} disabled={step3RedirectPending}>
             Continue
           </PrimaryButton>
         )}

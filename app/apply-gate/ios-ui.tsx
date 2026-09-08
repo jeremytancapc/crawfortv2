@@ -636,7 +636,7 @@ export function CardRow({
 /** Small caption that sits above a card, iOS grouped-table style. */
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-2 px-1 text-[13px] font-semibold leading-tight text-[var(--text-secondary)]">
+    <p className="ios-section-label mb-2 px-1 text-[13px] font-semibold leading-tight text-[var(--text-secondary)]">
       {children}
     </p>
   );
@@ -656,14 +656,26 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   ariaLabel,
+  invalid = false,
+  describedBy,
 }: {
   options: readonly SegmentedOption<T>[];
   value: T | "";
   onChange: (value: T) => void;
   ariaLabel: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   return (
-    <div className="ios-segment" role="radiogroup" aria-label={ariaLabel}>
+    <div
+      className={["ios-segment", invalid ? "ios-segment--invalid" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      role="radiogroup"
+      aria-label={ariaLabel}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
+    >
       {options.map((option) => {
         const isSelected = option.value === value;
         return (
