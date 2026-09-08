@@ -32,9 +32,9 @@ const TICK_STROKE = 4.5;
 /** Radius the drag handle rides on - the middle of the tick band. */
 const KNOB_R = (INNER_R + OUTER_R) / 2;
 const KNOB_SIZE = 13;
-/** Mid blue for "available today but not chosen" - must stay clearly distinct
- *  from both the lit gradient and the locked grey. */
-const AVAILABLE_STROKE = "oklch(0.70 0.13 245)";
+/** Pale track for "available today but not chosen" - light enough that the
+ *  brand-blue fill reads as the selection, not a second shade of the same ink. */
+const AVAILABLE_STROKE = "oklch(0.90 0.03 245)";
 const LOCKED_STROKE = "rgba(60, 60, 67, 0.22)";
 const TICK_TRANSITION = "opacity 120ms linear";
 /** Pause so the empty (all-grey) tank is visible before the fill starts. */
@@ -78,11 +78,18 @@ const TICKS: Tick[] = Array.from({ length: TICK_COUNT }, (_, i) => {
   return { x1: r(inner.x), y1: r(inner.y), x2: r(outer.x), y2: r(outer.y) };
 });
 
-/** Map a pointer position (in the SVG's client box) to a 0..1 share of the arc. */
-function pointerToFraction(clientX: number, clientY: number, rect: DOMRect): number {
-  const scale = rect.width / VIEW_BOX_W;
-  const dx = clientX - (rect.left + (VIEW_PAD_X + CX) * scale);
-  const dy = rect.top + (VIEW_PAD_TOP + CY) * scale - clientY;
+/** Map a pointer to a 0..1 share of the arc in SVG user space. */
+function pointerToFraction(
+  svg: SVGSVGElement,
+  clientX: number,
+  clientY: number,
+): number {
+  const inverse = svg.getScreenCTM()?.inverse();
+  if (!inverse) return 0;
+  const x = inverse.a * clientX + inverse.c * clientY + inverse.e;
+  const y = inverse.b * clientX + inverse.d * clientY + inverse.f;
+  const dx = x - CX;
+  const dy = CY - y;
   let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
   // Anything below the centre on the left half belongs to the left end, not
   // to a wrapped-around value past the right end.
@@ -122,7 +129,7 @@ interface ScaleMark {
 function buildScaleMarks(maxToday: number, limit: number): ScaleMark[] {
   const safeLimit = limit > 0 ? limit : 1;
   const candidates = [
-    { amount: FLOOR_MARK, isApproved: false },
+    { amount: FLOOR_MARK, isApproved: false, pinT: 0 },
     { amount: maxToday / 2, isApproved: false },
     { amount: maxToday, isApproved: true },
     { amount: safeLimit * 0.75, isApproved: false },
@@ -132,7 +139,10 @@ function buildScaleMarks(maxToday: number, limit: number): ScaleMark[] {
   const marks: ScaleMark[] = [];
   for (const candidate of candidates) {
     if (candidate.amount <= 0 || candidate.amount > safeLimit + 0.5) continue;
-    const t = Math.min(1, Math.max(0, candidate.amount / safeLimit));
+    const t =
+      candidate.pinT != null
+        ? candidate.pinT
+        : Math.min(1, Math.max(0, candidate.amount / safeLimit));
     const last = marks[marks.length - 1];
     if (last && t - last.t < MARK_MERGE_T) {
       if (candidate.isApproved || candidate.amount === safeLimit) {
@@ -238,6 +248,7 @@ export function CreditGauge({
   const [isIntro, setIsIntro] = useState(true);
   const [canPlay, setCanPlay] = useState(false);
   const [showFullAvailable, setShowFullAvailable] = useState(false);
+  const [dragAmount, setDragAmount] = useState<number | null>(null);
   const skipIntro = () => {
     setIsIntro(false);
     setCanPlay(true);
@@ -342,8 +353,8 @@ export function CreditGauge({
   // approved side lights mid-blue - that leftover band is what teaches that
   // the needle can still move.
   const shownAvailable = isIntro && !showFullAvailable ? fillCount : availableCount;
-  const displayValue = isIntro ? Math.round(displayAmount) : value;
-  const knobAmount = isIntro ? displayAmount : value;
+  const displayValue = isIntro ? Math.round(displayAmount) : Math.round(dragAmount ?? value);
+  const knobAmount = isIntro ? displayAmount : (dragAmount ?? value);
 
   // Handle rides the crest of the fill, then parks on the chosen amount. It is
   // the main signal that the dial can be dragged at all.
@@ -351,10 +362,23 @@ export function CreditGauge({
   const scaleMarks = buildScaleMarks(maxToday, safeLimit);
 
   const isDraggingRef = useRef(false);
+  const pendingAmountRef = useRef<number | null>(null);
+  const commitRafRef = useRef(0);
 
   const applyPointer = (e: ReactPointerEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    onChange(pointerToFraction(e.clientX, e.clientY, rect) * limit);
+    const svg = svgRef.current;
+    if (!svg) return;
+    e.preventDefault();
+    const raw = pointerToFraction(svg, e.clientX, e.clientY) * safeLimit;
+    const next = Math.min(maxToday, Math.max(min, raw));
+    setDragAmount(next);
+    pendingAmountRef.current = next;
+    if (commitRafRef.current) return;
+    commitRafRef.current = requestAnimationFrame(() => {
+      commitRafRef.current = 0;
+      const pending = pendingAmountRef.current;
+      if (pending != null) onChange(pending);
+    });
   };
 
   const handlePointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -379,6 +403,14 @@ export function CreditGauge({
   const endDrag = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
+    if (commitRafRef.current) {
+      cancelAnimationFrame(commitRafRef.current);
+      commitRafRef.current = 0;
+    }
+    const pending = pendingAmountRef.current;
+    if (pending != null) onChange(pending);
+    pendingAmountRef.current = null;
+    setDragAmount(null);
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
@@ -410,9 +442,9 @@ export function CreditGauge({
             x2={CX + OUTER_R}
             y2={CY}
           >
-            <stop offset="0" style={{ stopColor: "oklch(0.78 0.11 220)" }} />
-            <stop offset="0.55" style={{ stopColor: "var(--brand-blue-hex)" }} />
-            <stop offset="1" style={{ stopColor: "oklch(0.45 0.2 285)" }} />
+            <stop offset="0" style={{ stopColor: "oklch(0.42 0.18 255)" }} />
+            <stop offset="0.5" style={{ stopColor: "var(--brand-blue-hex)" }} />
+            <stop offset="1" style={{ stopColor: "oklch(0.36 0.19 280)" }} />
           </linearGradient>
         </defs>
 
@@ -430,7 +462,7 @@ export function CreditGauge({
                 strokeLinecap="round"
                 stroke={isAvailable ? AVAILABLE_STROKE : LOCKED_STROKE}
                 style={{
-                  opacity: isLit ? 0 : isAvailable ? 0.85 : 1,
+                  opacity: isLit ? 0 : 1,
                   transition: TICK_TRANSITION,
                 }}
               />
@@ -479,11 +511,8 @@ export function CreditGauge({
         {!disabled && (
           <g
             className="credit-gauge-knob"
-            style={{
-              pointerEvents: "none",
-              transform: `translate(${knob.x}px, ${knob.y}px)`,
-              transition: isIntro ? "none" : "transform 120ms ease-out",
-            }}
+            pointerEvents="none"
+            transform={`translate(${knob.x} ${knob.y})`}
           >
             <circle r={KNOB_SIZE} fill="#ffffff" />
             <circle
