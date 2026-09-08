@@ -217,6 +217,12 @@ interface CreditGaugeProps {
   /** Rendered in the open centre of the arc. Receives the amount currently
    *  shown - which counts up with the intro fill, then tracks `value`. */
   children: (display: { value: number; isIntro: boolean }) => ReactNode;
+  /** Bump to flash the dial and the centre amount as a reminder. */
+  nudgeNonce?: number;
+  /** Show the yellow reminder under the dial. */
+  showNudgeHint?: boolean;
+  /** Fired when the customer taps the dial or uses the keyboard control. */
+  onInteract?: () => void;
 }
 
 export function CreditGauge({
@@ -229,16 +235,25 @@ export function CreditGauge({
   ariaLabel,
   disabled = false,
   children,
+  nudgeNonce = 0,
+  showNudgeHint = false,
+  onInteract,
 }: CreditGaugeProps) {
   const prefersReducedMotion = useReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const isInView = useInView(svgRef, { once: true, amount: 0.2 });
   const onChangeRef = useRef(onChange);
+  const onInteractRef = useRef(onInteract);
   const gradientId = "credit-gauge-fill";
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    onInteractRef.current = onInteract;
+  }, [onInteract]);
 
   // Intro: wait until the card is on screen, hold on an empty tank, then
   // ride the needle up to the visual middle of the arc and back down to
@@ -254,6 +269,16 @@ export function CreditGauge({
     setCanPlay(true);
     setShowFullAvailable(true);
   };
+
+  useEffect(() => {
+    if (!nudgeNonce) return;
+    const root = rootRef.current;
+    if (!root) return;
+    root.classList.remove("is-nudging");
+    void root.offsetWidth;
+    root.classList.add("is-nudging");
+    root.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [nudgeNonce]);
 
   const safeLimit = limit > 0 ? limit : 1;
   const availableCount = clampInt(
@@ -383,6 +408,7 @@ export function CreditGauge({
 
   const handlePointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (disabled) return;
+    onInteractRef.current?.();
     skipIntro();
     isDraggingRef.current = true;
     // Capture can be refused if the pointer is already gone (or synthetic);
@@ -417,7 +443,12 @@ export function CreditGauge({
   };
 
   return (
-    <div className="credit-gauge relative mx-auto w-full min-w-0 max-w-full" data-disabled={disabled}>
+    <div
+      ref={rootRef}
+      id="confirm-amount-gauge"
+      className="credit-gauge relative mx-auto w-full min-w-0 max-w-full"
+      data-disabled={disabled}
+    >
       <div className="relative">
       <svg
         ref={svgRef}
@@ -467,6 +498,7 @@ export function CreditGauge({
                 }}
               />
               <line
+                className="credit-gauge-lit"
                 x1={tick.x1}
                 y1={tick.y1}
                 x2={tick.x2}
@@ -559,6 +591,15 @@ export function CreditGauge({
 
       </div>
 
+      {showNudgeHint ? (
+        <p
+          className="credit-gauge-nudge-hint mt-1 px-2 text-center text-[13px] font-semibold leading-snug"
+          role="alert"
+        >
+          Make sure loan amount is selected correctly
+        </p>
+      ) : null}
+
       <p className="sr-only">
         Scale from {formatMarkAmount(FLOOR_MARK)} up to {formatMarkAmount(safeLimit)},
         with {formatMarkAmount(maxToday)} approved today.
@@ -573,6 +614,7 @@ export function CreditGauge({
         value={value}
         disabled={disabled}
         onChange={(e) => {
+          onInteractRef.current?.();
           skipIntro();
           onChange(parseInt(e.target.value, 10));
         }}

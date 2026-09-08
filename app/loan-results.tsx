@@ -213,6 +213,9 @@ interface OfferCardProps {
   creditLimit?: number;
   withdrawAmount: number;
   onWithdrawAmountChange: (amount: number) => void;
+  nudgeNonce?: number;
+  showNudgeHint?: boolean;
+  onInteract?: () => void;
 }
 
 /** Legend swatch for the gauge's locked ticks. The ticks themselves run lighter
@@ -224,6 +227,9 @@ function OfferHeader({
   creditLimit,
   withdrawAmount,
   onWithdrawAmountChange,
+  nudgeNonce = 0,
+  showNudgeHint = false,
+  onInteract,
 }: OfferCardProps) {
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
@@ -262,6 +268,9 @@ function OfferHeader({
               onChange={commitAmount}
               disabled={!canAdjust}
               ariaLabel="Amount to withdraw today. Drag the dial or use arrow keys."
+              nudgeNonce={nudgeNonce}
+              showNudgeHint={showNudgeHint}
+              onInteract={onInteract}
             >
               {({ value: displayValue, isIntro }) => (
               <div className="flex w-full flex-col items-center">
@@ -286,7 +295,9 @@ function OfferHeader({
                   type="text"
                   inputMode="numeric"
                   value={amountFocused ? amountRaw : displayValue.toLocaleString("en-SG")}
+                  onPointerDown={() => onInteract?.()}
                   onFocus={() => {
+                    onInteract?.();
                     setAmountFocused(true);
                     setAmountRaw(String(withdrawAmount));
                   }}
@@ -1791,6 +1802,9 @@ export function LoanResults({
   );
   const withdrawAmount = amount ?? internalAmount;
   const setWithdrawAmount = onAmountChange ?? setInternalAmount;
+  const [hasAdjustedAmount, setHasAdjustedAmount] = useState(false);
+  const hasAdjustedAmountRef = useRef(false);
+  const [nudgeNonce, setNudgeNonce] = useState(0);
 
   useEffect(() => {
     if (amount != null) return;
@@ -1801,6 +1815,11 @@ export function LoanResults({
     const stored = readStoredWithdrawAmount(formData.amount);
     if (stored != null) setWithdrawAmount(stored);
   }, [amount, formData.amount, initialWithdrawAmount, setWithdrawAmount]);
+
+  const markAmountAdjusted = useCallback(() => {
+    hasAdjustedAmountRef.current = true;
+    setHasAdjustedAmount(true);
+  }, []);
 
   const persistAmount = useCallback(async (amount: number) => {
     storeWithdrawAmount(amount);
@@ -1817,11 +1836,15 @@ export function LoanResults({
   }, [formData.leadId]);
 
   const handleConfirmAmount = useCallback(() => {
+    if (!hasAdjustedAmountRef.current && formData.amount > MIN_WITHDRAW_AMOUNT) {
+      setNudgeNonce((n) => n + 1);
+      return;
+    }
     storeWithdrawAmount(withdrawAmount);
     void persistAmount(withdrawAmount);
     onAccept(withdrawAmount);
     router.push(`/apply/choose-plan?amount=${withdrawAmount}`);
-  }, [persistAmount, withdrawAmount, onAccept, router]);
+  }, [hasAdjustedAmount, formData.amount, persistAmount, withdrawAmount, onAccept, router]);
 
   const stepNav = useApplyStepNav(isPlanPhase ? "choosePlan" : "approval", {
     onNext: isPlanPhase ? undefined : () => { void handleConfirmAmount(); },
@@ -1970,6 +1993,9 @@ export function LoanResults({
               creditLimit={creditLimit}
               withdrawAmount={withdrawAmount}
               onWithdrawAmountChange={setWithdrawAmount}
+              nudgeNonce={nudgeNonce}
+              showNudgeHint={nudgeNonce > 0 && !hasAdjustedAmount}
+              onInteract={markAmountAdjusted}
             />
           </div>
         )}
