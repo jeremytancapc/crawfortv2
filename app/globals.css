@@ -1416,6 +1416,7 @@ input[type="range"].ios-slider::-moz-range-thumb {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 5rem;
 }

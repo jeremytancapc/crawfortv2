@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -16,6 +16,7 @@ import {
   MobileGateSheet,
   PrimaryButton,
   StickyFooter,
+  resetApplySheetScroll,
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
@@ -71,6 +72,7 @@ export function ReviewForm({ initialData }: Props) {
   const firstStep = initialData.authMethod === "singpass" ? 8 : 4;
   const [history, setHistory] = useState<number[]>([firstStep]);
   const step = history[history.length - 1];
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -115,12 +117,20 @@ export function ReviewForm({ initialData }: Props) {
   }, []);
 
   const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    resetApplySheetScroll(sheetScrollRef.current);
   }, []);
+
+  useLayoutEffect(() => {
+    scrollToTop();
+    const frame = requestAnimationFrame(() => {
+      scrollToTop();
+      requestAnimationFrame(scrollToTop);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [step, scrollToTop]);
 
   // history.length + 3 == displayStep (apply page covered steps 1-3).
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
     trackDisplayStep(history.length + 3);
   }, [history]);
 
@@ -276,8 +286,12 @@ export function ReviewForm({ initialData }: Props) {
                 </div>
               )}
 
-              <div className="flex-1 px-5 pb-8">
-                <div key={step} className="animate-fade-up">
+              <div
+                key={step}
+                ref={sheetScrollRef}
+                className="flex-1 px-5 pb-8"
+              >
+                <div className="animate-fade-up">
                   {step === 4 && (
                     <Step4_Identity formData={formData} updateField={updateField} />
                   )}
