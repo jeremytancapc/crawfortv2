@@ -52,6 +52,26 @@ export function MobileGateHeader({
   );
 }
 
+/** The sheet scroller is a reused flex child, so a new step keeps the last
+ *  page's scrollTop unless we zero this node and every overflow ancestor. */
+export function resetApplySheetScroll(scroller?: HTMLElement | null) {
+  const nodes = new Set<HTMLElement>();
+  if (scroller) nodes.add(scroller);
+  document
+    .querySelectorAll<HTMLElement>(".ios-apply-sheet > .flex-1")
+    .forEach((node) => nodes.add(node));
+  let parent = scroller?.parentElement ?? null;
+  while (parent) {
+    const { overflowY } = getComputedStyle(parent);
+    if (overflowY === "auto" || overflowY === "scroll") nodes.add(parent);
+    parent = parent.parentElement;
+  }
+  for (const node of nodes) node.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+}
+
 /** Continues the blue header so the page body can sit in a rounded-top sheet. */
 export function MobileGateSheet({ children }: { children: ReactNode }) {
   return (

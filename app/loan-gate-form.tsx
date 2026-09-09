@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { LoanFormData as FormData } from "@/lib/loan-form";
 import {
@@ -19,6 +19,7 @@ import {
   MobileGateSheet,
   PrimaryButton,
   StickyFooter,
+  resetApplySheetScroll,
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
@@ -71,6 +72,7 @@ export function LoanGateForm({
     ...initialFormData,
     ...(initialApplySession ?? {}),
   }));
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
   const [incomeHighWarningShown, setIncomeHighWarningShown] = useState(false);
   const [incomeConfirmed, setIncomeConfirmed] = useState(false);
   const [urgencyNeedsInput, setUrgencyNeedsInput] = useState(false);
@@ -112,14 +114,22 @@ export function LoanGateForm({
     }
   }, [step, formData, incomeConfirmed]);
 
+  const scrollToTop = useCallback(() => {
+    resetApplySheetScroll(sheetScrollRef.current);
+  }, []);
+
+  useLayoutEffect(() => {
+    scrollToTop();
+    const frame = requestAnimationFrame(() => {
+      scrollToTop();
+      requestAnimationFrame(scrollToTop);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [step, scrollToTop]);
+
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
     trackDisplayStep(history.length);
   }, [history]);
-
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-  }, []);
 
   const leaveAfterSavingGate = useCallback(
     async (
@@ -235,8 +245,12 @@ export function LoanGateForm({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
-        <div key={step} className="animate-fade-up">
+      <div
+        key={step}
+        ref={sheetScrollRef}
+        className="min-h-0 flex-1 overflow-y-auto px-5 pb-8"
+      >
+        <div className="animate-fade-up">
           {step === 1 && (
             <GateStepAmount
               formData={formData}
