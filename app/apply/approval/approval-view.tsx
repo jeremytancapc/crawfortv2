@@ -14,6 +14,7 @@ import {
 } from "@/lib/withdraw-amount";
 import { PlanAmountField } from "@/app/apply/choose-plan/plan-amount-field";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
+import { useApplyPath } from "@/app/use-apply-path";
 
 interface Props {
   formData: LoanFormData;
@@ -23,6 +24,7 @@ interface Props {
 
 export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) {
   const router = useRouter();
+  const applyHref = useApplyPath();
   const prefersReducedMotion = useReducedMotion();
   const isPlan = phase === "plan";
 
@@ -111,13 +113,13 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
         onAmountChange={isPlan ? handlePlanAmountChange : undefined}
         onAccept={(nextAmount) => {
           if (isPlan) {
-            router.push("/apply/accept");
+            router.push(applyHref("/apply/accept"));
             return;
           }
-          router.push(`/apply/choose-plan?amount=${nextAmount}`);
+          router.push(applyHref(`/apply/choose-plan?amount=${nextAmount}`));
         }}
         onCustomOfferSubmitted={() =>
-          router.push(`/apply/custom-received?leadId=${formData.leadId ?? ""}`)
+          router.push(applyHref(`/apply/custom-received?leadId=${formData.leadId ?? ""}`))
         }
       />
     </ApplyIosShell>

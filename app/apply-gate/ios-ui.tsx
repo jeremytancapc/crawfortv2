@@ -13,6 +13,7 @@ import Link from "next/link";
 import { CaretLeft, CaretRight, Minus, Plus } from "@phosphor-icons/react";
 
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
+import { useApplyPath } from "@/app/use-apply-path";
 import {
   APPLY_PROGRESS_APPOINTMENT,
   APPLY_PROGRESS_START,
@@ -31,11 +32,12 @@ export function MobileGateHeader({
   progressTotal?: number;
 }) {
   usePublishApplyProgress(progressStep ?? null);
+  const applyHref = useApplyPath();
 
   return (
     <header className="ios-apply-gutter relative z-10 flex shrink-0 items-center justify-center bg-[var(--brand-blue-hex)] py-4 lg:hidden">
       <Link
-        href="/"
+        href={applyHref("/")}
         className="flex min-h-11 min-w-0 items-center justify-center"
         aria-label="Crawfort home"
       >

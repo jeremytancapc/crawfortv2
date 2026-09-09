@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
+import { applyVariantCookie, variantFromPathname } from "@/lib/apply-paths";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 
 function isPendingWithLeadId(request: NextRequest): boolean {
-  if (!request.nextUrl.pathname.startsWith("/apply/pending")) return false;
+  const path = request.nextUrl.pathname;
+  if (!path.startsWith("/apply/pending") && !path.startsWith("/v2/apply/pending")) {
+    return false;
+  }
   const q = request.nextUrl.searchParams.get("leadId")?.trim() ?? "";
   return Boolean(q && looksLikeLeadUuid(q));
 }
@@ -12,6 +16,7 @@ function isPendingWithLeadId(request: NextRequest): boolean {
 function isLandingPath(pathname: string): boolean {
   return (
     pathname === "/" ||
+    pathname === "/v2" ||
     pathname === "/foreigner" ||
     pathname.startsWith("/foreigner/") ||
     pathname === "/vcsa-sg" ||
@@ -31,18 +36,23 @@ function isLandingPath(pathname: string): boolean {
  * Also re-enable `enforceApplyFunnel` in `lib/apply-funnel-enforce.ts`.
  */
 export function proxy(request: NextRequest) {
+  const variant = variantFromPathname(request.nextUrl.pathname);
+  const res = NextResponse.next();
+  res.cookies.set(applyVariantCookie(variant));
+
   if (isLandingPath(request.nextUrl.pathname) || isPendingWithLeadId(request)) {
-    const res = NextResponse.next();
     applyClearApplyCookiesOnResponse(res);
+    res.cookies.set(applyVariantCookie(variant));
     return res;
   }
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
   matcher: [
     "/",
+    "/v2",
     "/foreigner",
     "/foreigner/:path*",
     "/vcsa-sg",
@@ -57,5 +67,6 @@ export const config = {
     "/apply/book/:path*",
     "/apply/booked",
     "/apply/booked/:path*",
+    "/v2/apply/:path*",
   ],
 };

@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 
 import {
+  applyPath,
+  stripVariantPrefix,
+  variantFromPathname,
+} from "@/lib/apply-paths";
+import {
   APPROVAL_OFFER_COOKIE,
   decodeApprovalOffer,
   hasValidApprovalOfferCookie,
@@ -60,10 +65,7 @@ export function hasValidApplyAuthMethod(
 }
 
 function normalizePath(pathname: string): string {
-  if (pathname.length > 1 && pathname.endsWith("/")) {
-    return pathname.slice(0, -1);
-  }
-  return pathname;
+  return stripVariantPrefix(pathname);
 }
 
 function pickLeadId(ctx: ApplyFunnelContext): string | null {
@@ -166,16 +168,17 @@ function pathMatchesStage(path: string, stage: ApplyFunnelStage): boolean {
  * Otherwise return null (allow request).
  */
 export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
+  const variant = variantFromPathname(ctx.pathname);
   const path = normalizePath(ctx.pathname);
-  const stage = resolveApplyFunnelStage(ctx);
+  const stage = resolveApplyFunnelStage({ ...ctx, pathname: path });
   const leadId = pickLeadId(ctx);
 
   // Booked: always show confirmation until `booking_confirm` expires (no new application).
   if (stage === "booked" && !path.startsWith("/apply/booked")) {
-    return canonicalPathForStage("booked", leadId);
+    return applyPath(variant, canonicalPathForStage("booked", leadId));
   }
 
-  // Gate landings (`/`, `/foreigner`, `/vcsa-sg`) are interchangeable when stage is landing.
+  // Gate landings (`/`, `/foreigner`, `/vcsa-sg`, `/v2`) are interchangeable when stage is landing.
   if (stage === "landing" && !path.startsWith("/apply/")) {
     return null;
   }
@@ -199,10 +202,10 @@ export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
 
   // Pending: only valid with ?leadId= (cookies cleared on that page).
   if (stage === "pending" && path.startsWith("/apply/pending") && !ctx.queryLeadId) {
-    return "/";
+    return applyPath(variant, "/");
   }
 
-  return canonicalPathForStage(stage, leadId);
+  return applyPath(variant, canonicalPathForStage(stage, leadId));
 }
 
 export function readFunnelContextFromRequest(request: NextRequest): ApplyFunnelContext {

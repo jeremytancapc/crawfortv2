@@ -7,6 +7,7 @@ import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { LoanFormData } from "@/lib/loan-form";
+import { useApplyPath } from "@/app/use-apply-path";
 
 interface Props {
   formData: LoanFormData;
@@ -16,6 +17,7 @@ const LOG = "[apply/book:client]";
 
 export function BookingView({ formData }: Props) {
   const router = useRouter();
+  const applyHref = useApplyPath();
 
   useEffect(() => {
     const lid = formData.leadId;
@@ -61,7 +63,7 @@ export function BookingView({ formData }: Props) {
       time: json.time,
       loanAmount: json.loanAmount,
     });
-    router.replace("/apply/booked");
+    router.replace(applyHref("/apply/booked"));
     return json;
   }
 
@@ -82,7 +84,7 @@ export function BookingView({ formData }: Props) {
       <div className="flex-1 px-5 pb-8">
         <AppointmentBooking
           formData={formData}
-          onBack={() => router.push("/apply/accept")}
+          onBack={() => router.push(applyHref("/apply/accept"))}
           onConfirm={handleConfirm}
           onBookedRedirect
           hideHeaderOnMobile

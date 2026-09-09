@@ -1,3 +1,4 @@
+import { applyPath, type ApplyVariant } from "@/lib/apply-paths";
 import { SHOW_INCOME_STEP } from "@/lib/apply-progress";
 
 export type ApplyStepId =
@@ -16,7 +17,8 @@ export type ApplyStepId =
 
 const STORAGE_KEY = "crawfort-apply-visited";
 
-export const APPLY_STEP_HREF: Record<ApplyStepId, string> = {
+/** Canonical paths without a split-test prefix. */
+export const APPLY_STEP_PATH: Record<ApplyStepId, string> = {
   amount: "/",
   income: "/",
   singpass: "/",
@@ -30,6 +32,13 @@ export const APPLY_STEP_HREF: Record<ApplyStepId, string> = {
   book: "/apply/book",
   booked: "/apply/booked",
 };
+
+/** Default (v1) hrefs. Prefer `applyStepHref` when the variant is known. */
+export const APPLY_STEP_HREF = APPLY_STEP_PATH;
+
+export function applyStepHref(id: ApplyStepId, variant: ApplyVariant = "default"): string {
+  return applyPath(variant, APPLY_STEP_PATH[id]);
+}
 
 const GATE_STEP_KEY = "crawfort-apply-gate-step";
 const GATE_RESUME_KEY = "crawfort-apply-gate-resume";
