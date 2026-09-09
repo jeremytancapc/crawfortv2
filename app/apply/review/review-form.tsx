@@ -21,10 +21,11 @@ import {
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
-import { trackDisplayStep, trackEvent } from "@/lib/analytics";
-import { postSubmitUrl } from "@/lib/post-submit-nav";
+import { trackDisplayStep } from "@/lib/analytics";
 import { LoanLoadingScreen } from "@/app/loan-loading-screen";
+import { saveReviewDraft, submitReview } from "@/app/apply/review/submit-review";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
+import { useApplyPath } from "@/app/use-apply-path";
 
 interface Props {
   initialData: LoanFormData;
@@ -58,13 +59,13 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
 
 export function ReviewForm({ initialData }: Props) {
   const router = useRouter();
+  const applyHref = useApplyPath();
   const [formData, setFormData] = useState<LoanFormData>(initialData);
   const [submitOverlay, setSubmitOverlay] = useState<{
     waitUntil: Promise<unknown>;
     key: number;
   } | null>(null);
   const submitNavRef = useRef<string | null>(null);
-  const submitLeadIdRef = useRef<string | null>(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -137,21 +138,10 @@ export function ReviewForm({ initialData }: Props) {
   async function submitApplication() {
     if (submitOverlay) return;
     submitNavRef.current = null;
-    submitLeadIdRef.current = null;
     const task = (async () => {
-      const res = await fetch("/api/apply/submit", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        console.error("Submit failed", await res.text());
-        return;
-      }
-      const result = (await res.json()) as { isEligible: boolean; leadId?: string };
-      submitNavRef.current = result.isEligible ? "/apply/approval" : "/apply/pending";
-      submitLeadIdRef.current = typeof result.leadId === "string" ? result.leadId : null;
-      if (result.isEligible) trackEvent("step_09_offer_presented");
+      const result = await submitReview(formData);
+      if (!result) return;
+      submitNavRef.current = result.nextPath;
     })();
 
     void task.catch(() => {
@@ -182,15 +172,7 @@ export function ReviewForm({ initialData }: Props) {
   // Step 8 (Review) "Yes, I confirm" → create partial lead then go to contact step.
   // The draft endpoint sets a draft_lead cookie server-side - no state update needed.
   const handleReviewConfirm = useCallback(async () => {
-    try {
-      await fetch("/api/apply/draft", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-    } catch {
-      // Non-blocking - submit falls back to INSERT if draft failed.
-    }
+    await saveReviewDraft(formData);
     navigateTo(5);
     scrollToTop();
   }, [formData, navigateTo, scrollToTop]);
@@ -237,9 +219,8 @@ export function ReviewForm({ initialData }: Props) {
           waitUntil={submitOverlay.waitUntil}
           onComplete={() => {
             const path = submitNavRef.current;
-            const leadId = submitLeadIdRef.current;
             if (path) {
-              router.push(postSubmitUrl(path, leadId));
+              router.push(applyHref(path));
             }
             setSubmitOverlay(null);
           }}

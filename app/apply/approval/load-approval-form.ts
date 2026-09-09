@@ -7,6 +7,7 @@ import {
 import { getApplySession } from "@/lib/apply-session";
 import { createAdminClient } from "@/lib/db/client";
 import { initialLoanFormData, type LoanFormData } from "@/lib/loan-form";
+import { applyRedirectPath } from "@/lib/apply-variant-server";
 
 export async function loadApprovalFormData(): Promise<LoanFormData> {
   const session = await getApplySession();
@@ -20,7 +21,7 @@ export async function loadApprovalFormData(): Promise<LoanFormData> {
     null;
 
   if (!leadId) {
-    redirect("/");
+    redirect(await applyRedirectPath("/"));
   }
 
   const formData: LoanFormData = {
@@ -51,7 +52,7 @@ export async function loadApprovalFormData(): Promise<LoanFormData> {
   }
 
   if (!formData.approvedLoanAmount || formData.approvedLoanAmount <= 0) {
-    redirect("/");
+    redirect(await applyRedirectPath("/"));
   }
 
   return formData;

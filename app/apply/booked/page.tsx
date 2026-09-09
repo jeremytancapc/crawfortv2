@@ -5,6 +5,7 @@ import { BookingConfirmedView } from "@/app/booking-confirmed-view";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
+import { applyRedirectPath } from "@/lib/apply-variant-server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function BookedPage() {
   await enforceApplyFunnel("/apply/booked");
 
   const booking = await getBookingConfirmation();
-  if (!booking) redirect("/");
+  if (!booking) redirect(await applyRedirectPath("/"));
 
   return (
     <ApplyIosShell

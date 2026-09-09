@@ -21,6 +21,7 @@ import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { SignaturePad } from "./signature-pad";
 import { TermsDeck } from "./terms-deck";
 import { FINE_PRINT_ITEMS, TC_CLOSING } from "./accept-content";
+import { useApplyPath } from "@/app/use-apply-path";
 import {
   CARD_SHADOW,
   DashedDivider,
@@ -480,6 +481,7 @@ interface AcceptViewProps {
 
 export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const router = useRouter();
+  const applyHref = useApplyPath();
   const stepNav = useApplyStepNav("accept");
 
   // The page moves through three states, each of which hands its space to the
@@ -656,7 +658,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
 
       <AnimatePresence>
         {showAppointmentReminder && (
-          <AppointmentReminderModal onAcknowledge={() => router.push("/apply/book")} />
+          <AppointmentReminderModal onAcknowledge={() => router.push(applyHref("/apply/book"))} />
         )}
       </AnimatePresence>
     </ApplyIosShell>

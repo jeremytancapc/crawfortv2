@@ -68,6 +68,18 @@ describe("Singpass / manual review funnel", () => {
       ).toBe("/apply/review");
     });
 
+    it("v2 landing and review stay on the v2 prefix", () => {
+      expect(
+        getFunnelRedirectUrl({ ...reviewCtx, pathname: "/v2/apply/review" }),
+      ).toBeNull();
+      expect(getFunnelRedirectUrl({ ...reviewCtx, pathname: "/v2" })).toBe(
+        "/v2/apply/review",
+      );
+      expect(
+        getFunnelRedirectUrl({ ...reviewCtx, pathname: "/v2/apply/approval" }),
+      ).toBe("/v2/apply/review");
+    });
+
     it("cannot wander to approval before submit", () => {
       expect(
         getFunnelRedirectUrl({ ...reviewCtx, pathname: "/apply/approval" }),

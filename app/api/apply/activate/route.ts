@@ -24,6 +24,11 @@ import {
 } from "@/lib/apply-myinfo-cookie";
 import { buildActivateSessionCookie } from "@/lib/apply-session-slim";
 import { upsertMyinfoProfileForLead } from "@/lib/myinfo-profile";
+import {
+  APPLY_VARIANT_COOKIE,
+  applyPath,
+  parseApplyVariant,
+} from "@/lib/apply-paths";
 
 export const runtime = "nodejs";
 
@@ -134,7 +139,10 @@ export async function GET(request: NextRequest) {
     sessionBefore: existing,
     sessionAfter: slimSession,
     details: {
-      redirect_to: "/apply/review",
+      redirect_to: applyPath(
+        parseApplyVariant(request.cookies.get(APPLY_VARIANT_COOKIE)?.value),
+        "/apply/review",
+      ),
       had_apply_gate_before: hadApplyGateBefore,
       draft_lead_id: draftLeadId,
       myinfo_persisted: Boolean(draftLeadId),
@@ -144,7 +152,11 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const reviewUrl = new URL("/apply/review", request.nextUrl.origin);
+  const reviewPath = applyPath(
+    parseApplyVariant(request.cookies.get(APPLY_VARIANT_COOKIE)?.value),
+    "/apply/review",
+  );
+  const reviewUrl = new URL(reviewPath, request.nextUrl.origin);
   const res = NextResponse.redirect(reviewUrl, { status: 302 });
 
   const sc = sessionCookieValue(slimSession);

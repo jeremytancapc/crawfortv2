@@ -24,6 +24,7 @@ import {
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
 import { persistGateStep, readPersistedGateStep } from "@/lib/apply-step-nav";
+import { useApplyPath } from "@/app/use-apply-path";
 
 const GATE_LAST_STEP = 3;
 
@@ -52,6 +53,7 @@ export function LoanGateForm({
   initialApplySession?: Partial<FormData> | null;
 }) {
   const router = useRouter();
+  const applyHref = useApplyPath();
   const [history, setHistory] = useState<number[]>([1]);
   const step = history[history.length - 1];
 
@@ -205,7 +207,7 @@ export function LoanGateForm({
     },
     onNext: () => {
       if (step === 3) {
-        router.push("/apply/verify-income");
+        router.push(applyHref("/apply/verify-income"));
         return;
       }
       handleNext();
@@ -271,7 +273,7 @@ export function LoanGateForm({
           {step === 3 && (
             <Step3_SingpassGate
               onSingpass={() => {
-                void leaveAfterSavingGate("/apply/verify-income", { authMethod: "singpass" }, {
+                void leaveAfterSavingGate(applyHref("/apply/verify-income"), { authMethod: "singpass" }, {
                   setApplyGate: false,
                 });
               }}

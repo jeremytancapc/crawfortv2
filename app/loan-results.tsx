@@ -22,6 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
+import { useApplyPath } from "@/app/use-apply-path";
 import { CreditGauge } from "@/app/credit-gauge";
 import {
   clampWithdrawAmount,
@@ -1792,6 +1793,7 @@ export function LoanResults({
   onAmountChange,
 }: LoanResultsProps) {
   const router = useRouter();
+  const applyHref = useApplyPath();
   const isPlanPhase = phase === "plan";
   const [showModal, setShowModal] = useState(false);
   const { parts: expiryParts } = useCountdownParts();
@@ -1843,8 +1845,8 @@ export function LoanResults({
     storeWithdrawAmount(withdrawAmount);
     void persistAmount(withdrawAmount);
     onAccept(withdrawAmount);
-    router.push(`/apply/choose-plan?amount=${withdrawAmount}`);
-  }, [hasAdjustedAmount, formData.amount, persistAmount, withdrawAmount, onAccept, router]);
+    router.push(applyHref(`/apply/choose-plan?amount=${withdrawAmount}`));
+  }, [hasAdjustedAmount, formData.amount, persistAmount, withdrawAmount, onAccept, router, applyHref]);
 
   const stepNav = useApplyStepNav(isPlanPhase ? "choosePlan" : "approval", {
     onNext: isPlanPhase ? undefined : () => { void handleConfirmAmount(); },
@@ -2057,7 +2059,7 @@ export function LoanResults({
           ) : null}
         </AnimatePresence>
         {isExpired ? (
-          <PrimaryButton onClick={() => { window.location.href = "/"; }}>
+          <PrimaryButton onClick={() => { window.location.href = applyHref("/"); }}>
             Start a New Application
           </PrimaryButton>
         ) : isPlanPhase ? (

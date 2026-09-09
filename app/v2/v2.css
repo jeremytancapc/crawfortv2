@@ -1,0 +1,773 @@
+/*
+ * /v2 apply funnel design language.
+ *
+ * Light, non-scrolling, one job per screen. Scoped to `.theme-v2` so the
+ * production `/apply` funnel (theme-ios) is untouched. Every screen is a
+ * `100dvh` grid: header | body | footer, and the body must fit - nothing here
+ * is allowed to scroll vertically.
+ */
+
+.theme-v2 {
+  /* Surfaces - near-white tinted toward the brand hue, never pure white. */
+  --v2-bg: oklch(0.985 0.003 260);
+  --v2-surface: oklch(0.965 0.006 260);
+  --v2-surface-strong: oklch(0.93 0.01 260);
+
+  /* Ink */
+  --v2-ink: oklch(0.18 0.02 260);
+  --v2-ink-2: oklch(0.5 0.02 260);
+  --v2-ink-3: oklch(0.66 0.015 260);
+  --v2-hairline: oklch(0.9 0.01 260);
+
+  /* Accent - the one saturated colour, kept for the CTA and selection. */
+  --v2-accent: var(--brand-blue-hex, #0033aa);
+  --v2-accent-soft: oklch(0.94 0.03 260);
+  --v2-on-accent: oklch(0.985 0.003 260);
+  --v2-teal: var(--brand-teal-hex, #06dec0);
+  --v2-danger: oklch(0.55 0.2 27);
+  --v2-success: oklch(0.6 0.15 155);
+
+  /* Illustration palette */
+  --v2-ill-stroke: var(--v2-accent);
+  --v2-ill-accent: var(--v2-teal);
+  --v2-ill-tint: oklch(0.95 0.02 260);
+  --v2-ill-paper: oklch(0.995 0.002 260);
+
+  /* Rhythm */
+  --v2-gutter: 24px;
+  --v2-radius: 16px;
+  --v2-cta-height: 56px;
+  --v2-safe-top: env(safe-area-inset-top, 0px);
+  --v2-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --v2-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  background: var(--v2-bg);
+  color: var(--v2-ink);
+  font-family: var(--font-nunito), system-ui, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body:has(.theme-v2) {
+  background: var(--v2-bg);
+}
+
+body:has(.theme-v2)::before {
+  display: none;
+}
+
+/* Root: phone column on every breakpoint, centred once there is room. */
+.v2-root {
+  display: flex;
+  justify-content: center;
+  min-height: 100dvh;
+}
+
+.v2-screen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  padding-left: var(--v2-gutter);
+  padding-right: var(--v2-gutter);
+  padding-top: var(--v2-safe-top);
+  padding-bottom: max(var(--v2-safe-bottom), 16px);
+}
+
+@media (min-width: 640px) {
+  .v2-screen {
+    max-width: 440px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .v2-root {
+    background: var(--v2-surface);
+  }
+  .v2-screen {
+    background: var(--v2-bg);
+    box-shadow: 0 0 0 1px var(--v2-hairline);
+  }
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.v2-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  height: 56px;
+  margin-left: -8px;
+  margin-right: -8px;
+}
+
+.v2-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: var(--v2-ink);
+  transition: background-color 150ms var(--v2-ease), transform 150ms var(--v2-ease);
+}
+
+.v2-icon-button:hover {
+  background: var(--v2-surface);
+}
+
+.v2-icon-button:active {
+  transform: scale(0.94);
+}
+
+.v2-progress {
+  display: flex;
+  gap: 4px;
+  width: min(100%, 180px);
+  margin: 0 auto;
+}
+
+.v2-progress > span {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--v2-hairline);
+  overflow: hidden;
+}
+
+.v2-progress > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  background: var(--v2-ink);
+  border-radius: inherit;
+  transition: transform 400ms var(--v2-ease);
+}
+
+/* Type ------------------------------------------------------------------- */
+
+.v2-title {
+  font-family: var(--font-quicksand), system-ui, sans-serif;
+  font-size: clamp(26px, 3.6dvh, 30px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.022em;
+  color: var(--v2-ink);
+  text-wrap: balance;
+}
+
+.v2-sub {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--v2-ink-2);
+  text-wrap: pretty;
+}
+
+.v2-hero-num {
+  font-family: var(--font-quicksand), system-ui, sans-serif;
+  font-size: clamp(44px, 8.5dvh, 64px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--v2-ink);
+}
+
+.v2-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--v2-ink-3);
+}
+
+.v2-note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--v2-ink-3);
+  text-wrap: pretty;
+}
+
+.v2-note a {
+  color: var(--v2-ink-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.v2-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--v2-accent);
+  text-underline-offset: 3px;
+}
+
+.v2-link:hover {
+  text-decoration: underline;
+}
+
+/* Illustration ----------------------------------------------------------- */
+
+.v2-illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(96px, 18dvh, 200px);
+  flex: none;
+}
+
+.v2-illustration > svg {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+.v2-body {
+  gap: 20px;
+}
+
+@media (max-height: 600px) {
+  .v2-illustration {
+    display: none;
+  }
+}
+
+/* Buttons ---------------------------------------------------------------- */
+
+.v2-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--v2-cta-height);
+  padding: 0 24px;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  transition:
+    transform 150ms var(--v2-ease),
+    opacity 150ms var(--v2-ease),
+    background-color 150ms var(--v2-ease);
+}
+
+.v2-pill:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.v2-pill:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.v2-pill-primary {
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+
+.v2-pill-primary:hover:not(:disabled) {
+  background: oklch(0.36 0.16 262);
+}
+
+.v2-pill-ghost {
+  background: var(--v2-surface);
+  color: var(--v2-ink);
+}
+
+.v2-pill-ghost:hover:not(:disabled) {
+  background: var(--v2-surface-strong);
+}
+
+.v2-pill-dark {
+  background: var(--v2-ink);
+  color: var(--v2-on-accent);
+}
+
+.v2-pill-singpass {
+  background: #f4333d;
+  color: #fff;
+}
+
+/* Rows ------------------------------------------------------------------- */
+
+.v2-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.v2-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--v2-hairline);
+  text-align: left;
+  width: 100%;
+}
+
+.v2-rows > .v2-row:last-child {
+  border-bottom: 0;
+}
+
+.v2-row-label {
+  font-size: 15px;
+  color: var(--v2-ink-2);
+  flex: none;
+}
+
+.v2-row-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--v2-ink);
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-row-value.is-wrap {
+  white-space: normal;
+  line-height: 1.3;
+  text-wrap: balance;
+  max-width: 62%;
+}
+
+/* Segmented ---------------------------------------------------------------- */
+
+.v2-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--v2-surface);
+  min-width: 0;
+}
+
+.v2-segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--v2-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    color 150ms var(--v2-ease),
+    background-color 200ms var(--v2-ease),
+    box-shadow 200ms var(--v2-ease);
+}
+
+/* Four or more segments: trim type so labels stay on one line at 375px. */
+.v2-segmented:has(> :nth-child(4)) .v2-segment {
+  font-size: 13px;
+  padding: 0 6px;
+}
+
+.v2-segment[aria-checked="true"],
+.v2-segment[aria-selected="true"] {
+  background: var(--v2-bg);
+  color: var(--v2-ink);
+  box-shadow: 0 1px 2px oklch(0.2 0.02 260 / 0.08), 0 0 0 1px var(--v2-hairline);
+}
+
+.v2-segmented.is-invalid {
+  box-shadow: 0 0 0 1.5px var(--v2-danger);
+}
+
+/* Stepper ------------------------------------------------------------------ */
+
+.v2-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.v2-stepper-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--v2-surface);
+  color: var(--v2-ink);
+  transition:
+    background-color 150ms var(--v2-ease),
+    transform 120ms var(--v2-ease),
+    opacity 150ms var(--v2-ease);
+}
+
+.v2-stepper-button:hover:not(:disabled) {
+  background: var(--v2-surface-strong);
+}
+
+.v2-stepper-button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.v2-stepper-button:disabled {
+  opacity: 0.3;
+}
+
+.v2-stepper-value {
+  min-width: 88px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--v2-ink);
+}
+
+/* Chips -------------------------------------------------------------------- */
+
+.v2-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--v2-surface);
+  color: var(--v2-ink);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition:
+    background-color 150ms var(--v2-ease),
+    color 150ms var(--v2-ease),
+    transform 120ms var(--v2-ease);
+}
+
+.v2-chip:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.v2-chip[aria-pressed="true"],
+.v2-chip[aria-selected="true"] {
+  background: var(--v2-ink);
+  color: var(--v2-on-accent);
+}
+
+.v2-chip:disabled {
+  opacity: 0.3;
+}
+
+.v2-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--v2-accent-soft);
+  color: var(--v2-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Fields ------------------------------------------------------------------- */
+
+.v2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--v2-hairline);
+}
+
+.v2-field:focus-within {
+  border-bottom-color: var(--v2-ink);
+}
+
+.v2-field.is-invalid {
+  border-bottom-color: var(--v2-danger);
+}
+
+.v2-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--v2-ink-3);
+}
+
+.v2-field-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v2-field-prefix {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--v2-ink-2);
+  flex: none;
+}
+
+.theme-v2 .v2-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--v2-ink);
+  -webkit-text-fill-color: currentColor;
+}
+
+.theme-v2 .v2-input::placeholder {
+  color: var(--v2-ink-3);
+  -webkit-text-fill-color: var(--v2-ink-3);
+  font-weight: 500;
+}
+
+.theme-v2 .v2-hero-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* Slider ------------------------------------------------------------------- */
+
+.v2-slider {
+  position: relative;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.v2-slider-track {
+  position: absolute;
+  inset: auto 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--v2-hairline);
+  overflow: hidden;
+}
+
+.v2-slider-fill {
+  height: 100%;
+  width: var(--pct, 0%);
+  background: var(--v2-ink);
+  border-radius: inherit;
+}
+
+.theme-v2 .v2-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.theme-v2 .v2-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 32px;
+  background: transparent;
+}
+
+.theme-v2 .v2-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: var(--v2-bg);
+  border: 0;
+  box-shadow:
+    0 0 0 1px var(--v2-hairline),
+    0 2px 8px oklch(0.2 0.02 260 / 0.14);
+}
+
+.theme-v2 .v2-slider input[type="range"]::-moz-range-track {
+  height: 32px;
+  background: transparent;
+}
+
+.theme-v2 .v2-slider input[type="range"]::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--v2-bg);
+  border: 0;
+  box-shadow:
+    0 0 0 1px var(--v2-hairline),
+    0 2px 8px oklch(0.2 0.02 260 / 0.14);
+}
+
+.theme-v2 .v2-slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px var(--v2-accent),
+    0 2px 8px oklch(0.2 0.02 260 / 0.14);
+}
+
+/* Focus ------------------------------------------------------------------- */
+
+.theme-v2 :focus-visible {
+  outline: 2px solid var(--v2-accent);
+  outline-offset: 2px;
+}
+
+.theme-v2 input:focus-visible {
+  outline: none;
+}
+
+/* Horizontal strips (the only scroll allowed - sideways, one row). */
+.v2-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* The body clips at the gutter, so the strip stays inside it; a half-shown
+     last chip is the affordance that it scrolls. */
+  padding: 2px 0;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.v2-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.v2-strip > * {
+  scroll-snap-align: start;
+  flex: none;
+}
+
+/* Motion ----------------------------------------------------------------- */
+
+@keyframes v2-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.v2-enter {
+  animation: v2-rise 420ms var(--v2-ease) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-enter {
+    animation: none;
+  }
+  .v2-progress > span::after,
+  .v2-pill,
+  .v2-segment,
+  .v2-chip {
+    transition: none;
+  }
+}
+
+/* Signature ---------------------------------------------------------------- */
+
+.v2-sign {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  border-radius: var(--v2-radius);
+  background: var(--v2-surface);
+  overflow: hidden;
+}
+
+.v2-sign-canvas {
+  flex: 1 1 auto;
+  min-height: 160px;
+  width: 100%;
+  color: var(--v2-ink);
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.v2-sign-baseline {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 56px;
+  border-top: 1.5px dashed var(--v2-ink-3);
+  pointer-events: none;
+}
+
+.v2-sign-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+/* Short phones (iPhone SE class): tighten vertical rhythm so every screen
+   still fits without scrolling. Kept last so it wins over the base rules. */
+@media (max-height: 700px) {
+  .v2-row {
+    min-height: 46px;
+    padding: 7px 0;
+  }
+  .v2-sub {
+    margin-top: 6px;
+  }
+  .v2-title {
+    font-size: 26px;
+  }
+  .v2-hero-num {
+    font-size: clamp(40px, 7.4dvh, 64px);
+  }
+  .v2-body {
+    gap: 16px;
+  }
+  .v2-segment {
+    min-height: 36px;
+  }
+  .v2-stepper-button {
+    width: 36px;
+    height: 36px;
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
 import {
@@ -16,125 +16,34 @@ import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
-
-const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-const PROCESSING_STATUSES = [
-  "Reading your income statements…",
-  "Calculating your last 3 months' average…",
-  "Almost done…",
-];
-
-const DUMMY_MONTHLY_INCOMES = [4280, 4150, 4200];
-const DEMO_EMPLOYER = "Grab Holdings Limited";
-
-type SelectedFile = {
-  id: string;
-  name: string;
-  size: string;
-};
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function lastThreeMonthDates(from: Date = new Date()): Date[] {
-  return [3, 2, 1].map(
-    (offset) => new Date(from.getFullYear(), from.getMonth() - offset, 1),
-  );
-}
-
-function lastThreeMonthNames(from: Date = new Date()): string {
-  return lastThreeMonthDates(from)
-    .map((date) => date.toLocaleDateString("en-SG", { month: "long" }))
-    .join(", ");
-}
-
-function lastThreeMonths(
-  from: Date = new Date(),
-): { label: string; month: string; year: string; amount: number; employer: string }[] {
-  return lastThreeMonthDates(from)
-    .reverse()
-    .map((date, index) => ({
-      label: date.toLocaleDateString("en-SG", { month: "long", year: "numeric" }),
-      month: date.toLocaleDateString("en-SG", { month: "long" }),
-      year: date.toLocaleDateString("en-SG", { year: "numeric" }),
-      amount: DUMMY_MONTHLY_INCOMES[index],
-      employer: DEMO_EMPLOYER,
-    }));
-}
-
-function continueToReview() {
-  window.location.assign("/api/auth");
-}
-
-const RESULTS_PATH = "/apply/verify-income?view=results";
-
-function isResultsUrl(url = window.location.href): boolean {
-  return new URL(url, window.location.origin).searchParams.get("view") === "results";
-}
+import {
+  ACCEPTED_TYPES,
+  PROCESSING_STATUSES,
+  useVerifyIncome,
+} from "@/app/apply/verify-income/use-verify-income";
 
 export function VerifyIncomeForm({
   initialShowResults = false,
 }: {
   initialShowResults?: boolean;
 }) {
-  const [files, setFiles] = useState<SelectedFile[]>([]);
+  const {
+    files,
+    addFiles,
+    removeFile,
+    isProcessing,
+    startProcessing: handleUpload,
+    finishProcessing: handleProcessingDone,
+    showResults,
+    incomeMonths,
+    uploadMonthNames,
+    averageIncome,
+    continueToReview,
+  } = useVerifyIncome(initialShowResults);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showResults, setShowResults] = useState(initialShowResults);
   const inputRef = useRef<HTMLInputElement>(null);
-  const incomeMonths = lastThreeMonths();
-  const uploadMonthNames = lastThreeMonthNames();
-  const averageIncome = Math.round(
-    incomeMonths.reduce((sum, month) => sum + month.amount, 0) / incomeMonths.length,
-  );
-
-  const addFiles = useCallback((incoming: FileList | File[]) => {
-    const next: SelectedFile[] = [];
-    for (const file of Array.from(incoming)) {
-      if (!ACCEPTED_TYPES.includes(file.type)) continue;
-      if (file.size > MAX_FILE_SIZE) continue;
-      next.push({
-        id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: file.name,
-        size: formatFileSize(file.size),
-      });
-    }
-    if (next.length) setFiles((prev) => [...prev, ...next]);
-  }, []);
-
-  const removeFile = useCallback((id: string) => {
-    setFiles((prev) => prev.filter((file) => file.id !== id));
-  }, []);
 
   const applyNav = useApplyStepNav("verify");
-
-  const handleUpload = useCallback(() => {
-    setIsProcessing(true);
-  }, []);
-
-  const handleProcessingDone = useCallback(() => {
-    setIsProcessing(false);
-    setShowResults(true);
-    window.history.pushState({ view: "results" }, "", RESULTS_PATH);
-  }, []);
-
-  useEffect(() => {
-    const syncFromUrl = () => {
-      setIsProcessing(false);
-      setShowResults(isResultsUrl());
-    };
-    window.addEventListener("popstate", syncFromUrl);
-    window.addEventListener("pageshow", syncFromUrl);
-    return () => {
-      window.removeEventListener("popstate", syncFromUrl);
-      window.removeEventListener("pageshow", syncFromUrl);
-    };
-  }, []);
 
   const stepNav = {
     back: {

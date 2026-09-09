@@ -18,93 +18,17 @@ import {
   DownloadSimple,
 } from "@phosphor-icons/react";
 
-// Singapore 2026 public holidays (YYYY-MM-DD, local dates)
-const SG_PUBLIC_HOLIDAYS_2026 = new Set([
-  "2026-01-01", // New Year's Day
-  "2026-02-17", // Chinese New Year
-  "2026-02-18", // Chinese New Year (2nd day)
-  "2026-03-21", // Hari Raya Puasa (Saturday)
-  "2026-04-03", // Good Friday
-  "2026-05-01", // Labour Day
-  "2026-05-27", // Hari Raya Haji
-  "2026-06-01", // Vesak Day in-lieu (31 May falls on Sunday)
-  "2026-08-10", // National Day in-lieu (9 Aug falls on Sunday)
-  "2026-11-09", // Deepavali in-lieu (8 Nov falls on Sunday)
-  "2026-12-25", // Christmas Day
-  "2027-01-01", // New Year's Day 2027
-]);
-
-// 30-min slots from 10:30 to 19:00 (last appointment at 19:00, ends 19:30)
-const TIME_SLOTS = [
-  "10:30", "11:00", "11:30",
-  "12:00", "12:30", "13:00",
-  "13:30", "14:00", "14:30",
-  "15:00", "15:30", "16:00",
-  "16:30", "17:00", "17:30",
-  "18:00", "18:30", "19:00",
-];
-
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_LABELS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-function toISODate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/** Seeded PRNG (LCG) - deterministic stream from a date string seed. */
-function makePrng(date: string) {
-  let seed = 0;
-  for (let i = 0; i < date.length; i++) {
-    seed = Math.imul(31, seed) + date.charCodeAt(i) | 0;
-  }
-  return () => {
-    seed = (Math.imul(1664525, seed) + 1013904223) | 0;
-    return (seed >>> 0) / 0x100000000;
-  };
-}
-
-/** 3-5 scattered "limited spots" indices per day, never the fully-booked slot. */
-function limitedSlotIndices(date: string, bookedIdx: number): Set<number> {
-  const rand = makePrng(date + "limited");
-  const count = 3 + Math.floor(rand() * 3); // 3, 4 or 5
-  const indices = new Set<number>();
-  let guard = 0;
-  while (indices.size < count && guard++ < 60) {
-    const idx = Math.floor(rand() * TIME_SLOTS.length);
-    if (idx !== bookedIdx) indices.add(idx);
-  }
-  return indices;
-}
-
-/** One slot per day is fully booked - deterministic but varies each day. */
-function fullyBookedIndex(date: string): number {
-  const rand = makePrng(date + "booked");
-  return Math.floor(rand() * TIME_SLOTS.length);
-}
-
-function isDisabledDate(date: Date): boolean {
-  const dayOfWeek = date.getDay();
-  if (dayOfWeek === 0) return true; // Sunday
-  const iso = toISODate(date);
-  return SG_PUBLIC_HOLIDAYS_2026.has(iso);
-}
-
-function formatDisplayDate(date: Date): string {
-  return `${DAY_LABELS[date.getDay()]}, ${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function formatDisplayTime(slot: string): string {
-  const [h, m] = slot.split(":").map(Number);
-  const period = h < 12 ? "am" : "pm";
-  const hour = h > 12 ? h - 12 : h;
-  return `${hour}:${m.toString().padStart(2, "0")}${period}`;
-}
+import {
+  DAY_LABELS,
+  MONTH_LABELS,
+  TIME_SLOTS,
+  formatDisplayDate,
+  formatDisplayTime,
+  fullyBookedIndex,
+  isDisabledDate,
+  limitedSlotIndices,
+  toISODate,
+} from "@/lib/appointment-slots";
 
 function addToCalendar(date: Date, timeSlot: string) {
   const y  = date.getFullYear();
