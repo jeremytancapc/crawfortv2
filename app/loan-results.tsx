@@ -274,7 +274,7 @@ function OfferHeader({
             >
               {({ value: displayValue, isIntro }) => (
               <div className="flex w-full flex-col items-center">
-              <span className="rounded-full bg-[var(--brand-blue-hex)] px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.1em] text-white">
+              <span className="rounded-full bg-[var(--brand-blue-hex)] px-2.5 py-1 text-[clamp(7.5px,calc(2.7vw_-_3.6px),10px)] font-bold uppercase leading-none tracking-[0.1em] text-white">
                 Approved amount
               </span>
               <div
@@ -287,7 +287,7 @@ function OfferHeader({
               >
                 <span
                   aria-hidden="true"
-                  className="text-[24px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]"
+                  className="text-[clamp(11px,calc(6.3vw_-_8.5px),24px)] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]"
                 >
                   $
                 </span>
@@ -312,7 +312,7 @@ function OfferHeader({
                   disabled={!canAdjust}
                   readOnly={isIntro}
                   aria-label="Type the amount to withdraw today"
-                  className="ios-display-input border-0 bg-transparent p-0 text-center text-[40px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
+                  className="ios-display-input border-0 bg-transparent p-0 text-center text-[clamp(18px,calc(10.5vw_-_14px),40px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
                   style={{
                     fieldSizing: "content",
                     width: "auto",
@@ -321,7 +321,7 @@ function OfferHeader({
                 />
               </div>
               {canAdjust && (
-                <p className="mt-1.5 flex items-center gap-1 text-[10px] leading-none text-[var(--text-tertiary)]">
+                <p className="mt-1.5 flex items-center gap-1 text-[clamp(7.5px,calc(2.7vw_-_3.6px),10px)] leading-none text-[var(--text-tertiary)]">
                   <HandTap size={12} weight="fill" className="shrink-0 text-[var(--accent)]" />
                   Drag or tap to change
                 </p>

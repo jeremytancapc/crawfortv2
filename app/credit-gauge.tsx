@@ -20,6 +20,17 @@ const VIEW_PAD_X = 52;
 const VIEW_PAD_TOP = 28;
 const VIEW_BOX_W = VIEW_W + VIEW_PAD_X * 2;
 const VIEW_BOX_H = VIEW_H + VIEW_PAD_TOP;
+/** Where the centre readout used to sit as a fraction of the SVG's own
+ *  height, back when it was pinned there with `position: absolute`. Kept as
+ *  a normal-flow block instead (see render), pulled up by this same amount
+ *  via a negative margin - percentage margins read off the shared *width*,
+ *  so this converts the old height-based offset into that width-relative
+ *  number. That way the readout still visually sits inside the arc, but its
+ *  real height now pushes whatever comes after it (the nudge hint, "Offer
+ *  expires" row) down instead of overlapping it. */
+const CENTRE_READOUT_TOP_FRACTION = 0.46;
+const CENTRE_READOUT_MARGIN_TOP_PCT =
+  (CENTRE_READOUT_TOP_FRACTION - 1) * (VIEW_BOX_H / VIEW_BOX_W) * 100;
 const CX = 180;
 const CY = 178;
 const OUTER_R = 160;
@@ -450,6 +461,11 @@ export function CreditGauge({
       data-disabled={disabled}
     >
       <div className="relative">
+      {/* Fixed-aspect box for the arc itself. Landmark labels are positioned
+          as percentages of this box, so it has to stay exactly the SVG's own
+          size - the centre readout below grows independently and must not
+          stretch it. */}
+      <div className="relative">
       <svg
         ref={svgRef}
         viewBox={`${-VIEW_PAD_X} ${-VIEW_PAD_TOP} ${VIEW_BOX_W} ${VIEW_BOX_H}`}
@@ -581,11 +597,19 @@ export function CreditGauge({
           );
         })}
       </div>
+      </div>
 
-      {/* Centre readout. Everything here lets pointer events fall through to
-          the arc except the controls themselves - a full-width wrapper that
-          caught them would kill dragging across the middle of the dial. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[46%] flex flex-col items-center justify-start text-center [&_button]:pointer-events-auto [&_input]:pointer-events-auto">
+      {/* Centre readout. A normal-flow block pulled up over the arc with a
+          negative margin (see CENTRE_READOUT_MARGIN_TOP_PCT) instead of
+          `position: absolute` - its real height now pushes the nudge hint
+          and the rows below the card down instead of overlapping them, on
+          any screen width. Pointer events fall through to the arc except on
+          the controls themselves - a full-width wrapper that caught them
+          would kill dragging across the middle of the dial. */}
+      <div
+        className="pointer-events-none flex w-full flex-col items-center text-center [&_button]:pointer-events-auto [&_input]:pointer-events-auto"
+        style={{ marginTop: `${CENTRE_READOUT_MARGIN_TOP_PCT}%` }}
+      >
         {children({ value: displayValue, isIntro })}
       </div>
 
@@ -593,7 +617,7 @@ export function CreditGauge({
 
       {showNudgeHint ? (
         <p
-          className="credit-gauge-nudge-hint mt-1 px-2 text-center text-[13px] font-semibold leading-snug"
+          className="credit-gauge-nudge-hint mt-2 px-2 text-center text-[clamp(9.5px,calc(3.4vw_-_4.6px),13px)] font-semibold leading-snug"
           role="alert"
         >
           Make sure loan amount is selected correctly
