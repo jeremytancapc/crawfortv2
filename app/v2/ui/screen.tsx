@@ -78,7 +78,7 @@ function V2Navbar() {
           alt="Crawfort"
           width={1261}
           height={155}
-          className="h-4 w-auto"
+          className="h-[18px] w-auto"
           priority
         />
       </Link>

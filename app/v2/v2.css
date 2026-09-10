@@ -65,11 +65,37 @@ body:has(.theme-v2)::before {
   isolation: isolate;
   display: flex;
   min-height: 100dvh;
-  /* A faint brand wash so the canvas is never flat white ... */
-  background:
-    radial-gradient(120% 80% at 100% 0%, oklch(0.95 0.03 255 / 0.9), transparent 60%),
-    radial-gradient(90% 70% at 0% 100%, oklch(0.96 0.035 185 / 0.8), transparent 60%),
-    var(--v2-bg);
+  /* A soft wash so the canvas is never flat white - mostly white and grain
+     (see `::before` below), with just a whisper of brand colour drifting
+     underneath. Each blob is a plain radial gradient blown up to 180% of
+     the box and set adrift by `background-position` alone - no image, no
+     JS, just two extra CSS declarations - so it costs nothing to load and
+     next to nothing to paint (a once-a-frame gradient fill behind
+     everything else, on a 30s+ cycle slow enough to read as ambient). */
+  background-color: var(--v2-bg);
+  background-image:
+    radial-gradient(circle, oklch(0.95 0.03 255 / 0.35), transparent 55%),
+    radial-gradient(circle, oklch(0.96 0.035 185 / 0.3), transparent 55%);
+  background-size: 180% 180%, 160% 160%;
+  background-repeat: no-repeat, no-repeat;
+  background-position:
+    100% 0%,
+    0% 100%;
+  animation: v2-bg-drift 36s ease-in-out infinite;
+}
+
+@keyframes v2-bg-drift {
+  0%,
+  100% {
+    background-position:
+      100% 0%,
+      0% 100%;
+  }
+  50% {
+    background-position:
+      70% 30%,
+      30% 70%;
+  }
 }
 
 /* ... plus paper grain over everything, on phones and desktop alike. */
@@ -107,7 +133,10 @@ body:has(.theme-v2)::before {
   overflow: hidden;
   padding-left: var(--v2-gutter);
   padding-right: var(--v2-gutter);
-  padding-bottom: max(var(--v2-safe-bottom), 16px);
+  /* Give the footer's CTA (and the legal note beneath it) real air off the
+     physical bottom edge - 16px read as touching the edge on devices with
+     no safe-area inset. */
+  padding-bottom: max(var(--v2-safe-bottom), 24px);
 }
 
 /* Brand strip: full-bleed (it ignores the screen's own gutter) blue band
@@ -121,8 +150,10 @@ body:has(.theme-v2)::before {
   justify-content: center;
   margin-left: calc(-1 * var(--v2-gutter));
   margin-right: calc(-1 * var(--v2-gutter));
-  padding-top: calc(var(--v2-safe-top) + 10px);
-  padding-bottom: 10px;
+  /* Weighted closer to the footer's 56px CTA (see `--v2-cta-height`) so the
+     screen doesn't read as a thin cap on a heavy base. */
+  padding-top: calc(var(--v2-safe-top) + 15px);
+  padding-bottom: 15px;
   overflow: hidden;
   background:
     radial-gradient(120% 140% at 100% 0%, oklch(0.45 0.16 258 / 0.7), transparent 65%),
@@ -249,8 +280,24 @@ body:has(.theme-v2)::before {
     padding-top: 32px;
   }
 
-  .v2-illustration {
+  /* Scoped to `.v2-main` (not bare `.v2-illustration`) so it actually wins
+     against the base clamp below it - equal specificity, later source
+     order, so an unscoped version here would silently lose. */
+  .v2-main .v2-illustration {
     height: 160px;
+  }
+
+  /* The upload dropzone is natural-height with almost no padding of its
+     own (no `flex-1` stretch to fill a tall viewport like on mobile), so
+     the general 160px above still reads as oversized there - give it its
+     own smaller mark, real padding, and a proper gap before the label. */
+  .v2-main .v2-dropzone {
+    padding: 28px 24px;
+    gap: 16px;
+  }
+
+  .v2-main .v2-dropzone .v2-illustration {
+    height: 104px;
   }
 
   /* The rail carries the brand and the stepper, so the phone chrome keeps
@@ -344,7 +391,8 @@ body:has(.theme-v2)::before {
   transition:
     background-color 200ms var(--v2-ease),
     color 200ms var(--v2-ease),
-    box-shadow 200ms var(--v2-ease);
+    box-shadow 200ms var(--v2-ease),
+    transform 150ms var(--v2-ease);
 }
 
 .v2-rail-step.is-done .v2-rail-step-marker {
@@ -389,6 +437,35 @@ body:has(.theme-v2)::before {
 
 .v2-rail-step.is-current .v2-rail-step-detail {
   color: var(--rail-ink-2);
+}
+
+/* A revisitable step is a `<Link>` wrapping the marker + text; `display:
+   contents` keeps it out of the box model so those two stay direct grid
+   children of `.v2-rail-step`, exactly as when there is no link at all. */
+.v2-rail-step > a {
+  display: contents;
+}
+
+.v2-rail-step.is-clickable {
+  cursor: pointer;
+}
+
+.v2-rail-step.is-clickable:hover .v2-rail-step-marker,
+.v2-rail-step.is-clickable > a:focus-visible .v2-rail-step-marker {
+  transform: scale(1.1);
+}
+
+.v2-rail-step.is-clickable:hover .v2-rail-step-label {
+  color: var(--rail-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rail-teal);
+  text-underline-offset: 3px;
+}
+
+.v2-rail-step.is-clickable > a:focus-visible {
+  outline: 2px solid var(--rail-teal);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .v2-sidebar-link {
@@ -702,9 +779,9 @@ body:has(.theme-v2)::before {
 
 .v2-segment[aria-checked="true"],
 .v2-segment[aria-selected="true"] {
-  background: var(--v2-bg);
-  color: var(--v2-ink);
-  box-shadow: 0 1px 2px oklch(0.2 0.02 260 / 0.08), 0 0 0 1px var(--v2-hairline);
+  background: var(--v2-teal);
+  color: var(--v2-accent);
+  box-shadow: 0 1px 2px oklch(0.2 0.02 260 / 0.12);
 }
 
 .v2-segmented.is-invalid {
@@ -1013,6 +1090,9 @@ body:has(.theme-v2)::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .v2-root {
+    animation: none;
+  }
   .v2-enter {
     animation: none;
   }
@@ -1067,8 +1147,8 @@ body:has(.theme-v2)::before {
    still fits without scrolling. Kept last so it wins over the base rules. */
 @media (max-height: 700px) {
   .v2-row {
-    min-height: 46px;
-    padding: 7px 0;
+    min-height: 44px;
+    padding: 6px 0;
   }
   .v2-sub {
     margin-top: 6px;
@@ -1080,7 +1160,7 @@ body:has(.theme-v2)::before {
     font-size: clamp(40px, 7.4dvh, 64px);
   }
   .v2-body {
-    gap: 14px;
+    gap: 10px;
   }
   .v2-segment {
     min-height: 36px;
@@ -1089,9 +1169,11 @@ body:has(.theme-v2)::before {
     width: 36px;
     height: 36px;
   }
-  /* The persistent brand navbar (see `.v2-navbar`) eats into every screen's
-     budget the same way a short phone would, so it shares this tier. */
+  /* The persistent brand navbar and the footer's bottom safe-clearance
+     (see `.v2-navbar`, `.v2-screen` padding-bottom) both eat into every
+     screen's budget the same way a short phone would, so they share this
+     tier. */
   .v2-illustration {
-    height: clamp(72px, 12dvh, 140px);
+    height: clamp(60px, 9dvh, 124px);
   }
 }
