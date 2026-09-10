@@ -7,6 +7,7 @@ import { CaretLeft } from "@phosphor-icons/react";
 
 import { useApplyPath } from "@/app/use-apply-path";
 import { v2ProgressFills, type V2Progress } from "@/app/v2/ui/progress";
+import { setV2Progress } from "@/app/v2/ui/progress-store";
 
 /**
  * Fixed-height screen: header | body | footer. Nothing inside may scroll
@@ -54,29 +55,56 @@ export function V2Screen({
 
   return (
     <div ref={ref} className={cx("v2-screen", className)}>
+      <V2Navbar />
       {children}
     </div>
   );
 }
 
 /**
- * 56px header row: back control, progress bar, optional right slot. The
- * wordmark replaces the progress bar on the very first screen only.
+ * Persistent brand strip, full-bleed above every phone screen (the desktop
+ * rail carries the same branding there, so this hides at that breakpoint).
+ * Unlike `V2Header` below it, this never changes between steps - it is the
+ * one piece of chrome that says "Crawfort" no matter where the customer is
+ * in the funnel.
  */
+function V2Navbar() {
+  const applyHref = useApplyPath();
+  return (
+    <div className="v2-navbar">
+      <Link href={applyHref("/")} aria-label="Crawfort home">
+        <Image
+          src="/images/crawfort-white-color-dot.png"
+          alt="Crawfort"
+          width={1261}
+          height={155}
+          className="h-4 w-auto"
+          priority
+        />
+      </Link>
+    </div>
+  );
+}
+
+/** 56px header row: back control, progress bar, optional right slot. */
 export function V2Header({
   onBack,
   backHref,
   progress,
-  showWordmark = false,
   right,
 }: {
   onBack?: () => void;
   backHref?: string;
   progress?: V2Progress;
-  showWordmark?: boolean;
   right?: ReactNode;
 }) {
-  const applyHref = useApplyPath();
+  const stage = progress?.stage;
+  const fraction = progress?.fraction;
+
+  // Mirror this screen's stage to the desktop sidebar stepper.
+  useEffect(() => {
+    setV2Progress(stage ? { stage, fraction } : null);
+  }, [stage, fraction]);
 
   return (
     <header className="v2-header">
@@ -97,29 +125,7 @@ export function V2Header({
         <span aria-hidden="true" />
       )}
 
-      {showWordmark ? (
-        <Link
-          href={applyHref("/")}
-          aria-label="Crawfort home"
-          className="flex items-center justify-center gap-2"
-        >
-          <Image
-            src="/images/crawfort-app-logo.png"
-            alt=""
-            width={1000}
-            height={1000}
-            className="h-6 w-6 rounded-[7px]"
-            priority
-          />
-          <span className="text-[15px] font-bold tracking-[-0.01em] text-[var(--v2-ink)]">
-            Crawfort
-          </span>
-        </Link>
-      ) : progress ? (
-        <V2ProgressBar progress={progress} />
-      ) : (
-        <span aria-hidden="true" />
-      )}
+      {progress ? <V2ProgressBar progress={progress} /> : <span aria-hidden="true" />}
 
       <div className="flex items-center justify-end">{right}</div>
     </header>

@@ -58,24 +58,92 @@ body:has(.theme-v2)::before {
   display: none;
 }
 
-/* Root: phone column on every breakpoint, centred once there is room. */
+/* Root: a single phone column on small screens; from 1024px a left rail plus
+   the same column, centred in the remaining width. */
 .v2-root {
+  position: relative;
+  isolation: isolate;
   display: flex;
-  justify-content: center;
   min-height: 100dvh;
+  /* A faint brand wash so the canvas is never flat white ... */
+  background:
+    radial-gradient(120% 80% at 100% 0%, oklch(0.95 0.03 255 / 0.9), transparent 60%),
+    radial-gradient(90% 70% at 0% 100%, oklch(0.96 0.035 185 / 0.8), transparent 60%),
+    var(--v2-bg);
+}
+
+/* ... plus paper grain over everything, on phones and desktop alike. */
+.v2-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+}
+
+.v2-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+}
+
+.v2-sidebar {
+  display: none;
 }
 
 .v2-screen {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   height: 100dvh;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
   padding-left: var(--v2-gutter);
   padding-right: var(--v2-gutter);
-  padding-top: var(--v2-safe-top);
   padding-bottom: max(var(--v2-safe-bottom), 16px);
+}
+
+/* Brand strip: full-bleed (it ignores the screen's own gutter) blue band
+   with the wordmark, present on every phone screen so branding survives
+   past the first step. The desktop rail carries the same job, so this
+   drops out at that breakpoint. */
+.v2-navbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: calc(-1 * var(--v2-gutter));
+  margin-right: calc(-1 * var(--v2-gutter));
+  padding-top: calc(var(--v2-safe-top) + 10px);
+  padding-bottom: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 100% 0%, oklch(0.45 0.16 258 / 0.7), transparent 65%),
+    var(--v2-accent);
+}
+
+.v2-navbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  opacity: 0.22;
+  mix-blend-mode: soft-light;
+}
+
+.v2-navbar > a {
+  position: relative;
+  z-index: 1;
+  display: flex;
 }
 
 @media (min-width: 640px) {
@@ -85,13 +153,260 @@ body:has(.theme-v2)::before {
 }
 
 @media (min-width: 1024px) {
-  .v2-root {
-    background: var(--v2-surface);
+  .theme-v2 {
+    --v2-gutter: 32px;
   }
+
+  .v2-sidebar {
+    position: sticky;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    top: 0;
+    width: 320px;
+    height: 100dvh;
+    padding: 36px 36px 28px;
+    color: oklch(0.985 0.003 260);
+    background:
+      radial-gradient(90% 60% at 100% 100%, oklch(0.45 0.16 258 / 0.7), transparent 65%),
+      var(--v2-accent);
+    overflow: hidden;
+  }
+
+  /* Grain on the rail too, a touch stronger so it reads on the blue. */
+  .v2-sidebar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 240px 240px;
+    opacity: 0.22;
+    mix-blend-mode: soft-light;
+  }
+
+  .v2-sidebar > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Shorter desktop windows: tighten the rail so it never overflows. */
+  @media (max-height: 760px) {
+    .v2-sidebar {
+      padding-top: 28px;
+    }
+    .v2-rail-steps {
+      margin-top: 28px;
+    }
+    .v2-rail-step {
+      padding-bottom: 18px;
+    }
+  }
+
+  @media (max-height: 660px) {
+    .v2-sidebar-title,
+    .v2-sidebar-kicker {
+      display: none;
+    }
+  }
+
+  /* On desktop the column takes its natural height and sits centred, so the
+     phone's "spread to fill the viewport" spacing collapses into a steady
+     rhythm: title, then content, then CTA. */
+  .v2-main {
+    align-items: center;
+    padding: 32px 0;
+  }
+
   .v2-screen {
-    background: var(--v2-bg);
-    box-shadow: 0 0 0 1px var(--v2-hairline);
+    max-width: 560px;
+    height: auto;
+    max-height: 100dvh;
+    grid-template-rows: auto auto auto;
+    padding-top: 0;
+    padding-bottom: 0;
   }
+
+  .v2-main .v2-body {
+    justify-content: flex-start;
+    gap: 28px;
+  }
+
+  .v2-main .v2-body > [aria-hidden="true"]:empty {
+    display: none;
+  }
+
+  .v2-main .v2-title {
+    font-size: 32px;
+  }
+
+  .v2-main .v2-hero-num {
+    font-size: 64px;
+  }
+
+  .v2-main footer {
+    padding-top: 32px;
+  }
+
+  .v2-illustration {
+    height: 160px;
+  }
+
+  /* The rail carries the brand and the stepper, so the phone chrome keeps
+     only its back control. */
+  .v2-navbar,
+  .v2-header .v2-progress {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .v2-sidebar {
+    width: 360px;
+    padding: 40px 44px 32px;
+  }
+}
+
+/* Sidebar (brand blue rail, teal accents) --------------------------------- */
+
+.v2-sidebar {
+  --rail-ink: oklch(0.985 0.003 260);
+  --rail-ink-2: oklch(0.985 0.003 260 / 0.72);
+  --rail-ink-3: oklch(0.985 0.003 260 / 0.48);
+  --rail-line: oklch(0.985 0.003 260 / 0.22);
+  --rail-teal: var(--v2-teal);
+}
+
+.v2-sidebar-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rail-teal);
+}
+
+.v2-sidebar-title {
+  margin-top: 8px;
+  font-family: var(--font-quicksand), system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--rail-ink);
+  text-wrap: balance;
+}
+
+.v2-rail-steps {
+  display: flex;
+  flex-direction: column;
+  margin-top: 40px;
+  list-style: none;
+  padding: 0;
+}
+
+.v2-rail-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: start;
+  padding-bottom: 26px;
+}
+
+/* Connector between markers. */
+.v2-rail-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 11.5px;
+  top: 26px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--rail-line);
+}
+
+.v2-rail-step.is-done:not(:last-child)::before {
+  background: var(--rail-teal);
+}
+
+.v2-rail-step-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rail-ink-3);
+  box-shadow: inset 0 0 0 1.5px var(--rail-line);
+  transition:
+    background-color 200ms var(--v2-ease),
+    color 200ms var(--v2-ease),
+    box-shadow 200ms var(--v2-ease);
+}
+
+.v2-rail-step.is-done .v2-rail-step-marker {
+  background: var(--rail-teal);
+  color: var(--v2-accent);
+  box-shadow: none;
+}
+
+.v2-rail-step.is-current .v2-rail-step-marker {
+  background: var(--rail-teal);
+  color: var(--v2-accent);
+  box-shadow: 0 0 0 4px oklch(0.85 0.15 175 / 0.28);
+}
+
+.v2-rail-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v2-rail-step-label {
+  /* Match the marker's 24px height exactly (rather than the inherited 1.5
+     line-height) so the circle's centre lines up with this line's centre,
+     not with the top of its extra leading. */
+  line-height: 24px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rail-ink-3);
+  transition: color 200ms var(--v2-ease);
+}
+
+.v2-rail-step-detail {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--rail-ink-3);
+}
+
+.v2-rail-step.is-done .v2-rail-step-label,
+.v2-rail-step.is-current .v2-rail-step-label {
+  color: var(--rail-ink);
+}
+
+.v2-rail-step.is-current .v2-rail-step-detail {
+  color: var(--rail-ink-2);
+}
+
+.v2-sidebar-link {
+  align-self: flex-start;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rail-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--rail-teal);
+}
+
+.v2-sidebar-link:hover {
+  color: var(--rail-teal);
+}
+
+.v2-sidebar .v2-note {
+  color: var(--rail-ink-3);
 }
 
 /* Header ------------------------------------------------------------------ */
@@ -393,7 +708,11 @@ body:has(.theme-v2)::before {
 }
 
 .v2-segmented.is-invalid {
-  box-shadow: 0 0 0 1.5px var(--v2-danger);
+  /* Inset, not outset: an outward ring here bleeds past this control's own
+     box, which is exactly as wide as `.v2-body`, so its rounded ends get
+     sliced off by the body's `overflow: hidden`. Inset stays inside the
+     pill's own border-radius, so it never gets clipped. */
+  box-shadow: inset 0 0 0 1.5px var(--v2-danger);
 }
 
 /* Stepper ------------------------------------------------------------------ */
@@ -761,7 +1080,7 @@ body:has(.theme-v2)::before {
     font-size: clamp(40px, 7.4dvh, 64px);
   }
   .v2-body {
-    gap: 16px;
+    gap: 14px;
   }
   .v2-segment {
     min-height: 36px;
@@ -769,5 +1088,10 @@ body:has(.theme-v2)::before {
   .v2-stepper-button {
     width: 36px;
     height: 36px;
+  }
+  /* The persistent brand navbar (see `.v2-navbar`) eats into every screen's
+     budget the same way a short phone would, so it shares this tier. */
+  .v2-illustration {
+    height: clamp(72px, 12dvh, 140px);
   }
 }
