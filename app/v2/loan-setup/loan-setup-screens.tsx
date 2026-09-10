@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { CaretRight } from "@phosphor-icons/react";
 
 import { TENURE_OPTIONS, URGENCY_OPTIONS, type UrgencyValue } from "@/app/loan-application-form";
 import { useApplyPath } from "@/app/use-apply-path";
 import { AmountInput, Pill, Row, Rows, Segmented, Stepper } from "@/app/v2/ui/controls";
 import { SingpassIllustration } from "@/app/v2/ui/illustrations";
+import { V2_STAGES, V2_STAGE_HREF } from "@/app/v2/ui/progress";
+import { useV2VisitedStages } from "@/app/v2/ui/progress-store";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
 import { useClientValue } from "@/app/v2/ui/use-client-value";
 import { trackDisplayStep } from "@/lib/analytics";
@@ -51,6 +56,20 @@ export function LoanSetupScreens({
   initialApplySession?: Partial<LoanFormData> | null;
 }) {
   const applyHref = useApplyPath();
+  const router = useRouter();
+  const visitedStages = useV2VisitedStages();
+  // The furthest real stage (beyond this one) reached so far this session -
+  // e.g. the customer clicked the logo, or backed all the way out, after
+  // already getting to Review or further. `visitedStages` only survives
+  // client-side navigation (not the Singpass hand-off's hard reload), so
+  // this is naturally `null` whenever there is nowhere useful to jump back
+  // to.
+  const furthestAheadStage = useMemo(() => {
+    for (let i = V2_STAGES.length - 1; i > 0; i--) {
+      if (visitedStages.has(V2_STAGES[i])) return V2_STAGES[i];
+    }
+    return null;
+  }, [visitedStages]);
   // A plain visit to `/v2` always opens on the amount screen. The Singpass
   // step is only re-entered via an explicit one-shot signal set right before
   // an in-app "back" from verify-income - never from a leftover last-known
@@ -180,7 +199,37 @@ export function LoanSetupScreens({
 
   return (
     <V2Screen key="setup">
-      <V2Header progress={{ stage: "setup", fraction: 0.3 }} />
+      <V2Header
+        onBack={() => router.back()}
+        progress={{ stage: "setup", fraction: 0.3 }}
+        // Two reasons a forward control might belong here: the customer
+        // reached a screen further ahead this session and came back to the
+        // start (via the logo, or backing all the way out) - jump them to
+        // that furthest point. Otherwise, `stepOverride` is only ever set
+        // to 1 by the Singpass screen's own back button, never on first
+        // mount - so its presence alone means "return to Singpass" (mirrors
+        // a browser's forward button lighting up only after you go back).
+        right={
+          furthestAheadStage ? (
+            <Link
+              href={applyHref(V2_STAGE_HREF[furthestAheadStage])}
+              className="v2-icon-button"
+              aria-label="Continue where you left off"
+            >
+              <CaretRight size={22} weight="bold" />
+            </Link>
+          ) : stepOverride === 1 ? (
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              className="v2-icon-button"
+              aria-label="Forward to Singpass"
+            >
+              <CaretRight size={22} weight="bold" />
+            </button>
+          ) : undefined
+        }
+      />
       <V2Body justify="between">
         <V2Title title="How much do you need?" />
 

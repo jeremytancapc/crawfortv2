@@ -106,7 +106,7 @@ export function BookScreen({ formData }: { formData: LoanFormData }) {
                   setSlot(null);
                 }}
                 className={cx(
-                  "flex h-[60px] w-[56px] flex-col items-center justify-center rounded-[16px] transition-colors",
+                  "flex h-14 w-[56px] flex-col items-center justify-center rounded-[16px] transition-colors",
                   selected
                     ? "bg-[var(--v2-ink)] text-[var(--v2-on-accent)]"
                     : "bg-[var(--v2-surface)] text-[var(--v2-ink)]",

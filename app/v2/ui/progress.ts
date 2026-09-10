@@ -27,6 +27,21 @@ export const V2_STAGE_META: Record<V2Stage, { label: string; detail: string }> =
   book: { label: "Collect", detail: "Book a visit to our office" },
 };
 
+/**
+ * Canonical (unprefixed - pass through `useApplyPath`) entry route for each
+ * stage. Shared by the desktop rail (clicking a step) and the setup
+ * screen's forward control (clicking the logo, or the header's own forward
+ * chevron, to resume at the furthest point reached this session).
+ */
+export const V2_STAGE_HREF: Record<V2Stage, string> = {
+  setup: "/",
+  verify: "/apply/verify-income",
+  review: "/apply/review",
+  offer: "/apply/approval",
+  accept: "/apply/accept",
+  book: "/apply/book",
+};
+
 export interface V2Progress {
   stage: V2Stage;
   /** 0-1 fill of the current stage's segment. Defaults to a started stage. */

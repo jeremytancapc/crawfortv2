@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Check } from "@phosphor-icons/react";
 
 import { useApplyPath } from "@/app/use-apply-path";
-import { V2_STAGES, V2_STAGE_META } from "@/app/v2/ui/progress";
-import { useV2Progress } from "@/app/v2/ui/progress-store";
+import { V2_STAGES, V2_STAGE_HREF, V2_STAGE_META } from "@/app/v2/ui/progress";
+import { useV2Progress, useV2VisitedStages } from "@/app/v2/ui/progress-store";
 import { cx } from "@/app/v2/ui/screen";
 
 const WHATSAPP_URL = "https://wa.me/6560119380";
@@ -19,6 +19,7 @@ const WHATSAPP_URL = "https://wa.me/6560119380";
 export function V2Sidebar() {
   const applyHref = useApplyPath();
   const progress = useV2Progress();
+  const visitedStages = useV2VisitedStages();
   const currentIndex = progress ? V2_STAGES.indexOf(progress.stage) : 0;
 
   return (
@@ -44,12 +45,18 @@ export function V2Sidebar() {
           const meta = V2_STAGE_META[stage];
           const state =
             index < currentIndex ? "done" : index === currentIndex ? "current" : "todo";
-          return (
-            <li
-              key={stage}
-              className={cx("v2-rail-step", `is-${state}`)}
-              aria-current={state === "current" ? "step" : undefined}
-            >
+          // Behind where you are now: always revisitable - being "done" at
+          // all already proves you passed through it, so this can't depend
+          // on the in-memory visited set (a hard navigation, e.g. the
+          // Singpass hand-off, resets that set same as a fresh reload).
+          // Ahead of it but reached earlier this session (you went back and
+          // now want to go forward again without redoing cleared steps):
+          // revisitable too, but only the in-memory set can know that. A
+          // stage you've never reached stays inert either way.
+          const isClickable =
+            state === "done" || (state === "todo" && visitedStages.has(stage));
+          const content = (
+            <>
               <span className="v2-rail-step-marker" aria-hidden="true">
                 {state === "done" ? <Check size={12} weight="bold" /> : index + 1}
               </span>
@@ -57,6 +64,21 @@ export function V2Sidebar() {
                 <span className="v2-rail-step-label">{meta.label}</span>
                 <span className="v2-rail-step-detail">{meta.detail}</span>
               </span>
+            </>
+          );
+          return (
+            <li
+              key={stage}
+              className={cx("v2-rail-step", `is-${state}`, isClickable && "is-clickable")}
+              aria-current={state === "current" ? "step" : undefined}
+            >
+              {isClickable ? (
+                <Link href={applyHref(V2_STAGE_HREF[stage])} aria-label={`Go to ${meta.label}`}>
+                  {content}
+                </Link>
+              ) : (
+                content
+              )}
             </li>
           );
         })}
