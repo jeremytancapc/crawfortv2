@@ -10,7 +10,7 @@ import { SingpassIllustration } from "@/app/v2/ui/illustrations";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
 import { useClientValue } from "@/app/v2/ui/use-client-value";
 import { trackDisplayStep } from "@/lib/analytics";
-import { markApplyStepVisited, persistGateStep, readPersistedGateStep } from "@/lib/apply-step-nav";
+import { markApplyStepVisited, persistGateStep, readGateResumeStep } from "@/lib/apply-step-nav";
 import {
   calculateMonthlyRepayment,
   formatCurrency,
@@ -51,8 +51,12 @@ export function LoanSetupScreens({
   initialApplySession?: Partial<LoanFormData> | null;
 }) {
   const applyHref = useApplyPath();
-  // The income sub-step is off, so a persisted "2" resumes on the amount screen.
-  const resumedStep = useClientValue(readPersistedGateStep, 1);
+  // A plain visit to `/v2` always opens on the amount screen. The Singpass
+  // step is only re-entered via an explicit one-shot signal set right before
+  // an in-app "back" from verify-income - never from a leftover last-known
+  // step, or a page refresh would keep reopening wherever the customer last
+  // scrolled to instead of the funnel's actual entry point.
+  const resumedStep = useClientValue(() => readGateResumeStep() ?? 1, 1);
   const [stepOverride, setStep] = useState<GateStep | null>(null);
   const step: GateStep = stepOverride ?? (resumedStep === 3 ? 3 : 1);
   const [formData, setFormData] = useState<LoanFormData>(() => ({
@@ -176,7 +180,7 @@ export function LoanSetupScreens({
 
   return (
     <V2Screen key="setup">
-      <V2Header showWordmark />
+      <V2Header progress={{ stage: "setup", fraction: 0.3 }} />
       <V2Body justify="between">
         <V2Title title="How much do you need?" />
 

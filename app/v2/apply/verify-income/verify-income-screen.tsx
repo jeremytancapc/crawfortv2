@@ -103,11 +103,11 @@ export function VerifyIncomeScreen({
             setIsDragOver(false);
             if (event.dataTransfer.files.length) addFiles(event.dataTransfer.files);
           }}
-          className="v2-enter flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed transition-colors"
+          className="v2-enter flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed shadow-[0_1px_3px_oklch(0.2_0.02_260_/_0.06)] transition-colors"
           style={{
             ["--i" as string]: 1,
             borderColor: isDragOver ? "var(--v2-accent)" : "var(--v2-hairline)",
-            background: isDragOver ? "var(--v2-accent-soft)" : "transparent",
+            background: isDragOver ? "var(--v2-accent-soft)" : "var(--v2-ill-paper)",
           }}
           aria-label="Add income documents"
         >

@@ -106,6 +106,27 @@ export function readPersistedGateStep(): number {
   return 1;
 }
 
+/**
+ * One-shot version of the above: honours an explicit "resume here" signal
+ * (set right before an in-app navigation away from the gate, e.g. the back
+ * link on verify-income) but ignores the last-known step. Use this where a
+ * fresh visit to the gate's URL should always start at step 1 - a plain
+ * reload should not silently reopen wherever the customer last was.
+ */
+export function readGateResumeStep(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const resume = sessionStorage.getItem(GATE_RESUME_KEY);
+    if (!resume) return null;
+    sessionStorage.removeItem(GATE_RESUME_KEY);
+    const step = Number(resume);
+    if (step === 1 || step === 2 || step === 3) return step;
+  } catch {
+    /* ignore quota / private mode */
+  }
+  return null;
+}
+
 export function gateStepForId(id: ApplyStepId): number | null {
   if (id === "amount") return 1;
   if (id === "income") return 2;

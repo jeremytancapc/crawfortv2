@@ -14,6 +14,19 @@ export const V2_STAGES = [
 
 export type V2Stage = (typeof V2_STAGES)[number];
 
+/**
+ * Copy for the desktop sidebar stepper, where the same six stages have room
+ * for a name and one supporting line. Phones only ever see the bar.
+ */
+export const V2_STAGE_META: Record<V2Stage, { label: string; detail: string }> = {
+  setup: { label: "Loan", detail: "Amount, term and payout" },
+  verify: { label: "Income", detail: "Payslips or Singpass" },
+  review: { label: "Details", detail: "Confirm who you are" },
+  offer: { label: "Offer", detail: "Your approved plan" },
+  accept: { label: "Accept", detail: "Terms and signature" },
+  book: { label: "Collect", detail: "Book a visit to our office" },
+};
+
 export interface V2Progress {
   stage: V2Stage;
   /** 0-1 fill of the current stage's segment. Defaults to a started stage. */
