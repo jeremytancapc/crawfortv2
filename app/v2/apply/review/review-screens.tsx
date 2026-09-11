@@ -11,7 +11,7 @@ import {
 } from "@/app/apply/review/submit-review";
 import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { useApplyPath } from "@/app/use-apply-path";
-import { Pill, Row, Rows, Segmented, Tabs, TextField } from "@/app/v2/ui/controls";
+import { Pill, Row, Rows, Segmented, TextField } from "@/app/v2/ui/controls";
 import { IdentityIllustration } from "@/app/v2/ui/illustrations";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
 import { trackDisplayStep } from "@/lib/analytics";
@@ -31,7 +31,7 @@ type IdType = (typeof ID_TYPE_OPTIONS)[number]["value"];
 const MARITAL_OPTIONS = ["Single", "Married", "Divorced", "Widowed"] as const;
 type Marital = (typeof MARITAL_OPTIONS)[number];
 
-type Screen = "identity" | "income" | "contact";
+type Screen = "identity" | "contact";
 
 function maskNric(nric: string): string {
   return nric ? `${nric.slice(0, 1)}****${nric.slice(-1)}` : "-";
@@ -48,8 +48,9 @@ function formatDob(dob: string): string {
 
 /**
  * Review in two screens: who you are, then how to reach you. Singpass users
- * confirm retrieved details; manual users type them. Income data retrieved
- * via Singpass sits one tap away on its own screen rather than stacked below.
+ * confirm retrieved details, with their full NOA/CPF income history listed
+ * inline below rather than hidden behind a separate screen; manual users
+ * type their details instead, with no Singpass income data to show.
  */
 export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
   const router = useRouter();
@@ -148,16 +149,6 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
     />
   ) : null;
 
-  if (screen === "income") {
-    return (
-      <IncomeDataScreen
-        noaRecords={noaRecords}
-        cpfRecords={cpfRecords}
-        onBack={() => setScreen("identity")}
-      />
-    );
-  }
-
   if (screen === "contact") {
     return (
       <V2Screen key="contact">
@@ -224,14 +215,20 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
 
   if (isSingpass) {
     return (
-      <V2Screen key="identity-singpass">
+      <V2Screen key="identity-singpass" scrollable>
         {overlay}
         <V2Header
           backHref={applyHref("/apply/verify-income")}
           progress={{ stage: "review", fraction: 0.4 }}
         />
-        <V2Body justify="between">
-          <V2Title title="Is this you?" subtitle="Retrieved from Singpass just now." />
+        <V2Body>
+          <V2Title title="Verify your info" subtitle="Retrieved from Singpass just now." />
+          {/* Everything Singpass returned - identity fields, then the full
+              NOA and CPF history - lives in one continuous list rather
+              than behind a separate "view income data" screen, so none of
+              it is ever hidden. The page itself scrolls (see `V2Screen`'s
+              `scrollable` prop); the header above and the CTA below (in
+              the footer) pin to the viewport edges throughout. */}
           <div className="v2-enter" style={{ ["--i" as string]: 1 }}>
             <Rows>
               <Row label="Name" value={formData.fullName || "-"} />
@@ -266,20 +263,56 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
                 }
               />
             </Rows>
-            {noaRecords.length > 0 || cpfRecords.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setScreen("income")}
-                className="v2-link mt-4 inline-flex min-h-11 items-center"
-              >
-                View income data from IRAS and CPF
-              </button>
+            {noaRecords.length > 0 ? (
+              <div className="mt-5">
+                <span className="v2-label">Notice of assessment</span>
+                <Rows className="mt-1">
+                  {noaRecords.map((rec) => (
+                    <Row
+                      key={rec.yearOfAssessment}
+                      label={
+                        <span className="flex flex-col">
+                          <span className="font-semibold text-[var(--v2-ink)]">
+                            YA {rec.yearOfAssessment}
+                          </span>
+                          <span className="text-[12px] text-[var(--v2-ink-3)]">
+                            {rec.taxClearance === "Y" ? `${rec.type} clearance` : rec.type}
+                            {" · "}
+                            {formatCurrency(Math.round((rec.employmentIncome + rec.tradeIncome) / 12))}/mo
+                          </span>
+                        </span>
+                      }
+                      value={formatCurrency(rec.assessableIncome)}
+                    />
+                  ))}
+                </Rows>
+              </div>
+            ) : null}
+            {cpfRecords.length > 0 ? (
+              <div className="mt-5">
+                <span className="v2-label">CPF contributions</span>
+                <Rows className="mt-1">
+                  {cpfRecords.map((c) => (
+                    <Row
+                      key={`${c.paidOn}-${c.month}`}
+                      label={
+                        <span className="flex flex-col">
+                          <span className="font-semibold text-[var(--v2-ink)]">{c.month}</span>
+                          <span className="max-w-[180px] truncate text-[12px] text-[var(--v2-ink-3)]">
+                            {c.employer || "-"}
+                          </span>
+                        </span>
+                      }
+                      value={formatCurrency(c.amount)}
+                    />
+                  ))}
+                </Rows>
+              </div>
             ) : null}
           </div>
-          <div aria-hidden="true" />
         </V2Body>
         <V2Footer>
-          <Pill onClick={() => void handleIdentityContinue()}>Yes, that&apos;s me</Pill>
+          <Pill onClick={() => void handleIdentityContinue()}>Confirm and continue</Pill>
         </V2Footer>
       </V2Screen>
     );
@@ -327,91 +360,6 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
       </V2Body>
       <V2Footer>
         <Pill onClick={() => void handleIdentityContinue()}>Continue</Pill>
-      </V2Footer>
-    </V2Screen>
-  );
-}
-
-const CPF_ROWS_SHOWN = 6;
-
-function IncomeDataScreen({
-  noaRecords,
-  cpfRecords,
-  onBack,
-}: {
-  noaRecords: LoanFormData["noaHistory"];
-  cpfRecords: LoanFormData["cpfContributions"];
-  onBack: () => void;
-}) {
-  type Tab = "noa" | "cpf";
-  const tabs: { value: Tab; label: string }[] = [];
-  if (noaRecords.length) tabs.push({ value: "noa", label: "Notice of Assessment" });
-  if (cpfRecords.length) tabs.push({ value: "cpf", label: "CPF" });
-  const [tab, setTab] = useState<Tab>(tabs[0]?.value ?? "noa");
-  const shownCpf = cpfRecords.slice(0, CPF_ROWS_SHOWN);
-
-  return (
-    <V2Screen key="income">
-      <V2Header onBack={onBack} progress={{ stage: "review", fraction: 0.5 }} />
-      <V2Body>
-        <V2Title
-          title="Your income on record"
-          subtitle="Retrieved via Singpass. Read-only."
-        />
-        {tabs.length > 1 ? (
-          <Tabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Income source" />
-        ) : null}
-        {tab === "noa" ? (
-          <Rows className="v2-enter">
-            <Row label={<span className="v2-label">Year</span>} value={<span className="v2-label">Assessable income</span>} className="!min-h-8 !py-1" />
-            {noaRecords.slice(0, 4).map((rec) => (
-              <Row
-                key={rec.yearOfAssessment}
-                label={
-                  <span className="flex flex-col">
-                    <span className="font-semibold text-[var(--v2-ink)]">YA {rec.yearOfAssessment}</span>
-                    <span className="text-[12px] text-[var(--v2-ink-3)]">
-                      {rec.taxClearance === "Y" ? `${rec.type} clearance` : rec.type}
-                      {" · "}
-                      {formatCurrency(Math.round((rec.employmentIncome + rec.tradeIncome) / 12))}/mo
-                    </span>
-                  </span>
-                }
-                value={formatCurrency(rec.assessableIncome)}
-              />
-            ))}
-          </Rows>
-        ) : (
-          <div className="v2-enter flex flex-col gap-2">
-            <Rows>
-              <Row label={<span className="v2-label">Month · employer</span>} value={<span className="v2-label">Contribution</span>} className="!min-h-8 !py-1" />
-              {shownCpf.map((c) => (
-                <Row
-                  key={`${c.paidOn}-${c.month}`}
-                  label={
-                    <span className="flex flex-col">
-                      <span className="font-semibold text-[var(--v2-ink)]">{c.month}</span>
-                      <span className="max-w-[180px] truncate text-[12px] text-[var(--v2-ink-3)]">
-                        {c.employer || "-"}
-                      </span>
-                    </span>
-                  }
-                  value={formatCurrency(c.amount)}
-                />
-              ))}
-            </Rows>
-            {cpfRecords.length > shownCpf.length ? (
-              <p className="v2-note">
-                Latest {shownCpf.length} of {cpfRecords.length} months.
-              </p>
-            ) : null}
-          </div>
-        )}
-      </V2Body>
-      <V2Footer>
-        <Pill variant="ghost" onClick={onBack}>
-          Done
-        </Pill>
       </V2Footer>
     </V2Screen>
   );
