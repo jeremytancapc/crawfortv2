@@ -57,11 +57,11 @@ export function VerifyIncomeScreen({
             title="Your income, confirmed"
             subtitle="Read from the documents you uploaded."
           />
-          <div className="v2-enter flex flex-col gap-1" style={{ ["--i" as string]: 1 }}>
+          <div className="v2-enter mt-5 flex flex-col gap-1" style={{ ["--i" as string]: 1 }}>
             <span className="v2-label">Monthly average</span>
             <span className="v2-hero-num">{formatCurrency(averageIncome)}</span>
           </div>
-          <Rows className="v2-enter">
+          <Rows className="v2-enter mt-2">
             {incomeMonths.map((month) => (
               <Row
                 key={month.label}

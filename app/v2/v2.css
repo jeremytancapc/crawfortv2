@@ -139,6 +139,45 @@ body:has(.theme-v2)::before {
   padding-bottom: max(var(--v2-safe-bottom), 24px);
 }
 
+/* Screens with an open-ended body (e.g. a full income history) can't rely
+   on "match the viewport exactly, pixel for pixel" - any tiny mismatch
+   between `dvh` and the real rendered height (an embedded webview, browser
+   chrome, page zoom) puts the footer CTA at risk of clipping below the
+   fold, same as the fixed-height approach this replaced. Let the real page
+   scroll instead: content flows to whatever height it needs, and the
+   header/footer pin to the viewport edges with `position: sticky`, which
+   only needs the content to be taller than the viewport - never an exact
+   height calculation. */
+.v2-screen-scroll {
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+.v2-screen-scroll .v2-body {
+  overflow: visible;
+  min-height: 0;
+}
+
+.v2-screen-scroll > .v2-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.v2-screen-scroll > .v2-header {
+  position: sticky;
+  /* Just under the navbar - 0 once the navbar is hidden at desktop. */
+  top: calc(var(--v2-safe-top) + 48px);
+  z-index: 2;
+}
+
+.v2-screen-scroll > footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
 /* Brand strip: full-bleed (it ignores the screen's own gutter) blue band
    with the wordmark, present on every phone screen so branding survives
    past the first step. The desktop rail carries the same job, so this
@@ -257,6 +296,17 @@ body:has(.theme-v2)::before {
     grid-template-rows: auto auto auto;
     padding-top: 0;
     padding-bottom: 0;
+  }
+
+  /* The rail carries branding on desktop, so the navbar's row disappears -
+     the sticky header should pin flush to the top, not leave a gap sized
+     for a navbar that no longer renders. */
+  .v2-screen-scroll {
+    min-height: auto;
+  }
+
+  .v2-screen-scroll > .v2-header {
+    top: 0;
   }
 
   .v2-main .v2-body {

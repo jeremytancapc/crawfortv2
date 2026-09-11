@@ -16,9 +16,18 @@ import { setV2Progress } from "@/app/v2/ui/progress-store";
 export function V2Screen({
   children,
   className,
+  scrollable = false,
 }: {
   children: ReactNode;
   className?: string;
+  /** This screen's content is open-ended (e.g. a full income history) and
+   *  may run taller than one viewport. Rather than matching `dvh` exactly -
+   *  fragile, since any mismatch between that and the real rendered height
+   *  risks clipping the footer CTA below the fold - the real page scrolls
+   *  and the header/footer pin to the viewport edges via `position:
+   *  sticky`, which only needs the content to be taller than the
+   *  viewport, never an exact height calculation. */
+  scrollable?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -28,6 +37,10 @@ export function V2Screen({
     if (!root) return;
 
     const check = () => {
+      // `scrollable` screens (see the `V2Screen` prop) deliberately grow
+      // past one viewport - the page scrolls and the header/footer pin via
+      // `position: sticky` - so neither check below applies to them.
+      if (root.classList.contains("v2-screen-scroll")) return;
       const body = root.querySelector<HTMLElement>("[data-v2-body]");
       const overflowing: string[] = [];
       if (root.scrollHeight > root.clientHeight + 1) {
@@ -54,7 +67,7 @@ export function V2Screen({
   }, []);
 
   return (
-    <div ref={ref} className={cx("v2-screen", className)}>
+    <div ref={ref} className={cx("v2-screen", scrollable && "v2-screen-scroll", className)}>
       <V2Navbar />
       {children}
     </div>
@@ -196,11 +209,7 @@ export function V2Body({
   return (
     <div
       data-v2-body
-      className={cx(
-        "v2-body flex min-h-0 min-w-0 flex-col overflow-hidden",
-        justifyClass,
-        className,
-      )}
+      className={cx("v2-body flex min-h-0 min-w-0 flex-col overflow-hidden", justifyClass, className)}
     >
       {children}
     </div>
