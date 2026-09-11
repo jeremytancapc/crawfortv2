@@ -65,14 +65,25 @@ body:has(.theme-v2)::before {
   isolation: isolate;
   display: flex;
   min-height: 100dvh;
-  /* A soft wash so the canvas is never flat white - mostly white and grain
-     (see `::before` below), with just a whisper of brand colour drifting
-     underneath. Each blob is a plain radial gradient blown up to 180% of
-     the box and set adrift by `background-position` alone - no image, no
-     JS, just two extra CSS declarations - so it costs nothing to load and
-     next to nothing to paint (a once-a-frame gradient fill behind
-     everything else, on a 30s+ cycle slow enough to read as ambient). */
   background-color: var(--v2-bg);
+}
+
+/* Wash and grain are `position: fixed` so they always cover the viewport -
+   not the root box. A long, page-scrolling screen (Verify your info) makes
+   the root taller than one fold; painting these on the root itself would
+   tile/cut off mid-scroll and leave a flat strip below. */
+.v2-root::before,
+.v2-root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Soft brand wash: two radial blobs blown up and set adrift by
+   `background-position` alone - no image, no JS. */
+.v2-root::before {
   background-image:
     radial-gradient(circle, oklch(0.95 0.03 255 / 0.35), transparent 55%),
     radial-gradient(circle, oklch(0.96 0.035 185 / 0.3), transparent 55%);
@@ -98,13 +109,7 @@ body:has(.theme-v2)::before {
   }
 }
 
-/* ... plus paper grain over everything, on phones and desktop alike. */
-.v2-root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
+.v2-root::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 240px 240px;
   opacity: 0.16;
@@ -233,6 +238,7 @@ body:has(.theme-v2)::before {
     display: flex;
     flex-direction: column;
     flex: none;
+    align-self: flex-start;
     top: 0;
     width: 320px;
     height: 100dvh;
@@ -300,9 +306,14 @@ body:has(.theme-v2)::before {
 
   /* The rail carries branding on desktop, so the navbar's row disappears -
      the sticky header should pin flush to the top, not leave a gap sized
-     for a navbar that no longer renders. */
+     for a navbar that no longer renders. Unset the desktop `max-height:
+     100dvh` cap so the screen (and thus `.v2-root`) actually grows with
+     the list - otherwise content overflows the box, the document scrolls
+     past a viewport-tall root, and the sticky rail + wash cut off mid-
+     fold. */
   .v2-screen-scroll {
     min-height: auto;
+    max-height: none;
   }
 
   .v2-screen-scroll > .v2-header {
@@ -1140,7 +1151,7 @@ body:has(.theme-v2)::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .v2-root {
+  .v2-root::before {
     animation: none;
   }
   .v2-enter {
