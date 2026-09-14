@@ -520,21 +520,68 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ─── Plan row ───────────────────────────────────────────────────────────────
-   Three even columns at every width. A repayment plan only means anything next
-   to the other two, so no card ever collapses, scrolls away or gives up its
-   share of the row. What marks the customer's pick is depth instead: it scales
-   up out of the tray the three sit in, which on a phone also lifts its type a
-   notch above what a third of the row would otherwise allow, since every size
-   step inside the card is a container query against the card itself. */
+   Three even columns until the customer picks one - a repayment plan only
+   means anything next to the other two, so an untouched row is three equal
+   shares and nothing leads. A tap changes the question from "which of these?"
+   to "this one, then": the pick takes most of the row and turns landscape,
+   and the other two give up everything but their name. They are squeezed to
+   the edges, not removed, so changing the choice is still one tap away.
+
+   All of it is width. Nothing here scales, which is what used to push the
+   forward card up out of the scroll container and clip its top edge on short
+   phones, and the card's own type and layout follow because every step inside
+   it is a container query against the card itself. */
 
 .plan-lane-tray {
   border-radius: 22px;
   background: linear-gradient(180deg, var(--surface-secondary) 0%, oklch(0.93 0.005 260) 100%);
   padding: 6px;
-  /* The forward card is taller than the tray by design - it grows past both
-     edges. This is the clearance that keeps it off the section above and the
-     custom-plan card below. */
   margin-block: 0.75rem;
+}
+
+.plan-lane {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.plan-lane-item {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 0;
+  /* Lands with a touch of overshoot, so picking a plan feels like the card
+     claiming the row rather than a size swap. */
+  transition: flex-grow 420ms cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+
+.plan-lane-item[data-active="true"] {
+  z-index: 2;
+  flex-grow: var(--lane-active-grow, 7);
+}
+
+/* Sits between the item and the card so RevealOnScroll, which writes its own
+   transform on the wrapper above, has the layer to itself. */
+.plan-lane-card {
+  height: 100%;
+}
+
+/* Cards in a row are all as tall as the tallest, so the shorter ones carry
+   slack. Stretching the list into it spreads the bullets through the card
+   rather than banking the room above the CTA, and since the rows are a fixed
+   size, row N still lands on the same line across all of them. */
+.plan-features {
+  flex: 1;
+  min-height: 0;
+  align-content: space-evenly;
+}
+
+.plan-card-header {
+  box-shadow: inset 0 -1px 0 0 var(--plan-hairline);
+}
+
+/* Earns its place only on the expanded, landscape card. */
+.plan-card-tenure {
+  display: none;
 }
 
 /* On a phone the row is the one thing on this page worth reaching into the
@@ -543,40 +590,170 @@ input[type="range"]::-moz-range-thumb {
 @media (max-width: 639.98px) {
   .plan-lane-tray {
     margin-inline: -0.75rem;
+    padding: 4px;
   }
-}
 
-.plan-lane {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 6px;
-}
+  .plan-lane {
+    gap: 4px;
+  }
 
-.plan-lane-item {
-  position: relative;
-  min-width: 0;
-}
+  /* Landscape face, for the pick only. Running a header, four bullets and a
+     CTA down a card this wide wastes the width and costs height a short phone
+     has none of. Header and bullets go side by side with the CTA across the
+     foot, so the card reads across and the row gets shorter as it grows. The
+     width floor is a guard, not the trigger: on the narrowest phones there is
+     no room for two columns and the card stays upright. */
+  @container (min-width: 10rem) {
+    .plan-lane-item[data-active="true"] .plan-card-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      grid-template-areas:
+        "header body"
+        "cta cta";
+    }
 
-.plan-lane-item[data-active="true"] {
-  z-index: 2;
-}
+    .plan-lane-item[data-active="true"] .plan-card-header {
+      grid-area: header;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.75rem 0.625rem;
+      /* The identity glyph bleeds off this panel's corner. As a column that
+         corner is mid-card, so the panel has to clip its own. */
+      overflow: hidden;
+      box-shadow: inset -1px 0 0 0 var(--plan-hairline);
+    }
 
-/* Its own layer: RevealOnScroll writes a transform of its own on the wrapper
-   above, so the scale needs somewhere to live that the entrance animation is
-   not already using. Scaling rather than re-sizing keeps this off the layout -
-   the row's columns never move, and the card's own container queries never
-   re-measure mid-animation. */
-.plan-lane-card {
-  height: 100%;
-  transform: scale(var(--lane-scale, 1));
-  /* Lands with a touch of overshoot, so picking a plan feels like the card
-     stepping forward rather than a size swap. */
-  transition: transform 420ms cubic-bezier(0.34, 1.36, 0.64, 1);
-}
+    /* Every step inside a card is sized against the card, which is the right
+       unit while the card is one column. Split in two, each half is a little
+       over a third of what those steps assume, so the header's figures and
+       the list's rows are re-set against the columns they actually live in. */
+    .plan-lane-item[data-active="true"] .plan-card-watermark {
+      inset-block-start: -0.25rem;
+      inset-inline-end: -0.25rem;
+      height: 2.5rem;
+      width: 2.5rem;
+    }
 
-.plan-lane-item[data-active="true"] .plan-lane-card {
-  --lane-scale: 1.12;
+    .plan-lane-item[data-active="true"] .plan-card-name {
+      font-size: 0.8125rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-card-price > :first-child {
+      font-size: 1.25rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-card-price > :last-child {
+      font-size: 0.6875rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-card-body {
+      grid-area: body;
+      padding: 0.625rem 0.625rem 0;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-features span {
+      font-size: 0.8125rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-features li > :first-child {
+      height: 0.875rem;
+      width: 0.875rem;
+    }
+
+    /* Same correction on the face behind it: the breakdown already runs two
+       columns at this width, so only its type needs bringing back down. */
+    .plan-lane-item[data-active="true"] .plan-back-header {
+      padding: 0.5rem 0.625rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-back-header span {
+      font-size: 0.9375rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-back-header svg {
+      height: 0.875rem;
+      width: 0.875rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-back-body {
+      padding: 0.5rem 0.625rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-breakdown dd {
+      font-size: 0.8125rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-back-cta {
+      padding-block: 0.5rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-back-cta span {
+      font-size: 0.8125rem;
+    }
+
+    /* A footer bar sized for a card three times this tall reads as a third of
+       the card once the card lies down. */
+    .plan-lane-item[data-active="true"] .plan-card-cta {
+      grid-area: cta;
+      padding-block: 0.5rem;
+    }
+
+    /* Tenure moves up beside the price, which leaves the list three rows deep
+       - enough for it to finish level with the header in half the width. */
+    .plan-lane-item[data-active="true"] .plan-card-tenure {
+      display: block;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-features {
+      grid-template-rows: repeat(3, minmax(0, auto));
+      row-gap: 0.375rem;
+    }
+
+    .plan-lane-item[data-active="true"] .plan-features > [data-tenure] {
+      display: none;
+    }
+  }
+
+  /* Collapsed spine, for the two the pick squeezed out. There is room for one
+     thing at this width, so it keeps the one that lets the customer come back:
+     which plan it is, turned on its side. An untouched row never lands here -
+     the lane has to be expanded before any card is this narrow. */
+  @container (max-width: 7.5rem) {
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-body,
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-price,
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-cta {
+      display: none;
+    }
+
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-header {
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 0.125rem;
+      box-shadow: none;
+    }
+
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-watermark {
+      inset-block-start: -0.375rem;
+      inset-inline-end: -0.5rem;
+      height: 2rem;
+      width: 2rem;
+    }
+
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-name {
+      writing-mode: vertical-rl;
+      rotate: 180deg;
+      max-height: 100%;
+      font-size: 0.6875rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* "Popular" does not fit across a spine, and half a word reads as a bug.
+       The yellow bar alone still marks which one it is. */
+    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .popular-badge-glow span {
+      display: none;
+    }
+  }
 }
 
 @media (min-width: 640px) {
@@ -588,27 +765,15 @@ input[type="range"]::-moz-range-thumb {
     gap: 12px;
   }
 
-  /* Full-size columns need far less of a nudge to read as the front card, and
-     a big card scaled this far starts to look soft. */
-  .plan-lane-item[data-active="true"] .plan-lane-card {
-    --lane-scale: 1.06;
+  /* Full-size columns read as the pick on far less of a lift, and there is no
+     height to win back here - the row keeps its three readable cards. */
+  .plan-lane-item[data-active="true"] {
+    --lane-active-grow: 1.5;
   }
 }
 
-/* Both faces of a card share one grid cell, so the taller of the two - the
-   five-figure breakdown - is what the card's height actually is. That leaves
-   the sales face with slack it was previously banking above the CTA. Stretching
-   the list into it spreads the bullets through the card instead, and since the
-   rows are a fixed size and every card in the row is the same height, row N
-   still lands on the same line across all three. */
-.plan-features {
-  flex: 1;
-  min-height: 0;
-  align-content: space-evenly;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .plan-lane-card {
+  .plan-lane-item {
     transition: none;
   }
 }
