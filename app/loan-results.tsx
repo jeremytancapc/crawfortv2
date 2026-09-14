@@ -524,10 +524,13 @@ function PlanCard({
   const PlanIcon = PLAN_ICONS[plan.id];
   // The pitch leads the list as its own "special" perk - a spinning star
   // instead of a checkmark - rather than living in a separate colored band.
+  // Tenure is flagged rather than hard-coded by index: once the card goes
+  // landscape it moves up into the header, beside the price, and CSS drops
+  // this bullet so the list stays three rows deep in half the width.
   const features = [
-    { text: plan.pitch, special: true },
-    { text: `${plan.tenure}-month tenure`, special: false },
-    ...plan.sellingPoints.map((point) => ({ text: point, special: false })),
+    { text: plan.pitch, special: true, isTenure: false },
+    { text: `${plan.tenure}-month tenure`, special: false, isTenure: true },
+    ...plan.sellingPoints.map((point) => ({ text: point, special: false, isTenure: false })),
   ];
 
   // `perspective` forces Chrome to rasterize the whole card as a 3D layer, which
@@ -596,10 +599,11 @@ function PlanCard({
         </div>
       )}
 
-      {/* Both faces sit in the same grid cell (grid-area 1/1) rather than one
-          in flow and the other absolutely positioned over it - that way the
-          card's natural height is the taller of the two faces, so the back
-          can never end up squeezed into less room than its content needs.
+      {/* Both faces sit in the same grid cell (grid-area 1/1), but only the
+          one currently facing the customer is in flow - the other is taken
+          out of it. The card is therefore exactly as tall as what it is
+          showing, which is what lets the landscape face be landscape instead
+          of inheriting the height of a breakdown nobody has asked for yet.
           grid-cols-1 (minmax(0,1fr)) pins the column's width to the card
           itself - without it, a grid item's default min-width:auto lets its
           content push the column (and the card) wider than its neighbors,
@@ -626,7 +630,7 @@ function PlanCard({
         onSelect();
         setCtaPulse((n) => n + 1);
       }}
-      className="relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]"
+      className={`${isFlipped ? "absolute inset-0" : "relative"} flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]`}
       style={{
         backfaceVisibility: "hidden",
         WebkitBackfaceVisibility: "hidden",
@@ -640,7 +644,7 @@ function PlanCard({
       <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
 
       <div
-        className="relative flex w-full flex-1 flex-col overflow-hidden"
+        className="plan-card-shell relative flex w-full flex-1 flex-col overflow-hidden"
         style={{
           borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
           background: "var(--surface-elevated)",
@@ -657,11 +661,8 @@ function PlanCard({
             of floating as a smaller inset panel. Only a bottom hairline marks
             where it hands off to the white body below. */}
         <div
-          className="relative flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
-          style={{
-            background: PANEL_GRADIENTS[plan.id],
-            boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
-          }}
+          className="plan-card-header relative flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
+          style={{ background: PANEL_GRADIENTS[plan.id] }}
         >
           {/* Big decorative glyph bleeding off the card's top-right corner -
               the plan's identity as a watermark rather than a small inline
@@ -670,12 +671,12 @@ function PlanCard({
           <PlanIcon
             aria-hidden="true"
             weight="fill"
-            className="pointer-events-none absolute -right-3 -top-3 h-[clamp(3rem,52cqi,4.5rem)] w-[clamp(3rem,52cqi,4.5rem)] sm:-right-3.5 sm:-top-3.5"
+            className="plan-card-watermark pointer-events-none absolute -right-3 -top-3 h-[clamp(3rem,52cqi,4.5rem)] w-[clamp(3rem,52cqi,4.5rem)] sm:-right-3.5 sm:-top-3.5"
             style={{ color: WATERMARK_TINTS[plan.id], opacity: 0.28 }}
           />
 
           <span
-            className={`min-w-0 truncate font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
+            className={`plan-card-name min-w-0 truncate font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
             style={{ color: "var(--text-primary)" }}
           >
             {shortPlanName(plan.title)}
@@ -685,7 +686,7 @@ function PlanCard({
               feature list below so nothing competes with it. Its digits roll
               rather than cut, so editing the amount above reads as the same
               three plans repricing instead of three cards being replaced. */}
-          <div className="flex items-baseline gap-0.5 whitespace-nowrap">
+          <div className="plan-card-price flex items-baseline gap-0.5 whitespace-nowrap">
             <NumberFlow
               value={plan.monthlyInstalment}
               locales="en-SG"
@@ -702,6 +703,15 @@ function PlanCard({
             </span>
           </div>
 
+          {/* Only ever on screen once this card is the expanded, landscape one:
+              it takes the tenure bullet's place so the list beside it can run
+              three rows instead of four. */}
+          <span
+            className={`plan-card-tenure font-semibold leading-none tracking-[-0.01em] ${TYPE.label}`}
+            style={{ color: PLAN_INK[plan.id] }}
+          >
+            over {plan.tenure} months
+          </span>
         </div>
 
         {/* Selling features - the pitch leads as its own starred perk
@@ -709,10 +719,14 @@ function PlanCard({
             side/top padding now that the card body has none; flex-1 so it
             absorbs whatever extra height items-stretch gives this card,
             pinning the CTA below to the card's bottom edge. */}
-        <div className="flex flex-1 flex-col gap-2 px-3 pt-3 sm:gap-2.5 sm:px-3.5 sm:pt-3.5">
+        <div className="plan-card-body flex flex-1 flex-col gap-2 px-3 pt-3 sm:gap-2.5 sm:px-3.5 sm:pt-3.5">
           <ul className={`plan-features grid ${TWO_LINE_ROWS}`}>
             {features.map((feature) => (
-              <li key={feature.text} className="flex items-start gap-1 sm:gap-1.5">
+              <li
+                key={feature.text}
+                className="flex items-start gap-1 sm:gap-1.5"
+                data-tenure={feature.isTenure || undefined}
+              >
                 {feature.special ? (
                   <motion.span
                     className={`mt-px inline-flex shrink-0 ${TYPE.icon}`}
@@ -753,7 +767,7 @@ function PlanCard({
             plus the ring and glow drawn around the whole card. Flush to the
             card's bottom corners, mirroring the header treatment above. */}
         <div
-          className="relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center overflow-hidden px-3.5 py-2.5 sm:px-4 sm:py-3"
+          className="plan-card-cta relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center overflow-hidden px-3.5 py-2.5 sm:px-4 sm:py-3"
           style={{
             background: isSelected ? "var(--brand-blue-hex)" : CTA_GHOST_BG,
             boxShadow: isSelected ? "none" : `inset 0 1px 0 0 ${HAIRLINE}`,
@@ -783,14 +797,20 @@ function PlanCard({
     </button>
 
         {/* Details face - the whole thing is the flip-back target, so a tap
-            anywhere on the card returns to the sales side. */}
+            anywhere on the card returns to the sales side. Mounted only for
+            the selected card, the only one that can be flipped: both faces
+            share a grid cell, so the height the breakdown needs is height
+            every resting card was reserving too. Dropping it is what lets the
+            other two collapse beside the expanded card instead of setting the
+            row's height from the sidelines. */}
+        {isSelected && (
         <button
           type="button"
           onClick={onFlipBack}
           aria-label={`Hide the ${shortPlanName(plan.title)} breakdown`}
           tabIndex={isFlipped ? 0 : -1}
           aria-hidden={!isFlipped}
-          className="plan-card-back relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]"
+          className={`plan-card-back ${isFlipped ? "relative" : "absolute inset-0"} flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]`}
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
@@ -799,7 +819,7 @@ function PlanCard({
         >
           <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
           <div
-            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+            className="plan-back-shell flex min-h-0 flex-1 flex-col overflow-hidden"
             style={{
               borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
               background: "#0a0a0a",
@@ -846,7 +866,7 @@ function PlanCard({
                 minimum gap above the "Tap to go back" footer even when
                 justify-center leaves little room of its own. */}
             <div
-              className="flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4"
+              className="plan-back-body flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4"
               style={{ background: "var(--surface-elevated)" }}
             >
               <dl className="plan-breakdown flex min-h-0 flex-1 flex-col justify-center">
@@ -882,7 +902,7 @@ function PlanCard({
                 own ink-black treatment so it reads as this face's distinct
                 action rather than a repeat of the front's blue CTA. */}
             <div
-              className="relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center px-3.5 py-2.5 sm:px-4 sm:py-3"
+              className="plan-back-cta relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center px-3.5 py-2.5 sm:px-4 sm:py-3"
               style={{
                 background: "#0a0a0a",
               }}
@@ -896,6 +916,7 @@ function PlanCard({
             </div>
           </div>
         </button>
+        )}
       </motion.div>
       </div>
     </div>
@@ -1320,18 +1341,18 @@ function PlanPicker({
 }: PlanPickerProps) {
   const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
 
-  // Which card stands forward in the row. The customer's pick claims it; until
-  // they make one the popular plan holds it, so the row always leads on
-  // something rather than sitting flat. A custom request lives in its own card
-  // below, so it leaves the row's shape alone.
+  // Which card stands forward in the row. Only the customer's own pick claims
+  // it - an untouched row stays three even columns so the three plans can be
+  // read against each other, which is the whole reason they are side by side.
+  // A custom request lives in its own card below, so it leaves the row alone.
   const frontPlanId = plans.some((plan) => plan.id === selectedPlanId)
     ? selectedPlanId
-    : plans.find((plan) => plan.badge)?.id;
+    : null;
 
   return (
     <div className="flex flex-col gap-3">
       <div className="plan-lane-tray">
-        <div className="plan-lane">
+        <div className="plan-lane" data-expanded={frontPlanId ? "true" : "false"}>
           {plans.map((plan, index) => (
             <div
               key={plan.id}
