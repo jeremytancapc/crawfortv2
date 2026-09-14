@@ -46,7 +46,10 @@ const KNOB_SIZE = 13;
 /** Pale track for "available today but not chosen" - light enough that the
  *  brand-blue fill reads as the selection, not a second shade of the same ink. */
 const AVAILABLE_STROKE = "oklch(0.90 0.03 245)";
+/** Locked reserve - the small ticks past today's approved cap. */
 const LOCKED_STROKE = "rgba(60, 60, 67, 0.22)";
+/** 3/4 and full landmark ticks (and the matching legend swatch). */
+export const GAUGE_LOCKED_MAJOR = "oklch(0.70 0.16 85)";
 const TICK_TRANSITION = "opacity 120ms linear";
 /** Pause so the empty (all-grey) tank is visible before the fill starts. */
 const INTRO_HOLD_MS = 240;
@@ -131,7 +134,7 @@ interface ScaleMark {
   t: number;
   amount: number;
   label: string;
-  /** Past the approved end - drawn in the locked grey so the reserve reads. */
+  /** Past the approved end - drawn in the locked yellow so the reserve reads. */
   isLocked: boolean;
   /** The approved cap itself: the stick the intro parks under at the crest. */
   isApproved: boolean;
@@ -535,7 +538,7 @@ export function CreditGauge({
           const inner = polar(MAJOR_INNER_R, deg);
           const outer = polar(MAJOR_OUTER_R, deg);
           const stroke = mark.isLocked
-            ? "rgba(60, 60, 67, 0.45)"
+            ? GAUGE_LOCKED_MAJOR
             : mark.isApproved
               ? "var(--brand-blue-hex)"
               : "oklch(0.48 0.13 245)";
@@ -587,9 +590,7 @@ export function CreditGauge({
                 left: box.left,
                 top: box.top,
                 transform: box.transform,
-                color: mark.isLocked
-                  ? "var(--text-tertiary)"
-                  : "var(--text-primary)",
+                color: "var(--text-primary)",
               }}
             >
               {mark.label}

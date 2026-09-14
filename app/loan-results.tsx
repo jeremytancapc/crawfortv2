@@ -23,7 +23,7 @@ import {
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
-import { CreditGauge } from "@/app/credit-gauge";
+import { CreditGauge, GAUGE_LOCKED_MAJOR } from "@/app/credit-gauge";
 import {
   clampWithdrawAmount,
   MIN_WITHDRAW_AMOUNT,
@@ -220,8 +220,7 @@ interface OfferCardProps {
 }
 
 /** Legend swatch for the gauge's locked ticks. The ticks themselves run lighter
- *  (see credit-gauge.tsx); a 10px dot needs more ink to read as the same grey. */
-const GAUGE_LOCKED_SWATCH = "rgba(60, 60, 67, 0.28)";
+ *  (see credit-gauge.tsx); a 10px dot uses the deeper landmark yellow. */
 
 function OfferHeader({
   formData,
@@ -354,12 +353,14 @@ function OfferHeader({
               {[
                 {
                   color: "var(--brand-blue-hex)",
+                  termColor: "var(--text-primary)",
                   term: "Approved",
                   detail:
                     "Paid into your bank after you finish every step, including your in-person appointment.",
                 },
                 {
-                  color: GAUGE_LOCKED_SWATCH,
+                  color: GAUGE_LOCKED_MAJOR,
+                  termColor: "var(--text-primary)",
                   term: "Unlocks later",
                   detail:
                     "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
@@ -372,7 +373,10 @@ function OfferHeader({
                     style={{ background: row.color }}
                   />
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <dt className="text-[14px] font-semibold leading-tight text-[var(--text-primary)]">
+                    <dt
+                      className="text-[14px] font-semibold leading-tight"
+                      style={{ color: row.termColor }}
+                    >
                       {row.term}
                     </dt>
                     <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
@@ -1806,6 +1810,7 @@ export function LoanResults({
   const setWithdrawAmount = onAmountChange ?? setInternalAmount;
   const [hasAdjustedAmount, setHasAdjustedAmount] = useState(false);
   const hasAdjustedAmountRef = useRef(false);
+  const hasBeenNudgedRef = useRef(false);
   const [nudgeNonce, setNudgeNonce] = useState(0);
 
   useEffect(() => {
@@ -1838,7 +1843,14 @@ export function LoanResults({
   }, [formData.leadId]);
 
   const handleConfirmAmount = useCallback(() => {
-    if (!hasAdjustedAmountRef.current && formData.amount > MIN_WITHDRAW_AMOUNT) {
+    // First Continue without touching the dial: flash the yellow reminder.
+    // A second Continue without a change is accepted - they have been warned.
+    if (
+      !hasAdjustedAmountRef.current &&
+      formData.amount > MIN_WITHDRAW_AMOUNT &&
+      !hasBeenNudgedRef.current
+    ) {
+      hasBeenNudgedRef.current = true;
       setNudgeNonce((n) => n + 1);
       return;
     }
@@ -1846,7 +1858,7 @@ export function LoanResults({
     void persistAmount(withdrawAmount);
     onAccept(withdrawAmount);
     router.push(applyHref(`/apply/choose-plan?amount=${withdrawAmount}`));
-  }, [hasAdjustedAmount, formData.amount, persistAmount, withdrawAmount, onAccept, router, applyHref]);
+  }, [formData.amount, persistAmount, withdrawAmount, onAccept, router, applyHref]);
 
   const stepNav = useApplyStepNav(isPlanPhase ? "choosePlan" : "approval", {
     onNext: isPlanPhase ? undefined : () => { void handleConfirmAmount(); },
