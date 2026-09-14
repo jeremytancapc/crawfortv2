@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 import { applyRedirectPath } from "@/lib/apply-variant-server";
+import { parseWithdrawAmountValue } from "@/lib/withdraw-amount";
 
 import { AcceptView } from "./accept-view";
 import { loadSelectedPlan } from "./load-selected-plan";
@@ -10,10 +11,16 @@ export type { SelectedPlanData } from "./load-selected-plan";
 
 export const dynamic = "force-dynamic";
 
-export default async function AcceptPage() {
+interface PageProps {
+  searchParams: Promise<{ amount?: string | string[] }>;
+}
+
+export default async function AcceptPage({ searchParams }: PageProps) {
   await enforceApplyFunnel("/apply/accept");
 
-  const selected = await loadSelectedPlan();
+  const selected = await loadSelectedPlan(
+    parseWithdrawAmountValue((await searchParams).amount),
+  );
   if (!selected) redirect(await applyRedirectPath("/"));
 
   // Computed server-side (rather than `new Date()` in the client component)

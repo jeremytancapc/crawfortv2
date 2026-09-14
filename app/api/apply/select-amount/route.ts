@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/db/client";
 import { decodeSession, SESSION_COOKIE } from "@/lib/apply-session";
 import {
+  approvalOfferWithAmount,
   decodeApprovalOffer,
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
@@ -58,7 +59,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to save amount" }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true });
+    const offerCookie = approvalOfferWithAmount(
+      request.cookies.get(APPROVAL_OFFER_COOKIE)?.value,
+      amount,
+    );
+    if (offerCookie) res.cookies.set(offerCookie);
+    return res;
   } catch (err) {
     console.error(`${LOG}`, err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

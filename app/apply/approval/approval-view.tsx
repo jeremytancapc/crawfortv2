@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import type { LoanFormData } from "@/lib/loan-form";
@@ -31,6 +31,7 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
   const { displayData, creditLimit } = approvalOfferDisplay(formData);
   const maxPlanAmount = initialWithdrawAmount ?? displayData.amount;
   const [planAmount, setPlanAmount] = useState(maxPlanAmount);
+  const persistTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isPlan) return;
@@ -38,13 +39,7 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
     if (stored != null) setPlanAmount(stored);
   }, [isPlan, maxPlanAmount]);
 
-  const handlePlanAmountChange = (next: number) => {
-    setPlanAmount(next);
-    storeWithdrawAmount(next);
-  };
-
-  const persistPlanAmount = (next: number) => {
-    handlePlanAmountChange(next);
+  const writePlanAmount = (next: number) => {
     const leadId = formData.leadId;
     if (!leadId) return;
     void fetch("/api/apply/select-amount", {
@@ -54,6 +49,20 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
     }).catch(() => {
       /* plan cards already show the new figure */
     });
+  };
+
+  const handlePlanAmountChange = (next: number) => {
+    setPlanAmount(next);
+    storeWithdrawAmount(next);
+    if (persistTimer.current) window.clearTimeout(persistTimer.current);
+    persistTimer.current = window.setTimeout(() => writePlanAmount(next), 280);
+  };
+
+  const persistPlanAmount = (next: number) => {
+    setPlanAmount(next);
+    storeWithdrawAmount(next);
+    if (persistTimer.current) window.clearTimeout(persistTimer.current);
+    writePlanAmount(next);
   };
 
   return (
@@ -113,7 +122,7 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
         onAmountChange={isPlan ? handlePlanAmountChange : undefined}
         onAccept={(nextAmount) => {
           if (isPlan) {
-            router.push(applyHref("/apply/accept"));
+            router.push(applyHref(`/apply/accept?amount=${nextAmount}`));
             return;
           }
           router.push(applyHref(`/apply/choose-plan?amount=${nextAmount}`));

@@ -20,6 +20,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/apply-session";
 import {
+  approvalOfferWithAmount,
   decodeApprovalOffer,
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
@@ -146,6 +147,11 @@ export async function POST(request: NextRequest) {
 
     const res = NextResponse.json({ ok: true });
     res.cookies.set(planAdditionalRequestsCookieValue(additionalRequests));
+    const offerCookie = approvalOfferWithAmount(
+      request.cookies.get(APPROVAL_OFFER_COOKIE)?.value,
+      amount,
+    );
+    if (offerCookie) res.cookies.set(offerCookie);
     return res;
   } catch (err) {
     console.error(`${LOG}`, err);

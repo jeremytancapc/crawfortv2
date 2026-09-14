@@ -135,7 +135,7 @@ export function PlanScreen({
       monthlyRate: activePlan.monthlyRate,
       monthlyInstalment: activePlan.monthlyInstalment,
     });
-    router.push(applyHref("/apply/accept"));
+    router.push(applyHref(`/apply/accept?amount=${amount}`));
   };
 
   const requestCustom = async () => {

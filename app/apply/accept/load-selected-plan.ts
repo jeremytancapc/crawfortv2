@@ -15,6 +15,7 @@ import {
   formatPlanAdditionalRequestsLabel,
   getPlanAdditionalRequests,
 } from "@/lib/plan-additional-requests";
+import { MIN_WITHDRAW_AMOUNT } from "@/lib/withdraw-amount";
 
 export interface SelectedPlanData {
   planId: string;
@@ -35,7 +36,9 @@ export interface SelectedPlanData {
  * renders even if the select-plan write hasn't landed yet. Returns `null`
  * when there is no lead to accept against.
  */
-export async function loadSelectedPlan(): Promise<{
+export async function loadSelectedPlan(
+  amountOverride?: number | null,
+): Promise<{
   plan: SelectedPlanData;
   leadId: string;
 } | null> {
@@ -66,9 +69,17 @@ export async function loadSelectedPlan(): Promise<{
     .eq("id", leadId)
     .maybeSingle();
 
+  const persistedAmount = Number(row?.loan_amount) || 0;
+  const approvedAmount = Number(merged.approvedLoanAmount) || 0;
+  // Prefer an explicit overwrite from the plan page (query) over the lead
+  // row, which still holds the original application request until select-plan
+  // lands.
   const amount =
-    Number(row?.loan_amount) ||
-    Number(merged.approvedLoanAmount) ||
+    (amountOverride && amountOverride >= MIN_WITHDRAW_AMOUNT
+      ? amountOverride
+      : 0) ||
+    persistedAmount ||
+    approvedAmount ||
     0;
   const tenure =
     Number(row?.loan_tenure) ||
@@ -80,11 +91,14 @@ export async function loadSelectedPlan(): Promise<{
   const monthlyRate =
     Number(row?.plan_monthly_rate) ||
     OFFER_MONTHLY_RATE;
+  const storedInstalment = Number(row?.plan_monthly_instalment) || 0;
   const monthlyInstalment =
-    Number(row?.plan_monthly_instalment) ||
-    (amount > 0 && tenure > 0
+    amountOverride && amount > 0 && tenure > 0
       ? Math.ceil(calculateInstalment(amount, tenure, monthlyRate))
-      : 0);
+      : storedInstalment ||
+        (amount > 0 && tenure > 0
+          ? Math.ceil(calculateInstalment(amount, tenure, monthlyRate))
+          : 0);
   const totalRepayment = monthlyInstalment * tenure;
   const totalInterest = Math.max(0, totalRepayment - amount);
 

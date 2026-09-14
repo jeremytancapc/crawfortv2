@@ -1930,6 +1930,8 @@ export function LoanResults({
   const handleAccept = useCallback(async () => {
     trackEvent("step_10_offer_accepted", { planId: selectedPlanId });
     const payload = getSelectedPlanPayload();
+    storeWithdrawAmount(withdrawAmount);
+    await persistAmount(withdrawAmount);
     if (payload && formData.leadId) {
       setIsSavingPlan(true);
       try {
@@ -1945,7 +1947,7 @@ export function LoanResults({
       }
     }
     onAccept(withdrawAmount);
-  }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept, withdrawAmount]);
+  }, [selectedPlanId, getSelectedPlanPayload, formData.leadId, onAccept, persistAmount, withdrawAmount]);
 
   /** "Review Offer" opens a confirm-and-explain modal for custom requests instead of accepting immediately. */
   const handleReviewOfferClick = useCallback(() => {

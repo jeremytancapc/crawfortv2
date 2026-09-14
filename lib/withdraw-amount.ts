@@ -40,13 +40,21 @@ export function storeWithdrawAmount(amount: number): void {
   }
 }
 
-export function parseWithdrawAmountParam(
+export function parseWithdrawAmountValue(
   raw: string | string[] | undefined,
-  max: number,
 ): number | null {
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (!value) return null;
   const amount = parseInt(value, 10);
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-  return Math.min(max, Math.max(500, amount));
+  if (!Number.isFinite(amount) || amount < MIN_WITHDRAW_AMOUNT) return null;
+  return amount;
+}
+
+export function parseWithdrawAmountParam(
+  raw: string | string[] | undefined,
+  max: number,
+): number | null {
+  const amount = parseWithdrawAmountValue(raw);
+  if (amount == null) return null;
+  return Math.min(max, amount);
 }
