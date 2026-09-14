@@ -98,6 +98,18 @@ export async function clearApprovalOfferServer(): Promise<void> {
   store.delete(APPROVAL_OFFER_COOKIE);
 }
 
+/** Refresh the offer cookie's chosen withdraw figure after the customer
+ *  overwrites the amount on the plan page, so /apply/accept can fall back to
+ *  the same number if the lead row is still catching up. */
+export function approvalOfferWithAmount(
+  raw: string | undefined,
+  amount: number,
+) {
+  const offer = raw ? decodeApprovalOffer(raw) : null;
+  if (!offer || !Number.isFinite(amount) || amount <= 0) return null;
+  return approvalOfferCookieValue({ ...offer, amount });
+}
+
 export function mergeOfferIntoFormData(
   offer: StoredApprovalOffer,
 ): Partial<LoanFormData> {
