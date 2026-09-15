@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
 import {
@@ -301,6 +302,15 @@ function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
   }, []);
 
   useEffect(() => {
+    if (!domReady) return;
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [domReady]);
+
+  useEffect(() => {
     const cycle = window.setInterval(() => {
       setStatusIndex((index) =>
         Math.min(index + 1, PROCESSING_STATUSES.length - 1),
@@ -319,7 +329,7 @@ function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
 
   if (!domReady) return null;
 
-  return (
+  return createPortal(
     <div
       className="theme-ios fixed inset-0 z-[200] flex items-center justify-center p-5"
       role="dialog"
@@ -344,6 +354,7 @@ function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

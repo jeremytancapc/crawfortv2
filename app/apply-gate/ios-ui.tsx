@@ -120,15 +120,19 @@ const APPLY_FIT_SLACK = 16;
 function ApplyPaneFit({
   children,
   maxWidth,
+  scaleToFit = true,
 }: {
   children: ReactNode;
   maxWidth: number;
+  /** When false the column stays 1×, uses the pane width, and scrolls. */
+  scaleToFit?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState({ scale: 1, width: 0, height: 0, overflow: false });
 
   useLayoutEffect(() => {
+    if (!scaleToFit) return;
     const host = hostRef.current;
     const inner = innerRef.current;
     if (!host || !inner) return;
@@ -193,7 +197,13 @@ function ApplyPaneFit({
       cancelAnimationFrame(frame);
       ro.disconnect();
     };
-  }, [maxWidth]);
+  }, [maxWidth, scaleToFit]);
+
+  if (!scaleToFit) {
+    return (
+      <div className="apply-pane-fit apply-pane-fit--natural">{children}</div>
+    );
+  }
 
   const scaledW = fit.width * fit.scale;
   const scaledH = fit.height * fit.scale;
@@ -235,10 +245,13 @@ function ApplyPaneFit({
 export function MobileGateSheet({
   children,
   fitMaxWidth = 560,
+  scaleToFit = true,
 }: {
   children: ReactNode;
   /** Designed column width the pane fitter scales from. */
   fitMaxWidth?: number;
+  /** Set false to keep native size and scroll instead of shrinking to the pane. */
+  scaleToFit?: boolean;
 }) {
   const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
 
@@ -246,7 +259,9 @@ export function MobileGateSheet({
     <ApplyFooterSlotContext.Provider value={footerSlot}>
       <div className="flex min-h-0 flex-1 flex-col bg-[var(--brand-blue-hex)] lg:bg-transparent">
         <div className="ios-apply-sheet flex min-h-0 flex-1 flex-col bg-[var(--surface-primary)]">
-          <ApplyPaneFit maxWidth={fitMaxWidth}>{children}</ApplyPaneFit>
+          <ApplyPaneFit maxWidth={fitMaxWidth} scaleToFit={scaleToFit}>
+            {children}
+          </ApplyPaneFit>
           <div ref={setFooterSlot} className="ios-apply-footer-slot shrink-0" />
         </div>
       </div>
@@ -257,7 +272,7 @@ export function MobileGateSheet({
 /** Light legal footer used on iOS apply pages instead of the blue hero footer. */
 export function IosLegalFooter() {
   return (
-    <footer className="ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
+    <footer className="ios-apply-legal ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
         CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
         the laws of Singapore. Customers are advised to read the{" "}
