@@ -233,10 +233,11 @@ export function ReviewForm({ initialData }: Props) {
             <ApplySidebarWordmark />
           </div>
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            {stepMeta?.title ?? "Confirm that your info is accurate"}
+            Get the funds you need, in 8 minutes
           </p>
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            {stepMeta?.subtitle ?? "This was pulled from MyInfo."}
+            One simple application. Licensed and trusted by over 200,000
+            Singaporeans since 2011.
           </p>
         </div>
         <ApplyProgressPanel current={progressStep} total={APPLY_PROGRESS_TOTAL} />
@@ -248,7 +249,7 @@ export function ReviewForm({ initialData }: Props) {
           <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
             <div className="theme-ios ios-apply-frame flex min-h-0 flex-1 flex-col">
               <MobileGateHeader progressStep={progressStep} />
-              <MobileGateSheet>
+              <MobileGateSheet scaleToFit={step !== 8}>
               {stepMeta && (
                 <div className="shrink-0 px-5 pb-6 pt-7">
                   <h1 className="ios-type-title">
@@ -321,7 +322,7 @@ export function ReviewForm({ initialData }: Props) {
 
 function IosLegalFooter() {
   return (
-    <footer className="ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
+    <footer className="ios-apply-legal ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
         CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
         the laws of Singapore. Customers are advised to read the{" "}

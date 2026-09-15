@@ -1083,15 +1083,17 @@ body:has(.theme-fresh)::before {
    grows with it, the frame exceeds the phone screen, and the Next bar
    either sits under the browser chrome or covers the last field. */
 .ios-apply-page > main {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 0%;
   min-height: 0;
   overflow: hidden;
 }
 
 .ios-apply-frame {
-  flex: 1 1 auto;
-  height: auto;
-  max-height: 100%;
+  flex: 1 1 0%;
+  height: 100%;
+  max-height: none;
   min-height: 0;
   overflow: hidden;
 }
@@ -1119,7 +1121,18 @@ body:has(.theme-fresh)::before {
 }
 
 @media (max-width: 1023.98px) {
-  .ios-apply-page > main > footer {
+  .ios-apply-page > main,
+  .ios-apply-page > main > div,
+  .ios-apply-page > main > div > div {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .ios-apply-page > main > footer,
+  .ios-apply-legal {
     display: none;
   }
 }
@@ -1134,6 +1147,15 @@ body:has(.theme-fresh)::before {
 
   .ios-apply-page > main {
     overflow: visible;
+  }
+
+  /* Tall steps (confirm-info) grow the page. Keep the rail locked to the
+     viewport so the progress strip stays in view like the short steps. */
+  .ios-apply-page > aside {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    max-height: 100dvh;
   }
 
   .ios-apply-frame {
@@ -1742,6 +1764,24 @@ input[type="range"].ios-slider::-moz-range-thumb {
   overflow-y: auto;
   overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Review confirm-info: native type size, full pane width, page scrolls.
+   The action bar stays in the footer slot / fixed to the viewport. */
+.apply-pane-fit--natural {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.apply-pane-fit--natural > .flex-1,
+.apply-pane-fit--natural > .min-h-0.flex-1 {
+  flex: none;
+  overflow: visible;
+  min-height: 0;
 }
 
 .apply-pane-fit[data-overflow="true"] {
