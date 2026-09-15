@@ -245,7 +245,7 @@ export function LoanGateForm({
   return (
     /* Carries its own theme scope so the variant landing pages (/foreigner,
        /vcsa-sg) render the same gate without adopting theme-ios wholesale. */
-    <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
+    <div className="theme-ios flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
       <MobileGateHeader progressStep={progressStep} />
       <MobileGateSheet>
       {stepMeta && (

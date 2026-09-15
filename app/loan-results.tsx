@@ -10,6 +10,7 @@ import {
   X,
   TrendUp,
   CheckCircle,
+  SealCheck,
   CaretDown,
   PencilSimple,
   CalendarBlank,
@@ -414,47 +415,103 @@ const FLIP_DURATION = 0.55;
  *  so a badge on one card can never push the other two header panels out of line. */
 const PILL_SLOT_HEIGHT = "1.125rem";
 
-const CARD_RADIUS = 16;
+const CARD_RADIUS = 20;
 
-/** Header panel fill - each plan gets its own soft, diagonal tint so the three
- *  cards read as distinct choices at a glance rather than three copies of the
- *  same card. Kept light enough that --text-primary/--text-tertiary still sit
- *  on top cleanly. Shared between the front panel and its flipped-back twin
- *  so the identity carries through the flip. */
-const PANEL_GRADIENTS = {
-  lowest_interest: "linear-gradient(135deg, oklch(0.93 0.045 258) 0%, oklch(0.968 0.016 258) 100%)",
-  average: "linear-gradient(135deg, oklch(0.92 0.055 95) 0%, oklch(0.965 0.022 90) 100%)",
-  lowest_instalment: "linear-gradient(135deg, oklch(0.92 0.05 175) 0%, oklch(0.965 0.02 178) 100%)",
+/** The CTA button is inset on the card's own fill now, so it needs its own,
+ *  tighter radius - CARD_RADIUS on a button this short reads as a pill. */
+const CTA_RADIUS = 11;
+
+/** Ink-black, and the flipped-back face's alone. No card front may fill with
+ *  it: black is how the breakdown announces itself, and a front that was
+ *  already black gave the flip nothing to land on. Slightly blue-shifted off
+ *  pure black so it sits in the same family as the brand rather than reading
+ *  as a hole in the page. */
+const INK = "#12141A";
+
+/** The amber carried by the "Popular" tab, and by the outlined button on the
+ *  ink breakdown face. */
+const AMBER = "#F5C518";
+
+interface PlanSurface {
+  /** Card background, front face and header alike. */
+  fill: string;
+  /** Primary text on `fill` - name, price, features. */
+  ink: string;
+  /** Secondary text on `fill` - "/mo", the tap hint. */
+  mutedInk: string;
+  /** Internal rules, tuned per fill so they read without banding. */
+  hairline: string;
+  /** Check glyphs and the watermark. */
+  accent: string;
+  /** Mid-chroma fills run dark enough that type and glyphs go light. */
+  isDark: boolean;
+}
+
+/** One record per plan, and the only place a plan's colour is decided.
+ *  Resting cards are a pale wash with the plan's own hue as type. The pick
+ *  takes the full-chroma fill so the chosen card is the colour block. */
+const PLAN_SURFACES = {
+  lowest_interest: {
+    fill: "oklch(0.50 0.22 264)",
+    ink: "oklch(0.99 0.01 264)",
+    mutedInk: "oklch(0.90 0.04 264)",
+    hairline: "oklch(1 0 0 / 0.22)",
+    accent: "oklch(0.99 0.01 264)",
+    isDark: true,
+  },
+  // Gold at the chroma of a highlighter, not a wash. The Popular tab sitting
+  // on it is ink, not amber: amber on gold is a badge that has disappeared.
+  average: {
+    fill: "oklch(0.88 0.185 98)",
+    ink: "#12141A",
+    mutedInk: "oklch(0.28 0.04 80)",
+    hairline: "oklch(0.16 0.03 80 / 0.20)",
+    accent: "#12141A",
+    isDark: false,
+  },
+  lowest_instalment: {
+    fill: "oklch(0.55 0.14 188)",
+    ink: "oklch(0.99 0.01 188)",
+    mutedInk: "oklch(0.90 0.04 188)",
+    hairline: "oklch(1 0 0 / 0.22)",
+    accent: "oklch(0.99 0.01 188)",
+    isDark: true,
+  },
   // Violet sits outside the three standard plans' hues on purpose - a custom
   // plan is a request, not one of the offers on the table.
-  custom: "linear-gradient(135deg, oklch(0.92 0.055 305) 0%, oklch(0.965 0.022 305) 100%)",
-} satisfies Record<OfferPlan["id"], string>;
+  custom: {
+    fill: "oklch(0.52 0.22 305)",
+    ink: "oklch(0.99 0.01 305)",
+    mutedInk: "oklch(0.88 0.05 305)",
+    hairline: "oklch(1 0 0 / 0.22)",
+    accent: "oklch(0.99 0.01 305)",
+    isDark: true,
+  },
+} satisfies Record<OfferPlan["id"], PlanSurface>;
 
-/** Hairline used inside a resting card. --border-subtle is too heavy here. */
-const HAIRLINE = "rgba(60, 60, 67, 0.09)";
+/** Pale card, plan hue as type. Gold uses a deeper ink than the highlighter
+ *  fill so yellow type still reads on white. */
+function quietSurface(surface: PlanSurface): PlanSurface {
+  const ink = surface.isDark
+    ? surface.fill
+    : "oklch(0.52 0.15 88)";
+  return {
+    fill: surface.isDark
+      ? `color-mix(in oklch, ${surface.fill} 8%, white)`
+      : `color-mix(in oklch, ${surface.fill} 22%, white)`,
+    ink,
+    mutedInk: `color-mix(in oklch, ${ink} 68%, white)`,
+    hairline: `color-mix(in oklch, ${ink} 20%, transparent)`,
+    accent: ink,
+    isDark: false,
+  };
+}
 
-/** Resting-state CTA fill - a whisper of brand blue so the footer bar reads
- *  as its own tappable band instead of blending into the white card body. */
-const CTA_GHOST_BG = "oklch(0.965 0.028 260)";
-
-/** Tints the big watermark glyph in each header - same hue family as that
- *  plan's PANEL_GRADIENTS, just darker/more saturated so it reads at low
- *  opacity instead of washing out against its own gradient. */
-const WATERMARK_TINTS = {
-  lowest_interest: "oklch(0.55 0.1 258)",
-  average: "oklch(0.55 0.11 95)",
-  lowest_instalment: "oklch(0.55 0.1 175)",
-  custom: "oklch(0.52 0.13 305)",
-} satisfies Record<OfferPlan["id"], string>;
-
-/** Darker sibling of WATERMARK_TINTS in the same hue - low enough in
- *  lightness to hold small text on top of that plan's PANEL_GRADIENTS. */
-const PLAN_INK = {
-  lowest_interest: "oklch(0.40 0.13 258)",
-  average: "oklch(0.40 0.09 95)",
-  lowest_instalment: "oklch(0.38 0.08 175)",
-  custom: "oklch(0.40 0.14 305)",
-} satisfies Record<OfferPlan["id"], string>;
+/** Soft depth under the inset CTA. Replaces the hard offset shadow it stood on
+ *  originally - the unblurred version read as louder than a repayment plan
+ *  wants to be, so the button now sits on the card rather than above it. */
+const CTA_SHADOW =
+  "0 1px 2px oklch(0.24 0.06 260 / 0.12), 0 3px 8px oklch(0.24 0.06 260 / 0.09)";
 
 /* Type is sized against the card itself (@container on the card root) rather
    than the viewport, because a card's width depends on whether it is the open
@@ -464,9 +521,15 @@ const PLAN_INK = {
    card is mid-collapse. */
 const TYPE = {
   planName: "text-[clamp(0.6rem,10cqi,1.125rem)]",
-  price: "text-[clamp(0.9375rem,16cqi,1.875rem)]",
+  // The monthly figure is the one thing on the card worth reading from across
+  // the room, so it is allowed to run further than any other step before it
+  // tops out.
+  price: "text-[clamp(0.9375rem,17cqi,2.25rem)]",
   priceUnit: "text-[clamp(0.5rem,7.8cqi,0.875rem)]",
-  cta: "text-[clamp(0.5625rem,8.6cqi,0.9375rem)]",
+  // Steps down harder than the rest: the CTA is the one line on the card that
+  // may not wrap, and "Pick this plan" plus its arrow has to clear the
+  // button's border and inset on a card sitting at a third of the row.
+  cta: "text-[clamp(0.5rem,7cqi,0.9375rem)]",
   body: "text-[clamp(0.625rem,9cqi,0.9375rem)]",
   label: "text-[clamp(0.5rem,7cqi,0.75rem)]",
   pill: "text-[clamp(0.4375rem,6.5cqi,0.6875rem)]",
@@ -486,11 +549,13 @@ const PRICE_FORMAT = {
    narrow card can't knock the three cards out of step. Written out in full
    rather than composed, so Tailwind can still see the class names. */
 const TWO_LINE_HEIGHT = "h-[clamp(1.5625rem,22.5cqi,2.1875rem)]";
-/* Taller than two lines of TYPE.body so a wrap on one card leaves a gap
-   before the next bullet, and every card's row N stays on the same line.
-   Four rows: the pitch (now a "special" starred perk) plus tenure and the
-   two selling points. */
-const TWO_LINE_ROWS = "grid-rows-[repeat(4,clamp(2.25rem,32cqi,3rem))]";
+/* Two lines of TYPE.body plus a little air, so a bullet that wraps on one
+   card still leaves a gap before the next one and every card's row N stays on
+   the same line. Four rows: the pitch (now a "special" starred perk) plus
+   tenure and the two selling points. Kept only just tall enough - rows with
+   room to spare left the single-line bullets floating in the middle of their
+   own row, which is most of what made the list read as padding. */
+const TWO_LINE_ROWS = "grid-rows-[repeat(4,clamp(2.125rem,27cqi,2.75rem))]";
 
 /** Plan identity glyph. `custom` is covered for exhaustiveness only - custom
  *  offers render through CustomOfferCard, never through PlanCard. */
@@ -501,15 +566,23 @@ const PLAN_ICONS = {
   custom: Scales,
 } satisfies Record<OfferPlan["id"], typeof Lightning>;
 
-/** Ring + drop shadow drawn around the card body, outside the flipping faces.
- *  Selection is carried entirely by this blue ring/glow plus the CTA below -
- *  no background wash, so there's no color left to flash mid-flip. Colour
- *  comes from a custom property so the mobile lane can run a darker edge
- *  than the desktop grid without changing ring width. */
-function cardFrameShadow(isSelected: boolean): string {
-  return isSelected
-    ? "0 0 0 var(--plan-ring-selected, 2px) var(--brand-blue-hex, #0033AA), 0 10px 26px oklch(0.32 0.14 260 / 0.28)"
-    : "0 0 0 var(--plan-ring, 1px) var(--plan-ring-color, var(--border-subtle)), 0 1px 2px oklch(0.24 0.06 260 / 0.05)";
+/** Drop shadow drawn around the card body, outside the flipping faces.
+ *  There is no selected ring: the fill is the card, and a second outline
+ *  on top of it just framed the colour. `--plan-ring` stays so the invalid
+ *  state can still paint the row red without inventing a second channel. */
+function cardFrameShadow(isSelected: boolean, isPopular = false): string {
+  const ring = "0 0 0 var(--plan-ring, 0px) var(--plan-ring-color, transparent)";
+  if (isSelected) {
+    return `${ring}, 0 10px 26px oklch(0.24 0.06 260 / 0.22)`;
+  }
+  // Sits between the flat resting card and the lit selected one: the
+  // recommendation is off the tray a little before anyone has chosen, which
+  // is what keeps its extra width reading as a lift rather than as the other
+  // two having been cropped.
+  if (isPopular) {
+    return `${ring}, 0 6px 16px oklch(0.24 0.06 260 / 0.13)`;
+  }
+  return `${ring}, 0 1px 2px oklch(0.24 0.06 260 / 0.05)`;
 }
 
 function PlanCard({
@@ -522,6 +595,14 @@ function PlanCard({
   const isPopular = Boolean(plan.badge);
   const prefersReducedMotion = useReducedMotion();
   const PlanIcon = PLAN_ICONS[plan.id];
+  const restSurface = PLAN_SURFACES[plan.id];
+  const surface = isSelected ? restSurface : quietSurface(restSurface);
+  const ctaStyle = isSelected
+    ? { background: "#ffffff", color: INK }
+    : { background: restSurface.fill, color: restSurface.ink };
+  const tabStyle = isSelected
+    ? { background: INK, color: AMBER }
+    : { background: restSurface.fill, color: restSurface.ink };
   // The pitch leads the list as its own "special" perk - a spinning star
   // instead of a checkmark - rather than living in a separate colored band.
   // Tenure is flagged rather than hard-coded by index: once the card goes
@@ -553,20 +634,25 @@ function PlanCard({
   return (
     <div
       className="@container relative h-full w-full"
-      /* Dividers on the breakdown face are drawn in CSS: which rows need one
+      /* Rules inside the card are drawn in CSS: which breakdown rows need one
          depends on how many columns that face is running at this card's
-         width, which only CSS knows. */
-      style={{ ["--plan-hairline" as string]: HAIRLINE }}
+         width, which only CSS knows. Two are needed because the two faces no
+         longer share a background - the front rules against the plan's own
+         fill, the breakdown face against ink-black. */
+      style={{
+        ["--plan-rule" as string]: surface.hairline,
+        ["--plan-rule-ink" as string]: "oklch(1 0 0 / 0.16)",
+      }}
     >
       {/* Ring + shadow live outside the flip so they frame the card as one unit
           and stay crisp while the faces rotate. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 transition-shadow duration-200"
+        className="plan-card-frame pointer-events-none absolute inset-x-0 bottom-0 transition-shadow duration-200"
         style={{
           top: isPopular ? 0 : PILL_SLOT_HEIGHT,
-          borderRadius: CARD_RADIUS,
-          boxShadow: cardFrameShadow(isSelected),
+          borderRadius: "var(--plan-card-radius)",
+          boxShadow: cardFrameShadow(isSelected, isPopular),
         }}
       />
 
@@ -576,22 +662,22 @@ function PlanCard({
           forward. */}
       {isPopular && (
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-[3] overflow-hidden"
+          className="plan-card-tab pointer-events-none absolute inset-x-0 top-0 z-[3] overflow-hidden"
           style={{
             height: PILL_SLOT_HEIGHT,
-            borderTopLeftRadius: CARD_RADIUS,
-            borderTopRightRadius: CARD_RADIUS,
+            borderTopLeftRadius: "var(--plan-card-radius)",
+            borderTopRightRadius: "var(--plan-card-radius)",
           }}
         >
           {/* .popular-badge-glow supplies the pulse and the shine sweep; it sets
               position: relative itself, so the text needs to sit above it. */}
           <div
             className="popular-badge-glow flex h-full w-full items-center justify-center"
-            style={{ background: "#F5C518" }}
+            style={{ background: tabStyle.background }}
           >
             <span
               className={`relative z-[1] font-bold uppercase leading-none tracking-[0.08em] ${TYPE.pill}`}
-              style={{ color: "#0a1628" }}
+              style={{ color: tabStyle.color }}
             >
               Popular
             </span>
@@ -630,7 +716,7 @@ function PlanCard({
         onSelect();
         setCtaPulse((n) => n + 1);
       }}
-      className={`${isFlipped ? "absolute inset-0" : "relative"} flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]`}
+      className={`plan-card-front ${isFlipped ? "absolute inset-0" : "relative"} flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]`}
       style={{
         backfaceVisibility: "hidden",
         WebkitBackfaceVisibility: "hidden",
@@ -646,8 +732,8 @@ function PlanCard({
       <div
         className="plan-card-shell relative flex w-full flex-1 flex-col overflow-hidden"
         style={{
-          borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
-          background: "var(--surface-elevated)",
+          borderRadius: isPopular ? "0 0 var(--plan-card-radius) var(--plan-card-radius)" : "var(--plan-card-radius)",
+          background: surface.fill,
         }}
       >
         {/* Plays once when the card settles into the selected state - a brief
@@ -656,13 +742,11 @@ function PlanCard({
             when the front face isn't even in view. */}
         {isSettledSelected && <div aria-hidden="true" className="selected-card-shine z-[2]" />}
 
-        {/* Header - the plan's own gradient runs flush to the card's own edges,
-            clipped to its top corners by the parent's overflow-hidden, instead
-            of floating as a smaller inset panel. Only a bottom hairline marks
-            where it hands off to the white body below. */}
+        {/* Header - no fill of its own any more. The plan's colour is the
+            whole card, so all this panel marks is where the price hands off
+            to the feature list, with a single rule in the plan's own hairline. */}
         <div
           className="plan-card-header relative flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
-          style={{ background: PANEL_GRADIENTS[plan.id] }}
         >
           {/* Big decorative glyph bleeding off the card's top-right corner -
               the plan's identity as a watermark rather than a small inline
@@ -672,12 +756,12 @@ function PlanCard({
             aria-hidden="true"
             weight="fill"
             className="plan-card-watermark pointer-events-none absolute -right-3 -top-3 h-[clamp(3rem,52cqi,4.5rem)] w-[clamp(3rem,52cqi,4.5rem)] sm:-right-3.5 sm:-top-3.5"
-            style={{ color: WATERMARK_TINTS[plan.id], opacity: 0.28 }}
+            style={{ color: surface.accent, opacity: surface.isDark ? 0.18 : 0.14 }}
           />
 
           <span
-            className={`plan-card-name min-w-0 truncate font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
-            style={{ color: "var(--text-primary)" }}
+            className={`plan-card-name min-w-0 truncate font-bold leading-none tracking-[-0.015em] ${TYPE.planName}`}
+            style={{ color: surface.ink }}
           >
             {shortPlanName(plan.title)}
           </span>
@@ -691,13 +775,13 @@ function PlanCard({
               value={plan.monthlyInstalment}
               locales="en-SG"
               format={PRICE_FORMAT}
-              className={`font-extrabold leading-none tracking-[-0.04em] ${TYPE.price}`}
-              style={{ color: "var(--text-primary)" }}
+              className={`font-extrabold leading-none tracking-[-0.045em] ${TYPE.price}`}
+              style={{ color: surface.ink }}
               transformTiming={{ duration: 600, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}
             />
             <span
               className={`font-semibold leading-none ${TYPE.priceUnit}`}
-              style={{ color: "var(--text-tertiary)" }}
+              style={{ color: surface.mutedInk }}
             >
               /mo
             </span>
@@ -708,7 +792,7 @@ function PlanCard({
               three rows instead of four. */}
           <span
             className={`plan-card-tenure font-semibold leading-none tracking-[-0.01em] ${TYPE.label}`}
-            style={{ color: PLAN_INK[plan.id] }}
+            style={{ color: surface.mutedInk }}
           >
             over {plan.tenure} months
           </span>
@@ -733,19 +817,22 @@ function PlanCard({
                     animate={prefersReducedMotion ? undefined : { rotate: 360 }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
                   >
-                    <Star weight="fill" className="h-full w-full" style={{ color: WATERMARK_TINTS[plan.id] }} />
+                    <Star weight="fill" className="h-full w-full" style={{ color: surface.accent }} />
                   </motion.span>
                 ) : (
-                  <CheckCircle
+                  /* Sealed badge rather than a plain circled tick: at this size
+                     the scalloped edge is what tells the supporting facts apart
+                     from the starred lead perk above them. */
+                  <SealCheck
                     size={12}
-                    weight="bold"
+                    weight="fill"
                     className={`mt-px shrink-0 ${TYPE.icon}`}
-                    style={{ color: "var(--brand-blue-hex)" }}
+                    style={{ color: surface.accent }}
                   />
                 )}
                 <span
-                  className={`min-w-0 font-medium leading-tight tracking-[-0.01em] ${TYPE.body}`}
-                  style={{ color: "var(--text-primary)" }}
+                  className={`min-w-0 font-semibold leading-tight tracking-[-0.01em] ${TYPE.body}`}
+                  style={{ color: surface.ink }}
                 >
                   {feature.text}
                 </span>
@@ -755,43 +842,45 @@ function PlanCard({
           {isSelected && (
             <p
               className={`mt-auto pb-1 text-center font-medium leading-none tracking-[-0.01em] ${TYPE.label}`}
-              style={{ color: "var(--text-tertiary)" }}
+              style={{ color: surface.mutedInk }}
             >
               Tap again for more details
             </p>
           )}
         </div>
 
-        {/* CTA footer - doubles as the selection indicator: resting cards
-            get a white ghost bar, the selected card gets a filled blue bar
-            plus the ring and glow drawn around the whole card. Flush to the
-            card's bottom corners, mirroring the header treatment above. */}
-        <div
-          className="plan-card-cta relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center overflow-hidden px-3.5 py-2.5 sm:px-4 sm:py-3"
-          style={{
-            background: isSelected ? "var(--brand-blue-hex)" : CTA_GHOST_BG,
-            boxShadow: isSelected ? "none" : `inset 0 1px 0 0 ${HAIRLINE}`,
-          }}
-        >
-          {/* Quick tactile sweep on every tap - remounts on each ctaPulse
-              bump so rapid re-taps replay it instead of queuing. */}
-          {ctaPulse > 0 && <span key={ctaPulse} aria-hidden="true" className="cta-tap-shine" />}
-          <span
-            className={`flex items-center justify-center gap-1 font-semibold leading-none ${TYPE.cta}`}
-            style={{ color: isSelected ? "#ffffff" : "var(--brand-blue-hex)" }}
+        {/* CTA is the opposite of the face: plan fill on a pale card, white
+            on the picked colour block. Pressing the card dips it (see
+            .plan-card-front:active in CSS). */}
+        <div className="plan-card-cta shrink-0 px-3 pt-1 pb-3 sm:px-3.5 sm:pb-3.5">
+          <div
+            className="plan-card-cta-btn relative flex items-center justify-center overflow-hidden px-2 py-2 sm:py-2.5"
+            style={{
+              borderRadius: CTA_RADIUS,
+              background: ctaStyle.background,
+              boxShadow: CTA_SHADOW,
+            }}
           >
-            {isSelected ? (
-              <>
-                <CheckCircle size={13} weight="fill" className={TYPE.icon} />
-                Selected
-              </>
-            ) : (
-              <>
-                Pick this plan
-                <ArrowRight size={13} weight="bold" className={TYPE.icon} />
-              </>
-            )}
-          </span>
+            {/* Quick tactile sweep on every tap - remounts on each ctaPulse
+                bump so rapid re-taps replay it instead of queuing. */}
+            {ctaPulse > 0 && <span key={ctaPulse} aria-hidden="true" className="cta-tap-shine" />}
+            <span
+              className={`relative flex items-center justify-center gap-1 whitespace-nowrap font-bold leading-none tracking-[-0.01em] ${TYPE.cta}`}
+              style={{ color: ctaStyle.color }}
+            >
+              {isSelected ? (
+                <>
+                  <CheckCircle size={13} weight="fill" className={TYPE.icon} />
+                  Selected
+                </>
+              ) : (
+                <>
+                  Pick this plan
+                  <ArrowRight size={13} weight="bold" className={TYPE.icon} />
+                </>
+              )}
+            </span>
+          </div>
         </div>
       </div>
     </button>
@@ -821,20 +910,18 @@ function PlanCard({
           <div
             className="plan-back-shell flex min-h-0 flex-1 flex-col overflow-hidden"
             style={{
-              borderRadius: isPopular ? `0 0 ${CARD_RADIUS}px ${CARD_RADIUS}px` : CARD_RADIUS,
-              background: "#0a0a0a",
+              borderRadius: isPopular ? "0 0 var(--plan-card-radius) var(--plan-card-radius)" : "var(--plan-card-radius)",
+              background: INK,
             }}
           >
-            {/* Ink-black on the flipped side - deliberately breaks from the
-                front's per-plan gradient so the two faces read as distinct
-                "sell" vs "detail" moods, matching the black "Tap to go back"
-                footer below. */}
+            {/* One ink fill for the whole face, the same way the front is one
+                fill of the plan's own colour - deliberately breaking from that
+                colour so the two faces read as distinct "sell" vs "detail"
+                moods. The header no longer needs a fill of its own; a single
+                rule is all that marks where it hands off to the figures. */}
             <div
               className="plan-back-header flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
-              style={{
-                background: "#0a0a0a",
-                boxShadow: "inset 0 -1px 0 0 oklch(1 0 0 / 0.12)",
-              }}
+              style={{ boxShadow: "inset 0 -1px 0 0 var(--plan-rule-ink)" }}
             >
               <div className="flex min-w-0 items-center gap-[3px] sm:gap-1.5">
                 <PlanIcon
@@ -866,8 +953,7 @@ function PlanCard({
                 minimum gap above the "Tap to go back" footer even when
                 justify-center leaves little room of its own. */}
             <div
-              className="plan-back-body flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-3 sm:px-3.5 sm:pt-3.5 sm:pb-4"
-              style={{ background: "var(--surface-elevated)" }}
+              className="plan-back-body flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-1 sm:px-3.5 sm:pt-3.5 sm:pb-1.5"
             >
               <dl className="plan-breakdown flex min-h-0 flex-1 flex-col justify-center">
                 {[
@@ -883,13 +969,13 @@ function PlanCard({
                   >
                     <dt
                       className={`font-bold uppercase leading-tight tracking-[0.07em] ${TYPE.label}`}
-                      style={{ color: "var(--text-tertiary)" }}
+                      style={{ color: "oklch(0.72 0.012 260)" }}
                     >
                       {row.label}
                     </dt>
                     <dd
-                      className={`tabular-nums font-semibold leading-tight ${TYPE.body}`}
-                      style={{ color: "var(--text-primary)" }}
+                      className={`tabular-nums font-bold leading-tight tracking-[-0.01em] ${TYPE.body}`}
+                      style={{ color: "#ffffff" }}
                     >
                       {row.value}
                     </dd>
@@ -898,21 +984,27 @@ function PlanCard({
               </dl>
             </div>
 
-            {/* Same footer-bar shape/padding as the front's CTA, but in its
-                own ink-black treatment so it reads as this face's distinct
-                action rather than a repeat of the front's blue CTA. */}
-            <div
-              className="plan-back-cta relative -mx-0.5 -mb-0.5 flex shrink-0 items-center justify-center px-3.5 py-2.5 sm:px-4 sm:py-3"
-              style={{
-                background: "#0a0a0a",
-              }}
-            >
-              <span
-                className={`font-semibold leading-none ${TYPE.cta}`}
-                style={{ color: "#ffffff" }}
+            {/* Same inset button as the front's CTA, so both faces offer the
+                same shape to press - but outlined on the ink rather than
+                filled, because going back is the way out of this face, not the
+                thing it is asking for. No drop shadow: a soft dark shadow is
+                invisible on a fill this dark, and the outline is enough. */}
+            <div className="plan-back-cta shrink-0 px-3 pt-1 pb-3 sm:px-3.5 sm:pb-3.5">
+              <div
+                className="plan-card-cta-btn flex items-center justify-center px-2 py-2 sm:py-2.5"
+                style={{
+                  borderRadius: CTA_RADIUS,
+                  background: "transparent",
+                  border: `1.5px solid ${AMBER}`,
+                }}
               >
-                Tap to go back
-              </span>
+                <span
+                  className={`font-bold leading-none tracking-[-0.01em] ${TYPE.cta}`}
+                  style={{ color: AMBER }}
+                >
+                  Tap to go back
+                </span>
+              </div>
             </div>
           </div>
         </button>
@@ -964,12 +1056,12 @@ function CustomCardHeader({
     <div
       className={
         compact
-          ? "relative flex shrink-0 items-center gap-3 px-3.5 py-2.5"
+          ? "relative flex min-h-[4.25rem] shrink-0 items-center gap-3 overflow-hidden px-3.5 py-3"
           : "relative flex shrink-0 flex-col gap-2 px-4 pt-4 pb-3.5"
       }
       style={{
-        background: PANEL_GRADIENTS.custom,
-        boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
+        background: PLAN_SURFACES.custom.fill,
+        boxShadow: `inset 0 -1px 0 0 ${PLAN_SURFACES.custom.hairline}`,
       }}
     >
       <SlidersHorizontal
@@ -980,23 +1072,23 @@ function CustomCardHeader({
             ? "pointer-events-none absolute -right-3 -top-4 h-16 w-16"
             : "pointer-events-none absolute -right-4 -top-5 h-[5.5rem] w-[5.5rem]"
         }
-        style={{ color: WATERMARK_TINTS.custom, opacity: compact ? 0.18 : 0.24 }}
+        style={{ color: PLAN_SURFACES.custom.accent, opacity: compact ? 0.18 : 0.24 }}
       />
 
       <div className={`relative min-w-0 ${compact ? "flex flex-1 flex-col gap-1" : "contents"}`}>
         <div className="relative flex items-center gap-2">
           <span
             className={`${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-none tracking-[-0.01em]`}
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: PLAN_SURFACES.custom.ink }}
           >
             Your own plan
           </span>
           <span
             className="rounded-full px-2 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
             style={{
-              background: "oklch(1 0 0 / 0.6)",
-              color: WATERMARK_TINTS.custom,
-              boxShadow: "inset 0 0 0 1px oklch(0.52 0.13 305 / 0.22)",
+              background: "oklch(1 0 0 / 0.18)",
+              color: PLAN_SURFACES.custom.ink,
+              boxShadow: `inset 0 0 0 1px ${PLAN_SURFACES.custom.hairline}`,
             }}
           >
             Tentative
@@ -1057,7 +1149,7 @@ function CustomCardPoint({
           animate={spin ? { rotate: 360 } : undefined}
           transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
         >
-          <Star weight="fill" className="h-full w-full" style={{ color: WATERMARK_TINTS.custom }} />
+          <Star weight="fill" className="h-full w-full" style={{ color: PLAN_SURFACES.custom.accent }} />
         </motion.span>
       ) : (
         <CheckCircle
@@ -1132,13 +1224,13 @@ function CustomOfferCard({
                 size={18}
                 weight="bold"
                 className="shrink-0"
-                style={{ color: "#000000" }}
+                style={{ color: PLAN_SURFACES.custom.ink }}
               />
             }
           >
             <span
               className="min-w-0 text-[15px] font-extrabold leading-tight tracking-[-0.03em]"
-              style={{ color: "var(--text-primary)" }}
+              style={{ color: PLAN_SURFACES.custom.ink }}
             >
               Customise your own loan plan
             </span>
@@ -1155,11 +1247,11 @@ function CustomOfferCard({
           <div className="flex flex-col gap-1">
             <span
               className="text-[20px] font-extrabold leading-tight tracking-[-0.03em]"
-              style={{ color: "var(--text-primary)" }}
+              style={{ color: PLAN_SURFACES.custom.ink }}
             >
               Customise your own loan plan
             </span>
-            <span className="text-[12px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-[12px] leading-relaxed" style={{ color: PLAN_SURFACES.custom.mutedInk }}>
               Tell us the amount and tenure you want to request.
             </span>
           </div>
@@ -1268,11 +1360,11 @@ function CustomOfferCard({
         <div className="flex items-baseline gap-1 whitespace-nowrap">
           <span
             className="text-[26px] font-extrabold leading-none tabular-nums tracking-[-0.04em]"
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: PLAN_SURFACES.custom.ink }}
           >
             {formatCurrency(estimatedInstalment)}
           </span>
-          <span className="text-[13px] font-semibold leading-none" style={{ color: "var(--text-tertiary)" }}>
+          <span className="text-[13px] font-semibold leading-none" style={{ color: PLAN_SURFACES.custom.mutedInk }}>
             /mo est.
           </span>
         </div>
@@ -1378,6 +1470,10 @@ function PlanPicker({
               key={plan.id}
               className="plan-lane-item"
               data-active={plan.id === frontPlanId}
+              /* Drives the resting width advantage in CSS - the lane decides
+                 how much of the row the recommendation gets, because that
+                 depends on what the other two can spare at this breakpoint. */
+              data-popular={Boolean(plan.badge)}
             >
               {/* Cards settle in one after another, out of a blur - the row
                   assembles itself instead of appearing all at once. */}
@@ -1447,6 +1543,9 @@ function SelectedPlanStrip({
   label: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  // The strip wears the picked plan's own colour, which is what ties it back
+  // to the card up the page rather than reading as a separate control.
+  const surface = PLAN_SURFACES[planId];
   const pop = prefersReducedMotion
     ? { duration: 0 }
     : { type: "spring" as const, stiffness: 520, damping: 28, mass: 0.7 };
@@ -1456,8 +1555,8 @@ function SelectedPlanStrip({
     <motion.div
       className="flex w-full items-center justify-center gap-1.5 px-5 py-2"
       style={{
-        background: PANEL_GRADIENTS[planId],
-        boxShadow: `inset 0 -1px 0 0 ${HAIRLINE}`,
+        background: surface.fill,
+        boxShadow: `inset 0 -1px 0 0 ${surface.hairline}`,
       }}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -1474,11 +1573,11 @@ function SelectedPlanStrip({
             : { type: "spring", stiffness: 700, damping: 16, delay: 0.06 }
         }
       >
-        <CheckCircle size={15} weight="fill" style={{ color: WATERMARK_TINTS[planId] }} />
+        <CheckCircle size={15} weight="fill" style={{ color: surface.accent }} />
       </motion.span>
       <span
         className="text-[13px] font-semibold leading-none"
-        style={{ color: PLAN_INK[planId] }}
+        style={{ color: surface.ink }}
       >
         {label}
       </span>

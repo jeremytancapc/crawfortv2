@@ -34,8 +34,6 @@ export function PendingView({ pending }: Props) {
 
   return (
     <ApplyIosShell
-      sidebarTitle="Wait for our review"
-      sidebarSubtitle="We've received your application and our team will be in touch with you shortly."
       progressStep={APPLY_PROGRESS.completeApp}
     >
       <div className="flex flex-1 flex-col gap-8 px-5 pb-8 pt-7 animate-fade-up">

@@ -69,8 +69,6 @@ export function BookingView({ formData }: Props) {
 
   return (
     <ApplyIosShell
-      sidebarTitle="Book your appointment"
-      sidebarSubtitle="Choose a date and time that works best for you to visit our office."
       progressStep={APPLY_PROGRESS.book}
     >
       <div className="shrink-0 px-5 pb-4 pt-7">

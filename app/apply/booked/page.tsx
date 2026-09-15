@@ -17,8 +17,6 @@ export default async function BookedPage() {
 
   return (
     <ApplyIosShell
-      sidebarTitle="Your funds are reserved"
-      sidebarSubtitle="Your appointment reference and visit time are below."
       progressStep={APPLY_PROGRESS.booked}
     >
       <div className="shrink-0 px-5 pb-6 pt-7">

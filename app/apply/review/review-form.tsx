@@ -244,9 +244,9 @@ export function ReviewForm({ initialData }: Props) {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
-        <div className="flex min-w-0 flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
-          <div className="flex min-w-0 w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
-            <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:px-8 xl:px-12">
+          <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+            <div className="theme-ios flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
               {stepMeta && (

@@ -163,7 +163,7 @@ export function buildOfferPlans(approvedAmount: number): [OfferPlan, OfferPlan, 
       "average",
       "ValuePro Plan",
       "Best of both worlds",
-      ["Balanced monthly", "Most chosen"],
+      ["Balanced monthly", "86% of people choose this"],
       6,
       OFFER_MONTHLY_RATE,
       {

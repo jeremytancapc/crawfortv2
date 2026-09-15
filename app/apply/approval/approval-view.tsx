@@ -7,7 +7,7 @@ import type { LoanFormData } from "@/lib/loan-form";
 import { LoanResults } from "@/app/loan-results";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
-import { approvalOfferDisplay, formatOfferAmount } from "@/lib/approval-display";
+import { approvalOfferDisplay } from "@/lib/approval-display";
 import {
   readStoredWithdrawAmount,
   storeWithdrawAmount,
@@ -67,12 +67,6 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
 
   return (
     <ApplyIosShell
-      sidebarTitle={isPlan ? "Choose your loan plan" : "Confirm your loan amount"}
-      sidebarSubtitle={
-        isPlan
-          ? `For ${formatOfferAmount(planAmount)}.`
-          : "Choose the loan amount that works best for you."
-      }
       progressStep={isPlan ? APPLY_PROGRESS.choosePlan : APPLY_PROGRESS.confirmAmount}
       wideContent={isPlan}
     >

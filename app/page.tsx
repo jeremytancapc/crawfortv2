@@ -64,8 +64,8 @@ function ApplyLandingLayout({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
-        <div className="flex min-w-0 flex-1 flex-col lg:justify-start lg:px-12 lg:py-10 xl:px-20">
-          <div className="flex min-w-0 w-full flex-1 flex-col lg:mx-auto lg:max-w-[520px] lg:flex-none">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:px-8 xl:px-12">
+          <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
             <LoanApplicationForm initialApplySession={initialGateSession} />
           </div>
         </div>
