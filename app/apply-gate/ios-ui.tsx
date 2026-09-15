@@ -22,6 +22,28 @@ import {
 } from "@/lib/apply-progress";
 import { useApplyProgressStep, usePublishApplyProgress } from "@/lib/apply-progress-store";
 
+/** Desktop sidebar wordmark. Same destination as the mobile header: the amount step. */
+export function ApplySidebarWordmark() {
+  const applyHref = useApplyPath();
+
+  return (
+    <Link
+      href={applyHref("/")}
+      className="inline-flex"
+      aria-label="Crawfort home"
+    >
+      <Image
+        src="/images/crawfort-white.png"
+        alt="Crawfort"
+        width={1261}
+        height={155}
+        className="h-6 w-auto"
+        priority
+      />
+    </Link>
+  );
+}
+
 /**
  * Full-bleed brand-blue bar with a centered wordmark. Mobile apply chrome only.
  */
@@ -138,14 +160,7 @@ export function ApplyIosShell({
       <aside className="relative hidden overflow-hidden bg-[var(--accent)] p-12 lg:flex lg:w-[42%] lg:flex-col lg:justify-between xl:w-[38%] xl:p-16">
         <div className="relative z-10">
           <div className="mb-16">
-            <Image
-              src="/images/crawfort-white.png"
-              alt="Crawfort"
-              width={1261}
-              height={155}
-              className="h-6 w-auto"
-              priority
-            />
+            <ApplySidebarWordmark />
           </div>
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
             {sidebarTitle}
@@ -625,8 +640,7 @@ function StepNavButton({
       disabled={disabled}
       tabIndex={disabled ? -1 : undefined}
       aria-label={isBack ? "Previous step" : "Next step"}
-      className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-0"
-      aria-hidden={disabled}
+      className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
     >
       <Icon size={20} weight="bold" />
     </button>
@@ -815,7 +829,7 @@ export function StickyFooter({
         ) : null}
         <div className="ios-sticky-footer-action">
           {hasNav ? (
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-2 lg:gap-4">
               <StepNavButton
                 direction="back"
                 onClick={nav.back?.onClick}

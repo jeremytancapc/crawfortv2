@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   Step4_Identity,
   Step6_Contact,
@@ -12,6 +11,7 @@ import {
 } from "@/app/loan-application-form";
 import {
   ApplyProgressPanel,
+  ApplySidebarWordmark,
   MobileGateHeader,
   MobileGateSheet,
   PrimaryButton,
@@ -230,14 +230,7 @@ export function ReviewForm({ initialData }: Props) {
       <aside className="relative hidden overflow-hidden bg-[var(--accent)] p-12 lg:flex lg:w-[42%] lg:flex-col lg:justify-between xl:w-[38%] xl:p-16">
         <div className="relative z-10">
           <div className="mb-16">
-            <Image
-              src="/images/crawfort-white.png"
-              alt="Crawfort"
-              width={1261}
-              height={155}
-              className="h-6 w-auto"
-              priority
-            />
+            <ApplySidebarWordmark />
           </div>
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
             {stepMeta?.title ?? "Confirm that your info is accurate"}

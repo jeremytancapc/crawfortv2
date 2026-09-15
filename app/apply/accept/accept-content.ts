@@ -14,8 +14,12 @@ export const DRAWDOWN_NOTICE =
 export interface KeyTermAck {
   key: string;
   Icon: Icon;
+  /** Short name for the card header, e.g. "Collect Funds at Office". */
+  label: string;
   /** Written in the first person: the customer is making this statement, not reading one. */
   title: string;
+  /** Footer CTA that names the next card, so the customer knows what's coming. */
+  ctaLabel: string;
   terms: readonly string[];
 }
 
@@ -28,7 +32,9 @@ export const KEY_TERM_ACKS = [
   {
     key: "collectInPerson",
     Icon: Buildings,
+    label: "Collect Funds at Office",
     title: "I need to collect my funds in person",
+    ctaLabel: "Next: Drawdown Period",
     terms: [
       "Final drawdown is completed face to face at our office.",
       "This is required under anti-money laundering (AML) and know-your-customer (KYC) regulations.",
@@ -37,7 +43,9 @@ export const KEY_TERM_ACKS = [
   {
     key: "drawdownWindow",
     Icon: ClockCountdown,
+    label: "Collect Funds in 3 Days",
     title: "I need to draw down within 3 business days",
+    ctaLabel: "Next: Payments on time",
     terms: [
       "After 3 business days, this agreement is void and a new application is required.",
       "Every re-application may affect your next approval.",
@@ -46,7 +54,9 @@ export const KEY_TERM_ACKS = [
   {
     key: "lateCharges",
     Icon: Warning,
+    label: "Pay On Time",
     title: "I will make payments on time",
+    ctaLabel: "Next: Payment Schedule",
     terms: [
       "Late interest of up to 4% per month on the overdue amount.",
       "A late fee of $60 for every month a payment is late.",
@@ -63,6 +73,10 @@ export const DISBURSEMENT_NOTICE_ITEMS = [
 /** First-person statement used as the schedule card's header. */
 export const SCHEDULE_ACK_STATEMENT =
   "I agree to repay as per this payment schedule.";
+
+export const SCHEDULE_CTA_LABEL = "Next: Funds Disburse Method";
+
+export const DISBURSEMENT_CTA_LABEL = "Next: Acknowledgement";
 
 /** Affirmative statement shown above the confirm button on the disbursement card. */
 export const DISBURSEMENT_ACK_STATEMENT =

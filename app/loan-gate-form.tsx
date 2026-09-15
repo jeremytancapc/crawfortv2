@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { LoanFormData as FormData } from "@/lib/loan-form";
 import {
@@ -23,7 +24,7 @@ import {
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
-import { persistGateStep, readPersistedGateStep } from "@/lib/apply-step-nav";
+import { persistGateStep, readGateResumeStep } from "@/lib/apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
 
 const GATE_LAST_STEP = 3;
@@ -57,9 +58,12 @@ export function LoanGateForm({
   const [history, setHistory] = useState<number[]>([1]);
   const step = history[history.length - 1];
 
+  // A plain visit to `/` (including the wordmark) always opens the amount
+  // step. Only an explicit one-shot resume — set right before an in-app
+  // back from a later gate page — reopens income or Singpass.
   useLayoutEffect(() => {
-    const resumed = readPersistedGateStep();
-    if (resumed !== 1) setHistory([resumed]);
+    const resumed = readGateResumeStep();
+    if (resumed != null) setHistory([resumed]);
   }, []);
 
   useEffect(() => {
@@ -161,6 +165,14 @@ export function LoanGateForm({
     },
     [formData],
   );
+
+  const startSingpass = useCallback(() => {
+    void leaveAfterSavingGate(
+      applyHref("/apply/verify-income"),
+      { authMethod: "singpass" },
+      { setApplyGate: false },
+    );
+  }, [applyHref, leaveAfterSavingGate]);
 
   const handleNext = useCallback(() => {
     if (step === 1 && formData.urgency === "") {
@@ -272,11 +284,7 @@ export function LoanGateForm({
           )}
           {step === 3 && (
             <Step3_SingpassGate
-              onSingpass={() => {
-                void leaveAfterSavingGate(applyHref("/apply/verify-income"), { authMethod: "singpass" }, {
-                  setApplyGate: false,
-                });
-              }}
+              onSingpass={startSingpass}
               redirectPending={step3RedirectPending}
             />
           )}
@@ -304,9 +312,24 @@ export function LoanGateForm({
           )
         }
       >
-        {step === 3 ? undefined : (
+        {step === 3 ? (
+          <PrimaryButton onClick={startSingpass} disabled={step3RedirectPending}>
+            <span className="inline-flex items-center gap-1.5 leading-none">
+              Apply with
+              <span className="sr-only">Singpass</span>
+              <Image
+                src="/images/singpass_logo_white-1.png"
+                alt=""
+                width={1404}
+                height={243}
+                className="relative top-px h-[0.82em] w-auto shrink-0"
+                aria-hidden
+              />
+            </span>
+          </PrimaryButton>
+        ) : (
           <PrimaryButton onClick={handleNext} disabled={step3RedirectPending}>
-            Continue
+            {step === 1 ? "Next: Loan Tenure" : "Continue"}
           </PrimaryButton>
         )}
       </StickyFooter>

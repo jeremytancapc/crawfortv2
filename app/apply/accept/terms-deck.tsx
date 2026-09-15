@@ -1,15 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
 import {
-  ArrowLeft,
-  ArrowRight,
   CalendarCheck,
-  Check,
   CurrencyCircleDollar,
   type Icon,
 } from "@phosphor-icons/react";
@@ -20,22 +24,18 @@ import {
   DISBURSEMENT_ACK_STATEMENT,
   DISBURSEMENT_NOTICE_ITEMS,
   KEY_TERM_ACKS,
+  DISBURSEMENT_CTA_LABEL,
   SCHEDULE_ACK_STATEMENT,
-  SCHEDULE_CAVEAT,
+  SCHEDULE_CTA_LABEL,
 } from "./accept-content";
 import {
   BRAND_BLUE,
-  CARD_SHADOW,
-  CARD_SHADOW_CONFIRMED,
   DashedDivider,
   NumberBadge,
   ReceiptRow,
-  SUCCESS_GREEN,
-  ScrollForMoreHint,
   formatCurrency,
   formatScheduleDate,
   scrollSectionIntoViewIfNeeded,
-  useCanScrollMore,
 } from "./accept-ui";
 
 // ── Deck of terms ─────────────────────────────────────────────────────────────
@@ -56,10 +56,6 @@ const CARD_SWIPE_TRANSITION: Transition = { duration: 0.34, ease: [0.32, 0.72, 0
 /** Long enough for the swipe and the card-height change to finish before we
  *  check whether the new card left its own controls off screen. */
 const CARD_SWIPE_SETTLE_MS = 400;
-
-const SCHEDULE_MAX_HEIGHT_PX = 224;
-/** Beyond this many instalments the schedule scrolls instead of growing the card. */
-const SCHEDULE_SCROLL_THRESHOLD = 4;
 
 const cardVariants: Variants = {
   enter: (direction: number) => ({
@@ -98,8 +94,10 @@ interface DeckCard {
   accessory?: ReactNode;
   /** Bullets for key-term cards. */
   terms?: readonly string[];
-  /** Shown above the confirm button when the title isn't itself a statement. */
-  statement?: string;
+  /** First-person line on the confirm button. */
+  agreeLabel: string;
+  /** Footer CTA that names the next card. */
+  ctaLabel: string;
 }
 
 const BRAND_ICON_BG = "oklch(0.32 0.14 260 / 0.08)";
@@ -112,7 +110,9 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
       Icon: ack.Icon,
       iconTint: BRAND_BLUE,
       iconBg: BRAND_ICON_BG,
-      title: ack.title,
+      title: ack.label,
+      agreeLabel: ack.title,
+      ctaLabel: ack.ctaLabel,
       terms: ack.terms,
     })),
     {
@@ -121,7 +121,9 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
       Icon: CalendarCheck,
       iconTint: BRAND_BLUE,
       iconBg: BRAND_ICON_BG,
-      title: SCHEDULE_ACK_STATEMENT,
+      title: "Payment Schedule",
+      agreeLabel: SCHEDULE_ACK_STATEMENT,
+      ctaLabel: SCHEDULE_CTA_LABEL,
     },
     {
       id: "disbursement",
@@ -130,6 +132,8 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
       iconTint: "#0d9488",
       iconBg: "oklch(0.7 0.13 178 / 0.14)",
       title: "Fund disbursement via NRIC-linked PayNow",
+      agreeLabel: DISBURSEMENT_ACK_STATEMENT,
+      ctaLabel: DISBURSEMENT_CTA_LABEL,
       accessory: (
         <Image
           src="/images/paynow-logo.png"
@@ -139,7 +143,6 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
           className="h-8 w-auto"
         />
       ),
-      statement: DISBURSEMENT_ACK_STATEMENT,
     },
   ];
 }
@@ -148,28 +151,16 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
 
 function KeyTermBody({ terms }: { terms: readonly string[] }) {
   return (
-    <ul className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
       {terms.map((term) => (
-        <li key={term} className="flex items-start gap-2.5">
-          <span
-            className="mt-[5px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full"
-            style={{ background: "oklch(0.32 0.14 260 / 0.12)" }}
-            aria-hidden="true"
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: BRAND_BLUE }}
-            />
-          </span>
-          <p
-            className="text-[13.5px] leading-relaxed font-medium"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {term}
-          </p>
-        </li>
+        <p
+          key={term}
+          className="text-[14px] leading-[1.55] font-medium text-[var(--text-secondary)]"
+        >
+          {term}
+        </p>
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -185,24 +176,18 @@ function ScheduleRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <NumberBadge value={index} />
-        <span className="flex flex-col gap-0.5">
-          <span
-            className="text-[13px] font-medium leading-snug"
-            style={{ color: "var(--text-primary)" }}
-          >
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="text-[13px] font-medium leading-snug text-[var(--text-primary)]">
             Instalment {index}
           </span>
-          <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-            Due {formatScheduleDate(dueDateIso)}
+          <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+            {formatScheduleDate(dueDateIso)}
           </span>
         </span>
       </div>
-      <span
-        className="text-[13.5px] font-semibold tabular-nums shrink-0"
-        style={{ color: "var(--text-primary)" }}
-      >
+      <span className="shrink-0 text-[13.5px] font-semibold tabular-nums text-[var(--text-primary)]">
         {formatCurrency(amount)}
       </span>
     </div>
@@ -217,75 +202,43 @@ function ScheduleBody({
   acceptedAt: string;
 }) {
   const schedule = buildPaymentSchedule(acceptedAt, plan.tenure, plan.monthlyInstalment);
-  const isScrollable = schedule.length > SCHEDULE_SCROLL_THRESHOLD;
-  const scheduleRef = useRef<HTMLDivElement>(null);
-  const canScrollMore = useCanScrollMore(scheduleRef);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-bold leading-snug" style={{ color: "var(--text-primary)" }}>
-          Your {plan.tenure}-month schedule
-        </p>
-        <p
-          className="text-[13px] leading-relaxed font-medium"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Assuming disbursement date: {formatScheduleDate(acceptedAt)}
-        </p>
-      </div>
+    <div className="flex flex-col gap-2.5">
+      <p className="text-[12.5px] font-medium leading-snug text-[var(--text-tertiary)]">
+        {plan.tenure} months · from {formatScheduleDate(acceptedAt)}
+      </p>
 
-      <div className="relative">
-        <div
-          ref={scheduleRef}
-          className={
-            isScrollable ? "flex flex-col gap-3 overflow-y-auto pr-1 pb-6" : "flex flex-col gap-3"
-          }
-          style={isScrollable ? { maxHeight: SCHEDULE_MAX_HEIGHT_PX } : undefined}
-        >
-          {schedule.map((installment) => (
-            <ScheduleRow
-              key={installment.index}
-              index={installment.index}
-              dueDateIso={installment.dueDateIso}
-              amount={installment.amount}
-            />
-          ))}
-        </div>
-        {isScrollable && <ScrollForMoreHint visible={canScrollMore} />}
+      <div className="flex flex-col gap-2">
+        {schedule.map((installment) => (
+          <ScheduleRow
+            key={installment.index}
+            index={installment.index}
+            dueDateIso={installment.dueDateIso}
+            amount={installment.amount}
+          />
+        ))}
       </div>
 
       <DashedDivider />
 
       <ReceiptRow label="Total repayment" value={formatCurrency(plan.totalRepayment)} emphasize />
-
-      <p
-        className="text-[13px] leading-relaxed font-medium"
-        style={{ color: "var(--text-secondary)" }}
-      >
-        {SCHEDULE_CAVEAT}
-      </p>
     </div>
   );
 }
 
 function DisbursementBody() {
   return (
-    <ul className="flex flex-col gap-3">
-      {DISBURSEMENT_NOTICE_ITEMS.map((item, index) => (
-        <li key={item} className="flex items-start gap-2.5">
-          <span className="mt-[3px]">
-            <NumberBadge value={index + 1} />
-          </span>
-          <p
-            className="text-[13px] leading-relaxed font-medium"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {item}
-          </p>
-        </li>
+    <div className="flex flex-col gap-2">
+      {DISBURSEMENT_NOTICE_ITEMS.map((item) => (
+        <p
+          key={item}
+          className="text-[14px] leading-[1.55] font-medium text-[var(--text-secondary)]"
+        >
+          {item}
+        </p>
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -310,109 +263,61 @@ function DeckCardBody({
 
 // ── Card shell ────────────────────────────────────────────────────────────────
 
+const LISTING_CARD_SHADOW = "0 18px 40px oklch(0.24 0.02 80 / 0.10)";
+
 function DeckCardFace({
   card,
   plan,
   acceptedAt,
-  isConfirmed,
-  isLast,
-  canGoBack,
-  onConfirm,
-  onBack,
+  index,
+  total,
 }: {
   card: DeckCard;
   plan: SelectedPlanData;
   acceptedAt: string;
-  isConfirmed: boolean;
-  isLast: boolean;
-  canGoBack: boolean;
-  onConfirm: () => void;
-  onBack: () => void;
+  index: number;
+  total: number;
 }) {
-  const headerBg = isConfirmed ? SUCCESS_GREEN : "var(--brand-blue-hex, #0033AA)";
-
   return (
     <div
-      className="w-full rounded-[var(--radius-lg)] overflow-hidden"
-      style={{
-        background: "var(--surface-elevated)",
-        boxShadow: isConfirmed ? CARD_SHADOW_CONFIRMED : CARD_SHADOW,
-      }}
+      className="w-full overflow-hidden rounded-[28px] bg-white"
+      style={{ boxShadow: LISTING_CARD_SHADOW }}
     >
-      <div
-        className="flex items-center gap-3 px-5 py-3.5"
-        style={{ background: headerBg }}
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/16">
-          <card.Icon size={17} weight="duotone" className="text-white" />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-[15px] font-bold leading-snug text-white">
-            {card.title}
-          </span>
-          {card.subtitle && (
-            <span className="text-[12.5px] leading-snug font-medium text-white/70">
-              {card.subtitle}
-            </span>
+      {card.kind !== "schedule" && (
+        <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+          {/* Same stamp treatment as the plan cards: the glyph is the
+              banner's texture, oversized and clipped so the teal still
+              reads as a solid field rather than a flat fill. */}
+          <card.Icon
+            aria-hidden
+            weight="fill"
+            size={168}
+            className="deck-card-watermark pointer-events-none"
+          />
+
+          {card.accessory && (
+            <span className="deck-card-accessory">{card.accessory}</span>
           )}
-        </span>
-        {card.accessory && (
-          <span className="shrink-0 rounded-md bg-white px-1.5 py-1">{card.accessory}</span>
-        )}
-        {isConfirmed && (
-          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-white">
-            <Check size={12} weight="bold" style={{ color: SUCCESS_GREEN }} />
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-4 px-5 py-5">
-        <DeckCardBody card={card} plan={plan} acceptedAt={acceptedAt} />
-
-        <DashedDivider />
-
-        {card.statement && !isConfirmed && (
-          <p
-            className="text-[13.5px] leading-snug font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {card.statement}
-          </p>
-        )}
-
-        <div className="flex items-center gap-2.5">
-          {canGoBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back to the previous point"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-all duration-200 active:scale-95"
-              style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
-            >
-              <ArrowLeft size={16} weight="bold" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="ios-type-cta flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-            style={{
-              background: isConfirmed ? BRAND_BLUE : SUCCESS_GREEN,
-            }}
-          >
-            {isConfirmed ? (
-              <>
-                {isLast ? "Done reviewing" : "Next"}
-                <ArrowRight size={15} weight="bold" />
-              </>
-            ) : (
-              <>
-                <Check size={16} weight="bold" />
-                I agree
-              </>
-            )}
-          </button>
         </div>
+      )}
+
+      <div className={`flex flex-col px-5 pb-5 ${card.kind === "schedule" ? "gap-2.5 pt-4" : "gap-3.5 pt-4"}`}>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
+            {card.title}
+          </h2>
+          <p className="mt-0.5 shrink-0 text-[13.5px] font-medium leading-snug text-[var(--text-tertiary)]">
+            Term {index} of {total}
+          </p>
+        </div>
+
+        {card.subtitle ? (
+          <p className="text-[13.5px] font-medium leading-snug text-[var(--text-tertiary)]">
+            {card.subtitle}
+          </p>
+        ) : null}
+
+        <DeckCardBody card={card} plan={plan} acceptedAt={acceptedAt} />
       </div>
     </div>
   );
@@ -431,7 +336,7 @@ function DeckStackLayers({ remaining }: { remaining: number }) {
           <span
             key={depth}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[var(--radius-lg)] transition-all duration-300"
+            className="pointer-events-none absolute inset-0 rounded-[28px] transition-all duration-300"
             style={{
               background: "var(--surface-elevated)",
               boxShadow: "0 0 0 1px var(--border-subtle)",
@@ -447,6 +352,13 @@ function DeckStackLayers({ remaining }: { remaining: number }) {
 
 // ── Deck ──────────────────────────────────────────────────────────────────────
 
+export interface TermsDeckHandle {
+  /** Step back one card. Returns true when a card was shown. */
+  goBack: () => boolean;
+  /** Confirm the front card and deal the next one. */
+  confirm: () => void;
+}
+
 interface TermsDeckProps {
   plan: SelectedPlanData;
   acceptedAt: string;
@@ -455,14 +367,20 @@ interface TermsDeckProps {
   onComplete: () => void;
   /** Fires on mount and after each confirmation so the header progress can move. */
   onConfirmedCountChange?: (confirmed: number, total: number) => void;
+  /** Footer CTA label for the card on screen. Null when the deck is collapsed. */
+  onActiveCtaChange?: (label: string | null) => void;
 }
 
-export function TermsDeck({
-  plan,
-  acceptedAt,
-  onComplete,
-  onConfirmedCountChange,
-}: TermsDeckProps) {
+export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function TermsDeck(
+  {
+    plan,
+    acceptedAt,
+    onComplete,
+    onConfirmedCountChange,
+    onActiveCtaChange,
+  },
+  ref,
+) {
   const prefersReducedMotion = useReducedMotion();
   const cards = useMemo(() => buildDeckCards(plan, acceptedAt), [plan, acceptedAt]);
   const total = cards.length;
@@ -475,26 +393,17 @@ export function TermsDeck({
   const activeCard = cursor < total ? cards[cursor] : null;
   const isCollapsed = activeCard === null;
 
-  // The front card is in normal flow, so the viewport reads its height and
-  // animates to it - which keeps the swap from snapping between two very
-  // different card heights (a two-line term vs. a twelve-row schedule).
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
-  const cardObserverRef = useRef<ResizeObserver | null>(null);
-
-  const measureCard = useCallback((node: HTMLDivElement | null) => {
-    if (!node) return;
-    cardObserverRef.current?.disconnect();
-    const observer = new ResizeObserver(() => setViewportHeight(node.offsetHeight));
-    observer.observe(node);
-    cardObserverRef.current = observer;
-    setViewportHeight(node.offsetHeight);
-  }, []);
-
-  useEffect(() => () => cardObserverRef.current?.disconnect(), []);
-
   useEffect(() => {
     onConfirmedCountChange?.(confirmedCount, total);
   }, [confirmedCount, total, onConfirmedCountChange]);
+
+  useEffect(() => {
+    if (!activeCard) {
+      onActiveCtaChange?.(null);
+      return;
+    }
+    onActiveCtaChange?.(activeCard.ctaLabel);
+  }, [activeCard, onActiveCtaChange]);
 
   // Cards swap in place, so the page normally shouldn't move at all. The one
   // exception is a card tall enough to push its own buttons off screen (the
@@ -523,15 +432,31 @@ export function TermsDeck({
   }
 
   /** Confirms the front card, or - if it's already confirmed and being
-   *  re-read - just deals the next one. */
+   *  re-read - just deals the next one. Completing the last card (or
+   *  re-advancing past it after a back) collapses the deck. */
   function advance() {
     if (cursor === confirmedCount) {
-      const nextCount = cursor + 1;
-      setConfirmedCount(nextCount);
-      if (nextCount === total) onComplete();
+      setConfirmedCount(cursor + 1);
     }
-    goTo(cursor + 1, 1);
+    const next = cursor + 1;
+    goTo(next, 1);
+    if (next === total) onComplete();
   }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      goBack() {
+        if (cursor <= 0) return false;
+        goTo(cursor - 1, -1);
+        return true;
+      },
+      confirm() {
+        advance();
+      },
+    }),
+    [confirmedCount, cursor, total],
+  );
 
   return (
     <div ref={deckRef} className="flex flex-col">
@@ -541,13 +466,13 @@ export function TermsDeck({
         </div>
       ) : null}
 
-      <div className="relative">
+      <div className="relative mx-auto w-full max-w-[360px] pb-3">
         <DeckStackLayers remaining={total - cursor - 1} />
         <motion.div
           className="relative"
-          animate={{ height: isCollapsed ? 0 : (viewportHeight ?? "auto") }}
+          animate={{ height: isCollapsed ? 0 : "auto" }}
           transition={CARD_SWIPE_TRANSITION}
-          style={{ overflow: "hidden" }}
+          style={{ overflow: isCollapsed ? "hidden" : "visible" }}
         >
           <AnimatePresence mode="popLayout" initial={false} custom={direction}>
             {activeCard && (
@@ -560,18 +485,13 @@ export function TermsDeck({
                 exit="exit"
                 transition={CARD_SWIPE_TRANSITION}
               >
-                <div ref={measureCard}>
-                  <DeckCardFace
-                    card={activeCard}
-                    plan={plan}
-                    acceptedAt={acceptedAt}
-                    isConfirmed={cursor < confirmedCount}
-                    isLast={cursor === total - 1}
-                    canGoBack={cursor > 0}
-                    onConfirm={advance}
-                    onBack={() => goTo(cursor - 1, -1)}
-                  />
-                </div>
+                <DeckCardFace
+                  card={activeCard}
+                  plan={plan}
+                  acceptedAt={acceptedAt}
+                  index={cursor + 1}
+                  total={total}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -579,4 +499,4 @@ export function TermsDeck({
       </div>
     </div>
   );
-}
+});
