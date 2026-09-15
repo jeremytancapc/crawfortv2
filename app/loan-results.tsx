@@ -844,7 +844,7 @@ function PlanCard({
                   style={{ color: "#ffffff" }}
                 />
                 <span
-                  className={`min-w-0 truncate font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
+                  className={`font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
                   style={{ color: "#ffffff" }}
                 >
                   {shortPlanName(plan.title)}
@@ -1121,7 +1121,7 @@ function CustomOfferCard({
         type="button"
         onClick={onSelect}
         aria-expanded={false}
-        className="group mx-auto block w-4/5 transition-transform duration-200 active:scale-[0.99] lg:w-full"
+        className="group mx-auto block w-4/5 max-w-sm transition-transform duration-200 active:scale-[0.99]"
         aria-label="Customise your own loan plan. Sends a tentative request, not a confirmed offer."
       >
         <CustomCardFrame isSelected={false}>
@@ -1328,6 +1328,8 @@ interface PlanPickerProps {
   customTenure: string;
   onCustomAmountChange: (value: string) => void;
   onCustomTenureChange: (value: string) => void;
+  needsInput?: boolean;
+  attentionNonce?: number;
 }
 
 function PlanPicker({
@@ -1338,8 +1340,20 @@ function PlanPicker({
   customTenure,
   onCustomAmountChange,
   onCustomTenureChange,
+  needsInput = false,
+  attentionNonce = 0,
 }: PlanPickerProps) {
   const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
+
+  useEffect(() => {
+    if (!needsInput) return;
+    const el = document.getElementById("plan-lane-field");
+    if (!el) return;
+    el.classList.remove("is-zooming");
+    void el.offsetWidth;
+    el.classList.add("is-zooming");
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [needsInput, attentionNonce]);
 
   // Which card stands forward in the row. Only the customer's own pick claims
   // it - an untouched row stays three even columns so the three plans can be
@@ -1351,8 +1365,14 @@ function PlanPicker({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="plan-lane-tray">
-        <div className="plan-lane" data-expanded={frontPlanId ? "true" : "false"}>
+      <div
+        id="plan-lane-field"
+        className={`plan-lane-tray${needsInput ? " ios-field-needs-input" : ""}`}
+      >
+        <div
+          className={`plan-lane${needsInput ? " plan-lane--invalid" : ""}`}
+          data-expanded={frontPlanId ? "true" : "false"}
+        >
           {plans.map((plan, index) => (
             <div
               key={plan.id}
@@ -1385,6 +1405,15 @@ function PlanPicker({
           ))}
         </div>
       </div>
+      {needsInput ? (
+        <p
+          id="plan-lane-hint"
+          className="px-1 text-[13px] font-medium leading-snug text-[#D70015]"
+          role="alert"
+        >
+          Choose a repayment plan to continue.
+        </p>
+      ) : null}
       <RevealOnScroll>
       <CustomOfferCard
         isSelected={selectedPlanId === "custom"}
@@ -1893,6 +1922,8 @@ export function LoanResults({
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const hasNoSelection = selectedPlanId === null;
   const isCustomSelected = selectedPlanId === "custom";
+  const [needsPlanInput, setNeedsPlanInput] = useState(false);
+  const [planAttentionNonce, setPlanAttentionNonce] = useState(0);
   const customAmountValue = parseInt(customAmount, 10);
   const customTenureValue = parseInt(customTenure, 10);
   const hasInvalidCustomInput =
@@ -1951,12 +1982,17 @@ export function LoanResults({
 
   /** "Review Offer" opens a confirm-and-explain modal for custom requests instead of accepting immediately. */
   const handleReviewOfferClick = useCallback(() => {
+    if (hasNoSelection || hasInvalidCustomInput) {
+      setNeedsPlanInput(true);
+      setPlanAttentionNonce((n) => n + 1);
+      return;
+    }
     if (isCustomSelected) {
       setIsCustomModalOpen(true);
       return;
     }
     void handleAccept();
-  }, [isCustomSelected, handleAccept]);
+  }, [hasNoSelection, hasInvalidCustomInput, isCustomSelected, handleAccept]);
 
   const handleCustomOfferSubmit = useCallback(async () => {
     trackEvent("step_10_offer_accepted", { planId: "custom" });
@@ -1985,11 +2021,9 @@ export function LoanResults({
 
   const footerHint = !isPlanPhase
     ? null
-    : hasNoSelection
-      ? "Select a repayment plan to continue"
-      : isCustomSelected && hasInvalidCustomInput
-        ? "Enter the loan amount and tenure for your custom plan."
-        : null;
+    : needsPlanInput && isCustomSelected && hasInvalidCustomInput
+      ? "Enter the loan amount and tenure for your custom plan."
+      : null;
 
   /** Only once the choice is actually actionable - a custom request still
    *  missing its figures keeps showing the hint instead. */
@@ -2041,12 +2075,17 @@ export function LoanResults({
           <div className="flex flex-col gap-4 sm:gap-5">
             <PlanPicker
               selectedPlanId={selectedPlanId}
-              onPlanSelect={setSelectedPlanId}
+              onPlanSelect={(id) => {
+                setSelectedPlanId(id);
+                setNeedsPlanInput(false);
+              }}
               plans={plans}
               customAmount={customAmount}
               customTenure={customTenure}
               onCustomAmountChange={setCustomAmount}
               onCustomTenureChange={setCustomTenure}
+              needsInput={needsPlanInput && hasNoSelection}
+              attentionNonce={planAttentionNonce}
             />
           </div>
         )}
@@ -2100,13 +2139,13 @@ export function LoanResults({
         ) : isPlanPhase ? (
           <PrimaryButton
             onClick={handleReviewOfferClick}
-            disabled={hasNoSelection || hasInvalidCustomInput || isSavingPlan}
+            disabled={isSavingPlan}
           >
             {isSavingPlan ? "Saving plan…" : "Review Offer"}
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleConfirmAmount}>
-            Continue
+            Next: Loan Tenure
           </PrimaryButton>
         )}
       </StickyFooter>

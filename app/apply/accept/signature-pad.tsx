@@ -57,6 +57,8 @@ function formatSignedAt(date: Date): string {
 interface SignaturePadProps {
   /** Dims and locks input, e.g. until the checkboxes above are all ticked. */
   disabled?: boolean;
+  /** Continue was tapped without a signature — paint the pad system-red. */
+  invalid?: boolean;
   /**
    * Fires once the signing ceremony completes with a PNG data URL of the
    * signature. Ceremonial only for now — nothing is persisted. Future step:
@@ -67,7 +69,12 @@ interface SignaturePadProps {
   onCleared?: () => void;
 }
 
-export function SignaturePad({ disabled = false, onSigned, onCleared }: SignaturePadProps) {
+export function SignaturePad({
+  disabled = false,
+  invalid = false,
+  onSigned,
+  onCleared,
+}: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const strokesRef = useRef<Point[][]>([]);
@@ -225,8 +232,18 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
       <div
         className="flex items-center gap-3 rounded-[var(--radius-md)] px-3.5 py-3 transition-colors duration-300"
         style={{
-          background: isSigned ? "oklch(0.95 0.045 152)" : "oklch(0.95 0.03 258)",
-          boxShadow: `inset 0 0 0 1px ${isSigned ? "oklch(0.7 0.12 152 / 0.35)" : "oklch(0.55 0.16 258 / 0.28)"}`,
+          background: isSigned
+            ? "oklch(0.95 0.045 152)"
+            : invalid
+              ? "var(--ios-danger-soft)"
+              : "oklch(0.95 0.03 258)",
+          boxShadow: `inset 0 0 0 1px ${
+            isSigned
+              ? "oklch(0.7 0.12 152 / 0.35)"
+              : invalid
+                ? "var(--ios-danger)"
+                : "oklch(0.55 0.16 258 / 0.28)"
+          }`,
         }}
       >
         <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
@@ -257,11 +274,14 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
         <div className="flex flex-col items-start gap-0.5 text-left">
           <span
             className="text-[14px] font-bold leading-tight tracking-[0.02em]"
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: invalid && !isSigned ? "var(--ios-danger)" : "var(--text-primary)" }}
           >
             {isSigned ? "Signature captured" : "Your signature is required"}
           </span>
-          <span className="text-[12.5px] leading-snug font-medium" style={{ color: "var(--text-secondary)" }}>
+          <span
+            className="text-[12.5px] leading-snug font-medium"
+            style={{ color: invalid && !isSigned ? "var(--ios-danger)" : "var(--text-secondary)" }}
+          >
             {isSigned
               ? "You're all set - re-sign below if you need to make changes."
               : "Draw your signature below to accept this offer."}
@@ -270,6 +290,7 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
       </div>
 
       <motion.div
+        data-signature-surface=""
         className="relative w-full overflow-hidden rounded-[var(--radius-lg)]"
         style={{
           background: "var(--surface-elevated)",
@@ -277,15 +298,23 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
           pointerEvents: disabled ? "none" : "auto",
         }}
         animate={
-          isSigning && !prefersReducedMotion
+          invalid && !isSigned
             ? {
                 boxShadow: [
-                  "0 0 0 1px var(--border-subtle)",
-                  "0 0 0 2px #16a34a, 0 0 24px oklch(0.7 0.17 145 / 0.35)",
-                  "0 0 0 1.5px #16a34a",
+                  "0 0 0 2px var(--ios-danger)",
+                  "0 0 0 3px color-mix(in srgb, var(--ios-danger) 22%, transparent), 0 0 24px color-mix(in srgb, var(--ios-danger) 35%, transparent)",
+                  "0 0 0 2px var(--ios-danger)",
                 ],
               }
-            : { boxShadow: isSigned ? "0 0 0 1.5px #16a34a" : "0 0 0 1px var(--border-subtle)" }
+            : isSigning && !prefersReducedMotion
+              ? {
+                  boxShadow: [
+                    "0 0 0 1px var(--border-subtle)",
+                    "0 0 0 2px #16a34a, 0 0 24px oklch(0.7 0.17 145 / 0.35)",
+                    "0 0 0 1.5px #16a34a",
+                  ],
+                }
+              : { boxShadow: isSigned ? "0 0 0 1.5px #16a34a" : "0 0 0 1px var(--border-subtle)" }
         }
         transition={{ duration: SIGNING_CEREMONY_MS / 1000, ease: "easeOut" }}
       >
@@ -445,6 +474,15 @@ export function SignaturePad({ disabled = false, onSigned, onCleared }: Signatur
           )}
         </div>
       </motion.div>
+      {invalid && !isSigned ? (
+        <p
+          id="accept-signature-hint"
+          className="px-1 text-[13px] font-medium leading-snug text-[#D70015]"
+          role="alert"
+        >
+          Sign above to continue.
+        </p>
+      ) : null}
     </div>
   );
 }

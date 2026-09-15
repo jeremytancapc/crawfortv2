@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import type { Transition } from "motion/react";
@@ -19,8 +19,8 @@ import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, applyProgressAlong } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { SignaturePad } from "./signature-pad";
-import { TermsDeck } from "./terms-deck";
-import { FINE_PRINT_ITEMS, TC_CLOSING } from "./accept-content";
+import { TermsDeck, type TermsDeckHandle } from "./terms-deck";
+import { FINE_PRINT_ITEMS } from "./accept-content";
 import { useApplyPath } from "@/app/use-apply-path";
 import {
   CARD_SHADOW,
@@ -42,28 +42,11 @@ const REVEAL_TRANSITION: Transition = { duration: 0.2, ease: "easeOut" };
 const COLLAPSE_TRANSITION: Transition = { duration: 0.25, ease: "easeInOut" };
 // Each reveal waits for the block it replaces to finish animating out, so the
 // page never scrolls to a position the transition then invalidates.
-const DECK_REVEAL_SCROLL_MS = 520;
 const SIGNATURE_REVEAL_SCROLL_MS = 620;
 
 // Fine print is capped to a scrollable window so opening it doesn't push the
 // signature and CTA far down the page.
 const FINE_PRINT_MAX_HEIGHT_PX = 260;
-
-// ── Approval stamp badge ─────────────────────────────────────────────────────
-// Mimics a rubber stamp hitting paper: the badge drops in with a rotational
-// overshoot, an ink-ring ripples outward on impact, and the seal briefly
-// squashes before settling - all in one short, unobtrusive burst on mount.
-
-function ApprovalStampBadge() {
-  return (
-    <AnimatedIconBadge
-      background="oklch(0.94 0.06 152)"
-      ringColor="oklch(0.7 0.15 152 / 0.55)"
-    >
-      <SealCheck size={28} weight="fill" style={{ color: SUCCESS_GREEN }} />
-    </AnimatedIconBadge>
-  );
-}
 
 // ── Plan summary card ─────────────────────────────────────────────────────────
 // The receipt for the plan the customer picked. It opens at full height while
@@ -92,7 +75,7 @@ function PlanSummaryCard({
 
   return (
     <div
-      className="w-full rounded-[var(--radius-lg)] overflow-hidden"
+      className="w-full overflow-hidden rounded-[var(--radius-lg)]"
       style={{ background: "var(--surface-elevated)", boxShadow: CARD_SHADOW }}
     >
       {collapsible && (
@@ -144,35 +127,27 @@ function PlanSummaryCard({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={COLLAPSE_TRANSITION}
-            style={{ overflow: "hidden" }}
+            style={{ overflow: collapsible ? "hidden" : "visible" }}
           >
-            {/* Approval header - shown here on desktop only; mobile shows the
-                equivalent heading in the blue hero band above this card. Once
-                the header row above takes over, this would just be a second
-                heading for the same card. */}
             {!collapsible && (
-              <div className="hidden lg:flex flex-col items-center gap-2.5 px-6 pt-9 pb-6 text-center">
-                <ApprovalStampBadge />
-                <h2
-                  className="font-display text-xl font-semibold tracking-tight leading-snug"
-                  style={{ color: "var(--text-primary)" }}
-                >
+              <div className="deck-card-banner relative isolate flex h-[88px] items-center overflow-hidden px-5">
+                <SealCheck
+                  aria-hidden
+                  weight="fill"
+                  size={200}
+                  className="deck-card-watermark deck-card-watermark--approved pointer-events-none"
+                />
+                <h2 className="relative font-display text-[17px] font-semibold leading-snug tracking-tight text-[var(--brand-blue-hex,#0033AA)] lg:text-xl">
                   Your Loan Is Approved
                 </h2>
-                <p
-                  className="text-[13px] leading-relaxed max-w-[300px]"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Review and accept your terms below.
-                </p>
               </div>
             )}
 
             <div
               className={
                 collapsible
-                  ? "px-5 pb-6 pt-1 flex flex-col gap-4"
-                  : "px-5 pb-6 pt-5 lg:pt-0 flex flex-col gap-4"
+                  ? "flex flex-col gap-3 px-5 pb-5 pt-1"
+                  : "flex flex-col gap-3 px-5 pb-6 pt-4"
               }
             >
               {/* Meta row */}
@@ -191,7 +166,7 @@ function PlanSummaryCard({
 
               {/* Loan amount highlight */}
               <div
-                className="flex items-center justify-between rounded-[var(--radius-sm)] px-4 py-3.5"
+                className="flex items-center justify-between rounded-[var(--radius-sm)] px-4 py-2.5"
                 style={{ background: "oklch(0.95 0.025 258)" }}
               >
                 <span className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>
@@ -208,7 +183,7 @@ function PlanSummaryCard({
               <DashedDivider />
 
               {/* Key-value breakdown */}
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2.5">
                 <ReceiptRow label="Plan" value={plan.planTitle} />
                 <ReceiptRow
                   label="Loan term"
@@ -231,6 +206,7 @@ function PlanSummaryCard({
                   emphasize
                 />
               </div>
+
             </div>
           </motion.div>
         )}
@@ -248,32 +224,20 @@ function PlanSummaryCard({
 // panel, so it reads as a note rather than something to tap.
 function NextStepsBanner() {
   return (
-    <div className="flex flex-col gap-3">
-      <DashedDivider />
-      <div className="flex items-start gap-2.5 px-0.5">
-        <Info
-          size={16}
-          weight="fill"
-          className="mt-[2px] shrink-0"
-          style={{ color: "var(--text-tertiary)" }}
-          aria-hidden="true"
-        />
-        <div className="flex flex-col gap-1">
-          <span
-            className="text-[11px] font-bold tracking-[0.12em] uppercase"
-            style={{ color: "var(--text-primary)" }}
-          >
-            What happens next
-          </span>
-          <p
-            className="text-[13.5px] leading-relaxed font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Read and agree to the important terms, then sign to accept.
-          </p>
-        </div>
-      </div>
-      <DashedDivider />
+    <div className="flex items-start gap-2.5 px-0.5">
+      <Info
+        size={16}
+        weight="fill"
+        className="mt-[2px] shrink-0"
+        style={{ color: "var(--text-tertiary)" }}
+        aria-hidden="true"
+      />
+      <p
+        className="text-[13px] leading-snug font-medium"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Read and agree to the important terms, then sign to accept.
+      </p>
     </div>
   );
 }
@@ -321,12 +285,6 @@ function TermsFootnoteCard() {
   return (
     <div className="flex flex-col gap-3 px-0.5">
       <DashedDivider />
-      <p
-        className="text-[13px] leading-relaxed font-medium"
-        style={{ color: "var(--text-tertiary)" }}
-      >
-        {TC_CLOSING}
-      </p>
 
       <button
         type="button"
@@ -472,6 +430,40 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
+function AcceptFooterCta({
+  onClick,
+  children,
+  stacked,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+  /** When the one-line label won't fit, show `Next:` then the rest. */
+  stacked?: { rest: string };
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`ios-type-cta flex h-14 w-full items-center justify-center gap-1 rounded-[var(--radius-md)] bg-brand-blue px-2 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] sm:gap-2 ${
+        stacked ? "ios-type-cta--stacked" : "whitespace-nowrap"
+      }`}
+    >
+      {stacked ? (
+        <>
+          <span className="flex flex-col items-center leading-[1.15] lg:hidden">
+            <span>Next:</span>
+            <span>{stacked.rest}</span>
+          </span>
+          <span className="hidden lg:inline">Next: {stacked.rest}</span>
+        </>
+      ) : (
+        children
+      )}
+      <ArrowRight size={16} weight="bold" className="hidden shrink-0 lg:block" />
+    </button>
+  );
+}
+
 interface AcceptViewProps {
   plan: SelectedPlanData;
   leadId: string;
@@ -482,7 +474,6 @@ interface AcceptViewProps {
 export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const router = useRouter();
   const applyHref = useApplyPath();
-  const stepNav = useApplyStepNav("accept");
 
   // The page moves through three states, each of which hands its space to the
   // next: read the receipt, work through the terms deck, sign. Only one of
@@ -494,6 +485,33 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const [termsTotal, setTermsTotal] = useState(0);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [showAppointmentReminder, setShowAppointmentReminder] = useState(false);
+  const [deckCtaLabel, setDeckCtaLabel] = useState<string | null>(null);
+  const [signatureNeedsInput, setSignatureNeedsInput] = useState(false);
+  const [signatureAttentionNonce, setSignatureAttentionNonce] = useState(0);
+
+  const termsDeckRef = useRef<TermsDeckHandle>(null);
+
+  const handleDeckCta = useCallback(() => {
+    termsDeckRef.current?.confirm();
+  }, []);
+
+  const handleFooterBack = useCallback(() => {
+    const wentBackInDeck = termsDeckRef.current?.goBack() ?? false;
+    if (wentBackInDeck) {
+      setHasConfirmedTerms(false);
+      setSignatureDataUrl(null);
+      return;
+    }
+    setHasStartedTerms(false);
+    setIsPlanExpanded(true);
+    setHasConfirmedTerms(false);
+    setSignatureDataUrl(null);
+  }, []);
+
+  const stepNav = useApplyStepNav(
+    "accept",
+    hasStartedTerms ? { onBack: handleFooterBack } : undefined,
+  );
 
   const handleTermsProgress = useCallback((confirmed: number, total: number) => {
     setTermsConfirmed(confirmed);
@@ -511,17 +529,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
 
   const canProceed = hasConfirmedTerms && signatureDataUrl !== null;
 
-  const deckRef = useRef<HTMLDivElement>(null);
   const signatureRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!hasStartedTerms) return;
-    const timeout = setTimeout(
-      () => scrollSectionIntoView(deckRef.current),
-      DECK_REVEAL_SCROLL_MS,
-    );
-    return () => clearTimeout(timeout);
-  }, [hasStartedTerms]);
 
   useEffect(() => {
     if (!hasConfirmedTerms) return;
@@ -531,6 +539,25 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
     );
     return () => clearTimeout(timeout);
   }, [hasConfirmedTerms]);
+
+  useEffect(() => {
+    if (!signatureNeedsInput) return;
+    const el = document.getElementById("accept-signature-field");
+    if (!el) return;
+    el.classList.remove("is-zooming");
+    void el.offsetWidth;
+    el.classList.add("is-zooming");
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [signatureNeedsInput, signatureAttentionNonce]);
+
+  function handleGetFundsClick() {
+    if (!canProceed) {
+      setSignatureNeedsInput(true);
+      setSignatureAttentionNonce((n) => n + 1);
+      return;
+    }
+    setShowAppointmentReminder(true);
+  }
 
   function startTerms() {
     setHasStartedTerms(true);
@@ -543,24 +570,40 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       sidebarSubtitle="Review your selected plan and accept the loan terms to secure your funds."
       progressStep={progressStep}
     >
-      <div className="shrink-0 px-5 pb-6 pt-7">
-        <h1 className="ios-type-title">
-          Confirm loan terms
-        </h1>
-        <p className="ios-type-subtitle mt-1.5">
-          Review and accept your terms below.
-        </p>
-      </div>
+      {!hasStartedTerms && (
+        <div className="shrink-0 px-5 pb-3 pt-5">
+          <h1 className="ios-type-title">
+            Confirm loan terms
+          </h1>
+          <p className="ios-type-subtitle mt-1">
+            Review and accept your terms below.
+          </p>
+        </div>
+      )}
 
-      <div className="flex flex-1 flex-col gap-5 px-5 pb-8">
-        <PlanSummaryCard
-          plan={plan}
-          leadId={leadId}
-          acceptedAt={acceptedAt}
-          collapsible={hasStartedTerms}
-          expanded={!hasStartedTerms || isPlanExpanded}
-          onToggle={() => setIsPlanExpanded((value) => !value)}
-        />
+      <div
+        className={
+          hasStartedTerms
+            ? "flex flex-1 flex-col gap-5 px-5 pb-8"
+            : "accept-intro-fit flex flex-1 flex-col gap-3 px-5"
+        }
+      >
+        <div
+          className={
+            hasStartedTerms
+              ? "sticky top-0 z-10 -mx-5 bg-[var(--surface-primary)] px-5 pb-1 pt-4"
+              : undefined
+          }
+        >
+          <PlanSummaryCard
+            plan={plan}
+            leadId={leadId}
+            acceptedAt={acceptedAt}
+            collapsible={hasStartedTerms}
+            expanded={!hasStartedTerms || isPlanExpanded}
+            onToggle={() => setIsPlanExpanded((value) => !value)}
+          />
+        </div>
 
         <AnimatePresence mode="wait" initial={false}>
           {hasStartedTerms ? (
@@ -572,12 +615,14 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               exit={{ opacity: 0 }}
               transition={REVEAL_TRANSITION}
             >
-              <div ref={deckRef}>
+              <div>
                 <TermsDeck
+                  ref={termsDeckRef}
                   plan={plan}
                   acceptedAt={acceptedAt}
                   onComplete={() => setHasConfirmedTerms(true)}
                   onConfirmedCountChange={handleTermsProgress}
+                  onActiveCtaChange={setDeckCtaLabel}
                 />
               </div>
               {!hasConfirmedTerms && <TermsFootnoteCard />}
@@ -585,10 +630,9 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
           ) : (
             <motion.div
               key="intro"
-              className="flex flex-col gap-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -8 }}
+              exit={{ opacity: 0 }}
               transition={REVEAL_TRANSITION}
             >
               <NextStepsBanner />
@@ -609,9 +653,19 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
             >
-              <div ref={signatureRef}>
+              <div
+                id="accept-signature-field"
+                ref={signatureRef}
+                className={
+                  signatureNeedsInput ? "ios-field-needs-input signature-pad--invalid" : undefined
+                }
+              >
                 <SignaturePad
-                  onSigned={(dataUrl) => setSignatureDataUrl(dataUrl)}
+                  invalid={signatureNeedsInput}
+                  onSigned={(dataUrl) => {
+                    setSignatureDataUrl(dataUrl);
+                    setSignatureNeedsInput(false);
+                  }}
                   onCleared={() => setSignatureDataUrl(null)}
                 />
               </div>
@@ -620,39 +674,20 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
         </AnimatePresence>
       </div>
 
-      {/* Anchored to the bottom rather than sitting inline, like every other
-          terminal CTA in the apply funnel - null children while the deck is
-          active hides the bar entirely, handing that space back to the
-          cards being swiped through. */}
       <StickyFooter nav={stepNav}>
         {hasConfirmedTerms ? (
-          <div className="flex flex-col gap-2">
-            {!canProceed && (
-              <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                Please sign above to continue.
-              </p>
-            )}
-            {/* Opens the appointment reminder first; navigation only happens
-                once the customer acknowledges it below. */}
-            <button
-              type="button"
-              disabled={!canProceed}
-              onClick={() => setShowAppointmentReminder(true)}
-              className="ios-type-cta flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-            >
-              Next: Get your funds
-              <ArrowRight size={16} weight="bold" />
-            </button>
-          </div>
+          <AcceptFooterCta onClick={handleGetFundsClick}>
+            Next: Get your funds
+          </AcceptFooterCta>
         ) : !hasStartedTerms ? (
-          <button
-            type="button"
+          <AcceptFooterCta
             onClick={startTerms}
-            className="ios-type-cta flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+            stacked={{ rest: "Terms & Conditions" }}
           >
-            Confirm loan terms
-            <ArrowRight size={16} weight="bold" />
-          </button>
+            Next: Terms &amp; Conditions
+          </AcceptFooterCta>
+        ) : deckCtaLabel ? (
+          <AcceptFooterCta onClick={handleDeckCta}>{deckCtaLabel}</AcceptFooterCta>
         ) : null}
       </StickyFooter>
 

@@ -565,6 +565,38 @@ input[type="range"]::-moz-range-thumb {
   height: 100%;
 }
 
+/* Same treatment as the gate payout control: Continue stays live, and a
+   missing pick paints the three cards system-red instead of greying the CTA. */
+.plan-lane--invalid {
+  --plan-ring: 2px;
+  --plan-ring-color: var(--ios-danger);
+}
+
+.plan-lane--invalid .plan-lane-card {
+  animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
+}
+
+.signature-pad--invalid {
+  animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
+}
+
+@keyframes plan-lane-invalid-flash {
+  0%,
+  100% {
+    filter: none;
+  }
+  45% {
+    filter: drop-shadow(0 0 0 3px color-mix(in srgb, var(--ios-danger) 22%, transparent));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-lane--invalid .plan-lane-card,
+  .signature-pad--invalid {
+    animation: none;
+  }
+}
+
 /* Cards in a row are all as tall as the tallest, so the shorter ones carry
    slack. Stretching the list into it spreads the bullets through the card
    rather than banking the room above the CTA, and since the rows are a fixed
@@ -815,13 +847,6 @@ input[type="range"]::-moz-range-thumb {
   .plan-breakdown-row dt {
     font-size: 0.625rem;
     letter-spacing: 0.04em;
-  }
-
-  .plan-back-header {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
   }
 }
 
@@ -1120,6 +1145,57 @@ body:has(.theme-fresh)::before {
 .theme-ios .ios-type-cta {
   font-size: 17px;
   font-weight: 600;
+}
+
+/* Solid teal banner on accept term cards. Depth comes from the oversized
+   watermark glyph, not from a second colour or a frosted overlay. */
+.theme-ios .deck-card-banner {
+  background: var(--brand-teal-hex, #06dec0);
+}
+
+.theme-ios .deck-card-watermark {
+  position: absolute;
+  right: -1.25rem;
+  top: -1.75rem;
+  color: rgb(255 255 255 / 0.4);
+}
+
+/* Seal sits more in-frame than the term-card glyphs, which read at the corner. */
+.theme-ios .deck-card-watermark--approved {
+  right: -0.75rem;
+  top: 50%;
+  transform: translateY(-48%);
+}
+
+.theme-ios .deck-card-accessory {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 1;
+  border-radius: 8px;
+  padding: 3px 5px;
+  background: rgb(255 255 255 / 0.88);
+}
+
+/* Footer CTAs sit between the step-nav arrows on phones. Keep the label
+   on one line the way the desktop bar does, scaling type to the slot. */
+.theme-ios .ios-footer-cta .ios-type-cta {
+  white-space: nowrap;
+  font-size: clamp(11.5px, 3.5vw, 17px);
+}
+
+/* Long labels stack as Next: / rest instead of shrinking past readability. */
+.theme-ios .ios-footer-cta .ios-type-cta--stacked {
+  white-space: normal;
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+@media (min-width: 1024px) {
+  .theme-ios .ios-footer-cta .ios-type-cta--stacked {
+    white-space: nowrap;
+    font-size: 17px;
+  }
 }
 
 .theme-ios .ios-display-amount {
@@ -1590,6 +1666,13 @@ input[type="range"].ios-slider::-moz-range-thumb {
   min-height: 0;
   overflow: hidden;
   padding-bottom: 0.75rem;
+}
+
+/* Accept intro: same footer clearance as fit, but don't clip the receipt. */
+.ios-apply-sheet:has(.ios-sticky-footer) > .flex-1.accept-intro-fit {
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 0.25rem;
 }
 
 .ios-income-fit .ios-row {

@@ -1,8 +1,7 @@
 import type { Viewport } from "next";
-import Image from "next/image";
 
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
-import { ApplyProgressPanel } from "@/app/apply-gate/ios-ui";
+import { ApplyProgressPanel, ApplySidebarWordmark } from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 
@@ -34,14 +33,7 @@ export default async function VerifyIncomePage({
       <aside className="relative hidden overflow-hidden bg-[var(--accent)] p-12 lg:flex lg:w-[42%] lg:flex-col lg:justify-between xl:w-[38%] xl:p-16">
         <div className="relative z-10">
           <div className="mb-16">
-            <Image
-              src="/images/crawfort-white.png"
-              alt="Crawfort"
-              width={1261}
-              height={155}
-              className="h-6 w-auto"
-              priority
-            />
+            <ApplySidebarWordmark />
           </div>
 
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
