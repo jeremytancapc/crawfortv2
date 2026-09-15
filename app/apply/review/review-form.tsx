@@ -212,7 +212,7 @@ export function ReviewForm({ initialData }: Props) {
   });
 
   return (
-    <div className="theme-ios flex min-h-[100dvh] flex-col bg-[var(--surface-primary)] lg:flex-row">
+    <div className="theme-ios ios-apply-page flex flex-col bg-[var(--surface-primary)] lg:flex-row">
       {submitOverlay ? (
         <LoanLoadingScreen
           key={submitOverlay.key}
@@ -243,10 +243,10 @@ export function ReviewForm({ initialData }: Props) {
         <SidebarTrustFeatures />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-clip">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:px-8 xl:px-12">
           <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-            <div className="theme-ios flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="theme-ios ios-apply-frame flex min-h-0 flex-1 flex-col">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet>
               {stepMeta && (

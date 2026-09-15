@@ -9,17 +9,20 @@ import Image from "next/image";
  */
 export function MobileHeader() {
   return (
-    <div className="hero-chrome sticky top-0 z-50 flex items-center justify-center px-6 py-4 lg:hidden">
-      <a href="/">
-        <Image
-          src="/images/crawfort-white.png"
-          alt="Crawfort"
-          width={151}
-          height={20}
-          className="h-5 w-auto"
-          priority
-        />
-      </a>
-    </div>
+    <>
+      <div className="ios-apply-header-slot lg:hidden" aria-hidden="true" />
+      <div className="ios-apply-header hero-chrome flex items-center justify-center px-6 py-4 lg:hidden">
+        <a href="/">
+          <Image
+            src="/images/crawfort-white.png"
+            alt="Crawfort"
+            width={151}
+            height={20}
+            className="h-5 w-auto"
+            priority
+          />
+        </a>
+      </div>
+    </>
   );
 }

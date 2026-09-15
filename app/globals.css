@@ -1068,6 +1068,80 @@ body:has(.theme-fresh)::before {
   }
 }
 
+/* Mobile apply chrome locks to the *small* viewport so the footer stays on
+   screen while Android/iOS browser chrome is showing. 100dvh is the large
+   viewport and parks the Next bar under the address bar / system nav. */
+.ios-apply-page {
+  height: 100vh;
+  height: 100svh;
+  max-height: 100vh;
+  max-height: 100svh;
+  overflow: hidden;
+}
+
+/* The legal strip is a sibling of the chrome. Without this lock, main
+   grows with it, the frame exceeds the phone screen, and the Next bar
+   either sits under the browser chrome or covers the last field. */
+.ios-apply-page > main {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ios-apply-frame {
+  flex: 1 1 auto;
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Wordmark bar. sticky fails inside overflow:hidden frames (the apply
+   chrome), so mobile pins it to the viewport and a sibling slot holds
+   the layout gap. */
+.ios-apply-header-slot {
+  flex-shrink: 0;
+  height: var(--ios-apply-header-h, 3.25rem);
+}
+
+.ios-apply-header {
+  z-index: 50;
+  min-height: var(--ios-apply-header-h, 3.25rem);
+}
+
+@media (max-width: 1023.98px) {
+  .ios-apply-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .ios-apply-page > main > footer {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ios-apply-page {
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .ios-apply-page > main {
+    overflow: visible;
+  }
+
+  .ios-apply-frame {
+    height: 100dvh;
+    max-height: none;
+  }
+}
+
 .theme-ios .ios-apply-sheet {
   padding-left: var(--ios-edge-gutter);
   padding-right: var(--ios-edge-gutter);
@@ -1683,9 +1757,15 @@ input[type="range"].ios-slider::-moz-range-thumb {
   flex: none;
   width: 100%;
   max-width: 100%;
+  overflow: hidden;
 }
 
 .apply-pane-fit-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
   transform-origin: top left;
 }
 
@@ -1787,6 +1867,25 @@ input[type="range"].ios-slider::-moz-range-thumb {
 
 .ios-sticky-footer-action {
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
+}
+
+/* Pin the action bar to the visible viewport on phones so it cannot sit
+   under the browser chrome the way an in-flow 100dvh footer does. */
+@media (max-width: 1023.98px) {
+  .ios-sticky-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .ios-apply-footer-slot {
+    height: 76px;
+  }
+
+  .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {
+    height: 105px;
+  }
 }
 
 /* Desktop: span the whole right pane (beside the blue sidebar), not the 520px form. */
