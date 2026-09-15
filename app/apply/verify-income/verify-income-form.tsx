@@ -57,7 +57,7 @@ export function VerifyIncomeForm({
   };
 
   return (
-    <div className="theme-ios flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="theme-ios ios-apply-frame flex min-h-0 flex-1 flex-col">
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet>
       <div className="shrink-0 px-5 pb-6 pt-7">

@@ -29,7 +29,7 @@ export default async function VerifyIncomePage({
   const view = Array.isArray(params.view) ? params.view[0] : params.view;
 
   return (
-    <div className="theme-ios flex min-h-[100dvh] flex-col bg-[var(--surface-primary)] lg:flex-row">
+    <div className="theme-ios ios-apply-page flex flex-col bg-[var(--surface-primary)] lg:flex-row">
       <aside className="relative hidden overflow-hidden bg-[var(--accent)] p-12 lg:flex lg:w-[42%] lg:flex-col lg:justify-between xl:w-[38%] xl:p-16">
         <div className="relative z-10">
           <div className="mb-16">
@@ -54,7 +54,7 @@ export default async function VerifyIncomePage({
         <SidebarTrustFeatures />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-clip">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:px-8 xl:px-12">
           <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
             <VerifyIncomeForm initialShowResults={view === "results"} />

@@ -61,22 +61,25 @@ export function MobileGateHeader({
   const applyHref = useApplyPath();
 
   return (
-    <header className="ios-apply-gutter sticky top-0 z-20 flex shrink-0 items-center justify-center bg-[var(--brand-blue-hex)] py-2 lg:hidden">
-      <Link
-        href={applyHref("/")}
-        className="flex min-h-9 min-w-0 items-center justify-center"
-        aria-label="Crawfort home"
-      >
-        <Image
-          src="/images/crawfort-white-color-dot.png"
-          alt="Crawfort"
-          width={1261}
-          height={155}
-          className="h-5 w-auto max-w-full object-contain object-center"
-          priority
-        />
-      </Link>
-    </header>
+    <>
+      <div className="ios-apply-header-slot lg:hidden" aria-hidden="true" />
+      <header className="ios-apply-header ios-apply-gutter flex items-center justify-center bg-[var(--brand-blue-hex)] py-2 lg:hidden">
+        <Link
+          href={applyHref("/")}
+          className="flex min-h-9 min-w-0 items-center justify-center"
+          aria-label="Crawfort home"
+        >
+          <Image
+            src="/images/crawfort-white-color-dot.png"
+            alt="Crawfort"
+            width={1261}
+            height={155}
+            className="h-5 w-auto max-w-full object-contain object-center"
+            priority
+          />
+        </Link>
+      </header>
+    </>
   );
 }
 
@@ -103,14 +106,16 @@ export function resetApplySheetScroll(scroller?: HTMLElement | null) {
 const ApplyFooterSlotContext = createContext<HTMLElement | null>(null);
 
 const APPLY_FIT_MAX_SCALE = 1.85;
+const APPLY_FIT_MIN_SCALE = 0.62;
 /** Keep the last row of a card off the clip edge after subpixel rounding. */
 const APPLY_FIT_SLACK = 16;
 
 /**
  * Scales the designed apply column to the pane it sits in. Short steps grow
- * so the right-hand desktop column (and the phone 100dvh lock) fill instead
- * of leaving a dead band under a phone-sized island. Overflowing steps stay
- * at 1× and scroll. The action bar is portaled out so it is not scaled.
+ * so the right-hand desktop column fills instead of leaving a dead band.
+ * Tall steps shrink so every field stays above the action bar. Only when
+ * that would go below APPLY_FIT_MIN_SCALE does the pane scroll. The action
+ * bar is portaled out so it is not scaled.
  */
 function ApplyPaneFit({
   children,
@@ -148,8 +153,10 @@ function ApplyPaneFit({
 
       const fitH = Math.max(8, availH - APPLY_FIT_SLACK);
       const raw = Math.min(availW / contentW, fitH / contentH);
-      const overflowing = contentH > fitH;
-      const scale = overflowing ? 1 : Math.min(raw, APPLY_FIT_MAX_SCALE);
+      const overflowing = raw < APPLY_FIT_MIN_SCALE;
+      const scale = overflowing
+        ? APPLY_FIT_MIN_SCALE
+        : Math.min(Math.max(raw, APPLY_FIT_MIN_SCALE), APPLY_FIT_MAX_SCALE);
       const leftover = overflowing ? 0 : Math.max(0, fitH / scale - contentH);
       inner.style.setProperty("--apply-fit-leftover", `${leftover}px`);
       inner.style.transform = `scale(${scale})`;
@@ -203,8 +210,7 @@ function ApplyPaneFit({
           fit.width
             ? {
                 width: scaledW,
-                height:
-                  !fit.overflow && fit.scale > 1.001 ? scaledH : undefined,
+                height: scaledH,
               }
             : undefined
         }
@@ -296,7 +302,7 @@ export function ApplyIosShell({
   children: ReactNode;
 }) {
   return (
-    <div className="theme-ios flex min-h-[100dvh] flex-col bg-[var(--surface-primary)] lg:flex-row">
+    <div className="theme-ios ios-apply-page flex flex-col bg-[var(--surface-primary)] lg:flex-row">
       <aside className="relative hidden overflow-hidden bg-[var(--accent)] p-12 lg:flex lg:w-[42%] lg:flex-col lg:justify-between xl:w-[38%] xl:p-16">
         <div className="relative z-10">
           <div className="mb-16">
@@ -316,14 +322,14 @@ export function ApplyIosShell({
         <SidebarTrustFeatures />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-clip">
         <div
           className={`flex min-h-0 min-w-0 flex-1 flex-col ${
             wideContent ? "lg:px-6 xl:px-8" : "lg:px-8 xl:px-12"
           }`}
         >
           <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-            <div className="theme-ios flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="theme-ios ios-apply-frame flex min-h-0 flex-1 flex-col">
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet fitMaxWidth={wideContent ? 1040 : 560}>
                 {children}
