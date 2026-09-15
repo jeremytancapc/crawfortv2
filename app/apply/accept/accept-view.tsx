@@ -566,8 +566,6 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
 
   return (
     <ApplyIosShell
-      sidebarTitle="Confirm your loan terms"
-      sidebarSubtitle="Review your selected plan and accept the loan terms to secure your funds."
       progressStep={progressStep}
     >
       {!hasStartedTerms && (

@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ascend API smoke tests — hold live appId/secret, never commit
+scripts/ascend-test.mjs
+scripts/ascend-users-check.mjs

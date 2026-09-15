@@ -32,8 +32,6 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
   return (
     <ApplyIosShell
-      sidebarTitle="Wait for our call"
-      sidebarSubtitle="Our team will call and WhatsApp you shortly to confirm your custom offer."
       progressStep={APPLY_PROGRESS.choosePlan}
     >
       <div className="flex flex-1 flex-col gap-8 px-5 pb-8 pt-7 animate-fade-up">

@@ -2,12 +2,16 @@
 
 import {
   Fragment,
+  createContext,
+  useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { CaretLeft, CaretRight, Minus, Plus } from "@phosphor-icons/react";
@@ -57,10 +61,10 @@ export function MobileGateHeader({
   const applyHref = useApplyPath();
 
   return (
-    <header className="ios-apply-gutter relative z-10 flex shrink-0 items-center justify-center bg-[var(--brand-blue-hex)] py-4 lg:hidden">
+    <header className="ios-apply-gutter sticky top-0 z-20 flex shrink-0 items-center justify-center bg-[var(--brand-blue-hex)] py-2 lg:hidden">
       <Link
         href={applyHref("/")}
-        className="flex min-h-11 min-w-0 items-center justify-center"
+        className="flex min-h-9 min-w-0 items-center justify-center"
         aria-label="Crawfort home"
       >
         <Image
@@ -82,7 +86,7 @@ export function resetApplySheetScroll(scroller?: HTMLElement | null) {
   const nodes = new Set<HTMLElement>();
   if (scroller) nodes.add(scroller);
   document
-    .querySelectorAll<HTMLElement>(".ios-apply-sheet > .flex-1")
+    .querySelectorAll<HTMLElement>(".ios-apply-sheet > .flex-1, .apply-pane-fit")
     .forEach((node) => nodes.add(node));
   let parent = scroller?.parentElement ?? null;
   while (parent) {
@@ -96,14 +100,151 @@ export function resetApplySheetScroll(scroller?: HTMLElement | null) {
   window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 }
 
-/** Continues the blue header so the page body can sit in a rounded-top sheet. */
-export function MobileGateSheet({ children }: { children: ReactNode }) {
+const ApplyFooterSlotContext = createContext<HTMLElement | null>(null);
+
+const APPLY_FIT_MAX_SCALE = 1.85;
+/** Keep the last row of a card off the clip edge after subpixel rounding. */
+const APPLY_FIT_SLACK = 16;
+
+/**
+ * Scales the designed apply column to the pane it sits in. Short steps grow
+ * so the right-hand desktop column (and the phone 100dvh lock) fill instead
+ * of leaving a dead band under a phone-sized island. Overflowing steps stay
+ * at 1× and scroll. The action bar is portaled out so it is not scaled.
+ */
+function ApplyPaneFit({
+  children,
+  maxWidth,
+}: {
+  children: ReactNode;
+  maxWidth: number;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState({ scale: 1, width: 0, height: 0, overflow: false });
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    const inner = innerRef.current;
+    if (!host || !inner) return;
+
+    let frame = 0;
+    const measure = () => {
+      const availW = host.clientWidth;
+      const availH = host.clientHeight;
+      if (availW < 8 || availH < 8) return;
+
+      const designW = Math.min(maxWidth, availW);
+      inner.style.setProperty("--apply-fit-leftover", "0px");
+      inner.style.width = `${designW}px`;
+      inner.style.transform = "none";
+
+      const contentW = Math.max(inner.scrollWidth, inner.offsetWidth);
+      const contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
+      if (contentW < 8 || contentH < 8) {
+        inner.style.transform = "";
+        return;
+      }
+
+      const fitH = Math.max(8, availH - APPLY_FIT_SLACK);
+      const raw = Math.min(availW / contentW, fitH / contentH);
+      const overflowing = contentH > fitH;
+      const scale = overflowing ? 1 : Math.min(raw, APPLY_FIT_MAX_SCALE);
+      const leftover = overflowing ? 0 : Math.max(0, fitH / scale - contentH);
+      inner.style.setProperty("--apply-fit-leftover", `${leftover}px`);
+      inner.style.transform = `scale(${scale})`;
+
+      setFit((prev) => {
+        if (
+          prev.scale === scale &&
+          prev.width === contentW &&
+          prev.height === contentH + leftover &&
+          prev.overflow === overflowing
+        ) {
+          return prev;
+        }
+        return {
+          scale,
+          width: contentW,
+          height: contentH + leftover,
+          overflow: overflowing,
+        };
+      });
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    const sheet = host.closest(".ios-apply-sheet");
+    if (sheet) ro.observe(sheet);
+    schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
+  }, [maxWidth]);
+
+  const scaledW = fit.width * fit.scale;
+  const scaledH = fit.height * fit.scale;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[var(--brand-blue-hex)] lg:bg-transparent">
-      <div className="ios-apply-sheet flex min-h-0 flex-1 flex-col rounded-t-[32px] bg-[var(--surface-primary)] lg:rounded-none">
-        {children}
+    <div
+      ref={hostRef}
+      className="apply-pane-fit"
+      data-overflow={fit.overflow ? "true" : undefined}
+    >
+      <div
+        className="apply-pane-fit-sizer"
+        style={
+          fit.width
+            ? {
+                width: scaledW,
+                height:
+                  !fit.overflow && fit.scale > 1.001 ? scaledH : undefined,
+              }
+            : undefined
+        }
+      >
+        <div
+          ref={innerRef}
+          className="apply-pane-fit-inner"
+          style={{
+            width: fit.width || "100%",
+            maxWidth,
+            transform: `scale(${fit.scale})`,
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Continues the blue header so the page body can sit flush under it. */
+export function MobileGateSheet({
+  children,
+  fitMaxWidth = 560,
+}: {
+  children: ReactNode;
+  /** Designed column width the pane fitter scales from. */
+  fitMaxWidth?: number;
+}) {
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
+
+  return (
+    <ApplyFooterSlotContext.Provider value={footerSlot}>
+      <div className="flex min-h-0 flex-1 flex-col bg-[var(--brand-blue-hex)] lg:bg-transparent">
+        <div className="ios-apply-sheet flex min-h-0 flex-1 flex-col bg-[var(--surface-primary)]">
+          <ApplyPaneFit maxWidth={fitMaxWidth}>{children}</ApplyPaneFit>
+          <div ref={setFooterSlot} className="ios-apply-footer-slot shrink-0" />
+        </div>
+      </div>
+    </ApplyFooterSlotContext.Provider>
   );
 }
 
@@ -137,16 +278,15 @@ export function IosLegalFooter() {
   );
 }
 
-/** Shared post-gate chrome: blue wordmark bar, rounded sheet, iOS sidebar + footer. */
+/** Shared post-gate chrome: blue wordmark bar, sheet, iOS sidebar + footer.
+ *  The sidebar keeps the home-page tagline on every step - the page heading
+ *  already lives in the main column, and repeating it here just echoed the
+ *  h1. Progress names the current step under the tagline. */
 export function ApplyIosShell({
-  sidebarTitle,
-  sidebarSubtitle,
   progressStep,
   wideContent = false,
   children,
 }: {
-  sidebarTitle: string;
-  sidebarSubtitle: string;
   progressStep?: number;
   /** Lets a step run wider than the form column on large screens. Every step
    *  that asks one question at a time reads better in a phone-width column, but
@@ -163,10 +303,11 @@ export function ApplyIosShell({
             <ApplySidebarWordmark />
           </div>
           <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            {sidebarTitle}
+            Get the funds you need, in 8 minutes
           </p>
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            {sidebarSubtitle}
+            One simple application. Licensed and trusted by over 200,000
+            Singaporeans since 2011.
           </p>
         </div>
         {progressStep != null ? (
@@ -177,18 +318,14 @@ export function ApplyIosShell({
 
       <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
         <div
-          className={`flex min-w-0 flex-1 flex-col lg:justify-start lg:py-10 ${
-            wideContent ? "lg:px-8 xl:px-10" : "lg:px-12 xl:px-20"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col ${
+            wideContent ? "lg:px-6 xl:px-8" : "lg:px-8 xl:px-12"
           }`}
         >
-          <div
-            className={`flex min-w-0 w-full flex-1 flex-col lg:mx-auto lg:flex-none ${
-              wideContent ? "lg:max-w-[1040px]" : "lg:max-w-[520px]"
-            }`}
-          >
-            <div className="theme-ios flex h-[100dvh] flex-col overflow-hidden lg:h-auto lg:min-h-[calc(100dvh-5rem)]">
+          <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+            <div className="theme-ios flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <MobileGateHeader progressStep={progressStep} />
-              <MobileGateSheet>
+              <MobileGateSheet fitMaxWidth={wideContent ? 1040 : 560}>
                 {children}
               </MobileGateSheet>
             </div>
@@ -801,18 +938,10 @@ export function StickyFooter({
   const hasNav = nav != null;
   const liveStep = useApplyProgressStep(0);
   const showProgressBanner = !hasBanner && liveStep > 0;
+  const footerSlot = useContext(ApplyFooterSlotContext);
 
   if (!hasAction && !hasNav) return null;
-
-  return (
-    <>
-      {hasAction || hasNav ? (
-        <div
-          className="hidden shrink-0 lg:block"
-          style={{ height: hasBanner ? 120 : 84 }}
-          aria-hidden
-        />
-      ) : null}
+  const footer = (
       <div
         className={[
           "ios-sticky-footer",
@@ -847,11 +976,25 @@ export function StickyFooter({
           )}
         </div>
       </div>
+  );
+
+  if (footerSlot) return createPortal(footer, footerSlot);
+
+  return (
+    <>
+      {hasAction || hasNav ? (
+        <div
+          className="hidden shrink-0 lg:block"
+          style={{ height: hasBanner ? 120 : 84 }}
+          aria-hidden
+        />
+      ) : null}
+      {footer}
     </>
   );
 }
 
-/** Full-width blue pill, the single primary action on every gate step. */
+/** Full-width footer CTA, the single primary action on every gate step. */
 export function PrimaryButton({
   children,
   onClick,
@@ -868,7 +1011,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="ios-type-cta flex h-[52px] w-full items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-30"
+      className="ios-type-cta flex h-[52px] w-full items-center justify-center rounded-[20px] bg-[var(--accent)] text-white transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-30"
     >
       {children}
     </button>
