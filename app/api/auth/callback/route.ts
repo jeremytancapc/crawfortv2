@@ -30,6 +30,45 @@ function getRequestOrigin(request: NextRequest): string {
   return `${proto}://${host}`;
 }
 
+/**
+ * Diagnostic only.
+ *
+ * This endpoint takes a POST from the Lambda and answers with JSON; it is not
+ * somewhere a browser should ever land. But a caller that redirects the
+ * browser here instead of POSTing gets a bare 405 with nothing to act on, and
+ * that is an expensive thing to debug from the outside - it looks like the
+ * page is simply broken.
+ *
+ * So GET says what it expects and what it received. It deliberately does not
+ * accept a MyInfo payload by query string: minting a session from data in a
+ * URL would let anyone fabricate an identity by typing one.
+ */
+export async function GET(request: NextRequest) {
+  const params = Object.fromEntries(request.nextUrl.searchParams.entries());
+
+  return NextResponse.json(
+    {
+      code: 405,
+      message: "This endpoint expects a POST, not a browser redirect.",
+      expected: {
+        method: "POST",
+        contentType: "application/json",
+        body: { myinfo: "{ ...MyInfo person data... }", state: "optional", code: 200 },
+        response:
+          "{ code, message, data } - `data` is the URL the caller must then send the browser to.",
+      },
+      received: {
+        method: "GET",
+        queryParams: Object.keys(params),
+        hint: Object.keys(params).length
+          ? "Query parameters were sent. The payload must be POSTed as a JSON body instead."
+          : "No query parameters. If the Lambda redirected the browser here, it should POST server-side and follow the `data` URL it gets back.",
+      },
+    },
+    { status: 405 },
+  );
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   let payload: MyInfoPayload = {};
