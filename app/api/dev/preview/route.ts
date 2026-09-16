@@ -1,5 +1,5 @@
 /**
- * POST /api/dev/myinfo-preview
+ * POST /api/dev/preview
  *
  * Dev-only endpoint: accepts a raw MyInfo JSON object and returns the
  * LoanFormData patch that buildMyInfoPatch would produce from it.

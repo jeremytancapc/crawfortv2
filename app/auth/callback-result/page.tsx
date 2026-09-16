@@ -3,7 +3,7 @@
  *
  * Without a query string this is the paste-in debug tool it has always been.
  * With `?rid=<uuid>` it loads a capture that arrived from Singpass and shows
- * it straight away - that is the URL /api/dev/myinfo-capture redirects to.
+ * it straight away - that is the URL /api/dev/capture redirects to.
  *
  * The payload is read here on the server rather than fetched back over HTTP:
  * the page already runs where the database is, and round-tripping unminimised

@@ -41,7 +41,7 @@ export default function CallbackResultView({
           ? (myinfo as Record<string, unknown>).myinfo
           : myinfo;
 
-      const res = await fetch("/api/dev/myinfo-preview", {
+      const res = await fetch("/api/dev/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ myinfo: myinfoObj }),
