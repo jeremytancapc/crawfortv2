@@ -266,6 +266,7 @@ export function SignaturePad({
       >
         <motion.div
           className="relative mx-4 overflow-hidden rounded-[var(--radius-md)]"
+          style={{ background: "var(--surface-secondary)" }}
           animate={
             needsDraw
               ? {
