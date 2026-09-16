@@ -151,11 +151,11 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
 
 function KeyTermBody({ terms }: { terms: readonly string[] }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       {terms.map((term) => (
         <p
           key={term}
-          className="text-[14px] leading-[1.55] font-medium text-[var(--text-secondary)]"
+          className="text-[16px] leading-[1.6] font-medium text-[var(--text-secondary)]"
         >
           {term}
         </p>
@@ -179,15 +179,15 @@ function ScheduleRow({
       <div className="flex items-center gap-2">
         <NumberBadge value={index} />
         <span className="flex min-w-0 items-baseline gap-1.5">
-          <span className="text-[13px] font-medium leading-snug text-[var(--text-primary)]">
+          <span className="text-[16px] font-medium leading-snug text-[var(--text-primary)]">
             Instalment {index}
           </span>
-          <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+          <span className="text-[15px] font-medium text-[var(--text-tertiary)]">
             {formatScheduleDate(dueDateIso)}
           </span>
         </span>
       </div>
-      <span className="shrink-0 text-[13.5px] font-semibold tabular-nums text-[var(--text-primary)]">
+      <span className="shrink-0 text-[16px] font-semibold tabular-nums text-[var(--text-primary)]">
         {formatCurrency(amount)}
       </span>
     </div>
@@ -204,12 +204,12 @@ function ScheduleBody({
   const schedule = buildPaymentSchedule(acceptedAt, plan.tenure, plan.monthlyInstalment);
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <p className="text-[12.5px] font-medium leading-snug text-[var(--text-tertiary)]">
+    <div className="flex flex-col gap-4">
+      <p className="text-[16px] font-medium leading-snug text-[var(--text-secondary)]">
         {plan.tenure} months · from {formatScheduleDate(acceptedAt)}
       </p>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {schedule.map((installment) => (
           <ScheduleRow
             key={installment.index}
@@ -222,18 +222,23 @@ function ScheduleBody({
 
       <DashedDivider />
 
-      <ReceiptRow label="Total repayment" value={formatCurrency(plan.totalRepayment)} emphasize />
+      <ReceiptRow
+        size="lg"
+        label="Total repayment"
+        value={formatCurrency(plan.totalRepayment)}
+        emphasize
+      />
     </div>
   );
 }
 
 function DisbursementBody() {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       {DISBURSEMENT_NOTICE_ITEMS.map((item) => (
         <p
           key={item}
-          className="text-[14px] leading-[1.55] font-medium text-[var(--text-secondary)]"
+          className="text-[16px] leading-[1.6] font-medium text-[var(--text-secondary)]"
         >
           {item}
         </p>
@@ -280,73 +285,77 @@ function DeckCardFace({
 }) {
   return (
     <div
-      className="w-full overflow-hidden rounded-[28px] bg-white"
+      className="accept-terms-card flex w-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white"
       style={{ boxShadow: LISTING_CARD_SHADOW }}
     >
-      {card.kind !== "schedule" && (
-        <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
-          {/* Same stamp treatment as the plan cards: the glyph is the
-              banner's texture, oversized and clipped so the teal still
-              reads as a solid field rather than a flat fill. */}
-          <card.Icon
-            aria-hidden
-            weight="fill"
-            size={168}
-            className="deck-card-watermark pointer-events-none"
-          />
+      <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+        <card.Icon
+          aria-hidden
+          weight="fill"
+          size={168}
+          className="deck-card-watermark pointer-events-none"
+        />
 
-          {card.accessory && (
-            <span className="deck-card-accessory">{card.accessory}</span>
-          )}
-        </div>
-      )}
+        {card.accessory && (
+          <span className="deck-card-accessory">{card.accessory}</span>
+        )}
+      </div>
 
-      <div className={`flex flex-col px-5 pb-5 ${card.kind === "schedule" ? "gap-2.5 pt-4" : "gap-3.5 pt-4"}`}>
+      <div className="flex flex-1 flex-col justify-center gap-5 px-6 pb-8 pt-6">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
+          <h2 className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
             {card.title}
           </h2>
-          <p className="mt-0.5 shrink-0 text-[13.5px] font-medium leading-snug text-[var(--text-tertiary)]">
+          <p className="mt-1 shrink-0 text-[15px] font-medium leading-snug text-[var(--text-tertiary)]">
             Term {index} of {total}
           </p>
         </div>
 
         {card.subtitle ? (
-          <p className="text-[13.5px] font-medium leading-snug text-[var(--text-tertiary)]">
+          <p className="text-[16px] font-medium leading-snug text-[var(--text-secondary)]">
             {card.subtitle}
           </p>
         ) : null}
 
         <DeckCardBody card={card} plan={plan} acceptedAt={acceptedAt} />
       </div>
+      <div
+        aria-hidden
+        className="shrink-0"
+        style={{ height: "var(--apply-fit-leftover, 0px)" }}
+      />
     </div>
   );
 }
 
-/** Ghosted card edges peeking out below the front card, so it's obvious more
- *  cards are waiting without spelling it out a second time. */
+/** Two receding cards behind the front one. Scale from the top so only a
+ *  tight stepped rim shows — not a second empty panel of the same size. */
 function DeckStackLayers({ remaining }: { remaining: number }) {
   const layers = Math.min(Math.max(remaining, 0), 2);
+  if (layers === 0) return null;
 
   return (
-    <>
+    <div className="pointer-events-none absolute inset-x-0 top-0 bottom-0 z-0" aria-hidden>
       {Array.from({ length: layers }, (_, index) => {
-        const depth = index + 1;
+        const depth = layers - index;
         return (
           <span
             key={depth}
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[28px] transition-all duration-300"
+            className="absolute rounded-[var(--radius-lg)]"
             style={{
-              background: "var(--surface-elevated)",
-              boxShadow: "0 0 0 1px var(--border-subtle)",
-              transform: `translateY(${depth * 6}px) scaleX(${1 - depth * 0.03})`,
-              opacity: 1 - depth * 0.35,
+              top: 0,
+              left: `${depth * 18}px`,
+              right: `${depth * 18}px`,
+              height: `calc(100% + ${depth * 9}px)`,
+              background:
+                depth === 2 ? "oklch(0.94 0.01 260)" : "oklch(0.975 0.005 260)",
+              boxShadow:
+                "0 6px 16px oklch(0.24 0.05 260 / 0.08), 0 0 0 1px oklch(0.86 0.012 260 / 0.5)",
             }}
           />
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -466,15 +475,19 @@ export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function Te
         </div>
       ) : null}
 
-      <div className="relative mx-auto w-full max-w-[360px] pb-3">
+      <div className="accept-terms-slot relative w-full">
+        <div className="relative mb-7">
         <DeckStackLayers remaining={total - cursor - 1} />
         <motion.div
-          className="relative"
+          className="relative z-10 flex flex-col"
           animate={{ height: isCollapsed ? 0 : "auto" }}
-          transition={CARD_SWIPE_TRANSITION}
+          transition={{
+            ...CARD_SWIPE_TRANSITION,
+            height: isCollapsed ? CARD_SWIPE_TRANSITION : { duration: 0 },
+          }}
           style={{ overflow: isCollapsed ? "hidden" : "visible" }}
         >
-          <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+          <AnimatePresence mode="wait" initial={false} custom={direction}>
             {activeCard && (
               <motion.div
                 key={activeCard.id}
@@ -496,6 +509,7 @@ export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function Te
             )}
           </AnimatePresence>
         </motion.div>
+        </div>
       </div>
     </div>
   );

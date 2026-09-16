@@ -147,6 +147,7 @@ function ApplyPaneFit({
       inner.style.setProperty("--apply-fit-leftover", "0px");
       inner.style.width = `${designW}px`;
       inner.style.transform = "none";
+      void inner.offsetHeight;
 
       const contentW = Math.max(inner.scrollWidth, inner.offsetWidth);
       const contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
@@ -192,16 +193,21 @@ function ApplyPaneFit({
     ro.observe(host);
     const sheet = host.closest(".ios-apply-sheet");
     if (sheet) ro.observe(sheet);
+    const mo = new MutationObserver(schedule);
+    mo.observe(inner, { childList: true, subtree: true });
     schedule();
     return () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
+      mo.disconnect();
     };
   }, [maxWidth, scaleToFit]);
 
   if (!scaleToFit) {
     return (
-      <div className="apply-pane-fit apply-pane-fit--natural">{children}</div>
+      <div className="apply-pane-fit apply-pane-fit--natural">
+        <div className="apply-pane-fit-natural-col">{children}</div>
+      </div>
     );
   }
 
@@ -346,7 +352,10 @@ export function ApplyIosShell({
           <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
             <div className="theme-ios ios-apply-frame flex min-h-0 flex-1 flex-col">
               <MobileGateHeader progressStep={progressStep} />
-              <MobileGateSheet fitMaxWidth={wideContent ? 1040 : 560}>
+              <MobileGateSheet
+                fitMaxWidth={wideContent ? 1040 : 560}
+                scaleToFit={!wideContent}
+              >
                 {children}
               </MobileGateSheet>
             </div>

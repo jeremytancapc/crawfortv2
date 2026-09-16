@@ -9,7 +9,6 @@ import {
   Buildings,
   CaretDown,
   Clock,
-  Info,
   SealCheck,
   ShieldCheck,
 } from "@phosphor-icons/react";
@@ -83,23 +82,23 @@ function PlanSummaryCard({
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="flex w-full items-center gap-3 px-5 py-4 text-left"
+          className="flex w-full items-center gap-3.5 px-5 py-5 text-left"
         >
           <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px]"
             style={{ background: "oklch(0.94 0.06 152)" }}
           >
-            <SealCheck size={17} weight="fill" style={{ color: SUCCESS_GREEN }} />
+            <SealCheck size={22} weight="fill" style={{ color: SUCCESS_GREEN }} />
           </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span
-              className="text-[10px] font-bold tracking-[0.14em] uppercase"
+              className="text-[13px] font-bold tracking-[0.12em] uppercase"
               style={{ color: "var(--text-tertiary)" }}
             >
               Your approved loan
             </span>
             <span
-              className="text-[13px] font-bold leading-snug"
+              className="text-[16px] font-bold leading-snug"
               style={{ color: "var(--text-primary)" }}
             >
               {formatCurrency(plan.amount)} &middot; {plan.tenure} months &middot;{" "}
@@ -107,7 +106,7 @@ function PlanSummaryCard({
             </span>
           </span>
           <CaretDown
-            size={14}
+            size={16}
             weight="bold"
             className="shrink-0"
             style={{
@@ -130,16 +129,30 @@ function PlanSummaryCard({
             style={{ overflow: collapsible ? "hidden" : "visible" }}
           >
             {!collapsible && (
-              <div className="deck-card-banner relative isolate flex h-[88px] items-center overflow-hidden px-5">
-                <SealCheck
+              <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+                <div
                   aria-hidden
-                  weight="fill"
-                  size={200}
                   className="deck-card-watermark deck-card-watermark--approved pointer-events-none"
-                />
-                <h2 className="relative font-display text-[17px] font-semibold leading-snug tracking-tight text-[var(--brand-blue-hex,#0033AA)] lg:text-xl">
-                  Your Loan Is Approved
-                </h2>
+                >
+                  <svg
+                    viewBox="0 0 256 256"
+                    width={200}
+                    height={200}
+                    className="deck-card-watermark-mark"
+                  >
+                    <g className="deck-card-watermark-spin">
+                      <path
+                        fill="currentColor"
+                        d="M240,128c0,10.44-7.51,18.27-14.14,25.18-3.77,3.94-7.67,8-9.14,11.57-1.36,3.27-1.44,8.69-1.52,13.94-.15,9.76-.31,20.82-8,28.51s-18.75,7.85-28.51,8c-5.25.08-10.67.16-13.94,1.52-3.57,1.47-7.63,5.37-11.57,9.14C146.27,232.49,138.44,240,128,240s-18.27-7.51-25.18-14.14c-3.94-3.77-8-7.67-11.57-9.14-3.27-1.36-8.69-1.44-13.94-1.52-9.76-.15-20.82-.31-28.51-8s-7.85-18.75-8-28.51c-.08-5.25-.16-10.67-1.52-13.94-1.47-3.57-5.37-7.63-9.14-11.57C23.51,146.27,16,138.44,16,128s7.51-18.27,14.14-25.18c3.77-3.94,7.67-8,9.14-11.57,1.36-3.27,1.44-8.69,1.52-13.94.15-9.76.31-20.82,8-28.51s18.75-7.85,28.51-8c5.25-.08,10.67-.16,13.94-1.52,3.57-1.47,7.63-5.37,11.57-9.14C109.73,23.51,117.56,16,128,16s18.27,7.51,25.18,14.14c3.94,3.77,8,7.67,11.57,9.14,3.27,1.36,8.69,1.44,13.94,1.52,9.76.15,20.82.31,28.51,8s7.85,18.75,8,28.51c.08,5.25.16,10.67,1.52,13.94,1.47,3.57,5.37,7.63,9.14,11.57C232.49,109.73,240,117.56,240,128Z"
+                      />
+                    </g>
+                    <path
+                      className="deck-card-watermark-check"
+                      fill="var(--brand-teal-hex, #06dec0)"
+                      d="M173.66,109.66l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"
+                    />
+                  </svg>
+                </div>
               </div>
             )}
 
@@ -150,57 +163,56 @@ function PlanSummaryCard({
                   : "flex flex-col gap-3 px-5 pb-6 pt-4"
               }
             >
-              {/* Meta row */}
-              <div
-                className="flex items-center justify-between text-[12px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                <span>{dateTimeLabel}</span>
-                <span
-                  className="font-semibold tabular-nums"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+              {!collapsible ? (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
+                      Approved Loan Amount
+                    </h2>
+                    <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
+                      {formatCurrency(plan.amount)}
+                    </p>
+                  </div>
+                  <p className="mt-0.5 shrink-0 text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
+                    {referenceId}
+                  </p>
+                </div>
+              ) : (
+                <p className="self-end text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
                   {referenceId}
-                </span>
-              </div>
-
-              {/* Loan amount highlight */}
-              <div
-                className="flex items-center justify-between rounded-[var(--radius-sm)] px-4 py-2.5"
-                style={{ background: "oklch(0.95 0.025 258)" }}
-              >
-                <span className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>
-                  Loan amount
-                </span>
-                <span
-                  className="font-display text-lg font-semibold tracking-tight tabular-nums"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {formatCurrency(plan.amount)}
-                </span>
-              </div>
+                </p>
+              )}
 
               <DashedDivider />
 
               {/* Key-value breakdown */}
-              <div className="flex flex-col gap-2.5">
-                <ReceiptRow label="Plan" value={plan.planTitle} />
+              <div className="flex flex-col gap-3">
+                <ReceiptRow size="lg" label="Application Date" value={dateTimeLabel} />
+                <ReceiptRow size="lg" label="Plan" value={plan.planTitle} />
                 <ReceiptRow
+                  size="lg"
                   label="Loan term"
                   value={`${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}`}
                 />
-                <ReceiptRow label="Interest Rate" value={`${formatRate(plan.monthlyRate)}/month`} />
                 <ReceiptRow
+                  size="lg"
+                  label="Interest Rate"
+                  value={`${formatRate(plan.monthlyRate)}/month`}
+                />
+                <ReceiptRow
+                  size="lg"
                   label="Total amount you'll pay"
                   value={formatCurrency(plan.totalRepayment)}
                 />
                 {plan.additionalRequests.length > 0 && (
                   <ReceiptRow
+                    size="lg"
                     label="Additional requests"
                     value={plan.additionalRequests.join(", ")}
                   />
                 )}
                 <ReceiptRow
+                  size="lg"
                   label="Monthly payment (fixed)"
                   value={formatCurrency(plan.monthlyInstalment)}
                   emphasize
@@ -211,33 +223,6 @@ function PlanSummaryCard({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// Standalone note shown between the receipt card and the confirm button.
-// Pulled out of PlanSummaryCard (rather than sitting inside it as another
-// receipt row) so it isn't lost among the plan's line items. Framed with
-// dashed dividers - echoing the receipt card's own divider style - rather than
-// another boxed panel, since the rest of the page is already made up of boxes.
-// Deliberately left-aligned behind an info icon, with no chevrons or tinted
-// panel, so it reads as a note rather than something to tap.
-function NextStepsBanner() {
-  return (
-    <div className="flex items-start gap-2.5 px-0.5">
-      <Info
-        size={16}
-        weight="fill"
-        className="mt-[2px] shrink-0"
-        style={{ color: "var(--text-tertiary)" }}
-        aria-hidden="true"
-      />
-      <p
-        className="text-[13px] leading-snug font-medium"
-        style={{ color: "var(--text-secondary)" }}
-      >
-        Read and agree to the important terms, then sign to accept.
-      </p>
     </div>
   );
 }
@@ -293,10 +278,10 @@ function TermsFootnoteCard() {
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <span
-          className="text-[13px] font-semibold"
+          className="min-w-0 text-[13px] font-semibold leading-snug"
           style={{ color: "var(--text-secondary)" }}
         >
-          Full terms and conditions
+          Actual loan repayment date here may change based on your loan disbursed date
         </span>
         <CaretDown
           size={13}
@@ -574,7 +559,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
             Confirm loan terms
           </h1>
           <p className="ios-type-subtitle mt-1">
-            Review and accept your terms below.
+            Review your terms below.
           </p>
         </div>
       )}
@@ -625,17 +610,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               </div>
               {!hasConfirmedTerms && <TermsFootnoteCard />}
             </motion.div>
-          ) : (
-            <motion.div
-              key="intro"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={REVEAL_TRANSITION}
-            >
-              <NextStepsBanner />
-            </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
 
         {/* Signature and the CTA stay out of the way until there's something

@@ -138,15 +138,17 @@ export function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`;
 }
 
-/** e.g. "22 December 2025 22:30" - matches the reference receipt's plain, formal timestamp. */
+/** e.g. "22 December 2025 10:30 PM" */
 export function formatReceiptDateTime(isoDate: string): string {
   const date = new Date(isoDate);
   const day = date.getDate();
   const month = date.toLocaleString("en-SG", { month: "long" });
   const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, "0");
+  const hours24 = date.getHours();
+  const hours12 = hours24 % 12 || 12;
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${day} ${month} ${year} ${hours}:${minutes}`;
+  const meridiem = hours24 < 12 ? "AM" : "PM";
+  return `${day} ${month} ${year} ${hours12}:${minutes} ${meridiem}`;
 }
 
 /** Derives a stable, receipt-style reference number from the lead's UUID. */
@@ -184,27 +186,38 @@ export function ReceiptRow({
   label,
   value,
   emphasize = false,
+  size = "default",
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
+  size?: "default" | "lg";
 }) {
+  const large = size === "lg";
+  const labelClass = large
+    ? emphasize
+      ? "text-[16px] font-bold"
+      : "text-[16px] font-medium"
+    : emphasize
+      ? "text-[13.5px] font-bold"
+      : "text-[13.5px] font-medium";
+  const valueClass = large
+    ? emphasize
+      ? "text-[16px] font-semibold tabular-nums text-right"
+      : "text-[16px] font-semibold tabular-nums text-right"
+    : emphasize
+      ? "text-[15px] font-semibold tabular-nums text-right"
+      : "text-[13.5px] font-semibold tabular-nums text-right";
+
   return (
     <div className="flex items-baseline justify-between gap-4">
       <span
-        className={emphasize ? "text-[13.5px] font-bold" : "text-[13.5px] font-medium"}
+        className={labelClass}
         style={{ color: emphasize ? "var(--text-primary)" : "var(--text-tertiary)" }}
       >
         {label}
       </span>
-      <span
-        className={
-          emphasize
-            ? "text-[15px] font-semibold tabular-nums text-right"
-            : "text-[13.5px] font-semibold tabular-nums text-right"
-        }
-        style={{ color: "var(--text-primary)" }}
-      >
+      <span className={valueClass} style={{ color: "var(--text-primary)" }}>
         {value}
       </span>
     </div>
