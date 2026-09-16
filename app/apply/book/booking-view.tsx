@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
@@ -18,6 +18,7 @@ const LOG = "[apply/book:client]";
 export function BookingView({ formData }: Props) {
   const router = useRouter();
   const applyHref = useApplyPath();
+  const [ctaHost, setCtaHost] = useState<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     const lid = formData.leadId;
@@ -70,8 +71,9 @@ export function BookingView({ formData }: Props) {
   return (
     <ApplyIosShell
       progressStep={APPLY_PROGRESS.book}
+      fitMaxScale={1}
     >
-      <div className="shrink-0 px-5 pb-4 pt-7">
+      <div className="apply-book-fit shrink-0 px-3 pb-1.5 pt-3 sm:px-5 sm:pb-4 sm:pt-7">
         <h1 className="ios-type-title">
           Book your appointment
         </h1>
@@ -79,16 +81,20 @@ export function BookingView({ formData }: Props) {
           The visit only takes around 30 minutes.
         </p>
       </div>
-      <div className="flex-1 px-5 pb-8">
+      <div className="apply-book-fit flex-1 px-3 sm:px-5 sm:pb-8">
         <AppointmentBooking
           formData={formData}
           onBack={() => router.push(applyHref("/apply/accept"))}
           onConfirm={handleConfirm}
           onBookedRedirect
           hideHeaderOnMobile
+          hideInlineCta
+          ctaHost={ctaHost}
         />
       </div>
-      <ApplyStepNavFooter id="book" />
+      <ApplyStepNavFooter id="book">
+        <span ref={setCtaHost} className="block min-w-0 w-full" />
+      </ApplyStepNavFooter>
     </ApplyIosShell>
   );
 }

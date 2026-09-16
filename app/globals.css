@@ -603,6 +603,12 @@ input[type="range"]::-moz-range-thumb {
   animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
 }
 
+.booking-field--invalid {
+  border-color: var(--ios-danger);
+  box-shadow: 0 0 0 2px var(--ios-danger);
+  animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
+}
+
 @keyframes plan-lane-invalid-flash {
   0%,
   100% {
@@ -615,7 +621,8 @@ input[type="range"]::-moz-range-thumb {
 
 @media (prefers-reduced-motion: reduce) {
   .plan-lane--invalid .plan-lane-card,
-  .signature-pad--invalid {
+  .signature-pad--invalid,
+  .booking-field--invalid {
     animation: none;
   }
 }
@@ -1085,6 +1092,15 @@ body:has(.theme-fresh)::before {
   }
 }
 
+/* Phones and tablets: reclaim the sheet gutter so amount, plan, accept,
+   and book all use the pane instead of sitting in a padded island.
+   Desktop (lg) still zeros the gutter on .theme-ios. */
+@media (max-width: 1023.98px) {
+  .theme-ios .ios-apply-sheet {
+    --ios-edge-gutter: 0.5rem;
+  }
+}
+
 /* Mobile apply chrome locks to the *small* viewport so the footer stays on
    screen while Android/iOS browser chrome is showing. 100dvh is the large
    viewport and parks the Next bar under the address bar / system nav. */
@@ -1293,16 +1309,6 @@ body:has(.theme-fresh)::before {
   .theme-ios .deck-card-watermark-spin {
     animation: none;
   }
-}
-
-.theme-ios .deck-card-accessory {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  z-index: 1;
-  border-radius: 8px;
-  padding: 3px 5px;
-  background: rgb(255 255 255 / 0.88);
 }
 
 /* Footer CTAs sit between the step-nav arrows on phones. Keep the label
@@ -1805,15 +1811,25 @@ input[type="range"].ios-slider::-moz-range-thumb {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Review confirm-info: native type size, full pane width, page scrolls.
-   .apply-pane-fit is a centering row — without this, the title sits in a
-   left column and the tables slide off the right edge on phones. */
+/* Phones: pin the fitted column to the top so a short first measure
+   cannot float a card in a ring of empty space. */
+@media (max-width: 1023.98px) {
+  .apply-pane-fit {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+}
+
+/* Review confirm-info + choose-plan: native type size, full pane width.
+   Column flex so a flex-1 child (the plan scroller) can fill leftover
+   height. Block used to leave the three cards in a short island. */
 .apply-pane-fit.apply-pane-fit--natural {
-  display: block;
-  width: 100%;
-  max-width: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -1821,9 +1837,11 @@ input[type="range"].ios-slider::-moz-range-thumb {
 .apply-pane-fit-natural-col {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  min-height: 0;
 }
 
 .apply-pane-fit-natural-col > * {
@@ -1834,8 +1852,9 @@ input[type="range"].ios-slider::-moz-range-thumb {
 
 .apply-pane-fit-natural-col > .flex-1,
 .apply-pane-fit-natural-col > .min-h-0.flex-1 {
-  flex: none;
-  overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .apply-pane-fit[data-overflow="true"] {
@@ -1876,13 +1895,50 @@ input[type="range"].ios-slider::-moz-range-thumb {
   justify-content: flex-start;
 }
 
+/* Book step: unused fit height grows the photo instead of a dead band. */
+/* Keep the date/time field off the footer on phones. Desktop leftover
+   already does this, so do not add a tall spacer there. */
+.apply-pane-fit-inner > .apply-book-fit.flex-1 {
+  padding-bottom: 3.5rem;
+}
+
+@media (min-width: 1024px) {
+  .apply-pane-fit-inner > .apply-book-fit.flex-1 {
+    padding-bottom: 0.5rem;
+  }
+}
+
+.apply-pane-fit-inner .apply-book-hero {
+  height: 7rem;
+}
+
+@media (min-width: 1024px) {
+  .apply-pane-fit-inner .apply-book-hero {
+    height: 13rem;
+  }
+}
+
+/* Scaled path only (desktop steps that still run through ApplyPaneFit's
+   scale-to-fit branch). Safe there because that leftover is computed against
+   a known, already-fitted contentH. The natural (block) layout used by
+   choose-plan must NOT get a hard floor here - a fixed min-height forced the
+   flex column to demand more room than a short viewport had, and the cards
+   overflowed past their own box onto the disclaimer text below them. */
 .apply-pane-fit-inner .plan-lane-tray {
   display: flex;
   flex-direction: column;
   min-height: calc(12rem + var(--apply-fit-leftover, 0px));
 }
 
-/* Leftover pane height is applied as a spacer inside .accept-terms-card. */
+/* Leftover pane height is applied as a spacer inside .accept-terms-card,
+   the amount offer card, and after the plan lane / custom-offer card. It
+   only ever ADDS height - it is never a floor, so short screens simply keep
+   their natural content size instead of overflowing a box that was forced
+   smaller than its own children. */
+.apply-fit-leftover-spacer {
+  height: var(--apply-fit-leftover, 0px);
+  flex-shrink: 0;
+}
 
 .apply-pane-fit-inner .plan-lane {
   flex: 1 1 auto;

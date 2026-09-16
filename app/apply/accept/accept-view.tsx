@@ -1,16 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import type { Transition } from "motion/react";
 import {
   ArrowRight,
-  Buildings,
   CaretDown,
-  Clock,
+  Money,
   SealCheck,
-  ShieldCheck,
 } from "@phosphor-icons/react";
 
 import { ApplyIosShell, StickyFooter } from "@/app/apply-gate/ios-ui";
@@ -314,16 +313,16 @@ function TermsFootnoteCard() {
 }
 
 // ── Appointment reminder modal ────────────────────────────────────────────────
-// Shown once, right before leaving for the booking step, so the customer
-// isn't surprised by an in-person requirement after they've already
-// committed to signing. Kept short and single-purpose - one fact (how long
-// it takes), one reason (why it's required by law), one way out (acknowledge
-// and continue) - rather than restating everything already covered in the deck.
+// Shown once, right before leaving for the booking step: funds are ready,
+// collection is by appointment only.
 
 function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void }) {
-  // Lock page scroll while the modal is up so the blurred backdrop doesn't
-  // shift under the customer's thumb.
+  const [mounted, setMounted] = useState(false);
+
+  // Portal to body so the overlay covers the sidebar, header, and footer —
+  // `fixed` inside the scaled apply pane only paints that column.
   useEffect(() => {
+    setMounted(true);
     const { overflow } = document.body.style;
     document.body.style.overflow = "hidden";
     return () => {
@@ -331,7 +330,9 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
     };
   }, []);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="theme-ios fixed inset-0 z-[200] flex items-center justify-center p-5"
       role="dialog"
@@ -347,7 +348,7 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="relative w-full max-w-[360px] rounded-[20px] bg-[var(--surface-elevated)] px-6 pb-7 pt-8 shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+        className="relative w-full max-w-[440px] rounded-[20px] bg-[var(--surface-elevated)] px-6 pb-7 pt-8 shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.97 }}
@@ -358,58 +359,34 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
             background="oklch(0.32 0.14 260 / 0.12)"
             ringColor="var(--brand-blue-hex, #0033AA)"
           >
-            <Buildings size={26} weight="fill" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+            <Money size={26} weight="fill" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
           </AnimatedIconBadge>
-          <h2 id="appointment-reminder-title" className="mt-5 flex flex-col items-center gap-0.5">
-            <span
-              className="text-[20px] font-bold leading-tight tracking-[-0.02em]"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Next step
-            </span>
-            <span
-              className="text-[14.5px] font-semibold leading-snug"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Book your appointment
-            </span>
-          </h2>
-          <div
-            className="mt-3 flex items-center gap-1.5 rounded-full px-3 py-1"
-            style={{ background: "oklch(0.95 0.03 258)" }}
+          <h2
+            id="appointment-reminder-title"
+            className="mt-5 whitespace-nowrap text-[clamp(16px,4.8vw,20px)] font-bold leading-none tracking-[-0.03em]"
+            style={{ color: "var(--text-primary)" }}
           >
-            <Clock size={13} weight="bold" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
-            <span
-              className="text-[12.5px] font-bold"
-              style={{ color: "var(--brand-blue-hex, #0033AA)" }}
-            >
-              Takes around 30 minutes
-            </span>
-          </div>
-          {/* Split into short, scannable statements rather than one dense
-              paragraph - each line is a single fact the customer can absorb
-              at a glance. */}
-          <div id="appointment-reminder-description" className="mt-3 flex flex-col gap-1.5">
-            <p className="text-[14px] leading-snug" style={{ color: "var(--text-secondary)" }}>
-              You&apos;ll collect your funds physically at our office.
-            </p>
-            <p className="text-[14px] leading-snug" style={{ color: "var(--text-secondary)" }}>
-              This is required by Know-Your-Customer (KYC) and Anti-Money
-              Laundering (AML) regulations.
-            </p>
-          </div>
+            Your funds are ready for collection
+          </h2>
+          <p
+            id="appointment-reminder-description"
+            className="mt-2 text-[14.5px] font-medium leading-snug"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Fund collection is by appointment only.
+          </p>
         </div>
 
         <button
           type="button"
           onClick={onAcknowledge}
-          className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+          className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-brand-blue px-3 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
         >
-          <ShieldCheck size={16} weight="bold" />
-          I understand
+          Final Step: Book Appointment
         </button>
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -471,6 +448,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [showAppointmentReminder, setShowAppointmentReminder] = useState(false);
   const [deckCtaLabel, setDeckCtaLabel] = useState<string | null>(null);
+  const [activeDeckCardId, setActiveDeckCardId] = useState<string | null>(null);
   const [signatureNeedsInput, setSignatureNeedsInput] = useState(false);
   const [signatureAttentionNonce, setSignatureAttentionNonce] = useState(0);
 
@@ -606,9 +584,12 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                   onComplete={() => setHasConfirmedTerms(true)}
                   onConfirmedCountChange={handleTermsProgress}
                   onActiveCtaChange={setDeckCtaLabel}
+                  onActiveCardIdChange={setActiveDeckCardId}
                 />
               </div>
-              {!hasConfirmedTerms && <TermsFootnoteCard />}
+              {!hasConfirmedTerms && activeDeckCardId === "paymentSchedule" ? (
+                <TermsFootnoteCard />
+              ) : null}
             </motion.div>
           ) : null}
         </AnimatePresence>
