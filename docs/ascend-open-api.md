@@ -97,6 +97,13 @@ that `/openApi/apply/credit` later consumes. So it is cheap but not free of
 side effects: it is the authority on New vs Reloan, and its `userId` must be
 passed onward rather than re-derived.
 
+**(observed)** `hasMyinfo` is not static, and submitting MyInfo to
+`/openApi/apply/credit` sets it. A first application must send the whole
+`myinfo` object; afterwards Ascend holds it and `userId` alone is enough. So
+the `userId`-only failure (`600: The user has not authorized myinfo`) is
+self-healing rather than permanent, and a returning applicant can be
+identified with a request 8.6 KB smaller.
+
 ### `/openApi/apply/credit` — the credit decision
 
 `data`: `desiredAmount` (required), and **either** `myinfo` (the object) **or**
@@ -140,7 +147,7 @@ credible income"), `m1`/`m2`/`m3` (previous three months), `monthlyIncome`,
 
 | Endpoint | Purpose |
 | --- | --- |
-| `/openApi/user/myinfo` | Fetch stored MyInfo by `userId` |
+| `/openApi/user/myinfo` | Fetch stored MyInfo by `userId`. **(observed)** 404s on `test` |
 | `/openApi/user/sccb` | SCCB record. Requires MyInfo authorised or passed in |
 | `/openApi/user/mlcb` | MLCB record. Needs `myinfo`, `income`, `expectedAmount` |
 | `/openApi/singPass/v5/authUrl` | Ascend's own MyInfo v5 authorisation URL |
@@ -173,3 +180,7 @@ credible income"), `m1`/`m2`/`m3` (previous three months), `monthlyIncome`,
   Beyond `Number.MAX_SAFE_INTEGER` — keep them as strings end to end.
 - `riskStatus` is UPPERCASE on the wire (`PASS`), which is not the spelling
   used in `CONTEXT.md` (passed / pending / rejected). Map at the boundary.
+- **(observed)** The A-Card Limit can EXCEED the Desired Amount: asking for
+  5000 returned a limit of 8000. Never show the requested figure as though it
+  were the offer.
+- **(observed)** `creditScore` is fractional (588.26), not an integer.

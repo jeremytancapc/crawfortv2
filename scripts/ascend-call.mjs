@@ -150,6 +150,24 @@ try {
       console.log("  credit-review queue case, not an error. Re-check with:");
       console.log(`    npm run ascend -- query --orderId ${result.orderId}`);
     }
+  } else if (command === "myinfo") {
+    // Read-only: fetches what Ascend already holds for this user.
+    const userId = arg("userId");
+    if (!userId) {
+      console.error("usage: myinfo --userId <id>");
+      process.exit(1);
+    }
+    const data = await callAscend("/openApi/user/myinfo", { userId });
+    const mi = data.myinfo ?? {};
+    const value = (k) => mi[k]?.value ?? mi[k]?.nbr?.value ?? "(absent)";
+    console.log(`  userId:    ${data.userId}`);
+    console.log(`  fields:    ${Object.keys(mi).length}`);
+    console.log(`  uinfin:    ${value("uinfin")}`);
+    console.log(`  name:      ${value("name")}`);
+    console.log(`  dob:       ${value("dob")}`);
+    console.log(`  noa rows:  ${mi.noahistory?.noas?.length ?? 0}`);
+    console.log(`  cpf months:${mi.cpfcontributions?.history?.length ?? 0}`);
+    if (process.argv.includes("--full")) console.log(`\n${JSON.stringify(mi, null, 2)}`);
   } else if (command === "query") {
     const orderId = arg("orderId");
     if (!orderId) {
@@ -158,7 +176,7 @@ try {
     }
     console.log(JSON.stringify(await callAscend("/openApi/query/credit", { orderId }), null, 2));
   } else {
-    console.error("commands: users, apply, query");
+    console.error("commands: users, apply, myinfo, query");
     process.exit(1);
   }
 } catch (err) {
