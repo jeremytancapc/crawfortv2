@@ -15,6 +15,9 @@ export type ApplyFlowEventName =
   | "singpass_gate_saved"
   | "manual_gate_saved"
   | "auth_callback_received"
+  // Payload diverted to the inspector instead of the funnel, which only
+  // happens while MYINFO_CAPTURE_ENABLED is on.
+  | "auth_callback_captured"
   | "singpass_simulated"
   | "activate_merged";
 
