@@ -137,10 +137,10 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
       accessory: (
         <Image
           src="/images/paynow-logo.png"
-          alt="PayNow"
+          alt=""
           width={228}
           height={148}
-          className="h-8 w-auto"
+          className="h-[0.95em] w-auto"
         />
       ),
     },
@@ -270,6 +270,42 @@ function DeckCardBody({
 
 const LISTING_CARD_SHADOW = "0 18px 40px oklch(0.24 0.02 80 / 0.10)";
 
+function TitleWithAccessory({
+  title,
+  accessory,
+}: {
+  title: string;
+  accessory?: ReactNode;
+}) {
+  if (!accessory) return title;
+
+  const mark = "PayNow";
+  const at = title.lastIndexOf(mark);
+  if (at === -1) {
+    return (
+      <>
+        {title}{" "}
+        <span className="ml-1 inline-flex translate-y-[0.08em] items-center">
+          {accessory}
+        </span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {title.slice(0, at)}
+      <span className="inline-flex items-center gap-1.5">
+        {mark}
+        <span className="inline-flex translate-y-[0.06em] items-center">
+          {accessory}
+        </span>
+      </span>
+      {title.slice(at + mark.length)}
+    </>
+  );
+}
+
 function DeckCardFace({
   card,
   plan,
@@ -295,16 +331,12 @@ function DeckCardFace({
           size={168}
           className="deck-card-watermark pointer-events-none"
         />
-
-        {card.accessory && (
-          <span className="deck-card-accessory">{card.accessory}</span>
-        )}
       </div>
 
       <div className="flex flex-1 flex-col justify-center gap-5 px-6 pb-8 pt-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
-            {card.title}
+            <TitleWithAccessory title={card.title} accessory={card.accessory} />
           </h2>
           <p className="mt-1 shrink-0 text-[15px] font-medium leading-snug text-[var(--text-tertiary)]">
             Term {index} of {total}
@@ -378,6 +410,8 @@ interface TermsDeckProps {
   onConfirmedCountChange?: (confirmed: number, total: number) => void;
   /** Footer CTA label for the card on screen. Null when the deck is collapsed. */
   onActiveCtaChange?: (label: string | null) => void;
+  /** So the repayment footnote can sit under the schedule card only. */
+  onActiveCardIdChange?: (id: string | null) => void;
 }
 
 export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function TermsDeck(
@@ -387,6 +421,7 @@ export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function Te
     onComplete,
     onConfirmedCountChange,
     onActiveCtaChange,
+    onActiveCardIdChange,
   },
   ref,
 ) {
@@ -409,10 +444,12 @@ export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function Te
   useEffect(() => {
     if (!activeCard) {
       onActiveCtaChange?.(null);
+      onActiveCardIdChange?.(null);
       return;
     }
     onActiveCtaChange?.(activeCard.ctaLabel);
-  }, [activeCard, onActiveCtaChange]);
+    onActiveCardIdChange?.(activeCard.id);
+  }, [activeCard, onActiveCtaChange, onActiveCardIdChange]);
 
   // Cards swap in place, so the page normally shouldn't move at all. The one
   // exception is a card tall enough to push its own buttons off screen (the

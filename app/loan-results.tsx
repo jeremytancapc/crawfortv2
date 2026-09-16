@@ -389,6 +389,7 @@ function OfferHeader({
             </dl>
           </div>
         )}
+        <div aria-hidden className="apply-fit-leftover-spacer" />
       </div>
     </RevealOnScroll>
   );
@@ -1528,6 +1529,12 @@ function PlanPicker({
         onTenureChange={onCustomTenureChange}
       />
       </RevealOnScroll>
+      {/* Adds height only when there is real, already-measured room to spare
+          (see ApplyPaneFit's natural-layout leftover pass). Never a floor -
+          a hard min-height here previously forced the cards to overflow past
+          this column on short screens and land on top of the disclaimer
+          below. */}
+      <div aria-hidden className="apply-fit-leftover-spacer" />
     </div>
   );
 }
@@ -2137,7 +2144,7 @@ export function LoanResults({
 
   return (
     <>
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pb-8">
+      <div className={`min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 ${isPlanPhase ? "pb-4" : "pb-8"}`}>
       <div className="relative z-[1] flex min-w-0 flex-col gap-5">
 
         {/* Expiry notice only. The confirmed-offer heading lives in the page
