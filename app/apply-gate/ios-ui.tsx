@@ -166,7 +166,19 @@ function ApplyPaneFit({
         return;
       }
 
-      const designW = Math.min(maxWidth, availW);
+      // maxWidth is a deliberate narrow reading column on the desktop rail
+      // (there's a whole marketing sidebar to fill the rest of the screen).
+      // Below the rail breakpoint there is no sidebar - the column IS the
+      // screen - so a wide/squarish phone must not be capped down to that
+      // same 560px design and then left to fill the extra width by scaling
+      // alone. A tall step still needs to shrink to fit the height, and a
+      // uniform scale shrinks width right along with it, so a capped design
+      // both loses text size AND leaves dead space on either side. Let the
+      // design use the full pane width on phones/tablets; only the rail
+      // keeps the intentionally narrow column.
+      const isDesktopRail = window.matchMedia("(min-width: 1024px)").matches;
+      const effectiveMaxWidth = isDesktopRail ? maxWidth : Math.max(maxWidth, availW);
+      const designW = Math.min(effectiveMaxWidth, availW);
       const prevLeftover = inner.style.getPropertyValue("--apply-fit-leftover") || "0px";
       const prevTransform = inner.style.transform;
       inner.style.setProperty("--apply-fit-leftover", "0px");
