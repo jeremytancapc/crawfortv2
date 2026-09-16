@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
+  CalendarBlank,
   CheckCircle,
   ClockCountdown,
-  WhatsappLogo,
-  ArrowUpRight,
   Copy,
   Check,
+  DownloadSimple,
 } from "@phosphor-icons/react";
 import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
 
@@ -55,7 +55,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
     }).catch(() => {});
   };
 
-  const { month, day, weekday, full } = getDateParts(booking.date);
+  const { weekday, full } = getDateParts(booking.date);
 
   return (
     <div className="animate-fade-up flex flex-col gap-3.5 text-left">
@@ -68,52 +68,33 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-4 px-5 py-5">
+        <div className="flex items-center gap-4 px-5 pt-5 pb-3">
           <div
-            className="flex h-[62px] w-[58px] shrink-0 flex-col items-center justify-center rounded-[14px] text-white"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] text-white"
             style={{ background: "var(--brand-blue-hex)" }}
             aria-hidden="true"
           >
-            <span className="text-[10px] font-bold uppercase tracking-[0.1em] opacity-70">
-              {month}
-            </span>
-            <span className="text-[26px] font-bold leading-none">{day}</span>
+            <CalendarBlank size={24} weight="fill" />
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+            <p className="text-[16px] font-semibold text-[var(--text-secondary)]">
               {weekday}, {full}
             </p>
-            <p className="mt-0.5 text-[28px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
+            <p className="mt-0.5 text-[32px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
               {formatDisplayTime(booking.time)}
             </p>
           </div>
         </div>
+        <p className="flex items-center gap-1.5 px-5 pb-4 text-[16px] leading-snug text-[var(--text-secondary)]">
+          <ClockCountdown
+            size={18}
+            weight="fill"
+            className="shrink-0 text-brand-blue"
+          />
+          Your slot will be reserved for 30 mins only
+        </p>
 
-        <div className="flex flex-col gap-2.5 border-t border-[var(--border-subtle)] px-5 py-3">
-          <div className="flex items-start gap-2">
-            <ClockCountdown
-              size={16}
-              weight="fill"
-              className="mt-px shrink-0 text-brand-blue"
-            />
-            <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
-              Kindly arrive on time so we can serve you promptly.
-            </p>
-          </div>
-          <div className="flex items-start gap-2">
-            <WhatsappLogo
-              size={16}
-              weight="fill"
-              className="mt-px shrink-0"
-              style={{ color: "oklch(0.58 0.16 148)" }}
-            />
-            <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
-              We will send you the appointment details via WhatsApp soon.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-dashed border-white/25 bg-black px-5 py-3">
+        <div className="flex items-center justify-between gap-3 border-y border-dashed border-white/25 bg-black px-5 py-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">
               Application reference
@@ -134,75 +115,93 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
             }
           </button>
         </div>
-      </section>
 
-      {/* Crawfort app ------------------------------------------------------ */}
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/images/crawfort-app-logo.png"
-            alt="Crawfort app"
-            width={1000}
-            height={1000}
-            className="h-10 w-10 shrink-0"
-          />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-blue">
-              Before your appointment
-            </p>
-            <p className="text-[16px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
-              Download the Crawfort app
+        <div className="px-5 py-5">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/images/crawfort-app-logo.png"
+              alt="Crawfort app"
+              width={1000}
+              height={1000}
+              className="h-12 w-12 shrink-0"
+            />
+            <p className="text-[20px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+              What to do next
             </p>
           </div>
+          <ol className="mt-4 flex flex-col gap-3">
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-[13px] font-bold text-brand-blue">
+                1
+              </span>
+              <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
+                Setup the Crawfort App from App store
+              </p>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-[13px] font-bold text-brand-blue">
+                2
+              </span>
+              <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
+                Sign in the app using Singpass to manage your queue, loan details and repayment
+              </p>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-[13px] font-bold text-brand-blue">
+                3
+              </span>
+              <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
+                Scan the QR code from our app when you arrive for the appointment
+              </p>
+            </li>
+          </ol>
+          <div className="mt-5 flex items-center gap-3">
+            <span
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] text-white"
+              style={{ background: "var(--brand-blue-hex)" }}
+              aria-hidden="true"
+            >
+              <DownloadSimple size={22} weight="bold" />
+            </span>
+            <p className="text-[20px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+              Download here
+            </p>
+          </div>
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <a
+              href={MOBILE_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
+            >
+              {/* Official Apple badge — do not restyle the artwork. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/download-on-app-store.svg"
+                alt="Download on the App Store"
+                width={120}
+                height={40}
+                className="h-10 w-auto"
+              />
+            </a>
+            <a
+              href={MOBILE_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
+            >
+              {/* Official Google badge — extra PNG padding, sized to match Apple. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/get-it-on-google-play.png"
+                alt="Get it on Google Play"
+                width={155}
+                height={58}
+                className="h-[58px] w-auto"
+              />
+            </a>
+          </div>
         </div>
-        <p className="mt-3 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-          Set it up before you come in so we can serve you faster on the day.
-          You&apos;ll keep using it after your loan starts.
-        </p>
-        <div className="mt-4 flex items-center gap-2">
-          <a
-            href={MOBILE_APP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
-          >
-            {/* Official Apple badge — do not restyle the artwork. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/download-on-app-store.svg"
-              alt="Download on the App Store"
-              width={120}
-              height={40}
-              className="h-10 w-auto"
-            />
-          </a>
-          <a
-            href={MOBILE_APP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="-ml-1 transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
-          >
-            {/* Official Google badge — extra PNG padding, sized to match Apple. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/get-it-on-google-play.png"
-              alt="Get it on Google Play"
-              width={155}
-              height={58}
-              className="h-[58px] w-auto"
-            />
-          </a>
-        </div>
-        <a
-          href={MOBILE_APP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ios-type-cta mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-full px-4 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-          style={{ background: "var(--brand-blue-hex)" }}
-        >
-          Get the app
-          <ArrowUpRight size={17} weight="bold" />
-        </a>
       </section>
     </div>
   );

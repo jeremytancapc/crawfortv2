@@ -73,7 +73,7 @@ export function BookingView({ formData }: Props) {
       progressStep={APPLY_PROGRESS.book}
       fitMaxScale={1}
     >
-      <div className="apply-book-fit shrink-0 px-3 pb-1.5 pt-3 sm:px-5 sm:pb-4 sm:pt-7">
+      <div className="apply-book-fit shrink-0 px-3 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-7">
         <h1 className="ios-type-title">
           Book your appointment
         </h1>

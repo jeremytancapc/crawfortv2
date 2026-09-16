@@ -429,7 +429,7 @@ export function AppointmentBooking({
   }
 
   return (
-    <div className="animate-fade-up flex flex-col gap-3 sm:gap-8">
+    <div className="animate-fade-up flex flex-col gap-5 sm:gap-8">
       {/* ── Header ─────────────────────────────────────────────── */}
       {!hideHeaderOnMobile && (
       <div
@@ -489,7 +489,7 @@ export function AppointmentBooking({
         }}
       >
         {/* Location blurb */}
-        <div className="mb-2 lg:mb-3">
+        <div className="mb-4 lg:mb-5">
           <span className="inline-flex items-center gap-1.5">
             <p className="text-base font-bold text-[var(--text-primary)]">Location</p>
             {/* Tooltip trigger */}
@@ -512,21 +512,17 @@ export function AppointmentBooking({
               )}
             </span>
           </span>
-          <div className="mt-0.5 flex flex-col gap-0.5 text-sm font-medium text-[var(--text-primary)]">
+          <div className="mt-2 flex flex-col gap-1.5 text-base font-medium leading-snug text-[var(--text-primary)]">
             <p>1 North Bridge Road, #01-35</p>
             <p>High Street Centre, Singapore 179094</p>
-            <ul className="mt-1 flex flex-col gap-1 font-normal text-[var(--text-secondary)]">
+            <ul className="mt-1.5 flex flex-col gap-2 text-[15px] font-normal leading-snug text-[var(--text-secondary)]">
               <li className="flex items-start gap-1.5">
-                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>City Hall MRT (6 mins walk)</span>
+                <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>Near City Hall and Clarke Quay MRT</span>
               </li>
               <li className="flex items-start gap-1.5">
-                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Clarke Quay MRT (7 mins walk)</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Parking available on site</span>
+                <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>Carpark available</span>
               </li>
             </ul>
           </div>

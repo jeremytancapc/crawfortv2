@@ -33,9 +33,6 @@ export default async function BookedPage() {
             Your funds are reserved
           </h1>
         </div>
-        <p className="ios-type-subtitle mt-1.5">
-          Your appointment reference and visit time are below.
-        </p>
       </div>
       <div className="flex-1 px-5 pb-8">
         <BookingConfirmedView booking={booking} />
