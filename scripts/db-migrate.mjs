@@ -53,11 +53,19 @@ function migrations() {
 async function main() {
   loadEnvLocal();
 
-  const connectionString = process.env.DATABASE_URL?.trim();
+  // Prefer the direct endpoint. Neon's pooled host runs pgbouncer, and DDL
+  // through a transaction pooler is not something to stake a migration on -
+  // Neon recommends a direct connection for exactly this. Falls back to
+  // DATABASE_URL when only the pooled URL exists, which is the common case
+  // for a plain local Postgres.
+  const connectionString = (
+    process.env.DATABASE_URL_UNPOOLED?.trim() || process.env.DATABASE_URL?.trim()
+  );
   if (!connectionString) {
     console.error("DATABASE_URL is not set. Add it to .env.local or the environment.");
     process.exit(1);
   }
+  const usingDirect = Boolean(process.env.DATABASE_URL_UNPOOLED?.trim());
 
   const mode = process.argv.includes("--status")
     ? "status"
@@ -69,7 +77,8 @@ async function main() {
   await client.connect();
 
   // Host only - the connection string carries a password.
-  console.log(`▸ ${new URL(connectionString).hostname}\n`);
+  console.log(`▸ ${new URL(connectionString).hostname}`);
+  console.log(`  ${usingDirect ? "direct endpoint" : "pooled endpoint"}\n`);
 
   try {
     await client.query(`
