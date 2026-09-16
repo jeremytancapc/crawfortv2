@@ -18,6 +18,8 @@ export type ApplyFlowEventName =
   // Payload diverted to the inspector instead of the funnel, which only
   // happens while MYINFO_CAPTURE_ENABLED is on.
   | "auth_callback_captured"
+  // Forwarded to the Lambda that owns the Singpass round trip.
+  | "singpass_redirected"
   | "singpass_simulated"
   | "activate_merged";
 

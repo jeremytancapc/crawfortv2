@@ -25,14 +25,47 @@ function getRequestOrigin(request: NextRequest): string {
 /**
  * "Retrieve MyInfo with Singpass" entry point.
  *
- * The real Singpass OIDC redirect + AWS Lambda webhook has been removed -
- * there is no external identity provider here. Instead this instantly
- * simulates a successful MyInfo retrieval (fresh CPF/NOA data) and sends the
- * browser straight to /api/apply/activate, exactly like a real callback
- * would, so the rest of the funnel (activate → review → submit) is
- * unchanged and always resolves to an approved outcome.
+ * Two behaviours, chosen by whether MYINFO_AUTH_URL is set.
+ *
+ * Set: forward to the Lambda that owns the Singpass round trip. The Lambda
+ * authenticates the applicant, retrieves MyInfo, POSTs the payload to
+ * /api/auth/callback, and sends the browser to the URL that returns. No
+ * client_id, PKCE or DPoP lives in this repository - all of it is the
+ * Lambda's.
+ *
+ * Unset: simulate. Clone the demo fixture with CPF/NOA dates shifted to be
+ * relative to now, and go straight to /api/apply/activate as a real callback
+ * would. This is what lets the funnel run on a laptop with no external
+ * identity provider, and it always resolves to an approved outcome.
+ *
+ * There is deliberately no hardcoded fallback URL. The previous version of
+ * this route defaulted to the staging Lambda, so an unset variable in
+ * production would have sent real applicants to staging Singpass without
+ * anything appearing to be wrong. Absent means simulate, which is obvious
+ * the moment anyone looks.
  */
 export async function GET(request: NextRequest) {
+  const lambdaUrl = process.env.MYINFO_AUTH_URL?.trim();
+
+  if (lambdaUrl) {
+    const redirectUrl = new URL(lambdaUrl);
+
+    // Forward any params the caller added, e.g. their own `state`.
+    request.nextUrl.searchParams.forEach((value, key) => {
+      redirectUrl.searchParams.set(key, value);
+    });
+
+    await logApplyFlowEvent({
+      event: "singpass_redirected",
+      traceId: newApplyTraceId(),
+      request,
+      requestPath: "/api/auth",
+      details: { lambda_host: redirectUrl.host },
+    });
+
+    return NextResponse.redirect(redirectUrl);
+  }
+
   const payload = buildSimulatedMyInfoPayload();
   const debugRid = randomUUID();
   saveAuthCallbackPayload(debugRid, payload);
