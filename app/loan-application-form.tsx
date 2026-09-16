@@ -780,11 +780,11 @@ export function Step3_SingpassGate({
           <CardRow key={text}>
             <span className="flex items-center gap-3">
               <CheckCircle
-                size={22}
+                size={24}
                 weight="fill"
                 className="shrink-0 text-[var(--accent)]"
               />
-              <span className="text-[15px] leading-snug text-[var(--text-primary)]">
+              <span className="text-[17px] leading-snug text-[var(--text-primary)]">
                 {text}
               </span>
             </span>
