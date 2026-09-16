@@ -34,7 +34,7 @@ interface Props {
 // Internal step numbers (same as original form)
 // 4=Identity, 5=Contact, 6=Additional, 7=Bankruptcy (final step), 8=Review
 
-const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
+const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
   4: {
     title: "Confirm your identity",
     subtitle: "We need this to verify your identity and eligibility.",
@@ -53,7 +53,6 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
   },
   8: {
     title: "Confirm that your info is accurate",
-    subtitle: "This was pulled from MyInfo.",
   },
 };
 
@@ -255,9 +254,11 @@ export function ReviewForm({ initialData }: Props) {
                   <h1 className="ios-type-title">
                     {stepMeta.title}
                   </h1>
-                  <p className="ios-type-subtitle mt-1.5">
-                    {stepMeta.subtitle}
-                  </p>
+                  {stepMeta.subtitle ? (
+                    <p className="ios-type-subtitle mt-1.5">
+                      {stepMeta.subtitle}
+                    </p>
+                  ) : null}
                 </div>
               )}
 
