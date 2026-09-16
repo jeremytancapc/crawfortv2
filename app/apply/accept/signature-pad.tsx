@@ -398,10 +398,13 @@ export function SignaturePad({
         </div>
         </motion.div>
 
-        {/* Footer: controls or signed confirmation */}
+        {/* Footer: controls or signed confirmation. A gap plus its own
+            hairline top border keep this read as the card's action bar,
+            not a continuation of the shaded drawing surface right above it -
+            same grey with no seam made the two look like one merged block. */}
         <div
-          className="flex items-center justify-between gap-3 px-4 py-2.5"
-          style={{ background: "var(--surface-secondary)" }}
+          className="mt-3 flex items-center justify-between gap-3 px-4 py-2.5"
+          style={{ borderTop: "1px solid var(--separator)" }}
         >
           {isSigned ? (
             <>
