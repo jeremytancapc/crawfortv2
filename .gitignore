@@ -44,3 +44,7 @@ next-env.d.ts
 # Ascend API smoke tests — hold live appId/secret, never commit
 scripts/ascend-test.mjs
 scripts/ascend-users-check.mjs
+
+# Singpass public JWKS — regenerate with scripts/singpass-keygen.mjs, do not commit
+singpass-jwks.public.json
+.neon
