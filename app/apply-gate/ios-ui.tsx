@@ -107,6 +107,11 @@ const ApplyFooterSlotContext = createContext<HTMLElement | null>(null);
 
 const APPLY_FIT_MAX_SCALE = 1.85;
 const APPLY_FIT_MIN_SCALE = 0.62;
+/** Below this on a phone, scroll instead of shrinking further - width
+ *  shrinks with height on a single uniform transform, so a squarish/short
+ *  phone must not chase "everything above the fold" all the way down to
+ *  the desktop's 0.62 floor the way a tall rail column can afford to. */
+const APPLY_FIT_PHONE_MIN_SCALE = 0.9;
 /** Keep the last row of a card off the clip edge after subpixel rounding. */
 const APPLY_FIT_SLACK = 16;
 /** Width ratio at or below this is a full-bleed phone column. Extra height
@@ -201,14 +206,22 @@ function ApplyPaneFit({
       const fitH = Math.max(8, availH - APPLY_FIT_SLACK);
       const widthScale = availW / contentW;
       const raw = Math.min(widthScale, fitH / contentH);
-      const overflowing = raw < APPLY_FIT_MIN_SCALE;
+      // A short/squarish phone can be short enough that fitting the full
+      // height would shrink well past what the desktop floor allows (0.62)
+      // - readable on a tall rail, but on a phone that also drags width down
+      // with it (one transform, both axes), so "shrink to avoid scrolling"
+      // stops being worth it far sooner. Once a phone would need to shrink
+      // more than ~10%, scroll the rest instead of shrinking text and the
+      // gauge down toward two-thirds size just to keep it above the fold.
+      const minScale = isDesktopRail ? APPLY_FIT_MIN_SCALE : APPLY_FIT_PHONE_MIN_SCALE;
+      const overflowing = raw < minScale;
       // Phone: the column already spans the pane. Scaling with leftover
       // height blows type and gauges up. Tablet/desktop can still grow
       // toward the designed max because widthScale is above 1.
       const cap = widthScale <= APPLY_FIT_PHONE_WIDTH ? Math.min(maxScale, 1) : maxScale;
       const scale = overflowing
-        ? APPLY_FIT_MIN_SCALE
-        : Math.min(Math.max(raw, APPLY_FIT_MIN_SCALE), cap);
+        ? minScale
+        : Math.min(Math.max(raw, minScale), cap);
       const leftover = overflowing ? 0 : Math.max(0, fitH / scale - contentH);
       inner.style.setProperty("--apply-fit-leftover", `${leftover}px`);
       inner.style.transform = `scale(${scale})`;
