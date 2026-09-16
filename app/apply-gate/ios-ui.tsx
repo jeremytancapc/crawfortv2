@@ -155,14 +155,27 @@ function ApplyPaneFit({
 
     let frame = 0;
     let settleTimer = 0;
+    let growthTimer = 0;
     let hasFit = false;
     let lockedW = 0;
     let lockedH = 0;
+    // Content height the current lock was fitted against, unscaled (i.e. at
+    // designW). A locked deck of swiped cards can still land on one taller
+    // than the first card that established the lock - a 12-month payment
+    // schedule next to a two-line key term - and the sizer's own overflow is
+    // hidden, so a card that outgrows this just gets clipped behind the
+    // footer instead of scrolling into view. Growing the lock to cover it is
+    // not the resize-on-swipe bug the lock exists to prevent: that was the
+    // pane changing size for cards it already had room for. This is the
+    // pane not yet knowing about a card it never measured.
+    let lockedContentH = 0;
+    let forceRemeasure = false;
     const measure = () => {
       const availW = host.clientWidth;
       const availH = host.clientHeight;
       if (availW < 8 || availH < 8) return;
       if (
+        !forceRemeasure &&
         lockAfterFit &&
         hasFit &&
         Math.abs(availW - lockedW) < 8 &&
@@ -170,6 +183,7 @@ function ApplyPaneFit({
       ) {
         return;
       }
+      forceRemeasure = false;
 
       // maxWidth is a deliberate narrow reading column on the desktop rail
       // (there's a whole marketing sidebar to fill the rest of the screen).
@@ -228,6 +242,7 @@ function ApplyPaneFit({
       hasFit = true;
       lockedW = availW;
       lockedH = availH;
+      lockedContentH = contentH;
 
       setFit((prev) => {
         if (
@@ -257,12 +272,31 @@ function ApplyPaneFit({
       settleTimer = window.setTimeout(measure, 400);
     };
 
+    // Same 400ms settle as scheduleSettled - rides out a swipe's exit/enter
+    // DOM churn instead of reading a mid-transition height - but only checks
+    // whether the now-settled card needs more room than the lock already
+    // grants. Width and transform are already pinned to the locked design,
+    // so scrollHeight here is directly comparable to lockedContentH with no
+    // reset-and-remeasure dance.
+    const scheduleGrowthCheck = () => {
+      window.clearTimeout(growthTimer);
+      growthTimer = window.setTimeout(() => {
+        if (inner.scrollHeight > lockedContentH + 4) {
+          forceRemeasure = true;
+          measure();
+        }
+      }, 400);
+    };
+
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
     const sheet = host.closest(".ios-apply-sheet");
     if (sheet) ro.observe(sheet);
     const mo = new MutationObserver(() => {
-      if (lockAfterFit && hasFit) return;
+      if (lockAfterFit && hasFit) {
+        scheduleGrowthCheck();
+        return;
+      }
       scheduleSettled();
     });
     mo.observe(inner, { childList: true, subtree: true });
@@ -270,6 +304,7 @@ function ApplyPaneFit({
     return () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(settleTimer);
+      window.clearTimeout(growthTimer);
       ro.disconnect();
       mo.disconnect();
     };
