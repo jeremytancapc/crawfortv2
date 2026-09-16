@@ -1811,12 +1811,16 @@ input[type="range"].ios-slider::-moz-range-thumb {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Phones: pin the fitted column to the top so a short first measure
-   cannot float a card in a ring of empty space. */
+/* Phones: pin the fitted column to the top (align-items, the cross/vertical
+   axis on this row-direction flex box) so a short first measure cannot float
+   a card in a ring of empty space. Horizontal stays centered (justify-content,
+   the main axis) - on a wide/squarish phone the designed column is narrower
+   than the pane, and flex-start here left the whole step hugging the left
+   edge with dead space on the right. */
 @media (max-width: 1023.98px) {
   .apply-pane-fit {
     align-items: flex-start;
-    justify-content: flex-start;
+    justify-content: center;
   }
 }
 
