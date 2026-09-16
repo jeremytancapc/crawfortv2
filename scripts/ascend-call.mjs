@@ -108,6 +108,48 @@ try {
       `  newCustomer: ${data.newCustomer}  → ${data.newCustomer ? "New Customer" : "RELOAN - leaves the web funnel"}`,
     );
     console.log(`  hasMyinfo:   ${data.hasMyinfo}`);
+  } else if (command === "apply") {
+    const amount = Number(arg("amount"));
+    const userId = arg("userId");
+    const myinfoPath = arg("myinfo");
+
+    if (!amount || (!userId && !myinfoPath)) {
+      console.error("usage: apply --amount <n> [--userId <id>] [--myinfo <path-to-json>]");
+      console.error("       one of --userId or --myinfo is required");
+      process.exit(1);
+    }
+
+    const data = { desiredAmount: amount };
+    if (userId) data.userId = userId;
+    if (myinfoPath) {
+      const raw = JSON.parse(readFileSync(myinfoPath, "utf8"));
+      // Accept either a bare MyInfo object or the {myinfo:{...}} envelope.
+      data.myinfo = raw.myinfo ?? raw;
+    }
+
+    console.log("/openApi/apply/credit is NOT a quote. It creates an Order and");
+    console.log("spends a credit pull. ADR-0001: once per applicant.\n");
+    console.log(`  desiredAmount: ${amount}`);
+    console.log(`  userId:        ${userId ?? "(not sent)"}`);
+    console.log(`  myinfo:        ${myinfoPath ? `${myinfoPath} (${JSON.stringify(data.myinfo).length} bytes)` : "(not sent)"}\n`);
+
+    if (!(await confirm("Create an Order?"))) {
+      console.log("Aborted.");
+      process.exit(0);
+    }
+
+    const result = await callAscend("/openApi/apply/credit", data);
+    console.log(`\n${JSON.stringify(result, null, 2)}\n`);
+    console.log(`  orderId:              ${result.orderId}`);
+    console.log(`  riskStatus:           ${result.risk?.riskStatus}${result.risk?.riskMsg ? `  (${result.risk.riskMsg})` : ""}`);
+    console.log(`  A-Card Limit:         ${result.creditScore?.creditLimit}`);
+    console.log(`  Maximum Loan Quantum: ${result.creditScore?.mlcbMaxLoanAmount}`);
+    console.log(`  newCustomer:          ${result.newCustomer}`);
+    if (result.risk?.riskStatus === "PENDING") {
+      console.log("\n  PENDING means Ascend has no income on file - that is the");
+      console.log("  credit-review queue case, not an error. Re-check with:");
+      console.log(`    npm run ascend -- query --orderId ${result.orderId}`);
+    }
   } else if (command === "query") {
     const orderId = arg("orderId");
     if (!orderId) {
@@ -116,7 +158,7 @@ try {
     }
     console.log(JSON.stringify(await callAscend("/openApi/query/credit", { orderId }), null, 2));
   } else {
-    console.error("commands: users, query");
+    console.error("commands: users, apply, query");
     process.exit(1);
   }
 } catch (err) {
