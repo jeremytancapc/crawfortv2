@@ -682,8 +682,25 @@ input[type="range"]::-moz-range-thumb {
    page gutter for: a third of a narrow screen leaves the cards nothing to
    spare, and every pixel reclaimed here lands in all three of them. */
 @media (max-width: 639.98px) {
+  /* Grow the pane into the sheet gutter so the tray can sit ~8px from the
+     bezel without escaping the overflow clip that was cutting SuperSaver
+     and FlexiPay. */
+  .apply-pane-fit.apply-pane-fit--natural:has(.plan-lane-tray) {
+    width: calc(100% + 2 * var(--ios-edge-gutter) - 16px);
+    max-width: none;
+    margin-inline: calc(-1 * var(--ios-edge-gutter) + 8px);
+  }
+
+  /* Keep the title / amount on the original inset after the pane grows. */
+  .apply-pane-fit.apply-pane-fit--natural:has(.plan-lane-tray)
+    > .apply-pane-fit-natural-col
+    > .shrink-0 {
+    padding-inline: calc(1.25rem + var(--ios-edge-gutter) - 8px);
+  }
+
   .plan-lane-tray {
-    margin-inline: -0.75rem;
+    /* Cancel the scroller's px-5 only. The pane now owns the bezel bleed. */
+    margin-inline: -1.25rem;
     padding: 4px;
   }
 
@@ -1256,6 +1273,28 @@ body:has(.theme-fresh)::before {
   transform: translateY(-48%);
 }
 
+.theme-ios .deck-card-watermark-mark {
+  display: block;
+}
+
+.theme-ios .deck-card-watermark-spin {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: deck-watermark-spin 36s linear infinite;
+}
+
+@keyframes deck-watermark-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-ios .deck-card-watermark-spin {
+    animation: none;
+  }
+}
+
 .theme-ios .deck-card-accessory {
   position: absolute;
   right: 14px;
@@ -1767,21 +1806,36 @@ input[type="range"].ios-slider::-moz-range-thumb {
 }
 
 /* Review confirm-info: native type size, full pane width, page scrolls.
-   The action bar stays in the footer slot / fixed to the viewport. */
-.apply-pane-fit--natural {
-  display: flex;
-  flex-direction: column;
+   .apply-pane-fit is a centering row — without this, the title sits in a
+   left column and the tables slide off the right edge on phones. */
+.apply-pane-fit.apply-pane-fit--natural {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   align-items: stretch;
   justify-content: flex-start;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
-.apply-pane-fit--natural > .flex-1,
-.apply-pane-fit--natural > .min-h-0.flex-1 {
+.apply-pane-fit-natural-col {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.apply-pane-fit-natural-col > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.apply-pane-fit-natural-col > .flex-1,
+.apply-pane-fit-natural-col > .min-h-0.flex-1 {
   flex: none;
   overflow: visible;
-  min-height: 0;
 }
 
 .apply-pane-fit[data-overflow="true"] {
@@ -1827,6 +1881,8 @@ input[type="range"].ios-slider::-moz-range-thumb {
   flex-direction: column;
   min-height: calc(12rem + var(--apply-fit-leftover, 0px));
 }
+
+/* Leftover pane height is applied as a spacer inside .accept-terms-card. */
 
 .apply-pane-fit-inner .plan-lane {
   flex: 1 1 auto;
@@ -1874,12 +1930,6 @@ input[type="range"].ios-slider::-moz-range-thumb {
   font-size: clamp(1.0625rem, 1.4vh + 0.75rem, 1.25rem);
 }
 
-@media (max-height: 720px) {
-  .ios-sticky-footer--progress .ios-sticky-footer-banner {
-    height: 2.75rem;
-  }
-}
-
 .ios-sticky-footer--progress {
   background: none;
 }
@@ -1890,8 +1940,8 @@ input[type="range"].ios-slider::-moz-range-thumb {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  height: 4.25rem;
-  background: var(--surface-primary);
+  height: auto;
+  background: transparent;
   pointer-events: none;
 }
 
@@ -1923,6 +1973,10 @@ input[type="range"].ios-slider::-moz-range-thumb {
     height: 76px;
   }
 
+  .ios-apply-sheet:has(.ios-sticky-footer--progress) .ios-apply-footer-slot {
+    height: 108px;
+  }
+
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {
     height: 105px;
   }
@@ -1943,6 +1997,10 @@ input[type="range"].ios-slider::-moz-range-thumb {
     left: 42%;
     right: 0;
     bottom: 0;
+  }
+
+  .ios-sticky-footer--progress .ios-sticky-footer-banner {
+    display: none;
   }
 
   .ios-sticky-footer-action {
