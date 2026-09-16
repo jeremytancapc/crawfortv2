@@ -806,8 +806,10 @@ export function AppointmentBooking({
                       }}
                     >
                     {(() => {
-                      const bookedIdx = fullyBookedIndex(selectedDate);
-                      const limitedSet = limitedSlotIndices(selectedDate, bookedIdx);
+                      const bookedIdx = selectedDate ? fullyBookedIndex(selectedDate) : -1;
+                      const limitedSet = selectedDate
+                        ? limitedSlotIndices(selectedDate, bookedIdx)
+                        : new Set<number>();
                       return TIME_SLOTS.map((slot, i) => {
                         const pastDisabled = isSlotDisabled(slot);
                         const isFullyBooked = !pastDisabled && i === bookedIdx;
