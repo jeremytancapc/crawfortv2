@@ -2258,7 +2258,7 @@ export function Step8_Review({
         {noaRecords.length > 0 && (
           <section>
             <SectionLabel>Notice of Assessment</SectionLabel>
-            <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
+            <p className="mb-2 px-1 text-[15px] text-[var(--text-secondary)]">
               {noaRecords.length} year{noaRecords.length === 1 ? "" : "s"} retrieved via Singpass.
             </p>
             <div className="flex flex-col gap-3">
@@ -2317,7 +2317,7 @@ export function Step8_Review({
         {cpfRecords.length > 0 && (
           <section>
             <SectionLabel>CPF contribution history</SectionLabel>
-            <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
+            <p className="mb-2 px-1 text-[15px] text-[var(--text-secondary)]">
               {cpfRecords.length} month{cpfRecords.length === 1 ? "" : "s"} retrieved via Singpass.
             </p>
             <Card>

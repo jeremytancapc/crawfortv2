@@ -1015,7 +1015,7 @@ export function CardRow({
 /** Small caption that sits above a card, iOS grouped-table style. */
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="ios-section-label mb-2 px-1 text-[13px] font-semibold leading-tight text-[var(--text-secondary)]">
+    <p className="ios-section-label mb-2 px-1 text-[15px] font-semibold leading-tight text-[var(--text-secondary)]">
       {children}
     </p>
   );
