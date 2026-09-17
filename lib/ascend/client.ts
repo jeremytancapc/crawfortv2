@@ -353,16 +353,47 @@ export async function ascendUploadFile(
   form.append("nonce", signed.nonce);
   form.append("sign", signed.sign);
 
-  const response = await fetch(`${config.baseUrl}/openApi/file/upload`, {
-    method: "POST",
-    body: form,
-  });
+  const url = `${config.baseUrl}/openApi/file/upload`;
+
+  // This endpoint posts multipart rather than going through callAscend, so it
+  // inherited none of its logging - which is why the one call support most
+  // needs to see was the only one leaving no trace. The file itself is never
+  // recorded, only its name, type and size.
+  const started = Date.now();
+  const record = (status: number, ok: boolean, responseBody: string, error?: string) =>
+    logExternalApi({
+      tag: "[ascend]/openApi/file/upload",
+      url,
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      body: {
+        ...redactAscendRequest({ ...signed, data: fileInfo }),
+        fileName: input.fileName,
+        contentType: input.contentType,
+        bytes: input.bytes.byteLength,
+      },
+      status,
+      ok,
+      ms: Date.now() - started,
+      responseBody: responseBody.slice(0, 2000),
+      ...(options?.applicantId ? { leadId: options.applicantId } : {}),
+      ...(error ? { error } : {}),
+    });
+
+  let response: Response;
+  try {
+    response = await fetch(url, { method: "POST", body: form });
+  } catch (err) {
+    record(0, false, "", err instanceof Error ? err.message : String(err));
+    throw err;
+  }
 
   const text = await response.text();
   let envelope: AscendEnvelope<string>;
   try {
     envelope = JSON.parse(text) as AscendEnvelope<string>;
   } catch {
+    record(response.status, false, text, "non-JSON response");
     throw new AscendError(
       String(response.status),
       `non-JSON response: ${text.slice(0, 200)}`,
@@ -371,8 +402,11 @@ export async function ascendUploadFile(
   }
 
   if (envelope.code !== ASCEND_SUCCESS_CODE) {
+    record(response.status, false, text, `${envelope.code}: ${envelope.msg}`);
     throw new AscendError(envelope.code, envelope.msg, "/openApi/file/upload");
   }
+
+  record(response.status, true, text);
 
   // `data` is the URL itself, not an object wrapping one.
   return { url: envelope.data };
