@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
 import { applyVariantCookie, variantFromPathname } from "@/lib/apply-paths";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
+import {
+  getFunnelRedirectUrl,
+  readFunnelContextFromRequest,
+} from "@/lib/apply-funnel";
 
 function isPendingWithLeadId(request: NextRequest): boolean {
   const path = request.nextUrl.pathname;
@@ -25,27 +29,35 @@ function isLandingPath(pathname: string): boolean {
 }
 
 /**
- * TEMPORARILY DISABLED funnel cookie lock for testing.
+ * Keeps an applicant on the page their cookies say they belong on.
  *
- * - Landings (and pending?leadId=) clear apply/offer/booking cookies so a home
- *   visit always starts a fresh flow.
- * - Funnel redirects that bounce users to /apply/approval or /apply/booked are
- *   skipped.
+ * Two behaviours were switched off together while the funnel was being
+ * tested: the resume redirect, and - in its place - a blanket cookie clear on
+ * every landing visit so each one started fresh. Both are restored, so
+ * visiting `/` mid-application resumes rather than silently abandoning an
+ * application that already exists.
  *
- * Re-enable production resume redirects via git history when testing is done.
- * Also re-enable `enforceApplyFunnel` in `lib/apply-funnel-enforce.ts`.
+ * `/apply/pending?leadId=` still clears: that page is the end of a journey,
+ * and its link is what a customer returns to.
  */
 export function proxy(request: NextRequest) {
   const variant = variantFromPathname(request.nextUrl.pathname);
-  const res = NextResponse.next();
-  res.cookies.set(applyVariantCookie(variant));
+  const clearPendingCookies = isPendingWithLeadId(request);
 
-  if (isLandingPath(request.nextUrl.pathname) || isPendingWithLeadId(request)) {
-    applyClearApplyCookiesOnResponse(res);
+  const target = getFunnelRedirectUrl(readFunnelContextFromRequest(request));
+  if (target) {
+    const res = NextResponse.redirect(new URL(target, request.url));
     res.cookies.set(applyVariantCookie(variant));
+    if (clearPendingCookies) applyClearApplyCookiesOnResponse(res);
     return res;
   }
 
+  const res = NextResponse.next();
+  res.cookies.set(applyVariantCookie(variant));
+  if (clearPendingCookies) {
+    applyClearApplyCookiesOnResponse(res);
+    res.cookies.set(applyVariantCookie(variant));
+  }
   return res;
 }
 
@@ -59,6 +71,8 @@ export const config = {
     "/vcsa-sg/:path*",
     "/apply/review",
     "/apply/review/:path*",
+    "/apply/verify-income",
+    "/apply/verify-income/:path*",
     "/apply/approval",
     "/apply/approval/:path*",
     "/apply/pending",

@@ -19,6 +19,7 @@ import { ascendConfig } from "@/lib/ascend/config";
 import { getAscendOrder, updateAscendOrderDecision } from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
+import { clearIncomeGateCookie } from "@/lib/apply-session";
 
 export const runtime = "nodejs";
 
@@ -97,12 +98,20 @@ export async function POST(request: NextRequest) {
     await updateAscendOrderDecision(applicantId, result);
 
     const outcome = decideApplyOutcome(result);
-    return NextResponse.json({
+    const res = NextResponse.json({
       destination: outcome.destination,
       outcome: outcome.kind,
       aCardLimit: outcome.kind === "approved" ? outcome.aCardLimit : null,
       maximumLoanQuantum: outcome.kind === "approved" ? outcome.maximumLoanQuantum : null,
     });
+
+    // Income has been accepted and re-scored. Unless Ascend is still asking
+    // for more, the income step stops being where this applicant belongs -
+    // otherwise the lock would keep pulling them back to it.
+    if (outcome.kind !== "needs_income") {
+      res.cookies.set(clearIncomeGateCookie());
+    }
+    return res;
   } catch (err) {
     if (err instanceof AscendError) {
       console.error(`[apply/income] income/credit failed ${err.code}: ${err.msg}`);

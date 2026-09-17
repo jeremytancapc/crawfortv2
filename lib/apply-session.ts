@@ -6,6 +6,7 @@ export {
   SESSION_COOKIE,
   GATE_COOKIE,
   REVIEW_GATE_COOKIE,
+  INCOME_GATE_COOKIE,
   DRAFT_LEAD_COOKIE,
   COOKIE_BASE_OPTS,
   POST_SUBMIT_COOKIE_MAX_AGE_SEC,
@@ -14,6 +15,8 @@ export {
   sessionCookieValue,
   gateCookieValue,
   reviewGateCookieValue,
+  incomeGateCookieValue,
+  clearIncomeGateCookie,
   draftLeadCookieValue,
   clearCookies,
 } from "./apply-session-codec";

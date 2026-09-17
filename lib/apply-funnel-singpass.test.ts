@@ -14,6 +14,7 @@ function ctx(overrides: Partial<ApplyFunnelContext>): ApplyFunnelContext {
     session: null,
     hasApplyGate: false,
     hasReviewGate: false,
+  hasIncomeGate: false,
     approvalOffer: null,
     hasBookingConfirm: false,
     queryLeadId: null,

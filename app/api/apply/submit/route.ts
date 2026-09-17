@@ -23,6 +23,8 @@ import {
   POST_SUBMIT_COOKIE_MAX_AGE_SEC,
   sessionCookieValue,
   reviewGateCookieValue,
+  incomeGateCookieValue,
+  clearIncomeGateCookie,
   SESSION_COOKIE,
 } from "@/lib/apply-session";
 import { initialLoanFormData } from "@/lib/loan-form";
@@ -418,6 +420,15 @@ export async function POST(request: NextRequest) {
   // Clear draft_lead + MyInfo blobs - no longer needed after full submit.
   res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
   res.cookies.set(clearMyinfoCookie());
+
+  // Ascend asked for income, so the income step is now where this applicant
+  // belongs and the funnel lock has to know it. Without this they would be
+  // sent to the pending page - away from the one screen that can move them on.
+  if (decision.kind === "needs_income") {
+    res.cookies.set(incomeGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
+  } else {
+    res.cookies.set(clearIncomeGateCookie());
+  }
 
   if (finalAssessment.isEligible && finalAssessment.approvedLoanAmount > 0) {
     const sc = sessionCookieValue(updatedSession);

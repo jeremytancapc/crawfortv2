@@ -64,6 +64,7 @@ export function funnelRedirectForReviewSession(
     session,
     hasApplyGate: true,
     hasReviewGate: false,
+    hasIncomeGate: false,
     approvalOffer: null,
     hasBookingConfirm: false,
     queryLeadId: null,
