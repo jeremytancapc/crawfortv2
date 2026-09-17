@@ -79,11 +79,17 @@ export async function POST(request: NextRequest) {
 
     // Both "unreadable" and "needs_review" come back the same way: figures
     // exist or they do not, and a human decides. The reason is written to be
-    // shown to the applicant.
+    // shown to the applicant - when the documents were readable it names the
+    // payslip that would finish the application, so the screen can print it
+    // as-is rather than repeating "upload 3 payslips".
     return NextResponse.json({
       status: outcome.kind,
       reason: outcome.reason,
       months: outcome.months,
+      // What is already covered, so the screen can show progress instead of
+      // only what is wrong.
+      covered: outcome.assembly.months.map((m) => m.month),
+      incomplete: outcome.assembly.incomplete,
     });
   } catch (err) {
     console.error("[apply/income/extract] extraction failed", err);

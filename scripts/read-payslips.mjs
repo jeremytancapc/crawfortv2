@@ -18,6 +18,8 @@
  * ANTHROPIC_API_KEY comes from .env.local, so this file holds no secrets.
  */
 
+import "./helpers/resolve-app-imports.mjs";
+
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";

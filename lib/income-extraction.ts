@@ -102,6 +102,13 @@ export function reviewExtraction(months: ExtractedMonth[]): ExtractionReview {
 
 import Anthropic from "@anthropic-ai/sdk";
 
+import {
+  assembleMonths,
+  nextUploadAsk,
+  type Assembly,
+  type PayPeriod,
+} from "./income-periods";
+
 export type IncomeDocument = {
   fileName: string;
   /** application/pdf, image/jpeg or image/png. */
@@ -120,7 +127,7 @@ export type IncomeDocument = {
 const REPORT_INCOME_TOOL: Anthropic.Tool = {
   name: "report_income",
   description:
-    "Report the monthly income read from the applicant's payslips. Call this once, " +
+    "Report the pay periods printed on the applicant's payslips. Call this once, " +
     "after reading every document provided.",
   strict: true,
   input_schema: {
@@ -130,50 +137,68 @@ const REPORT_INCOME_TOOL: Anthropic.Tool = {
       readable: {
         type: "boolean",
         description:
-          "false if the documents are not payslips, are illegible, or do not state a monthly amount.",
+          "false if the documents are not payslips, are illegible, or do not state a pay period and an amount.",
       },
       note: {
         type: "string",
         description:
           "If readable is false, what is wrong, in one sentence an applicant could act on.",
       },
-      months: {
+      periods: {
         type: "array",
-        description: "One entry per month found. Empty when readable is false.",
+        description:
+          "One entry per pay period found, exactly as printed. Several may come from one " +
+          "document. Empty when readable is false.",
         items: {
           type: "object",
           additionalProperties: false,
           properties: {
-            month: { type: "string", description: "YYYY-MM, the month the pay is FOR." },
-            amount: {
+            start: {
+              type: "string",
+              description: "YYYY-MM-DD, the first day the period pays for, as printed.",
+            },
+            end: {
+              type: "string",
+              description: "YYYY-MM-DD, the last day the period pays for, inclusive, as printed.",
+            },
+            gross: {
               type: "number",
               description:
-                "GROSS pay for that month alone, in SGD. Never a year-to-date total, " +
-                "never a net or take-home figure, never a sum of several months.",
+                "GROSS pay for THIS period alone, in SGD. Never a year-to-date total, " +
+                "never a net or take-home figure, never a sum of several periods.",
             },
             employer: { type: "string", description: "Employer name as printed, or empty." },
           },
-          required: ["month", "amount", "employer"],
+          required: ["start", "end", "gross", "employer"],
         },
       },
     },
-    required: ["readable", "note", "months"],
+    required: ["readable", "note", "periods"],
   },
 };
 
-const SYSTEM = `You read Singapore payslips and report the monthly income on them.
+const SYSTEM = `You read Singapore payslips and report the pay periods printed on them.
 
-These figures decide how much someone is lent, so accuracy matters more than
-completeness:
+These figures decide how much someone is lent, so report only what the
+document says. The arithmetic is done elsewhere.
 
-- Report GROSS monthly pay - before CPF and deductions. Ascend scores on gross.
-- Report the month the pay is FOR, not the date it was paid. A payslip for
-  August paid on 1 September is 2026-08.
-- Never report a year-to-date or cumulative total as a month's pay. Payslips
-  often show both; the YTD column is not what is wanted.
-- If a document is not a payslip, is unreadable, or does not state a monthly
-  amount, set readable to false and say why. Do not estimate, do not average,
-  and do not infer a missing month from the others.
+- Report the pay PERIOD as printed - its first and last day. Do not convert it
+  to a month, do not round it to month boundaries, and do not merge periods.
+  A payslip for 16-31 August is start 2025-08-16, end 2025-08-31.
+- If a payslip names a month but no dates, use that month's first and last day.
+- Report GROSS pay for that period - before CPF and deductions. Ascend scores
+  on gross.
+- The period is what the pay is FOR, never the date it was paid. A payslip for
+  August paid on 1 September is 2025-08-01 to 2025-08-31.
+- Never report a year-to-date or cumulative total as a period's pay. Payslips
+  often show both, sometimes as "345.00 / 7795.00" where the second figure is
+  the running total. The larger one is not what is wanted.
+- Exclude expense reimbursements. They are not income.
+- One document may hold several periods. Report every one you can read.
+- Do not add up periods, do not average, and do not infer a period you cannot
+  see. A missing month is handled by asking the applicant for it.
+- If a document is not a payslip, is unreadable, or states no period and
+  amount, set readable to false and say why.
 
 Call report_income exactly once when you have read every document.`;
 
@@ -216,9 +241,32 @@ export function applicantSafeNote(note: string | null | undefined): string | nul
   return withoutTags;
 }
 
+/**
+ * Crawfort accepts monthly payslips only, so a month assembled from weekly or
+ * fortnightly ones is read and shown but never offered for underwriting - the
+ * applicant is asked for the monthly payslip instead. Flip this to accept
+ * apportioned months; nothing else has to change.
+ */
+const MONTHLY_ONLY = true;
+
+/**
+ * Both shapes carry `periods` and `assembly`: the pay periods as printed and
+ * the arithmetic that turned them into months. A lending decision has to be
+ * explainable after the fact, and these are what make it replayable.
+ */
 export type ExtractionOutcome =
-  | (ExtractionReview & { note: string | null })
-  | { kind: "unreadable"; reason: string; months: ExtractedMonth[] };
+  | (ExtractionReview & {
+      note: string | null;
+      periods: PayPeriod[];
+      assembly: Assembly;
+    })
+  | {
+      kind: "unreadable";
+      reason: string;
+      months: ExtractedMonth[];
+      periods: PayPeriod[];
+      assembly: Assembly;
+    };
 
 /**
  * Reads the documents and returns figures that have been checked.
@@ -233,7 +281,13 @@ export async function extractIncome(
   options?: { client?: Anthropic },
 ): Promise<ExtractionOutcome> {
   if (documents.length === 0) {
-    return { kind: "unreadable", reason: "No documents were provided.", months: [] };
+    return {
+      kind: "unreadable",
+      reason: "No documents were provided.",
+      months: [],
+      periods: [],
+      assembly: { months: [], incomplete: [], overlapping: [] },
+    };
   }
 
   const client = options?.client ?? new Anthropic();
@@ -260,7 +314,7 @@ export async function extractIncome(
 
   content.push({
     type: "text",
-    text: `Read the ${documents.length} document(s) above and report the monthly income.`,
+    text: `Read the ${documents.length} document(s) above and report every pay period on them.`,
   });
 
   const response = await client.messages.create({
@@ -284,19 +338,29 @@ export async function extractIncome(
       kind: "unreadable",
       reason: "The documents could not be read. Please upload clear payslips.",
       months: [],
+      periods: [],
+      assembly: { months: [], incomplete: [], overlapping: [] },
     };
   }
 
   const reported = call.input as {
     readable: boolean;
     note: string;
-    months: Array<{ month: string; amount: number; employer: string }>;
+    periods: Array<{ start: string; end: string; gross: number; employer: string }>;
   };
 
-  const months: ExtractedMonth[] = reported.months.map((m) => ({
+  const periods: PayPeriod[] = reported.periods.map((p) => ({
+    start: p.start,
+    end: p.end,
+    gross: p.gross,
+    employer: p.employer || null,
+  }));
+
+  const assembly = assembleMonths(periods);
+  const months: ExtractedMonth[] = assembly.months.map((m) => ({
     month: m.month,
     amount: m.amount,
-    employer: m.employer || null,
+    employer: m.employer,
   }));
 
   if (!reported.readable) {
@@ -306,10 +370,33 @@ export async function extractIncome(
         applicantSafeNote(reported.note) ??
         "The documents could not be read as payslips.",
       months,
+      periods,
+      assembly,
     };
   }
 
-  return { ...reviewExtraction(months), note: applicantSafeNote(reported.note) };
+  // Under MONTHLY_ONLY a month assembled from weekly payslips is complete but
+  // not underwritable, so the ask comes before the review: telling someone
+  // their October is short is wrong when what we want is October's monthly
+  // payslip.
+  const ask = nextUploadAsk(assembly, { monthlyOnly: MONTHLY_ONLY });
+  if (ask) {
+    return {
+      kind: "needs_review",
+      reason: ask,
+      months: MONTHLY_ONLY ? months.filter((_, i) => assembly.months[i].exact) : months,
+      note: applicantSafeNote(reported.note),
+      periods,
+      assembly,
+    };
+  }
+
+  return {
+    ...reviewExtraction(months),
+    note: applicantSafeNote(reported.note),
+    periods,
+    assembly,
+  };
 }
 
 /**
