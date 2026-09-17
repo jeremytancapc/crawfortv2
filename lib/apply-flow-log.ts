@@ -15,6 +15,9 @@ export type ApplyFlowEventName =
   | "singpass_gate_saved"
   | "manual_gate_saved"
   | "auth_callback_received"
+  // A payload arrived and none of it could be read - almost always a shape
+  // change. Distinct from "no payload": this one looks fine everywhere else.
+  | "myinfo_unusable"
   // Payload diverted to the inspector instead of the funnel, which only
   // happens while MYINFO_CAPTURE_ENABLED is on.
   | "auth_callback_captured"
@@ -164,4 +167,15 @@ export async function logApplyFlowEvent(input: ApplyFlowLogInput): Promise<void>
   } catch (err) {
     console.error("[apply-flow-log] unexpected error", err);
   }
+}
+
+/**
+ * The short reference an applicant can quote to support.
+ *
+ * Same shape as the CFH5 reference the pending and booked pages already
+ * show, so there is one format staff recognise rather than two. Derived from
+ * the trace id, so the row is findable from the reference alone.
+ */
+export function supportRef(id: string): string {
+  return `CFH5-${id.replace(/-/g, "").slice(-8).toUpperCase()}`;
 }

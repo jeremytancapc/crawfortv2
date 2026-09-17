@@ -6,12 +6,14 @@ import { saveMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { encodeSession } from "@/lib/apply-session";
 import { buildMyInfoPatch } from "@/lib/myinfo";
+import { describeMyinfoPayload } from "@/lib/myinfo-diagnostics";
 import type { LoanFormData } from "@/lib/loan-form";
 import {
   byteLength,
   logApplyFlowEvent,
   newApplyTraceId,
   snapshotSession,
+  supportRef,
 } from "@/lib/apply-flow-log";
 
 export const runtime = "nodejs";
@@ -84,6 +86,41 @@ export async function POST(request: NextRequest) {
   const debugRid = randomUUID();
   saveAuthCallbackPayload(debugRid, payload);
 
+  // Described before it is mapped, so a payload the mapper cannot read still
+  // leaves a trace. Field names and counts only - no NRIC, no name, nothing
+  // that would make this row a copy of the applicant.
+  const report = payload.myinfo ? describeMyinfoPayload(payload.myinfo) : null;
+
+  if (report && !report.usable) {
+    // The silent failure: a payload arrived, and none of it could be read.
+    // Usually a shape change - it is what a FAPI 2.0 envelope looked like to
+    // a mapper that only understood the legacy one.
+    //
+    // Its own row, not just a console line. A console line is gone by the
+    // time an applicant rings up about it, and this is precisely the
+    // complaint ("it didn't fill anything in") that needs answering weeks
+    // later from a reference number.
+    console.error("[auth/callback] MyInfo payload mapped to nothing", {
+      rid: debugRid,
+      shape: report.shape,
+      totalFields: report.totalFields,
+    });
+
+    await logApplyFlowEvent({
+      event: "myinfo_unusable",
+      traceId: newApplyTraceId(),
+      singpassRawKey: debugRid,
+      request,
+      requestPath: "/api/auth/callback",
+      details: {
+        support_ref: supportRef(debugRid),
+        myinfo_shape: report.shape,
+        myinfo_total_fields: report.totalFields,
+        myinfo_fields_missing: report.missing,
+      },
+    });
+  }
+
   const myinfoPatch = payload.myinfo ? buildMyInfoPatch(payload.myinfo) : {};
   const sessionData: Partial<LoanFormData> = { ...myinfoPatch, singpassRawKey: debugRid };
 
@@ -147,6 +184,12 @@ export async function POST(request: NextRequest) {
     sessionAfter: sessionData,
     details: {
       has_myinfo: Boolean(payload.myinfo),
+      // What support needs when an applicant says their details were blank.
+      myinfo_shape: report?.shape ?? null,
+      myinfo_usable: report?.usable ?? null,
+      myinfo_fields_present: report?.present ?? null,
+      myinfo_fields_missing: report?.missing ?? null,
+      myinfo_total_fields: report?.totalFields ?? null,
       payload_code: payload.code ?? null,
       payload_message: payload.message ?? null,
       payload_state: payload.state ?? null,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { nextPathAfterSubmit, postSubmitUrl } from "./post-submit-nav";
+import { supportRef } from "./apply-flow-log";
 
 const LEAD = "00000000-0000-4000-8000-000000000001";
 
@@ -31,5 +32,17 @@ describe("nextPathAfterSubmit", () => {
 describe("postSubmitUrl", () => {
   it("appends the id to a path that already has a query string", () => {
     expect(postSubmitUrl("/apply/approval?x=1", LEAD)).toBe(`/apply/approval?x=1&leadId=${LEAD}`);
+  });
+});
+
+describe("supportRef", () => {
+  it("matches the CFH5 format staff already recognise", () => {
+    expect(supportRef("6dc1a401-1fd7-453f-92ee-84f509fd1ecb")).toBe("CFH5-09FD1ECB");
+  });
+
+  it("is derived from the id, so the row is findable from the reference", () => {
+    const id = "24834c04-0f21-4c70-b9cf-cb99b9f2dfa2";
+    expect(supportRef(id)).toBe(supportRef(id));
+    expect(supportRef(id)).not.toBe(supportRef("00000000-0000-0000-0000-000000000000"));
   });
 });
