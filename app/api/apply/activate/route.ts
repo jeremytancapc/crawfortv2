@@ -16,6 +16,7 @@ import {
 } from "@/lib/apply-flow-log";
 import type { LoanFormData } from "@/lib/loan-form";
 import { insertApplicant } from "@/lib/db/applicants";
+import { processedPayloadFromRetrieval } from "@/lib/myinfo-profile";
 import type { IdType } from "@/lib/db/types";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
@@ -53,6 +54,29 @@ export async function GET(request: NextRequest) {
   const merged: SessionWithTrace = { ...existing, ...myinfoPatch };
   if (!merged[APPLY_TRACE_ID_KEY]) {
     merged[APPLY_TRACE_ID_KEY] = existing[APPLY_TRACE_ID_KEY] ?? newApplyTraceId();
+  }
+
+  // The token no longer carries CPF and NOA - they were 85% of a URL-borne
+  // payload - so read them from the retrieval the callback has just stored.
+  // Only the profile row written below needs them; the session cookie is
+  // slimmed of them again immediately afterwards.
+  if (
+    merged.singpassRawKey &&
+    (merged.cpfContributions?.length ?? 0) === 0 &&
+    (merged.noaHistory?.length ?? 0) === 0
+  ) {
+    try {
+      const stored = await processedPayloadFromRetrieval(merged.singpassRawKey);
+      if (stored) {
+        merged.cpfContributions = stored.cpfContributions;
+        merged.noaHistory = stored.noaHistory;
+        merged.dob = merged.dob || stored.dob;
+      }
+    } catch (err) {
+      // The applicant still has their mapped details; only the income
+      // arrays are missing, and submit re-reads them from the same place.
+      console.error("[activate] could not read stored MyInfo:", err);
+    }
   }
 
   // ── Create partial lead while MyInfo data is fresh ─────────────────────────

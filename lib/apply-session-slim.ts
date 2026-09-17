@@ -88,3 +88,27 @@ export function buildPostSubmitSession(
     singpassRawKey: "",
   };
 }
+
+/**
+ * The session handed to activate in the callback's redirect URL.
+ *
+ * Deliberately without the CPF and NOA arrays. They are 85% of the encoded
+ * size - 3415 bytes with them, 514 without - and they travel in a URL, where
+ * the limits are lower and less forgiving than a cookie's: some proxies and
+ * older browsers truncate past ~2000 bytes, and a truncated token fails to
+ * verify rather than arriving short.
+ *
+ * Activate re-reads them from myinfo_retrievals using singpassRawKey, which
+ * is the same payload the callback has just stored.
+ */
+export function buildActivateToken(
+  patch: Partial<LoanFormData>,
+  singpassRawKey: string,
+): Partial<LoanFormData> {
+  return {
+    ...patch,
+    singpassRawKey,
+    cpfContributions: [],
+    noaHistory: [],
+  };
+}

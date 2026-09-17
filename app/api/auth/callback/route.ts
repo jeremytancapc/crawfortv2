@@ -6,6 +6,7 @@ import { isDatabaseConfigured } from "@/lib/db/sql";
 import { encodeSession } from "@/lib/apply-session";
 import { buildMyInfoPatch } from "@/lib/myinfo";
 import { describeMyinfoPayload } from "@/lib/myinfo-diagnostics";
+import { buildActivateToken } from "@/lib/apply-session-slim";
 import type { LoanFormData } from "@/lib/loan-form";
 import {
   byteLength,
@@ -120,7 +121,11 @@ export async function POST(request: NextRequest) {
   }
 
   const myinfoPatch = payload.myinfo ? buildMyInfoPatch(payload.myinfo) : {};
-  const sessionData: Partial<LoanFormData> = { ...myinfoPatch, singpassRawKey: debugRid };
+
+  // Without the CPF and NOA arrays: they are 85% of the encoded size and this
+  // travels in a URL. Activate reads them back from myinfo_retrievals with
+  // the same key.
+  const sessionData: Partial<LoanFormData> = buildActivateToken(myinfoPatch, debugRid);
 
   const activateToken = encodeSession(sessionData);
   const activateUrl = new URL("/api/apply/activate", getRequestOrigin(request));
