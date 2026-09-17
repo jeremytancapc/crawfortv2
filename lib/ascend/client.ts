@@ -261,3 +261,76 @@ export function ascendAddOrderComment(
 ): Promise<Record<string, unknown>> {
   return callAscend<Record<string, unknown>>("/openApi/order/comments", { ...input }, options);
 }
+
+export type AscendUploadedFile = {
+  /** The URL Ascend returns, which /openApi/income/credit takes as fileUrl. */
+  url: string;
+};
+
+/**
+ * Uploads one document and returns the URL Ascend gives it back.
+ *
+ * Multipart, not JSON: `file` as binary alongside `fileInfo`, with the usual
+ * signed envelope as sibling fields - the shape /openApi/docusign uses, since
+ * this endpoint's own documentation does not say whether it wants one.
+ *
+ * UNVERIFIED against a live endpoint. On the `test` environment this answers
+ * `500: System error` for every request shape and every file type tried -
+ * including no envelope at all, flattened fields, and `data` in place of
+ * `fileInfo`. A malformed request returns 502 by their own error table, so a
+ * 500 across all of them points at the endpoint rather than the caller. The
+ * same environment 404s /openApi/user/myinfo.
+ */
+export async function ascendUploadFile(
+  input: {
+    userId: string;
+    fileName: string;
+    contentType: string;
+    bytes: ArrayBuffer;
+    fileSource?: string;
+    fileBusiness?: string;
+  },
+  options?: { config?: AscendConfig },
+): Promise<AscendUploadedFile> {
+  const config = options?.config ?? (await import("./config")).ascendConfig();
+  if (!config) throw new AscendNotConfiguredError();
+
+  const fileInfo = {
+    userId: input.userId,
+    fileSource: input.fileSource ?? "web",
+    fileBusiness: input.fileBusiness ?? "income",
+  };
+  const signed = buildSignedRequest(fileInfo, config);
+
+  const form = new FormData();
+  form.append("file", new Blob([input.bytes], { type: input.contentType }), input.fileName);
+  form.append("fileInfo", JSON.stringify(fileInfo));
+  form.append("appId", signed.appId);
+  form.append("timestamp", signed.timestamp);
+  form.append("nonce", signed.nonce);
+  form.append("sign", signed.sign);
+
+  const response = await fetch(`${config.baseUrl}/openApi/file/upload`, {
+    method: "POST",
+    body: form,
+  });
+
+  const text = await response.text();
+  let envelope: AscendEnvelope<string>;
+  try {
+    envelope = JSON.parse(text) as AscendEnvelope<string>;
+  } catch {
+    throw new AscendError(
+      String(response.status),
+      `non-JSON response: ${text.slice(0, 200)}`,
+      "/openApi/file/upload",
+    );
+  }
+
+  if (envelope.code !== ASCEND_SUCCESS_CODE) {
+    throw new AscendError(envelope.code, envelope.msg, "/openApi/file/upload");
+  }
+
+  // `data` is the URL itself, not an object wrapping one.
+  return { url: envelope.data };
+}

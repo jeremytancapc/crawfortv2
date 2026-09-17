@@ -44,7 +44,7 @@ export function VerifyIncomeScreen({
   // documents; moving them on silently would look like the upload was lost.
   async function handleSubmitIncome() {
     setIsSubmitting(true);
-    const nextPath = await submitIncome(incomeMonths);
+    const nextPath = await submitIncome(incomeMonths, files);
     if (nextPath) {
       window.location.assign(nextPath);
       return;

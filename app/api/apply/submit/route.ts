@@ -31,6 +31,7 @@ import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
 import {
   insertApplicant,
+  setAscendIdentity,
   setEligibility,
   setApplicantStatus,
   updateApplicantDetails,
@@ -307,6 +308,13 @@ export async function POST(request: NextRequest) {
 
   if (ascendResult && isDatabaseConfigured()) {
     try {
+      // Ascend's own user id, needed before any document can be uploaded
+      // against this applicant - files hang off its user, not our id.
+      await setAscendIdentity(leadId, {
+        ascendUserId: ascendResult.userId,
+        newCustomer: ascendResult.newCustomer,
+        hasMyinfo: true,
+      });
       await recordAscendOrder(leadId, ascendResult);
     } catch (err) {
       if (err instanceof DuplicateAscendOrderError) {

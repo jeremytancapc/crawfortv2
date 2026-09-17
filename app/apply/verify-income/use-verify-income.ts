@@ -22,6 +22,13 @@ export type SelectedFile = {
   id: string;
   name: string;
   size: string;
+  /**
+   * The file itself, kept so it can be uploaded. Previously only the name and
+   * size survived selection and the document was discarded - which is why
+   * income submission had nothing to send, and Ascend refused it with
+   * `600: orderFile is required`.
+   */
+  file: File;
 };
 
 export interface IncomeMonth {
@@ -74,14 +81,36 @@ export function lastThreeMonths(from: Date = new Date()): IncomeMonth[] {
  * on: they have just uploaded documents, and silently landing them somewhere
  * else would look like the upload was lost.
  */
-export async function submitIncome(months: IncomeMonth[]): Promise<string | null> {
+export async function submitIncome(
+  months: IncomeMonth[],
+  selected: SelectedFile[],
+): Promise<string | null> {
   try {
+    // Documents first: Ascend refuses income with nothing behind it
+    // (`600: orderFile is required`), so a failed upload must stop here
+    // rather than submit figures that will be rejected.
+    const files: Array<{ fileType: string; fileName: string; fileUrl: string }> = [];
+    for (const item of selected) {
+      const form = new FormData();
+      form.append("file", item.file);
+
+      const upload = await fetch("/api/apply/income/upload", { method: "POST", body: form });
+      if (!upload.ok) {
+        console.error("Document upload failed", await upload.text());
+        return null;
+      }
+
+      const { fileUrl, fileName } = (await upload.json()) as { fileUrl: string; fileName: string };
+      files.push({ fileType: "PANEL_PAYSLIP", fileName, fileUrl });
+    }
+
     const res = await fetch("/api/apply/income", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         months: months.map((m) => ({ amount: m.amount })),
         incomeType: "PANEL_PAYSLIP",
+        files,
       }),
     });
 
@@ -134,6 +163,7 @@ export function useVerifyIncome(initialShowResults = false) {
         id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name: file.name,
         size: formatFileSize(file.size),
+        file,
       });
     }
     if (next.length) setFiles((prev) => [...prev, ...next]);
