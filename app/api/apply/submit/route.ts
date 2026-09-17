@@ -318,7 +318,8 @@ export async function POST(request: NextRequest) {
     await setAscendIdentity(leadId, {
       ascendUserId: identity.userId,
       newCustomer: identity.kind === "continue",
-      hasMyinfo: identity.kind === "continue" && identity.creditCallUses === "userId",
+      // What Ascend said, not what we chose to send.
+      hasMyinfo: identity.kind === "continue" && identity.hasMyinfo,
     }).catch((err) => console.error("[apply/submit] could not record identity", err));
   }
 

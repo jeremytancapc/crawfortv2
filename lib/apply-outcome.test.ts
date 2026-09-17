@@ -122,7 +122,22 @@ describe("decideIdentityOutcome", () => {
     expect(outcome).toMatchObject({ kind: "reloan", userId: "1426270128715821056" });
   });
 
-  it("sends only the userId once Ascend already holds MyInfo", () => {
+  it("sends the MyInfo payload even when Ascend says it already holds it", () => {
+    // Observed on staging 2026-09-17: /openApi/users answered hasMyinfo true,
+    // so the credit call carried userId alone - and /openApi/apply/credit
+    // returned `500: System error`. The two calls either side of it, both
+    // carrying the full payload, succeeded. Sending it costs a larger request
+    // and nothing else; not sending it costs the applicant their application.
+    const outcome = decideIdentityOutcome({
+      userId: "1426270128715821056",
+      newCustomer: true,
+      hasMyinfo: true,
+    });
+
+    expect(outcome).toMatchObject({ kind: "continue", creditCallUses: "myinfo" });
+  });
+
+  it.skip("sends only the userId once Ascend already holds MyInfo", () => {
     const outcome = decideIdentityOutcome({
       userId: "1426270128715821056",
       newCustomer: true,

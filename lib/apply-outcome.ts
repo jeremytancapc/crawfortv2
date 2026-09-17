@@ -83,11 +83,21 @@ export type IdentityOutcome =
   | {
       kind: "continue";
       /**
-       * Which identifier /openApi/apply/credit should carry. `userId` alone
-       * is refused with `600: The user has not authorized myinfo` until
-       * Ascend holds that person's MyInfo - which submitting it once sets.
+       * Which identifier /openApi/apply/credit should carry.
+       *
+       * Always "myinfo" today. The endpoint refuses a bare userId in both
+       * directions: `600: The user has not authorized myinfo` before Ascend
+       * holds the payload, and - observed on staging 2026-09-17 - `500: System
+       * error` after it says it does. Two calls carrying the full payload
+       * either side of that one succeeded.
+       *
+       * Kept as a union because sending the payload is the expensive half of
+       * this request, and this is the single line to change when Ascend
+       * accepts a userId.
        */
       creditCallUses: "userId" | "myinfo";
+      /** What Ascend reported, recorded as-is rather than inferred from what we send. */
+      hasMyinfo: boolean;
       /**
        * Ascend's own user id. /openApi/users is the only call that returns
        * it, and every document upload is addressed by it - so it travels with
@@ -106,7 +116,11 @@ export function decideIdentityOutcome(user: AscendUser): IdentityOutcome {
 
   return {
     kind: "continue",
-    creditCallUses: user.hasMyinfo ? "userId" : "myinfo",
+    // Not `user.hasMyinfo ? "userId" : "myinfo"`. Trusting hasMyinfo cost a
+    // real applicant their application: Ascend reported it held the payload,
+    // we sent the userId alone, and the credit call answered 500.
+    creditCallUses: "myinfo",
+    hasMyinfo: user.hasMyinfo,
     userId: user.userId,
   };
 }
