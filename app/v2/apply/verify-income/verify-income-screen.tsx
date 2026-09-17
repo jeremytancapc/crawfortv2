@@ -45,7 +45,7 @@ export function VerifyIncomeScreen({
 
   const goBack = () => {
     setResumeGateStep(3);
-    router.push(applyHref("/"));
+    router.push(applyHref("/?gate=3"));
   };
 
   if (showResults) {

@@ -131,7 +131,7 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
       Icon: CurrencyCircleDollar,
       iconTint: "#0d9488",
       iconBg: "oklch(0.7 0.13 178 / 0.14)",
-      title: "Fund disbursement via NRIC-linked PayNow",
+      title: "Link your NRIC to PayNow",
       agreeLabel: DISBURSEMENT_ACK_STATEMENT,
       ctaLabel: DISBURSEMENT_CTA_LABEL,
       accessory: (
@@ -310,14 +310,10 @@ function DeckCardFace({
   card,
   plan,
   acceptedAt,
-  index,
-  total,
 }: {
   card: DeckCard;
   plan: SelectedPlanData;
   acceptedAt: string;
-  index: number;
-  total: number;
 }) {
   return (
     <div
@@ -334,14 +330,9 @@ function DeckCardFace({
       </div>
 
       <div className="flex flex-1 flex-col justify-center gap-5 px-6 pb-8 pt-6">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
-            <TitleWithAccessory title={card.title} accessory={card.accessory} />
-          </h2>
-          <p className="mt-1 shrink-0 text-[15px] font-medium leading-snug text-[var(--text-tertiary)]">
-            Term {index} of {total}
-          </p>
-        </div>
+        <h2 className="text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
+          <TitleWithAccessory title={card.title} accessory={card.accessory} />
+        </h2>
 
         {card.subtitle ? (
           <p className="text-[16px] font-medium leading-snug text-[var(--text-secondary)]">
@@ -539,8 +530,6 @@ export const TermsDeck = forwardRef<TermsDeckHandle, TermsDeckProps>(function Te
                   card={activeCard}
                   plan={plan}
                   acceptedAt={acceptedAt}
-                  index={cursor + 1}
-                  total={total}
                 />
               </motion.div>
             )}

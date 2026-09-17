@@ -91,27 +91,25 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
             weight="fill"
             className="shrink-0 text-brand-blue"
           />
-          Your slot will be reserved for 30 mins only
+          Your slot will be reserved for 30 mins
         </p>
 
-        <div className="flex items-center justify-between gap-3 border-y border-dashed border-white/25 bg-black px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">
-              Application reference
-            </p>
-            <p className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-white">
-              {booking.cfh5Id}
-            </p>
-          </div>
+        <div className="flex items-center justify-between gap-3 border-y border-dashed border-white/25 bg-black px-5 py-2">
+          <p className="min-w-0 truncate text-[13px] font-semibold tabular-nums tracking-tight text-white">
+            <span className="mr-1.5 font-medium text-white/60">
+              Application Ref ID:
+            </span>
+            {booking.cfh5Id}
+          </p>
           <button
             type="button"
             onClick={handleCopyRef}
             aria-label="Copy reference number"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-opacity duration-150 hover:opacity-60 active:scale-95"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-opacity duration-150 hover:opacity-60 active:scale-95"
           >
             {copied
-              ? <Check size={19} weight="bold" />
-              : <Copy size={19} weight="regular" />
+              ? <Check size={16} weight="bold" />
+              : <Copy size={16} weight="regular" />
             }
           </button>
         </div>
@@ -144,14 +142,6 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
               </span>
               <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
                 Sign in the app using Singpass to manage your queue, loan details and repayment
-              </p>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-[13px] font-bold text-brand-blue">
-                3
-              </span>
-              <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
-                Scan the QR code from our app when you arrive for the appointment
               </p>
             </li>
           </ol>

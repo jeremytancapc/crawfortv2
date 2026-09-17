@@ -491,7 +491,7 @@ export function AppointmentBooking({
         {/* Location blurb */}
         <div className="mb-4 lg:mb-5">
           <span className="inline-flex items-center gap-1.5">
-            <p className="text-base font-bold text-[var(--text-primary)]">Location</p>
+            <p className="text-lg font-bold text-[var(--text-primary)]">Location</p>
             {/* Tooltip trigger */}
             <span className="relative inline-flex">
               <button
@@ -512,10 +512,10 @@ export function AppointmentBooking({
               )}
             </span>
           </span>
-          <div className="mt-2 flex flex-col gap-1.5 text-base font-medium leading-snug text-[var(--text-primary)]">
+          <div className="mt-2 flex flex-col gap-1.5 text-lg font-medium leading-snug text-[var(--text-primary)]">
             <p>1 North Bridge Road, #01-35</p>
             <p>High Street Centre, Singapore 179094</p>
-            <ul className="mt-1.5 flex flex-col gap-2 text-[15px] font-normal leading-snug text-[var(--text-secondary)]">
+            <ul className="mt-1.5 flex flex-col gap-2 text-base font-normal leading-snug text-[var(--text-secondary)]">
               <li className="flex items-start gap-1.5">
                 <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
                 <span>Near City Hall and Clarke Quay MRT</span>
@@ -528,7 +528,7 @@ export function AppointmentBooking({
           </div>
         </div>
 
-        <p className="mb-3 text-base font-bold text-[var(--text-primary)]">Select a date &amp; time</p>
+        <p className="mb-3 text-lg font-bold text-[var(--text-primary)]">Select a date &amp; time</p>
 
         <div className="flex flex-col gap-3">
 
@@ -538,13 +538,13 @@ export function AppointmentBooking({
               ref={dateTriggerRef}
               type="button"
               onClick={() => { calendarOpen ? setCalendarOpen(false) : openCalendarPopup(); }}
-              className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border bg-[var(--surface-elevated)] px-4 py-3 text-left text-sm transition-colors duration-150${
+              className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border bg-[var(--surface-elevated)] px-4 py-3 text-left text-base transition-colors duration-150${
                 slotNeed === "date" ? " ios-field-needs-input booking-field--invalid" : " border-[var(--border-subtle)]"
               }`}
             >
               <CalendarBlank size={18} weight="duotone" className="shrink-0 text-brand-blue" />
               <span
-                className="flex-1 text-sm"
+                className="flex-1 text-base"
                 style={{
                   color: "var(--text-primary)",
                   fontWeight: selectedDate ? 500 : 400,
@@ -750,7 +750,7 @@ export function AppointmentBooking({
                 type="button"
                 disabled={!selectedDate}
                 onClick={() => { timeDropdownOpen ? setTimeDropdownOpen(false) : openTimePopup(); }}
-                className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border bg-[var(--surface-elevated)] px-4 py-3 text-left text-sm transition-colors duration-150${
+                className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border bg-[var(--surface-elevated)] px-4 py-3 text-left text-base transition-colors duration-150${
                   !selectedDate
                     ? " cursor-not-allowed border-[var(--border-subtle)] opacity-40"
                     : slotNeed === "time" ? " ios-field-needs-input booking-field--invalid" : " border-[var(--border-subtle)]"
@@ -758,7 +758,7 @@ export function AppointmentBooking({
               >
                 <CalendarBlank size={18} weight="duotone" className="shrink-0 text-brand-blue" />
                 <span
-                  className="flex-1 text-sm"
+                  className="flex-1 text-base"
                   style={{
                   color: "var(--text-primary)",
                   fontWeight: selectedTime ? 500 : 400,

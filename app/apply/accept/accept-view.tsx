@@ -18,7 +18,7 @@ import { APPLY_PROGRESS, applyProgressAlong } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
 import { SignaturePad } from "./signature-pad";
 import { TermsDeck, type TermsDeckHandle } from "./terms-deck";
-import { FINE_PRINT_ITEMS } from "./accept-content";
+import { FINE_PRINT_ITEMS, SCHEDULE_CTA_LABEL } from "./accept-content";
 import { useApplyPath } from "@/app/use-apply-path";
 import {
   CARD_SHADOW,
@@ -129,6 +129,9 @@ function PlanSummaryCard({
           >
             {!collapsible && (
               <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+                <p className="absolute bottom-3 left-5 z-10 text-[13.5px] font-semibold tabular-nums leading-none text-white/70">
+                  Ref ID: {referenceId}
+                </p>
                 <div
                   aria-hidden
                   className="deck-card-watermark deck-card-watermark--approved pointer-events-none"
@@ -163,22 +166,17 @@ function PlanSummaryCard({
               }
             >
               {!collapsible ? (
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
-                      Approved Loan Amount
-                    </h2>
-                    <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
-                      {formatCurrency(plan.amount)}
-                    </p>
-                  </div>
-                  <p className="mt-0.5 shrink-0 text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
-                    {referenceId}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
+                    Approved Loan Amount
+                  </h2>
+                  <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
+                    {formatCurrency(plan.amount)}
                   </p>
                 </div>
               ) : (
-                <p className="self-end text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
-                  {referenceId}
+                <p className="text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
+                  Ref ID: {referenceId}
                 </p>
               )}
 
@@ -545,14 +543,14 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       <div
         className={
           hasStartedTerms
-            ? "flex flex-1 flex-col gap-5 px-5 pb-8"
+            ? "flex flex-1 flex-col gap-3 px-5 pb-3"
             : "accept-intro-fit flex flex-1 flex-col gap-3 px-5"
         }
       >
         <div
           className={
             hasStartedTerms
-              ? "sticky top-0 z-10 -mx-5 bg-[var(--surface-primary)] px-5 pb-1 pt-4"
+              ? "sticky top-0 z-10 -mx-5 bg-[var(--surface-primary)] px-5 pb-1 pt-2"
               : undefined
           }
         >
@@ -601,7 +599,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
           {hasConfirmedTerms && (
             <motion.div
               key="signature"
-              className="flex flex-col gap-5"
+              className="flex flex-col gap-3"
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -641,7 +639,16 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
             Next: Terms &amp; Conditions
           </AcceptFooterCta>
         ) : deckCtaLabel ? (
-          <AcceptFooterCta onClick={handleDeckCta}>{deckCtaLabel}</AcceptFooterCta>
+          <AcceptFooterCta
+            onClick={handleDeckCta}
+            stacked={
+              deckCtaLabel === SCHEDULE_CTA_LABEL
+                ? { rest: "Funds Disbursement Method" }
+                : undefined
+            }
+          >
+            {deckCtaLabel}
+          </AcceptFooterCta>
         ) : null}
       </StickyFooter>
 

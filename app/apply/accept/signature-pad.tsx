@@ -231,16 +231,16 @@ export function SignaturePad({
         className="accept-terms-card flex w-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white"
         style={{ boxShadow: "0 18px 40px oklch(0.24 0.02 80 / 0.10)" }}
       >
-        <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+        <div className="deck-card-banner relative isolate h-12 overflow-hidden">
           <BannerIcon
             aria-hidden
             weight="fill"
-            size={168}
+            size={104}
             className="deck-card-watermark pointer-events-none"
           />
         </div>
 
-        <div className="flex flex-col gap-2 px-6 pb-2 pt-6">
+        <div className="flex flex-col gap-2 px-6 pb-2 pt-3">
           <h2
             className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]"
             style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-primary)" }}
@@ -304,7 +304,7 @@ export function SignaturePad({
           <canvas
             ref={canvasRef}
             className="block w-full touch-none"
-            style={{ height: 220, cursor: disabled || isSigned ? "default" : "crosshair" }}
+            style={{ height: 176, cursor: disabled || isSigned ? "default" : "crosshair" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
