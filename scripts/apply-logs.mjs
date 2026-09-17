@@ -14,6 +14,7 @@
  * Reads DATABASE_URL from .env.local, so this file holds no secrets.
  */
 
+import "./helpers/quiet-known-warnings.mjs";
 import "./helpers/resolve-app-imports.mjs";
 
 import { readFileSync } from "node:fs";
