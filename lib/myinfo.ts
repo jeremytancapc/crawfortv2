@@ -39,7 +39,24 @@ const MARITAL_CODES: Record<string, string> = {
   "5": "Divorced",
 };
 
-export function buildMyInfoPatch(myinfo: Record<string, unknown>): Partial<LoanFormData> {
+/**
+ * Finds the person data, whichever shape the payload arrived in.
+ *
+ * FAPI 2.0 (Myinfo v5) nests it under `person_info`, alongside `sub`, `iss`
+ * and `aud`. The legacy v3/v4 response put the same fields at the top level.
+ * Both reach this codebase - the two Lambdas speak to different Singpass APIs
+ * - and the difference is otherwise silent: reading `uinfin` off a v5 payload
+ * gives undefined, every field maps to empty, and the applicant continues
+ * with a blank application while nothing raises an error.
+ */
+function personData(payload: Record<string, unknown>): Record<string, unknown> {
+  const nested = payload.person_info;
+  if (nested && typeof nested === "object") return nested as Record<string, unknown>;
+  return payload;
+}
+
+export function buildMyInfoPatch(payload: Record<string, unknown>): Partial<LoanFormData> {
+  const myinfo = personData(payload);
   const patch: Partial<LoanFormData> = {};
 
   if (myinfo.name)   patch.fullName = str(myinfo.name);
