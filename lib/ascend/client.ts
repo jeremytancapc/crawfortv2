@@ -56,10 +56,21 @@ export class AscendNotConfiguredError extends Error {
  * `config` is injectable so a smoke test can target an environment without
  * touching process.env.
  */
+/**
+ * `applicantId` is not sent to Ascend - it stamps the api_logs row, so a
+ * support question about one customer is a single `where applicant_id = ...`
+ * rather than a guess at which of the day's calls was theirs.
+ */
+export type AscendCallOptions = {
+  config?: AscendConfig;
+  timeoutMs?: number;
+  applicantId?: string | null;
+};
+
 export async function callAscend<T = unknown>(
   path: string,
   data: Record<string, unknown>,
-  options?: { config?: AscendConfig; timeoutMs?: number },
+  options?: AscendCallOptions,
 ): Promise<T> {
   // ./config is loaded lazily, and only when no config was passed in: it is
   // the one part of this module that reads process.env, so an injected config
@@ -91,6 +102,7 @@ export async function callAscend<T = unknown>(
       ok,
       ms: Date.now() - started,
       responseBody: responseBody.slice(0, 2000),
+      ...(options?.applicantId ? { leadId: options.applicantId } : {}),
       ...(error ? { error } : {}),
     });
 
@@ -154,7 +166,7 @@ export type AscendUser = {
  */
 export function ascendUsers(
   input: { idNumber: string; phone: string },
-  options?: { config?: AscendConfig },
+  options?: AscendCallOptions,
 ): Promise<AscendUser> {
   return callAscend<AscendUser>("/openApi/users", { ...input }, options);
 }
@@ -222,7 +234,7 @@ export function ascendApplyCredit(
     userId?: string;
     remark?: string;
   },
-  options?: { config?: AscendConfig },
+  options?: AscendCallOptions,
 ): Promise<AscendCreditResult> {
   if (!input.myinfo && !input.userId) {
     throw new Error("ascendApplyCredit needs either myinfo or userId");
@@ -233,7 +245,7 @@ export function ascendApplyCredit(
 /** Re-checks an order left PENDING, which means Ascend has no income on file. */
 export function ascendQueryCredit(
   input: { orderId: string },
-  options?: { config?: AscendConfig },
+  options?: AscendCallOptions,
 ): Promise<AscendCreditResult> {
   return callAscend<AscendCreditResult>("/openApi/query/credit", { ...input }, options);
 }
@@ -261,7 +273,7 @@ export type AscendIncomeInput = {
  */
 export function ascendSubmitIncome(
   input: AscendIncomeInput,
-  options?: { config?: AscendConfig },
+  options?: AscendCallOptions,
 ): Promise<AscendCreditResult> {
   const monthlyIncome = Number(((input.m1 + input.m2 + input.m3) / 3).toFixed(2));
 
@@ -288,7 +300,7 @@ export function ascendSubmitIncome(
 /** Records the applicant's chosen plan against the order, as a free-text note. */
 export function ascendAddOrderComment(
   input: { orderId: string; comments: string },
-  options?: { config?: AscendConfig },
+  options?: AscendCallOptions,
 ): Promise<Record<string, unknown>> {
   return callAscend<Record<string, unknown>>("/openApi/order/comments", { ...input }, options);
 }
@@ -321,7 +333,7 @@ export async function ascendUploadFile(
     fileSource?: string;
     fileBusiness?: string;
   },
-  options?: { config?: AscendConfig },
+  options?: AscendCallOptions,
 ): Promise<AscendUploadedFile> {
   const config = options?.config ?? (await import("./config")).ascendConfig();
   if (!config) throw new AscendNotConfiguredError();

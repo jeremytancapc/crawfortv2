@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
       contentType: file.type,
       bytes: await file.arrayBuffer(),
-    });
+    }, { applicantId: applicant.id });
 
     return NextResponse.json({
       fileUrl: uploaded.url,

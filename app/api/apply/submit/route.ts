@@ -311,6 +311,7 @@ export async function POST(request: NextRequest) {
     desiredAmount: formData.amount,
     singpassRawKey: formData.singpassRawKey,
     ascendUserId: null,
+    applicantId: leadId,
   });
 
   const decision = decideSubmission({ eligibility, ascend: ascendResult });

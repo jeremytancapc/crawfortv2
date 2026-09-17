@@ -24,6 +24,8 @@ export async function requestAscendDecision(input: {
   singpassRawKey: string | undefined;
   /** Ascend's own user id, when /openApi/users has already run. */
   ascendUserId: string | null;
+  /** Stamps the log rows, so one customer's calls can be found. */
+  applicantId?: string | null;
 }): Promise<AscendCreditResult | null> {
   // Each `return null` below means no Order, and therefore an applicant who
   // submitted but never appears in Ascend. Recording why is the difference
@@ -34,6 +36,7 @@ export async function requestAscendDecision(input: {
       method: "POST",
       url: "/openApi/apply/credit",
       response_ok: false,
+      applicant_id: input.applicantId ?? null,
       error: reason,
     });
     console.warn(`[ascend] apply/credit skipped: ${reason}`);
@@ -68,10 +71,13 @@ export async function requestAscendDecision(input: {
   }
 
   try {
-    return await ascendApplyCredit({
-      desiredAmount: input.desiredAmount,
-      ...(input.ascendUserId ? { userId: input.ascendUserId } : { myinfo }),
-    });
+    return await ascendApplyCredit(
+      {
+        desiredAmount: input.desiredAmount,
+        ...(input.ascendUserId ? { userId: input.ascendUserId } : { myinfo }),
+      },
+      { applicantId: input.applicantId ?? null },
+    );
   } catch (err) {
     // Logged with Ascend's own code and message: `600` covers a bad signature,
     // a busy service and an order that already exists, and the message is the
