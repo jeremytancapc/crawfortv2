@@ -206,3 +206,58 @@ export function ascendQueryCredit(
 ): Promise<AscendCreditResult> {
   return callAscend<AscendCreditResult>("/openApi/query/credit", { ...input }, options);
 }
+
+/** What the payslip extraction produces, in Ascend's shape. */
+export type AscendIncomeInput = {
+  orderId: string;
+  /** CPF, NOA, PANEL_PAYSLIP, NON_PANEL_PAYSLIP, BANK_STATEMENT_OTHER_INCOME, INCOME_STATEMENT */
+  incomeType: string;
+  /** The three months before this one, most recent first. */
+  m1: number;
+  m2: number;
+  m3: number;
+  /** Whether a document backs these figures. Ascend calls this credible income. */
+  incomeFile: boolean;
+  files: Array<{ fileType: string; fileName: string; fileUrl: string }>;
+};
+
+/**
+ * Submits income against a PENDING order, which re-scores it.
+ *
+ * Only valid while the order is still awaiting income: once it has passed,
+ * Ascend answers `600: order status is not CREATE or ELIGIBILITY`. The
+ * response is the same shape as apply/credit, so the same decision applies.
+ */
+export function ascendSubmitIncome(
+  input: AscendIncomeInput,
+  options?: { config?: AscendConfig },
+): Promise<AscendCreditResult> {
+  const monthlyIncome = Number(((input.m1 + input.m2 + input.m3) / 3).toFixed(2));
+
+  return callAscend<AscendCreditResult>(
+    "/openApi/income/credit",
+    {
+      orderId: input.orderId,
+      income: {
+        incomeType: input.incomeType,
+        documentTypes: [input.incomeType],
+        incomeFile: input.incomeFile,
+        m1: input.m1,
+        m2: input.m2,
+        m3: input.m3,
+        monthlyIncome,
+        yearlyIncome: Number((monthlyIncome * 12).toFixed(2)),
+      },
+      orderFile: input.files,
+    },
+    options,
+  );
+}
+
+/** Records the applicant's chosen plan against the order, as a free-text note. */
+export function ascendAddOrderComment(
+  input: { orderId: string; comments: string },
+  options?: { config?: AscendConfig },
+): Promise<Record<string, unknown>> {
+  return callAscend<Record<string, unknown>>("/openApi/order/comments", { ...input }, options);
+}

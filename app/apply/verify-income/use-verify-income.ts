@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
+import { nextPathAfterSubmit } from "@/lib/post-submit-nav";
 
 export const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -61,9 +62,40 @@ export function lastThreeMonths(from: Date = new Date()): IncomeMonth[] {
     }));
 }
 
-/** Hands off to Singpass; the callback lands on the review step. */
-export function continueToReview() {
-  window.location.assign("/api/auth");
+/**
+ * Sends the extracted figures to Ascend, and follows wherever that lands.
+ *
+ * This used to hand off to Singpass, because the step ran before it. It now
+ * runs after submit, reached only when Ascend answered PENDING - "There is no
+ * income, please submit income" - so continuing means submitting that income
+ * and letting Ascend re-score the order.
+ *
+ * A failure leaves the applicant here with a message rather than moving them
+ * on: they have just uploaded documents, and silently landing them somewhere
+ * else would look like the upload was lost.
+ */
+export async function submitIncome(months: IncomeMonth[]): Promise<string | null> {
+  try {
+    const res = await fetch("/api/apply/income", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        months: months.map((m) => ({ amount: m.amount })),
+        incomeType: "PANEL_PAYSLIP",
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("Income submission failed", await res.text());
+      return null;
+    }
+
+    const result = (await res.json()) as { destination?: string };
+    return nextPathAfterSubmit({ destination: result.destination, leadId: null });
+  } catch (err) {
+    console.error("Income submission failed", err);
+    return null;
+  }
 }
 
 const RESULTS_PATH = "/apply/verify-income?view=results";
@@ -145,6 +177,6 @@ export function useVerifyIncome(initialShowResults = false) {
     incomeMonths,
     uploadMonthNames,
     averageIncome,
-    continueToReview,
+    submitIncome,
   };
 }

@@ -39,9 +39,24 @@ export function VerifyIncomeForm({
     incomeMonths,
     uploadMonthNames,
     averageIncome,
-    continueToReview,
+    submitIncome,
   } = useVerifyIncome(initialShowResults);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Stays on this page when submission fails. The applicant has just uploaded
+  // documents; moving them on silently would look like the upload was lost.
+  async function handleSubmitIncome() {
+    setIsSubmitting(true);
+    const nextPath = await submitIncome(incomeMonths);
+    if (nextPath) {
+      window.location.assign(nextPath);
+      return;
+    }
+    setIsSubmitting(false);
+  }
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   const applyNav = useApplyStepNav("verify");
@@ -215,7 +230,9 @@ export function VerifyIncomeForm({
 
       <StickyFooter nav={stepNav}>
         {showResults ? (
-          <PrimaryButton onClick={continueToReview}>Review Application</PrimaryButton>
+          <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
+            {isSubmitting ? "Submitting\u2026" : "Submit income"}
+          </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleUpload}>
             Upload documents

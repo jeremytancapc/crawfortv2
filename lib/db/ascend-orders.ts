@@ -11,7 +11,7 @@
 
 import { toRiskStatus, type AscendCreditResult } from "@/lib/ascend/client";
 
-import { sqlOne } from "./sql";
+import { sql, sqlOne } from "./sql";
 import type { AscendOrder } from "./types";
 
 /** Postgres raises 23505 for a unique violation. */
@@ -68,4 +68,25 @@ export async function recordAscendOrder(
 
 export function getAscendOrder(applicantId: string): Promise<AscendOrder | null> {
   return sqlOne<AscendOrder>`select * from ascend_orders where applicant_id = ${applicantId}`;
+}
+
+/**
+ * Overwrites an order's decision after Ascend has re-scored it.
+ *
+ * Submitting income turns a PENDING order into a PASS or a REJECT, and the
+ * amounts arrive with it. The order_id does not change - this is the same
+ * Order, decided.
+ */
+export async function updateAscendOrderDecision(
+  applicantId: string,
+  result: AscendCreditResult,
+): Promise<void> {
+  await sql`
+    update ascend_orders set
+      risk_status = ${toRiskStatus(result.risk.riskStatus)},
+      a_card_limit = ${result.creditScore.creditLimit ?? null},
+      maximum_loan_quantum = ${result.creditScore.mlcbMaxLoanAmount ?? null},
+      credit_level = ${result.creditScore.creditLevel ?? null},
+      credit_score = ${result.creditScore.creditScore ?? null}
+    where applicant_id = ${applicantId}`;
 }

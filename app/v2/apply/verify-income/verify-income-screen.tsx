@@ -34,10 +34,23 @@ export function VerifyIncomeScreen({
     incomeMonths,
     uploadMonthNames,
     averageIncome,
-    continueToReview,
+    submitIncome,
   } = useVerifyIncome(initialShowResults);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Stays on this page when submission fails. The applicant has just uploaded
+  // documents; moving them on silently would look like the upload was lost.
+  async function handleSubmitIncome() {
+    setIsSubmitting(true);
+    const nextPath = await submitIncome(incomeMonths);
+    if (nextPath) {
+      window.location.assign(nextPath);
+      return;
+    }
+    setIsSubmitting(false);
+  }
 
   useEffect(() => {
     markApplyStepVisited("verify");
@@ -72,7 +85,9 @@ export function VerifyIncomeScreen({
           </Rows>
         </V2Body>
         <V2Footer note="Next, Singpass fills in your personal details.">
-          <Pill onClick={continueToReview}>Continue</Pill>
+          <Pill onClick={handleSubmitIncome} disabled={isSubmitting}>
+            {isSubmitting ? "Submitting\u2026" : "Continue"}
+          </Pill>
         </V2Footer>
       </V2Screen>
     );
