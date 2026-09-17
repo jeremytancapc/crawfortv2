@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
+import { monthParts } from "@/lib/income-extraction";
 import { nextPathAfterSubmit } from "@/lib/post-submit-nav";
 
 export const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -14,7 +15,14 @@ export const PROCESSING_STATUSES = [
   "Almost done…",
 ];
 
-/** Demo figures - the OCR pipeline is not wired up yet. */
+/**
+ * Shown until the uploaded documents have been read, and left in place if
+ * reading is not switched on - ANTHROPIC_API_KEY unset locally, say.
+ *
+ * `extractionFailed` below says which of those happened. The page does not
+ * render it yet: showing figures nobody read as though they came off a
+ * payslip is a UI decision, not one to make here.
+ */
 const DUMMY_MONTHLY_INCOMES = [4280, 4150, 4200];
 const DEMO_EMPLOYER = "Grab Holdings Limited";
 
@@ -144,7 +152,10 @@ export function useVerifyIncome(initialShowResults = false) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showResults, setShowResults] = useState(initialShowResults);
 
-  const incomeMonths = useMemo(() => lastThreeMonths(), []);
+  // Starts as the demo figures and is replaced by whatever the documents
+  // actually say. State rather than a useMemo so reading them can update it.
+  const [incomeMonths, setIncomeMonths] = useState<IncomeMonth[]>(() => lastThreeMonths());
+  const [extractionFailed, setExtractionFailed] = useState<string | null>(null);
   const uploadMonthNames = useMemo(() => lastThreeMonthNames(), []);
   const averageIncome = useMemo(
     () =>
@@ -175,7 +186,44 @@ export function useVerifyIncome(initialShowResults = false) {
 
   const startProcessing = useCallback(() => {
     setIsProcessing(true);
-  }, []);
+    setExtractionFailed(null);
+
+    // Reading runs while the processing sheet is up. The sheet closes on its
+    // own timer, so a slower read lands afterwards and the figures update in
+    // place rather than holding the applicant on a spinner.
+    void (async () => {
+      try {
+        const body = new FormData();
+        for (const item of files) body.append("files", item.file);
+
+        const res = await fetch("/api/apply/income/extract", { method: "POST", body });
+        const result = (await res.json()) as {
+          status?: string;
+          months?: Array<{ month: string; amount: number; employer: string | null }>;
+          reason?: string;
+          error?: string;
+        };
+
+        if (result.status === "usable" && result.months?.length) {
+          setIncomeMonths(
+            result.months.map((m) => ({
+              ...monthParts(m.month),
+              amount: m.amount,
+              employer: m.employer || "",
+            })),
+          );
+          return;
+        }
+
+        // Read, but not confidently enough to put into a credit decision -
+        // or not attempted at all.
+        setExtractionFailed(result.reason ?? result.error ?? "unreadable");
+      } catch (err) {
+        console.error("Income extraction failed", err);
+        setExtractionFailed("unreachable");
+      }
+    })();
+  }, [files]);
 
   const finishProcessing = useCallback(() => {
     setIsProcessing(false);
@@ -208,5 +256,11 @@ export function useVerifyIncome(initialShowResults = false) {
     uploadMonthNames,
     averageIncome,
     submitIncome,
+    /**
+     * Set when the documents could not be read, or reading is not switched
+     * on. The figures on screen are then the placeholder ones, not anything
+     * off a payslip - the page does not surface this yet.
+     */
+    extractionFailed,
   };
 }
