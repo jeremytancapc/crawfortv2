@@ -46,16 +46,22 @@ export function VerifyIncomeForm({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Stays on this page when submission fails. The applicant has just uploaded
   // documents; moving them on silently would look like the upload was lost.
   async function handleSubmitIncome() {
     setIsSubmitting(true);
-    const nextPath = await submitIncome(incomeMonths, files);
-    if (nextPath) {
-      window.location.assign(nextPath);
+    setSubmitError(null);
+    const result = await submitIncome(incomeMonths, files);
+    if (result.ok) {
+      window.location.assign(result.nextPath);
       return;
     }
+    // Say what went wrong. Clicking Submit and seeing nothing at all is the
+    // worst outcome here: the applicant cannot tell whether it worked, and
+    // has no reason to try again.
+    setSubmitError(result.message);
     setIsSubmitting(false);
   }
 
@@ -246,6 +252,14 @@ export function VerifyIncomeForm({
         )}
       </div>
 
+      {submitError ? (
+        <p
+          role="alert"
+          className="ios-apply-gutter pb-1 text-[13px] font-semibold leading-snug text-[var(--danger,#a92d3a)]"
+        >
+          {submitError}
+        </p>
+      ) : null}
       <StickyFooter nav={stepNav}>
         {showResults ? (
           canSubmit ? (

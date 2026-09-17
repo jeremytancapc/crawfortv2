@@ -54,6 +54,10 @@ export function lastThreeMonthNames(from: Date = new Date()): string {
     .join(", ");
 }
 
+export type SubmitIncomeResult =
+  | { ok: true; nextPath: string }
+  | { ok: false; message: string };
+
 /**
  * Sends the extracted figures to Ascend, and follows wherever that lands.
  *
@@ -69,10 +73,10 @@ export function lastThreeMonthNames(from: Date = new Date()): string {
 export async function submitIncome(
   months: IncomeMonth[],
   selected: SelectedFile[],
-): Promise<string | null> {
+): Promise<SubmitIncomeResult> {
   if (months.length === 0) {
     console.error("Income submission refused: no months were read");
-    return null;
+    return { ok: false, message: "We have no income figures to send. Please upload your payslips again." };
   }
 
   try {
@@ -87,7 +91,10 @@ export async function submitIncome(
       const upload = await fetch("/api/apply/income/upload", { method: "POST", body: form });
       if (!upload.ok) {
         console.error("Document upload failed", await upload.text());
-        return null;
+        return {
+          ok: false,
+          message: `We could not send ${item.name}. Your documents are still here - please try again, or contact us if it keeps failing.`,
+        };
       }
 
       const { fileUrl, fileName } = (await upload.json()) as { fileUrl: string; fileName: string };
@@ -106,14 +113,23 @@ export async function submitIncome(
 
     if (!res.ok) {
       console.error("Income submission failed", await res.text());
-      return null;
+      return {
+        ok: false,
+        message: "We could not submit your income just now. Please try again in a moment.",
+      };
     }
 
     const result = (await res.json()) as { destination?: string };
-    return nextPathAfterSubmit({ destination: result.destination, leadId: null });
+    return {
+      ok: true,
+      nextPath: nextPathAfterSubmit({ destination: result.destination, leadId: null }),
+    };
   } catch (err) {
     console.error("Income submission failed", err);
-    return null;
+    return {
+      ok: false,
+      message: "We could not reach our servers. Please check your connection and try again.",
+    };
   }
 }
 
