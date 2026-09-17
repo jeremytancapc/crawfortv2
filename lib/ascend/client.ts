@@ -317,12 +317,23 @@ export type AscendUploadedFile = {
  * signed envelope as sibling fields - the shape /openApi/docusign uses, since
  * this endpoint's own documentation does not say whether it wants one.
  *
- * UNVERIFIED against a live endpoint. On the `test` environment this answers
- * `500: System error` for every request shape and every file type tried -
- * including no envelope at all, flattened fields, and `data` in place of
- * `fileInfo`. A malformed request returns 502 by their own error table, so a
- * 500 across all of them points at the endpoint rather than the caller. The
- * same environment 404s /openApi/user/myinfo.
+ * UNVERIFIED against a live endpoint, and the evidence says that is not our
+ * doing. On the `test` environment, 2026-09-17, this answered
+ * `500: System error` to 21 attempts: 11 request shapes - the documented
+ * fileInfo, a signed envelope, `data` in place of `fileInfo`, flattened
+ * fields, dot and bracket notation for the nested object, and their own
+ * example value `fileBusiness: "test"` - across three PDFs from 1KB to 415KB,
+ * for a userId holding a valid PENDING order.
+ *
+ * The control settles it: a completely empty POST returns 500 as well, so the
+ * endpoint is not reading the request at all. A malformed request returns 502
+ * by their own error table, and /openApi/users on the same host at the same
+ * moment answers an empty body with a precise
+ * `600: Missing request body for signature verification`.
+ *
+ * So the shape below is as documented and is not what is failing. Re-test
+ * after Ascend's next release rather than rewriting it:
+ *   node scripts/ascend-upload-curl.mjs <userId> <file.pdf> --run
  */
 export async function ascendUploadFile(
   input: {
