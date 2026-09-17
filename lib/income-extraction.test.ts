@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { monthParts, reviewExtraction, type ExtractedMonth } from "./income-extraction";
+import {
+  applicantSafeNote,
+  monthParts,
+  reviewExtraction,
+  type ExtractedMonth,
+} from "./income-extraction";
 
 const THREE: ExtractedMonth[] = [
   { month: "2026-08", amount: 4280, employer: "Grab Holdings Limited" },
@@ -88,5 +93,45 @@ describe("monthParts", () => {
       month: "not-a-month",
       year: "",
     });
+  });
+});
+
+describe("applicantSafeNote", () => {
+  // Both strings below came back from the live API on 2026-09-17, reading
+  // scanned payslips. The model emitted its own tool-call syntax into the
+  // free-text note instead of a sentence. Two of eighteen real documents did
+  // it, and on the `unreadable` path that note becomes the reason shown to
+  // the applicant - so it cannot reach a screen.
+  const LEAKED_SYNTAX =
+    '</antml：parameter>\n<parameter name="months">' +
+    '[{"month": "2025-09", "amount": 11877.20, "employer": "NTUC MY FIRST SKOOL LTD"}]';
+
+  it("drops a note that is the model's own tool-call syntax", () => {
+    expect(applicantSafeNote(LEAKED_SYNTAX)).toBeNull();
+  });
+
+  it("drops a note carrying a raw JSON payload", () => {
+    expect(
+      applicantSafeNote('[{"month": "2025-11", "amount": 4386.00, "employer": "CARLSBERG"}]'),
+    ).toBeNull();
+  });
+
+  it("keeps a real sentence untouched", () => {
+    const real =
+      "Single payslip for October 2025; gross taken as Basic Salary S$20,000. " +
+      'The S$4,435.80 "Exp Reim" line is an expense reimbursement and was excluded.';
+
+    expect(applicantSafeNote(real)).toBe(real);
+  });
+
+  it("keeps a sentence that merely mentions a tag-like word", () => {
+    const real = "Gross is the <b>Total Earning</b> figure, not the YTD column.";
+
+    expect(applicantSafeNote(real)).toBe("Gross is the Total Earning figure, not the YTD column.");
+  });
+
+  it("treats blank and whitespace as no note", () => {
+    expect(applicantSafeNote("")).toBeNull();
+    expect(applicantSafeNote("   \n  ")).toBeNull();
   });
 });

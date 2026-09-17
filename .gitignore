@@ -53,3 +53,14 @@ singpass-jwks.public.json
 
 # Throwaway Postgres for database-backed tests
 .tmp/
+
+# Applicant documents — payslips carry NRIC, bank accounts and home addresses.
+# Read them from wherever they already sit (scripts/read-payslips.mjs takes a
+# path or an s3:// URI); never copy one into the repo. Force-add with `git add
+# -f` only for a fixture you have confirmed holds no real person's details.
+*.pdf
+*.jpg
+*.jpeg
+*.png
+!public/**
+!docs/**

@@ -177,6 +177,45 @@ completeness:
 
 Call report_income exactly once when you have read every document.`;
 
+/**
+ * Makes the model's free-text note safe to show an applicant, or returns null.
+ *
+ * On the `unreadable` path this note becomes the reason on the applicant's
+ * screen, so it is the one model-authored string a customer actually reads.
+ * Reading eighteen real payslips on 2026-09-17, two of them - both slow,
+ * scanned images - came back with the model's own tool-call syntax in this
+ * field instead of a sentence, e.g. a `<parameter name="months">` tag followed
+ * by the JSON array. Structure in a sentence field is never something an
+ * applicant should act on, so it is dropped rather than tidied: no note at all
+ * leaves the caller's own wording in place, which is always readable.
+ *
+ * Angle-bracket tags are stripped from otherwise good prose (a note may
+ * legitimately quote a payslip line), but a note that is *made of* markup or
+ * JSON is discarded whole.
+ */
+export function applicantSafeNote(note: string | null | undefined): string | null {
+  if (!note) return null;
+
+  const trimmed = note.trim();
+  if (!trimmed) return null;
+
+  // Structural leftovers: a closing tag for a parameter/function/invoke block,
+  // or an opening one. These only appear when the model has spilled its own
+  // call syntax into prose.
+  if (/<\/?(?:antml|parameter|function_calls|invoke)/i.test(trimmed)) return null;
+
+  // A note that is really a JSON object or array, not a sentence.
+  if (/^[[{]/.test(trimmed) && /[\]}]\s*$/.test(trimmed)) return null;
+
+  const withoutTags = trimmed.replace(/<[^>]*>/g, "").trim();
+  if (!withoutTags) return null;
+
+  // After stripping tags, a "sentence" with no letters is not a sentence.
+  if (!/\p{L}/u.test(withoutTags)) return null;
+
+  return withoutTags;
+}
+
 export type ExtractionOutcome =
   | (ExtractionReview & { note: string | null })
   | { kind: "unreadable"; reason: string; months: ExtractedMonth[] };
@@ -263,12 +302,14 @@ export async function extractIncome(
   if (!reported.readable) {
     return {
       kind: "unreadable",
-      reason: reported.note || "The documents could not be read as payslips.",
+      reason:
+        applicantSafeNote(reported.note) ??
+        "The documents could not be read as payslips.",
       months,
     };
   }
 
-  return { ...reviewExtraction(months), note: reported.note || null };
+  return { ...reviewExtraction(months), note: applicantSafeNote(reported.note) };
 }
 
 /**
