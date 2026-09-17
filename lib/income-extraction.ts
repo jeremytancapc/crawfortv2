@@ -6,6 +6,14 @@
  * is therefore a wrong credit decision about a real person, so the rule
  * throughout is: when the documents do not clearly say, do not guess - hand
  * it to a human instead.
+ *
+ * Verified against the live API on 2026-09-17 with generated Singapore
+ * payslips carrying three traps at once - a year-to-date column beside the
+ * monthly figure, a net-pay line below it, and a payment date a month after
+ * the pay period. Gross for the right month came back on all three, and the
+ * two refusal paths held: a bank letter returned unreadable with a reason an
+ * applicant could act on, and two payslips were refused rather than padded
+ * to three.
  */
 
 export type ExtractedMonth = {
