@@ -1,0 +1,279 @@
+{
+  "info": {
+    "name": "Ascend Open API — diagnostics",
+    "description": "Work through the folders in order. Each request's Test tab prints a plain-English verdict, so you can tell where the problem is before asking anyone.\n\n0. Auth — is the appId/secret accepted at all?\n1. Known-good — the calls that were working.\n2. file/upload — the one returning errors, in every documented shape.\n\nSet appId and appSecret in the collection variables. Switch environment with the baseUrl variable, or use the supplied environment files.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://api-mms.newtime.top", "description": "test. uat: https://api-admin-uat-ascend.crawfort.com  prod: https://api-admin-ascend.crawfort.com" },
+    { "key": "appId", "value": "", "description": "Note: 10001 is the value in Ascend's own documentation example." },
+    { "key": "appSecret", "value": "" },
+    { "key": "idNumber", "value": "S7790721A" },
+    { "key": "phone", "value": "91234567" },
+    { "key": "desiredAmount", "value": "5000" },
+    { "key": "userId", "value": "", "description": "Captured automatically by 1a." },
+    { "key": "orderId", "value": "", "description": "Captured automatically by 1b." },
+    { "key": "dataJson", "value": "" },
+    { "key": "timestamp", "value": "" },
+    { "key": "nonce", "value": "" },
+    { "key": "sign", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Ascend request signing. Shared by every request in this collection,",
+          "// so no request can be dismissed as 'signed differently'.",
+          "//",
+          "// HMAC-SHA256: `sign` excluded, empty values dropped, keys in ASCII",
+          "// order, joined key=value with &. UPPERCASE hex - lowercase returns 600.",
+          "// `data` participates as its JSON string.",
+          "//",
+          "// Each request signs freshly: `nonce` must be unique per request, and",
+          "// reusing one returns 401, which reads like bad credentials and is not.",
+          "",
+          "const CryptoJS = require('crypto-js');",
+          "",
+          "const appId  = pm.collectionVariables.get('appId');",
+          "const secret = pm.collectionVariables.get('appSecret');",
+          "const data   = pm.collectionVariables.get('dataJson') || '';",
+          "",
+          "if (!appId || !secret) {",
+          "  throw new Error('Set appId and appSecret in the collection variables first.');",
+          "}",
+          "",
+          "const timestamp = String(Date.now());",
+          "const nonce = 'pm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);",
+          "",
+          "const params = { appId: appId, timestamp: timestamp, nonce: nonce, data: data };",
+          "",
+          "const signString = Object.keys(params)",
+          "  .filter(function (k) { return k !== 'sign'; })",
+          "  .filter(function (k) { return params[k] !== undefined && params[k] !== null && params[k] !== ''; })",
+          "  .sort()",
+          "  .map(function (k) { return k + '=' + params[k]; })",
+          "  .join('&');",
+          "",
+          "pm.collectionVariables.set('timestamp', timestamp);",
+          "pm.collectionVariables.set('nonce', nonce);",
+          "pm.collectionVariables.set('sign', CryptoJS.HmacSHA256(signString, secret).toString(CryptoJS.enc.Hex).toUpperCase());",
+          "",
+          "console.log('signed string: ' + signString);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Shared verdict. Every response is one of a small set of shapes.",
+          "let body;",
+          "try { body = pm.response.json(); } catch (e) { console.log('Not JSON: ' + pm.response.text().slice(0, 200)); return; }",
+          "",
+          "const verdicts = {",
+          "  '10000': 'OK.',",
+          "  '401': 'Authentication failed. The appId/secret is not accepted. An UNSIGNED request returns this too, so it is not specific to your signature. Check 0a and 0b.',",
+          "  '600': 'Business error. Also what a bad signature returns - read msg to tell which.',",
+          "  '502': 'Parameter error. The request reached the endpoint and was understood; something in the payload is wrong.',",
+          "  '500': 'System error on their side. Not a signature problem: a bad signature returns 600 and a malformed request returns 502.',",
+          "  '404': 'Endpoint not present on this environment.'",
+          "};",
+          "",
+          "console.log('code ' + body.code + ' — ' + (verdicts[body.code] || body.msg));",
+          "pm.test('code is 10000', function () { pm.expect(body.code).to.eql('10000'); });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "0a. Unsigned request (baseline)",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('dataJson', '');"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "console.log('Baseline: with NO credentials, Ascend answers ' + body.code + ' ' + body.msg);",
+              "console.log('If 0b returns the same thing, your credentials are being treated as absent.');",
+              "pm.test('baseline captured', function () { pm.expect(body.code).to.be.a('string'); });"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/openApi/users", "host": ["{{baseUrl}}"], "path": ["openApi", "users"] },
+            "body": { "mode": "raw", "raw": "{}" },
+            "description": "Sends nothing. Establishes what a rejected request looks like, so 0b can be compared against it."
+          }
+        },
+        {
+          "name": "0b. Signed with your credentials",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "pm.collectionVariables.set('dataJson', JSON.stringify({ idNumber: pm.collectionVariables.get('idNumber'), phone: pm.collectionVariables.get('phone') }));"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "if (body.code === '10000') { console.log('Credentials are good. Everything below is testable.'); }",
+              "else if (body.code === '401') { console.log('Same as the unsigned baseline: this appId/secret is not accepted. Nothing below will work until that is fixed.'); }",
+              "pm.test('credentials accepted', function () { pm.expect(body.code).to.eql('10000'); });"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/openApi/users", "host": ["{{baseUrl}}"], "path": ["openApi", "users"] },
+            "body": { "mode": "raw", "raw": "{\n  \"appId\": \"{{appId}}\",\n  \"timestamp\": \"{{timestamp}}\",\n  \"nonce\": \"{{nonce}}\",\n  \"sign\": \"{{sign}}\",\n  \"data\": {\n    \"idNumber\": \"{{idNumber}}\",\n    \"phone\": \"{{phone}}\"\n  }\n}"
+            },
+            "description": "The decisive request. If this returns 401 the credentials are the problem and nothing else in this collection can be concluded from."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Known-good calls",
+      "item": [
+        {
+          "name": "1a. users — identify, New vs Reloan",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "pm.collectionVariables.set('dataJson', JSON.stringify({ idNumber: pm.collectionVariables.get('idNumber'), phone: pm.collectionVariables.get('phone') }));"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "if (body.data && body.data.userId) {",
+              "  pm.collectionVariables.set('userId', body.data.userId);",
+              "  console.log('userId ' + body.data.userId + '  newCustomer=' + body.data.newCustomer + '  hasMyinfo=' + body.data.hasMyinfo);",
+              "  console.log(body.data.newCustomer ? 'New Customer.' : 'RELOAN — leaves the web funnel before any credit pull.');",
+              "}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/openApi/users", "host": ["{{baseUrl}}"], "path": ["openApi", "users"] },
+            "body": { "mode": "raw", "raw": "{\n  \"appId\": \"{{appId}}\",\n  \"timestamp\": \"{{timestamp}}\",\n  \"nonce\": \"{{nonce}}\",\n  \"sign\": \"{{sign}}\",\n  \"data\": {\n    \"idNumber\": \"{{idNumber}}\",\n    \"phone\": \"{{phone}}\"\n  }\n}" },
+            "description": "Creates the user as well as looking them up, and captures userId for the upload requests. Not read-only."
+          }
+        },
+        {
+          "name": "1b. apply/credit — the credit decision",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "if (!pm.collectionVariables.get('userId')) { throw new Error('Run 1a first — it captures a userId.'); }",
+              "pm.collectionVariables.set('dataJson', JSON.stringify({",
+              "  userId: pm.collectionVariables.get('userId'),",
+              "  desiredAmount: Number(pm.collectionVariables.get('desiredAmount'))",
+              "}));"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "if (body.data && body.data.orderId) {",
+              "  pm.collectionVariables.set('orderId', body.data.orderId);",
+              "  const cs = body.data.creditScore || {};",
+              "  console.log('orderId ' + body.data.orderId + '  ' + body.data.risk.riskStatus);",
+              "  console.log('A-Card Limit ' + cs.creditLimit + '   MLCB max ' + cs.mlcbMaxLoanAmount);",
+              "}",
+              "if (body.code === '600' && /authoriz/i.test(body.msg || '')) {",
+              "  console.log('This user has not authorised MyInfo with Ascend. Send the whole myinfo object instead of userId.');",
+              "}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/openApi/apply/credit", "host": ["{{baseUrl}}"], "path": ["openApi", "apply", "credit"] },
+            "body": { "mode": "raw", "raw": "{\n  \"appId\": \"{{appId}}\",\n  \"timestamp\": \"{{timestamp}}\",\n  \"nonce\": \"{{nonce}}\",\n  \"sign\": \"{{sign}}\",\n  \"data\": {\n    \"userId\": \"{{userId}}\",\n    \"desiredAmount\": {{desiredAmount}}\n  }\n}" },
+            "description": "NOT a quote — this creates an Order, and should happen once per applicant. Captures orderId.\n\nuserId only works when that user has already authorised MyInfo with Ascend; otherwise it answers `600: The user has not authorized myinfo` and you must send the full myinfo object."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. file/upload — under test",
+      "description": "Every shape the documentation allows. Attach a PDF, JPG or PNG to the `file` field of each.",
+      "item": [
+        {
+          "name": "2a. documented: file + fileInfo",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "if (!pm.collectionVariables.get('userId')) { throw new Error('Run 1a first.'); }",
+            "pm.collectionVariables.set('dataJson', JSON.stringify({ userId: pm.collectionVariables.get('userId'), fileSource: 'web', fileBusiness: 'income' }));"
+          ] } }],
+          "request": {
+            "method": "POST", "header": [],
+            "url": { "raw": "{{baseUrl}}/openApi/file/upload", "host": ["{{baseUrl}}"], "path": ["openApi", "file", "upload"] },
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "file", "type": "file", "src": [], "description": "Attach any PDF, JPG or PNG." },
+              { "key": "fileInfo", "value": "{{dataJson}}", "type": "text" },
+              { "key": "appId", "value": "{{appId}}", "type": "text" },
+              { "key": "timestamp", "value": "{{timestamp}}", "type": "text" },
+              { "key": "nonce", "value": "{{nonce}}", "type": "text" },
+              { "key": "sign", "value": "{{sign}}", "type": "text" }
+            ] },
+            "description": "The shape section 6.2 of the documentation describes, with the signed envelope alongside."
+          }
+        },
+        {
+          "name": "2b. envelope with data instead of fileInfo",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('dataJson', JSON.stringify({ userId: pm.collectionVariables.get('userId'), fileSource: 'web', fileBusiness: 'income' }));"
+          ] } }],
+          "request": {
+            "method": "POST", "header": [],
+            "url": { "raw": "{{baseUrl}}/openApi/file/upload", "host": ["{{baseUrl}}"], "path": ["openApi", "file", "upload"] },
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "file", "type": "file", "src": [] },
+              { "key": "data", "value": "{{dataJson}}", "type": "text" },
+              { "key": "appId", "value": "{{appId}}", "type": "text" },
+              { "key": "timestamp", "value": "{{timestamp}}", "type": "text" },
+              { "key": "nonce", "value": "{{nonce}}", "type": "text" },
+              { "key": "sign", "value": "{{sign}}", "type": "text" }
+            ] },
+            "description": "Named `data`, matching every other endpoint and the /openApi/docusign form."
+          }
+        },
+        {
+          "name": "2c. fileInfo fields flattened",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('dataJson', JSON.stringify({ userId: pm.collectionVariables.get('userId'), fileSource: 'web', fileBusiness: 'income' }));"
+          ] } }],
+          "request": {
+            "method": "POST", "header": [],
+            "url": { "raw": "{{baseUrl}}/openApi/file/upload", "host": ["{{baseUrl}}"], "path": ["openApi", "file", "upload"] },
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "file", "type": "file", "src": [] },
+              { "key": "userId", "value": "{{userId}}", "type": "text" },
+              { "key": "fileSource", "value": "web", "type": "text" },
+              { "key": "fileBusiness", "value": "income", "type": "text" },
+              { "key": "appId", "value": "{{appId}}", "type": "text" },
+              { "key": "timestamp", "value": "{{timestamp}}", "type": "text" },
+              { "key": "nonce", "value": "{{nonce}}", "type": "text" },
+              { "key": "sign", "value": "{{sign}}", "type": "text" }
+            ] },
+            "description": "fileInfo spread into separate form fields rather than one JSON value."
+          }
+        },
+        {
+          "name": "2d. file + fileInfo only, no envelope",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('dataJson', JSON.stringify({ userId: pm.collectionVariables.get('userId'), fileSource: 'web', fileBusiness: 'income' }));"
+          ] } }],
+          "request": {
+            "method": "POST", "header": [],
+            "url": { "raw": "{{baseUrl}}/openApi/file/upload", "host": ["{{baseUrl}}"], "path": ["openApi", "file", "upload"] },
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "file", "type": "file", "src": [] },
+              { "key": "fileInfo", "value": "{{dataJson}}", "type": "text" }
+            ] },
+            "description": "Exactly what the documentation lists and nothing more — no appId, no signature. Expect 401 if the endpoint authenticates like the others; anything else is informative."
+          }
+        }
+      ]
+    }
+  ]
+}
