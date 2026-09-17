@@ -642,7 +642,10 @@ export function AppointmentBooking({
                   </div>
 
                   {/* Day grid */}
-                  <div className="grid grid-cols-7 p-2 gap-1.5">
+                  <div
+                    className="grid grid-cols-7 p-2 gap-1.5"
+                    style={{ background: "var(--surface-sunken)" }}
+                  >
                     {(() => {
                       const year = calendarMonth.getFullYear();
                       const month = calendarMonth.getMonth();
@@ -664,7 +667,7 @@ export function AppointmentBooking({
                         const disabled = !inWindow || isHolidayOrSunday;
                         const isSelected = selectedDate === iso;
                         const isToday = iso === todayIso;
-                        const showRedDot = isHolidayOrSunday && inWindow && !isSelected;
+                        const showRedDot = isHolidayOrSunday && !isSelected;
 
                         cells.push(
                           <button
@@ -677,32 +680,35 @@ export function AppointmentBooking({
                               setSlotNeed(null);
                               setCalendarOpen(false);
                             }}
-                            className={`relative flex aspect-square items-center justify-center rounded-[var(--radius-sm)] text-sm font-medium transition-all duration-150 active:scale-[0.93] ${
+                            className={`relative flex aspect-square items-center justify-center rounded-[var(--radius-sm)] text-sm transition-all duration-150 active:scale-[0.93] ${
                               disabled
                                 ? "cursor-not-allowed"
                                 : isSelected
                                   ? "cursor-pointer"
-                                  : "cursor-pointer hover:border-[var(--border-medium)] hover:bg-[var(--surface-secondary)]"
+                                  : "cursor-pointer hover:brightness-[0.97]"
                             }`}
                             style={{
                               background: isSelected
                                 ? "var(--brand-blue-hex)"
                                 : disabled
-                                  ? "var(--surface-secondary)"
+                                  ? "transparent"
                                   : "var(--surface-elevated)",
                               border: isSelected
                                 ? "1px solid var(--brand-blue-hex)"
                                 : disabled
                                   ? "1px solid transparent"
-                                  : "1px solid var(--border-subtle)",
+                                  : "1px solid var(--border-medium)",
                               color: isSelected
                                 ? "#fff"
                                 : disabled
-                                  ? "var(--text-tertiary)"
+                                  ? "#c7c7cc"
                                   : "var(--text-primary)",
-                              opacity: disabled && !inWindow ? 0.45 : disabled ? 0.6 : 1,
+                              boxShadow:
+                                !disabled && !isSelected
+                                  ? "0 1px 0 rgba(0,0,0,0.06)"
+                                  : undefined,
                               pointerEvents: disabled ? "none" : "auto",
-                              fontWeight: isToday ? 800 : 500,
+                              fontWeight: isToday ? 800 : disabled ? 500 : 650,
                             }}
                           >
                             {day}
@@ -715,7 +721,7 @@ export function AppointmentBooking({
                             {showRedDot && (
                               <span
                                 className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
-                                style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px var(--surface-secondary)" }}
+                                style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px var(--surface-sunken)" }}
                               />
                             )}
                           </button>
