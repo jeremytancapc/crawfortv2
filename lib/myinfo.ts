@@ -49,14 +49,14 @@ const MARITAL_CODES: Record<string, string> = {
  * gives undefined, every field maps to empty, and the applicant continues
  * with a blank application while nothing raises an error.
  */
-function personData(payload: Record<string, unknown>): Record<string, unknown> {
+export function myinfoPersonData(payload: Record<string, unknown>): Record<string, unknown> {
   const nested = payload.person_info;
   if (nested && typeof nested === "object") return nested as Record<string, unknown>;
   return payload;
 }
 
 export function buildMyInfoPatch(payload: Record<string, unknown>): Partial<LoanFormData> {
-  const myinfo = personData(payload);
+  const myinfo = myinfoPersonData(payload);
   const patch: Partial<LoanFormData> = {};
 
   if (myinfo.name)   patch.fullName = str(myinfo.name);

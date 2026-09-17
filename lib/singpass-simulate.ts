@@ -28,10 +28,20 @@ function monthsBefore(ref: Date, offset: number): Date {
   return new Date(ref.getFullYear(), ref.getMonth() - offset, 1);
 }
 
-/** Builds a fresh, always-approvable MyInfo payload for the Singpass simulation. */
+/**
+ * Builds a fresh, always-approvable MyInfo payload for the Singpass
+ * simulation, in the shape the real Lambda sends.
+ *
+ * That shape matters more than it looks. FAPI 2.0 wraps the person in
+ * `person_info` alongside sub, iss and aud, where the legacy API put those
+ * fields at the top level - and lib/mock-singpass-payload.json is a legacy
+ * payload. A simulation that emitted the legacy shape would exercise a
+ * different code path than production on every local run, which is exactly
+ * how a mapper that could not read a real payload went unnoticed.
+ */
 export function buildSimulatedMyInfoPayload(ref: Date = new Date()): SimulatedMyInfoPayload {
-  const base = structuredClone(mockPayload) as SimulatedMyInfoPayload;
-  const myinfo = base.myinfo as Record<string, unknown>;
+  const base = structuredClone(mockPayload) as { myinfo: Record<string, unknown> };
+  const myinfo = base.myinfo;
 
   // CPF contributions - most recent entry is last month, so `scoreCpf` always
   // sees data within its 2-month staleness window.
@@ -58,9 +68,20 @@ export function buildSimulatedMyInfoPayload(ref: Date = new Date()): SimulatedMy
     row.yearofassessment = { value: String(ref.getFullYear() - 1 - i) };
   });
 
+  // The OIDC envelope the legacy fixture carries at the top level; sub in
+  // particular is a bare UUID under FAPI 2.0, and Ascend keys identity on it.
+  const { sub: _legacySub, iss: _legacyIss, aud, iat, ...person } = myinfo;
+
   return {
-    ...base,
-    myinfo,
+    myinfo: {
+      iss: "https://stg-id.singpass.gov.sg/fapi",
+      sub: randomUUID(),
+      aud,
+      iat: iat ?? Math.floor(ref.getTime() / 1000),
+      person_info: person,
+    },
     state: randomUUID(),
+    code: 200,
+    message: "success",
   };
 }

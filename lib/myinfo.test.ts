@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildMyInfoPatch } from "./myinfo";
+import { buildMyInfoPatch, myinfoPersonData } from "./myinfo";
 import mockPayload from "./mock-singpass-payload.json";
 
 const LEGACY = mockPayload.myinfo as Record<string, unknown>;
@@ -49,5 +49,25 @@ describe("buildMyInfoPatch", () => {
     // the applicant came through Singpass, whatever the payload turned out
     // to contain.
     expect(buildMyInfoPatch({ unexpected: true })).toEqual({ authMethod: "singpass" });
+  });
+});
+
+describe("myinfoPersonData", () => {
+  it("unwraps a FAPI 2.0 payload to the person", () => {
+    expect(myinfoPersonData(FAPI2)).toBe(LEGACY);
+  });
+
+  it("returns a legacy payload unchanged", () => {
+    expect(myinfoPersonData(LEGACY)).toBe(LEGACY);
+  });
+
+  it("drops the OIDC envelope, which is not part of the person", () => {
+    // Ascend's /openApi/apply/credit was verified against the flat shape.
+    // Forwarding the envelope would hand it sub, iss and aud where it looks
+    // for uinfin.
+    const person = myinfoPersonData(FAPI2);
+
+    expect(person).not.toHaveProperty("person_info");
+    expect(person).toHaveProperty("uinfin");
   });
 });

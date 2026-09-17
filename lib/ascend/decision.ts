@@ -11,6 +11,7 @@
  */
 
 import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
+import { myinfoPersonData } from "@/lib/myinfo";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 
 import { ascendApplyCredit, AscendError, type AscendCreditResult } from "./client";
@@ -32,10 +33,16 @@ export async function requestAscendDecision(input: {
   let myinfo: Record<string, unknown> | undefined;
   if (!input.ascendUserId) {
     if (!input.singpassRawKey || !isDatabaseConfigured()) return null;
-    myinfo = (await getMyinfoRetrieval(input.singpassRawKey)) ?? undefined;
+    const stored = await getMyinfoRetrieval(input.singpassRawKey);
     // The retrieval expires. Without it there is nothing to identify the
     // applicant to Ascend, and inventing one is not an option.
-    if (!myinfo) return null;
+    if (!stored) return null;
+
+    // Unwrapped, not forwarded verbatim. A FAPI 2.0 payload wraps the person
+    // in `person_info` alongside sub, iss and aud; Ascend was verified
+    // against the flat shape and looks for `uinfin` at the top level, so
+    // handing it the envelope would find nothing there.
+    myinfo = myinfoPersonData(stored);
   }
 
   try {
