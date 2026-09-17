@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Ascend Open API \u2014 diagnostics",
-    "description": "Ascend Open API diagnostics. Everything needed is in this one file.\n\n\u2501\u2501\u2501 SETUP \u2501\u2501\u2501\nOpen the collection's Variables tab and fill in appId and appSecret.\nbaseUrl defaults to test. To switch:\n  test  https://api-mms.newtime.top\n  uat   https://api-admin-uat-ascend.crawfort.com\n  prod  https://api-admin-ascend.crawfort.com\n\n\u2501\u2501\u2501 ORDER OF WORK \u2501\u2501\u2501\n0. Auth          Is this appId/secret accepted at all?\n1. Known-good    Do the calls that were working still work?\n2. file/upload   Does upload fail differently from everything else?\n\nSTART WITH FOLDER 0. It tells you whether anything else is worth running.\n  0a sends NO credentials, so you can see what a rejected request looks like.\n  0b sends yours. If both answer the same thing, your credentials are being\n  treated as absent and nothing below is meaningful.\n\nOpen the Postman Console (View > Show Postman Console). Every request prints\na plain-English verdict there.\n\n\u2501\u2501\u2501 READING THE CODES \u2501\u2501\u2501\n  10000  Success\n  401    Not authenticated. An UNSIGNED request returns this too.\n  600    Business error - AND what a bad signature returns. Read msg.\n  502    Parameter error. Request understood; the payload is wrong.\n  500    Their system error. Not signing - a bad signature returns 600.\n  404    Endpoint not present on this environment.\n\nThat distinction is the point of the collection. A 500 on file/upload while\n0b returns 10000 means the endpoint is at fault and your signing is not, and\nnobody has to take your word for it.\n\n\u2501\u2501\u2501 CAREFUL \u2501\u2501\u2501\n  1a CREATES a user. /openApi/users is not read-only.\n  1b CREATES an Order and spends a credit pull. Once per applicant.\n\nEach request signs freshly. Reusing a nonce returns 401, which reads exactly\nlike bad credentials and is not.\n\n\u2501\u2501\u2501 OBSERVED ON 2026-09-17 (test) \u2501\u2501\u2501\n                    0b / users     file/upload\n  Earlier           10000          500 System error\n  Later             401            401\n\nWhile the control succeeded, the 500 was specific to file/upload - same\ncredentials, same signing, different result.\n\nThe later 401 hits EVERY endpoint including the control, on test, uat and\nprod alike. Ruled out: clock skew (zero against Ascend's own Date header),\nwhitespace or quotes in the secret, and nonce reuse. The appId in use is\n10001, which is the value in Ascend's own documentation example, and it did\nwork earlier the same day.\n\n\u2501\u2501\u2501 WHY UPLOAD MATTERS \u2501\u2501\u2501\n/openApi/income/credit refuses income with no documents behind it:\n  600: orderFile is required\norderFile takes the URLs file/upload returns. Until it works, an applicant\nAscend leaves PENDING - \"There is no income, please submit income\" - cannot\nfinish their application. That is the entire payslip path.",
+    "name": "Ascend Open API — diagnostics",
+    "description": "Crawfort ↔ Ascend Open API.\n\nSet appSecret in the collection variables before running anything. The\npre-request script signs every call, so nothing has to be signed by hand -\nwhich matters, because the signature covers a timestamp Ascend rejects if it\nis more than five minutes off its own clock.\n\nVerified against the test environment on 2026-09-17:\n\n  users         works. Returns userId, newCustomer, hasMyinfo.\n  apply/credit  works ONLY with the full myinfo object. Sending userId alone\n                returns 500 even when users reported hasMyinfo true.\n  file/upload   returns 500: System error for every shape tried, with a valid\n                userId that already has a PENDING order.\n  order/query   404s on this environment.\n\nappId 10001 is the real credential, not the documentation's placeholder.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -123,7 +123,7 @@
           "  '404': 'Endpoint not present on this environment.'",
           "};",
           "",
-          "console.log('code ' + body.code + ' \u2014 ' + (verdicts[body.code] || body.msg));",
+          "console.log('code ' + body.code + ' — ' + (verdicts[body.code] || body.msg));",
           "pm.test('code is 10000', function () { pm.expect(body.code).to.eql('10000'); });"
         ]
       }
@@ -239,7 +239,7 @@
       "name": "1. Known-good calls",
       "item": [
         {
-          "name": "1a. users \u2014 identify, New vs Reloan",
+          "name": "1a. users — identify, New vs Reloan",
           "event": [
             {
               "listen": "prerequest",
@@ -259,7 +259,7 @@
                   "if (body.data && body.data.userId) {",
                   "  pm.collectionVariables.set('userId', body.data.userId);",
                   "  console.log('userId ' + body.data.userId + '  newCustomer=' + body.data.newCustomer + '  hasMyinfo=' + body.data.hasMyinfo);",
-                  "  console.log(body.data.newCustomer ? 'New Customer.' : 'RELOAN \u2014 leaves the web funnel before any credit pull.');",
+                  "  console.log(body.data.newCustomer ? 'New Customer.' : 'RELOAN — leaves the web funnel before any credit pull.');",
                   "}"
                 ]
               }
@@ -291,14 +291,14 @@
           }
         },
         {
-          "name": "1b. apply/credit \u2014 the credit decision",
+          "name": "1b. apply/credit — userId only (RETURNS 500)",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.collectionVariables.get('userId')) { throw new Error('Run 1a first \u2014 it captures a userId.'); }",
+                  "if (!pm.collectionVariables.get('userId')) { throw new Error('Run 1a first — it captures a userId.'); }",
                   "pm.collectionVariables.set('dataJson', JSON.stringify({",
                   "  userId: pm.collectionVariables.get('userId'),",
                   "  desiredAmount: Number(pm.collectionVariables.get('desiredAmount'))",
@@ -348,14 +348,47 @@
               "mode": "raw",
               "raw": "{\n  \"appId\": \"{{appId}}\",\n  \"timestamp\": \"{{timestamp}}\",\n  \"nonce\": \"{{nonce}}\",\n  \"sign\": \"{{sign}}\",\n  \"data\": {\n    \"userId\": \"{{userId}}\",\n    \"desiredAmount\": {{desiredAmount}}\n  }\n}"
             },
-            "description": "NOT a quote \u2014 this creates an Order, and should happen once per applicant. Captures orderId.\n\nuserId only works when that user has already authorised MyInfo with Ascend; otherwise it answers `600: The user has not authorized myinfo` and you must send the full myinfo object."
+            "description": "The cheap shape: identify with /openApi/users first, then send the userId alone. It does not work.\n\n2026-09-17, userId 1550194515653763072, after users returned hasMyinfo: true — this returned {\"code\":\"500\",\"msg\":\"System error\"}. The same user succeeded minutes earlier and later when the full myinfo object was sent instead.\n\nQuestion for Ascend: is userId-only supported at all? If so, what makes this 500?"
+          }
+        },
+        {
+          "name": "1c. apply/credit — full myinfo (WORKS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/openApi/apply/credit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openApi",
+                "apply",
+                "credit"
+              ]
+            },
+            "description": "What the application actually sends, and the only shape that has worked. Paste a real MyInfo person object into `myinfo` - the flat shape with uinfin at the top level, NOT the FAPI 2.0 envelope that wraps it in person_info.\n\nConfirmed 2026-09-17: created order 1550205686196785152, riskStatus PENDING.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appId\": \"{{appId}}\",\n  \"timestamp\": \"{{timestamp}}\",\n  \"nonce\": \"{{nonce}}\",\n  \"sign\": \"{{sign}}\",\n  \"data\": {\n    \"desiredAmount\": \"{{desiredAmount}}\",\n    \"myinfo\": {\n      \"uinfin\": \"S1234567D\",\n      \"name\": \"PASTE A REAL MYINFO OBJECT HERE\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           }
         }
       ]
     },
     {
-      "name": "2. file/upload \u2014 under test",
-      "description": "Every shape the documentation allows. Attach a PDF, JPG or PNG to the `file` field of each.",
+      "name": "2. file/upload — all shapes return 500",
+      "description": "Four request shapes, all returning 500: System error on 2026-09-17, with userId 1550194515653763072 which had a valid PENDING order at the time.\n\nRun all four and send Ascend the results together: every shape failing is much stronger evidence than one shape failing. A malformed request is documented to return 502, not 500.\n\nEquivalent curl, freshly signed:\n  node scripts/ascend-upload-curl.mjs <userId> <file.pdf>",
       "item": [
         {
           "name": "2a. documented: file + fileInfo",
@@ -606,7 +639,7 @@
                 }
               ]
             },
-            "description": "Exactly what the documentation lists and nothing more \u2014 no appId, no signature. Expect 401 if the endpoint authenticates like the others; anything else is informative."
+            "description": "Exactly what the documentation lists and nothing more — no appId, no signature. Expect 401 if the endpoint authenticates like the others; anything else is informative."
           }
         }
       ]
