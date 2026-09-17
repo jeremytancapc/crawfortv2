@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/db/client";
+import { recordPlanOnAscendOrder } from "@/lib/ascend/record-plan";
 import {
   MIN_OFFER_TENURE,
   MAX_OFFER_TENURE,
@@ -144,6 +145,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.info(`${LOG} plan saved`, { leadId, planId, tenure, amount, additionalRequests });
+
+    // Record the choice against the Ascend Order, so staff see it where they
+    // work rather than only in our own database. Fire-and-forget on purpose:
+    // the plan is already saved, and a failed note must not cost the applicant
+    // a step they have completed.
+    void recordPlanOnAscendOrder(leadId, {
+      planId,
+      amount,
+      tenure,
+      monthlyInstalment: monthlyInstalment ?? null,
+      additionalRequests: requestLabels,
+      isCustomPlan,
+    });
 
     const res = NextResponse.json({ ok: true });
     res.cookies.set(planAdditionalRequestsCookieValue(additionalRequests));
