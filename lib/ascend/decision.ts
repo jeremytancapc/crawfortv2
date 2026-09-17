@@ -16,6 +16,7 @@ import { isDatabaseConfigured } from "@/lib/db/sql";
 
 import { ascendApplyCredit, AscendError, type AscendCreditResult } from "./client";
 import { ascendConfig } from "./config";
+import { insertApiLog } from "@/lib/db/events";
 
 export async function requestAscendDecision(input: {
   desiredAmount: number;
@@ -24,7 +25,22 @@ export async function requestAscendDecision(input: {
   /** Ascend's own user id, when /openApi/users has already run. */
   ascendUserId: string | null;
 }): Promise<AscendCreditResult | null> {
-  if (!ascendConfig()) return null;
+  // Each `return null` below means no Order, and therefore an applicant who
+  // submitted but never appears in Ascend. Recording why is the difference
+  // between support answering that question in a minute and not at all.
+  const skip = (reason: string) => {
+    void insertApiLog({
+      tag: "[ascend]skipped",
+      method: "POST",
+      url: "/openApi/apply/credit",
+      response_ok: false,
+      error: reason,
+    });
+    console.warn(`[ascend] apply/credit skipped: ${reason}`);
+    return null;
+  };
+
+  if (!ascendConfig()) return skip("Ascend is not configured in this environment");
 
   // Prefer the userId: it is a far smaller request, and Ascend accepts it
   // once it already holds that person's MyInfo. Otherwise the whole payload
@@ -32,11 +48,17 @@ export async function requestAscendDecision(input: {
   // `600: The user has not authorized myinfo`.
   let myinfo: Record<string, unknown> | undefined;
   if (!input.ascendUserId) {
-    if (!input.singpassRawKey || !isDatabaseConfigured()) return null;
+    if (!input.singpassRawKey || !isDatabaseConfigured()) {
+      return skip(
+        input.singpassRawKey
+          ? "no database, so the stored MyInfo could not be read"
+          : "no MyInfo key in the session",
+      );
+    }
     const stored = await getMyinfoRetrieval(input.singpassRawKey);
     // The retrieval expires. Without it there is nothing to identify the
     // applicant to Ascend, and inventing one is not an option.
-    if (!stored) return null;
+    if (!stored) return skip("the stored MyInfo retrieval has expired or was never written");
 
     // Unwrapped, not forwarded verbatim. A FAPI 2.0 payload wraps the person
     // in `person_info` alongside sub, iss and aud; Ascend was verified

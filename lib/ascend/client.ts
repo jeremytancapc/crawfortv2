@@ -8,6 +8,8 @@
 
 import type { AscendConfig } from "./config";
 import { buildSignedRequest } from "./sign";
+import { logExternalApi } from "@/lib/external-api-logger";
+import { redactAscendRequest } from "./redact";
 
 /** Ascend returns `"10000"` for success - a string, and not `"200"`. */
 export const ASCEND_SUCCESS_CODE = "10000";
@@ -71,6 +73,27 @@ export async function callAscend<T = unknown>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options?.timeoutMs ?? 30_000);
 
+  // Every outcome below is recorded, because the failures are the ones worth
+  // having. A call that never became an Order used to leave nothing but a
+  // console line in a serverless log nobody keeps, which made "the applicant
+  // submitted but nothing reached Ascend" indistinguishable from "the
+  // applicant never submitted".
+  const started = Date.now();
+  const record = (status: number, ok: boolean, responseBody: string, error?: string) =>
+    logExternalApi({
+      tag: `[ascend]${path}`,
+      url,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Redacted: this request carries the applicant's whole MyInfo payload.
+      body: redactAscendRequest(body as Record<string, unknown>),
+      status,
+      ok,
+      ms: Date.now() - started,
+      responseBody: responseBody.slice(0, 2000),
+      ...(error ? { error } : {}),
+    });
+
   let response: Response;
   try {
     response = await fetch(url, {
@@ -79,6 +102,11 @@ export async function callAscend<T = unknown>(
       body: JSON.stringify(body),
       signal: controller.signal,
     });
+  } catch (err) {
+    // A timeout or a DNS failure never reaches Ascend at all, and is the one
+    // case with no response to learn from - so it has to be recorded here.
+    record(0, false, "", err instanceof Error ? err.message : String(err));
+    throw err;
   } finally {
     clearTimeout(timer);
   }
@@ -92,6 +120,7 @@ export async function callAscend<T = unknown>(
     // Non-JSON means something answered that was not Ascend - a gateway, a
     // login wall, an error page. Surface a slice of it rather than a generic
     // parse failure, because the body says which.
+    record(response.status, false, text, "non-JSON response");
     throw new AscendError(
       String(response.status),
       `non-JSON response: ${text.slice(0, 200)}`,
@@ -100,9 +129,11 @@ export async function callAscend<T = unknown>(
   }
 
   if (envelope.code !== ASCEND_SUCCESS_CODE) {
+    record(response.status, false, text, `${envelope.code}: ${envelope.msg}`);
     throw new AscendError(envelope.code, envelope.msg, path);
   }
 
+  record(response.status, true, text);
   return envelope.data;
 }
 
