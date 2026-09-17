@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const slimSession = buildActivateSessionCookie(merged);
+  const slimSession = buildActivateSessionCookie(merged, draftLeadId);
   const encoded = encodeSession(slimSession);
   const hadApplyGateBefore = request.cookies.get(GATE_COOKIE)?.value === "1";
   const resumeWouldPass = computeResumeWouldPass(slimSession, true);

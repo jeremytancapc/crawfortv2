@@ -8,10 +8,25 @@ type SessionWithTrace = Partial<LoanFormData> & { applyTraceId?: string };
  * Full CPF/NOA live in myinfo_profiles (keyed by draft_lead) and are hydrated
  * on /apply/review. singpassRawKey stays as the key into myinfo_retrievals.
  */
+/**
+ * `applicantId` travels in the session as well as the draft_lead cookie.
+ *
+ * Not belt and braces for its own sake. The draft_lead cookie is set on a
+ * response the browser reaches by a cross-site redirect from the Lambda, and
+ * a separate cookie set on that hop is exactly what Safari's tracking
+ * prevention and SameSite edge cases drop. When it goes missing, submit
+ * cannot tell an applicant who just finished MyInfo from a brand-new one, and
+ * inserts a second row - leaving the first stranded as `in_progress` forever.
+ *
+ * The session cookie demonstrably survives that hop: the review page renders
+ * MyInfo out of it.
+ */
 export function buildActivateSessionCookie(
   merged: SessionWithTrace,
+  applicantId?: string | null,
 ): SessionWithTrace {
   return {
+    ...(applicantId ? { leadId: applicantId } : {}),
     amount: merged.amount,
     tenure: merged.tenure,
     urgency: merged.urgency,

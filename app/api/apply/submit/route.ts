@@ -89,7 +89,16 @@ export async function POST(request: NextRequest) {
   // Read the draft lead ID from the dedicated draft_lead cookie.
   // This cookie is set by /api/apply/activate (Singpass) or /api/apply/draft
   // (manual). It is separate from the session so the funnel is never affected.
-  const draftLeadId = (request.cookies.get(DRAFT_LEAD_COOKIE)?.value ?? "").trim();
+  // The draft_lead cookie first, then the session. Activate writes the id to
+  // both, because the cookie is set on a cross-site redirect from the Lambda
+  // and does not always survive it. Without either, submit cannot tell an
+  // applicant who just finished MyInfo from a new one and inserts a second
+  // row, stranding the first as `in_progress`.
+  const draftLeadId = (
+    request.cookies.get(DRAFT_LEAD_COOKIE)?.value ||
+    (sessionData as { leadId?: string }).leadId ||
+    ""
+  ).trim();
 
   // ── 1. Save the applicant (UPDATE if a partial row exists, INSERT otherwise) ─
   const applicantFields: NewApplicant = {
