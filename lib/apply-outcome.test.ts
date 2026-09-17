@@ -99,6 +99,29 @@ describe("decideIdentityOutcome", () => {
     expect(outcome).toMatchObject({ kind: "continue", creditCallUses: "myinfo" });
   });
 
+  it("carries the userId forward, because everything after needs it", () => {
+    // /openApi/users is the only call that returns it, and both the credit
+    // pull and every document upload are addressed by it. Dropping it here is
+    // why ascend_user_id was null on the one Order that did get created.
+    const outcome = decideIdentityOutcome({
+      userId: "1550075519520546816",
+      newCustomer: true,
+      hasMyinfo: false,
+    });
+
+    expect(outcome).toMatchObject({ kind: "continue", userId: "1550075519520546816" });
+  });
+
+  it("carries the userId on a reloan too, so the redirect is still recorded", () => {
+    const outcome = decideIdentityOutcome({
+      userId: "1426270128715821056",
+      newCustomer: false,
+      hasMyinfo: true,
+    });
+
+    expect(outcome).toMatchObject({ kind: "reloan", userId: "1426270128715821056" });
+  });
+
   it("sends only the userId once Ascend already holds MyInfo", () => {
     const outcome = decideIdentityOutcome({
       userId: "1426270128715821056",

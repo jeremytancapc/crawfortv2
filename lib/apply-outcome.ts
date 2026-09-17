@@ -77,6 +77,8 @@ export type IdentityOutcome =
       kind: "reloan";
       /** Sent to the mobile app rather than shown an online offer. */
       destination: "/apply/reloan";
+      /** Recorded even here: it identifies who was redirected, and why. */
+      userId: string;
     }
   | {
       kind: "continue";
@@ -86,6 +88,12 @@ export type IdentityOutcome =
        * Ascend holds that person's MyInfo - which submitting it once sets.
        */
       creditCallUses: "userId" | "myinfo";
+      /**
+       * Ascend's own user id. /openApi/users is the only call that returns
+       * it, and every document upload is addressed by it - so it travels with
+       * the outcome rather than being fetched again later.
+       */
+      userId: string;
     };
 
 export function decideIdentityOutcome(user: AscendUser): IdentityOutcome {
@@ -93,10 +101,14 @@ export function decideIdentityOutcome(user: AscendUser): IdentityOutcome {
   // /openApi/apply/credit, so no order is created and nothing is spent on
   // someone who was always going to be redirected (ADR-0001).
   if (!user.newCustomer) {
-    return { kind: "reloan", destination: "/apply/reloan" };
+    return { kind: "reloan", destination: "/apply/reloan", userId: user.userId };
   }
 
-  return { kind: "continue", creditCallUses: user.hasMyinfo ? "userId" : "myinfo" };
+  return {
+    kind: "continue",
+    creditCallUses: user.hasMyinfo ? "userId" : "myinfo",
+    userId: user.userId,
+  };
 }
 
 /** What AirConnect's eligibility check returned, narrowed to what decides. */

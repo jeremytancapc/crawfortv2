@@ -53,6 +53,7 @@ import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
 import { DuplicateAscendOrderError, recordAscendOrder } from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
+import { resolveAscendIdentity } from "@/lib/ascend/identity";
 
 export const runtime = "nodejs";
 
@@ -300,6 +301,52 @@ export async function POST(request: NextRequest) {
     rawAssessment: assessment as unknown as Record<string, unknown>,
   });
 
+  // ── 4a. Identify the applicant to Ascend, before spending a credit pull ───
+  //
+  // ADR-0001: a Reloan Customer goes to the mobile app and never reaches
+  // /openApi/apply/credit. This also yields the userId that the credit call
+  // and every later document upload are addressed by.
+  const identity = await resolveAscendIdentity({
+    idNumber: formData.authMethod === "singpass" ? formData.nric : null,
+    phone: e164Phone,
+    applicantId: leadId,
+  });
+
+  if (identity) {
+    await setAscendIdentity(leadId, {
+      ascendUserId: identity.userId,
+      newCustomer: identity.kind === "continue",
+      hasMyinfo: identity.kind === "continue" && identity.creditCallUses === "userId",
+    }).catch((err) => console.error("[apply/submit] could not record identity", err));
+  }
+
+  // A returning borrower stops here. Continuing would create an Order for
+  // someone who is being redirected anyway, which is the exact cost ADR-0001
+  // exists to avoid.
+  if (identity?.kind === "reloan") {
+    await setApplicantStatus(leadId, "new").catch(() => {});
+    const reloanRes = NextResponse.json({
+      leadId,
+      destination: identity.destination,
+      outcome: "reloan",
+      isEligible: false,
+      explanation: "Existing customer - continue in the Crawfort app.",
+    });
+    reloanRes.cookies.set({
+      ...sessionCookieValue(sessionData),
+      value: encodeSession(
+        buildPostSubmitSession(sessionData, leadId, {
+          // A reloan is redirected, not offered: there is no assessed amount
+          // to carry, and zero here means "none", not "declined for zero".
+          approvedLoanAmount: 0,
+          verifiedMonthlyIncome: 0,
+          incomeSource: "",
+        }),
+      ),
+    });
+    return reloanRes;
+  }
+
   // ── 4b. Ask Ascend, which owns the borrowable amount (ADR-0001) ───────────
   //
   // Not a quote: this creates an Order, once per applicant, guarded by the
@@ -310,7 +357,12 @@ export async function POST(request: NextRequest) {
   const ascendResult = await requestAscendDecision({
     desiredAmount: formData.amount,
     singpassRawKey: formData.singpassRawKey,
-    ascendUserId: null,
+    // Once Ascend holds this person's MyInfo, the userId alone is accepted and
+    // the whole payload no longer has to travel.
+    ascendUserId:
+      identity?.kind === "continue" && identity.creditCallUses === "userId"
+        ? identity.userId
+        : null,
     applicantId: leadId,
   });
 
