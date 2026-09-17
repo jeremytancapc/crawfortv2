@@ -218,7 +218,7 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
       <V2Screen key="identity-singpass" scrollable>
         {overlay}
         <V2Header
-          backHref={applyHref("/apply/verify-income")}
+          backHref={applyHref("/")}
           progress={{ stage: "review", fraction: 0.4 }}
         />
         <V2Body>
@@ -322,7 +322,7 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
     <V2Screen key="identity-manual">
       {overlay}
       <V2Header
-        backHref={applyHref("/apply/verify-income")}
+        backHref={applyHref("/")}
         progress={{ stage: "review", fraction: 0.4 }}
       />
       <V2Body justify="start">

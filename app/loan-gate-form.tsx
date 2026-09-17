@@ -166,13 +166,20 @@ export function LoanGateForm({
     [formData],
   );
 
+  // Straight to Singpass. This used to go via /apply/verify-income, because
+  // that step ran before Singpass and its own button handed off to /api/auth.
+  // The step now hangs off submit, reached only when Ascend answers PENDING,
+  // so routing through it would strand the applicant on an upload page they
+  // have no reason to be on.
+  //
+  // Not applyHref: /api/auth is a route handler, not a variant-prefixed page.
   const startSingpass = useCallback(() => {
     void leaveAfterSavingGate(
-      applyHref("/apply/verify-income"),
+      "/api/auth",
       { authMethod: "singpass" },
       { setApplyGate: false },
     );
-  }, [applyHref, leaveAfterSavingGate]);
+  }, [leaveAfterSavingGate]);
 
   const handleNext = useCallback(() => {
     if (step === 1 && formData.urgency === "") {
@@ -219,7 +226,7 @@ export function LoanGateForm({
     },
     onNext: () => {
       if (step === 3) {
-        router.push(applyHref("/apply/verify-income"));
+        startSingpass();
         return;
       }
       handleNext();
