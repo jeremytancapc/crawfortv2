@@ -101,7 +101,7 @@ export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) 
           />
         ) : (
           <p className="ios-type-subtitle mt-1.5">
-            Choose the loan amount that works best for you.
+            Adjust the loan amount to drawdown
           </p>
         )}
       </motion.div>

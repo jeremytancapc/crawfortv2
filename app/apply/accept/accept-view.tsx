@@ -16,6 +16,7 @@ import { ApplyIosShell, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, applyProgressAlong } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
+import { CircleLoader } from "@/components/ui/circle-loader";
 import { SignaturePad } from "./signature-pad";
 import { TermsDeck, type TermsDeckHandle } from "./terms-deck";
 import { FINE_PRINT_ITEMS, SCHEDULE_CTA_LABEL } from "./accept-content";
@@ -316,6 +317,7 @@ function TermsFootnoteCard() {
 
 function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void }) {
   const [mounted, setMounted] = useState(false);
+  const [phase, setPhase] = useState<"submitting" | "ready">("submitting");
 
   // Portal to body so the overlay covers the sidebar, header, and footer —
   // `fixed` inside the scaled apply pane only paints that column.
@@ -328,6 +330,14 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
     };
   }, []);
 
+  useEffect(() => {
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeout = window.setTimeout(() => setPhase("ready"), reduced ? 600 : 2800);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -337,6 +347,7 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
       aria-modal="true"
       aria-labelledby="appointment-reminder-title"
       aria-describedby="appointment-reminder-description"
+      aria-busy={phase === "submitting"}
     >
       <motion.div
         className="absolute inset-0 bg-black/40 backdrop-blur-md"
@@ -352,36 +363,73 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
         exit={{ opacity: 0, y: 10, scale: 0.97 }}
         transition={{ type: "spring", stiffness: 340, damping: 28 }}
       >
-        <div className="flex flex-col items-center text-center">
-          <AnimatedIconBadge
-            background="oklch(0.32 0.14 260 / 0.12)"
-            ringColor="var(--brand-blue-hex, #0033AA)"
-          >
-            <Money size={26} weight="fill" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
-          </AnimatedIconBadge>
-          <h2
-            id="appointment-reminder-title"
-            className="mt-5 whitespace-nowrap text-[clamp(16px,4.8vw,20px)] font-bold leading-none tracking-[-0.03em]"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Your funds are ready for collection
-          </h2>
-          <p
-            id="appointment-reminder-description"
-            className="mt-2 text-[14.5px] font-medium leading-snug"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Fund collection is by appointment only.
-          </p>
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "submitting" ? (
+            <motion.div
+              key="submitting"
+              className="flex flex-col items-center text-center"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <CircleLoader size={56} />
+              <h2
+                id="appointment-reminder-title"
+                className="mt-5 text-[clamp(16px,4.8vw,20px)] font-bold leading-snug tracking-[-0.03em]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Reserving your funds...
+              </h2>
+              <p
+                id="appointment-reminder-description"
+                className="mt-2 text-[14.5px] font-medium leading-snug"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                This usually takes a few seconds.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="ready"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <div className="flex flex-col items-center text-center">
+                <AnimatedIconBadge
+                  background="oklch(0.32 0.14 260 / 0.12)"
+                  ringColor="var(--brand-blue-hex, #0033AA)"
+                >
+                  <Money size={26} weight="fill" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+                </AnimatedIconBadge>
+                <h2
+                  id="appointment-reminder-title"
+                  className="mt-5 whitespace-nowrap text-[clamp(16px,4.8vw,20px)] font-bold leading-none tracking-[-0.03em]"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Your funds are ready for collection!
+                </h2>
+                <p
+                  id="appointment-reminder-description"
+                  className="mt-2 text-[14.5px] font-medium leading-snug"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Fund collection is by appointment only.
+                </p>
+              </div>
 
-        <button
-          type="button"
-          onClick={onAcknowledge}
-          className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-brand-blue px-3 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-        >
-          Final Step: Book Appointment
-        </button>
+              <button
+                type="button"
+                onClick={onAcknowledge}
+                className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-brand-blue px-3 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+              >
+                Final Step: Book Appointment
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>,
     document.body,
@@ -535,7 +583,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
             Confirm loan terms
           </h1>
           <p className="ios-type-subtitle mt-1">
-            Review your terms below.
+            Breakdown of the loan package selected
           </p>
         </div>
       )}
