@@ -161,6 +161,48 @@ credible income"), `m1`/`m2`/`m3` (previous three months), `monthlyIncome`,
 | `/openApi/dbsQrcode` | Repayment QR as base64 |
 | `/openApi/getCallbackStatus` | GET; payment result boolean |
 
+## Identity: Ascend keys on `sub`, not the NRIC
+
+**(observed)** `/openApi/apply/credit` resolves the user from the MyInfo
+`sub` claim — the Singpass UUID — and not from `uinfin`.
+
+Established by submitting a payload with a changed NRIC but the original
+`sub`, which came back as the **original** `userId`. Changing `sub` as well
+produced a new one. By contrast `/openApi/users`, which has no `sub` to work
+from, creates a distinct user per NRIC.
+
+Two consequences:
+
+- Test personas are not separated by editing the NRIC. Change `sub` too, or
+  every fabricated applicant collapses into one Ascend user — which is exactly
+  what happened while testing this, and briefly looked like Ascend ignoring
+  identity altogether.
+- **FAPI 2.0 changed the shape of `sub`.** It used to be
+  `s=<NRIC>,u=<UUID>`; under the new API it is the bare UUID. If the legacy
+  Lambda and the FAPI 2.0 Lambda hand Ascend different `sub` values for the
+  same person, Ascend will see two users — a duplicate customer, and a
+  returning borrower wrongly reported as `newCustomer: true`. Worth confirming
+  against a person who exists under both before production.
+
+## Order status gates income
+
+**(observed)** `/openApi/income/credit` is rejected with
+`600: order status is not CREATE or ELIGIBILITY` once an order has passed. It
+applies only while the order is still awaiting income, which is the PENDING
+path:
+
+```
+apply/credit (no CPF/NOA)  → PENDING, riskMsg "There is no income, please submit income"
+                             creditScore is {} — every field undefined
+income/credit (m1/m2/m3)   → PASS, creditLimit 2000, mlcbMaxLoanAmount 21000
+```
+
+`riskMsg` is documented as REJECT-only but is present on PENDING too.
+
+Note the limits differ sharply by income source: the same desired amount
+returned an A-Card Limit of 8000 from CPF/NOA data, and 2000 from declared
+payslip figures.
+
 ## Error codes
 
 | Code | Meaning |

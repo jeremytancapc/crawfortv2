@@ -168,6 +168,71 @@ try {
     console.log(`  noa rows:  ${mi.noahistory?.noas?.length ?? 0}`);
     console.log(`  cpf months:${mi.cpfcontributions?.history?.length ?? 0}`);
     if (process.argv.includes("--full")) console.log(`\n${JSON.stringify(mi, null, 2)}`);
+  } else if (command === "income") {
+    // Stands in for: customer uploads a payslip, AI extracts the figures.
+    // The numbers are passed in directly here - the extraction step is not
+    // what is being tested.
+    const orderId = arg("orderId");
+    const m1 = Number(arg("m1"));
+    const m2 = Number(arg("m2"));
+    const m3 = Number(arg("m3"));
+    const incomeType = arg("type") ?? "PANEL_PAYSLIP";
+
+    if (!orderId || !m1 || !m2 || !m3) {
+      console.error("usage: income --orderId <id> --m1 <n> --m2 <n> --m3 <n> [--type PANEL_PAYSLIP]");
+      process.exit(1);
+    }
+
+    const monthlyIncome = Number(((m1 + m2 + m3) / 3).toFixed(2));
+    const data = {
+      orderId,
+      income: {
+        incomeType,
+        documentTypes: [incomeType],
+        // "credible income" - whether a document backs these figures.
+        incomeFile: true,
+        m1,
+        m2,
+        m3,
+        monthlyIncome,
+        yearlyIncome: Number((monthlyIncome * 12).toFixed(2)),
+      },
+      orderFile: [
+        {
+          fileType: incomeType,
+          fileName: arg("fileName") ?? "payslip.pdf",
+          fileUrl: arg("fileUrl") ?? "https://example.invalid/payslip.pdf",
+        },
+      ],
+    };
+
+    console.log(`  orderId:       ${orderId}`);
+    console.log(`  incomeType:    ${incomeType}`);
+    console.log(`  m1/m2/m3:      ${m1} / ${m2} / ${m3}`);
+    console.log(`  monthlyIncome: ${monthlyIncome}   yearly: ${data.income.yearlyIncome}`);
+    console.log(`  orderFile:     ${data.orderFile[0].fileUrl}\n`);
+
+    if (!(await confirm("Submit income against this order?"))) {
+      console.log("Aborted.");
+      process.exit(0);
+    }
+
+    const result = await callAscend("/openApi/income/credit", data);
+    console.log(`\n${JSON.stringify(result, null, 2)}\n`);
+    console.log(`  riskStatus:           ${result.risk?.riskStatus}${result.risk?.riskMsg ? `  (${result.risk.riskMsg})` : ""}`);
+    console.log(`  A-Card Limit:         ${result.creditScore?.creditLimit}`);
+    console.log(`  Maximum Loan Quantum: ${result.creditScore?.mlcbMaxLoanAmount}`);
+  } else if (command === "comment") {
+    const orderId = arg("orderId");
+    const comments = arg("text");
+    if (!orderId || !comments) {
+      console.error('usage: comment --orderId <id> --text "..."');
+      process.exit(1);
+    }
+    console.log(`  orderId: ${orderId}`);
+    console.log(`  text:    ${comments}\n`);
+    const result = await callAscend("/openApi/order/comments", { orderId, comments });
+    console.log("  accepted:", JSON.stringify(result));
   } else if (command === "query") {
     const orderId = arg("orderId");
     if (!orderId) {
@@ -176,7 +241,7 @@ try {
     }
     console.log(JSON.stringify(await callAscend("/openApi/query/credit", { orderId }), null, 2));
   } else {
-    console.error("commands: users, apply, myinfo, query");
+    console.error("commands: users, apply, income, comment, myinfo, query");
     process.exit(1);
   }
 } catch (err) {

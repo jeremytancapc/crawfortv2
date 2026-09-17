@@ -132,18 +132,51 @@ export type AscendRiskStatus = "PASS" | "PENDING" | "REJECT";
 
 export type AscendCreditResult = {
   orderId: string;
+  /**
+   * Ascend's user. Resolved from the MyInfo `sub` claim, NOT from `uinfin` -
+   * established by submitting a payload with a changed NRIC but the original
+   * sub, which returned the original user. A string because these ids exceed
+   * Number.MAX_SAFE_INTEGER.
+   */
   userId: string;
   newCustomer: boolean;
-  risk: { riskStatus: AscendRiskStatus; riskMsg?: string };
+  risk: {
+    riskStatus: AscendRiskStatus;
+    /**
+     * Documented as present only on REJECT, but a PENDING response carried
+     * "There is no income, please submit income". Treat it as available on
+     * any non-PASS status.
+     */
+    riskMsg?: string;
+  };
+  /**
+   * EMPTY on PENDING. A pending response returns `creditScore: {}`, so every
+   * field here is optional - reading `.creditLimit` off a pending result
+   * yields undefined, not a number. Check riskStatus before trusting any of
+   * it.
+   */
   creditScore: {
-    creditLevel: string;
-    /** A-Card Limit: what Ascend will lend. */
-    creditLimit: number;
-    creditScore: number;
+    creditLevel?: string;
+    /** A-Card Limit: what Ascend will lend. May exceed the Desired Amount. */
+    creditLimit?: number;
+    /** Fractional - a live response returned 588.26. */
+    creditScore?: number;
     /** Maximum Loan Quantum: the MLCB ceiling. */
-    mlcbMaxLoanAmount: number;
+    mlcbMaxLoanAmount?: number;
   };
 };
+
+/** Maps Ascend's wire spelling to the CONTEXT.md Risk Status vocabulary. */
+export function toRiskStatus(wire: AscendRiskStatus): "passed" | "pending" | "rejected" {
+  switch (wire) {
+    case "PASS":
+      return "passed";
+    case "PENDING":
+      return "pending";
+    case "REJECT":
+      return "rejected";
+  }
+}
 
 /**
  * The credit decision. NOT a quote - it creates an Order.
