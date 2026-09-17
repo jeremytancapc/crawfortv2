@@ -26,8 +26,19 @@ import pg from "pg";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MIGRATIONS_DIR = join(ROOT, "db", "migrations");
 
-/** Loads .env.local so the script works without an env manager. */
+/**
+ * Loads .env.local so the script works without an env manager.
+ *
+ * Skipped entirely when DATABASE_URL is already in the environment. A caller
+ * that names a database means that database, and merging the file in
+ * variable-by-variable is how a test harness ends up migrating production:
+ * pass DATABASE_URL for a throwaway instance, leave DATABASE_URL_UNPOOLED
+ * empty, and the file's value - pointing at the real database - wins the
+ * `!process.env[name]` check and takes precedence over the pooled URL.
+ */
 function loadEnvLocal() {
+  if (process.env.DATABASE_URL?.trim()) return;
+
   try {
     for (const line of readFileSync(join(ROOT, ".env.local"), "utf8").split("\n")) {
       const match = line.match(/^([A-Z_0-9]+)=(.*)$/);

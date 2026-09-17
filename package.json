@@ -10,6 +10,8 @@
     "check:env": "node scripts/check-env.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:status": "node scripts/db-migrate.mjs --status",
+    "db:test-server": "bash scripts/db-test-server.sh",
+    "test:db": "TEST_DATABASE_URL=\"$(bash scripts/db-test-server.sh start)\" vitest run lib/db",
     "ascend": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ascend-call.mjs",
     "test:apply-flow-logs": "bash scripts/test-apply-flow-logs.sh",
     "test:apply-flow-e2e": "bash scripts/test-apply-flow-e2e.sh",

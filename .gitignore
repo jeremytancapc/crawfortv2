@@ -50,3 +50,6 @@ scripts/ascend-users-check.mjs
 # Singpass public JWKS — regenerate with scripts/singpass-keygen.mjs, do not commit
 singpass-jwks.public.json
 .neon
+
+# Throwaway Postgres for database-backed tests
+.tmp/
