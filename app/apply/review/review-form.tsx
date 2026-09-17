@@ -42,7 +42,6 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
   },
   5: {
     title: "Enter your mobile number",
-    subtitle: "We'll use it to stay in touch about your application.",
   },
   6: {
     title: "Confirm extra details",
@@ -50,7 +49,6 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
   },
   7: {
     title: "Enter your mobile number",
-    subtitle: "We'll use it to stay in touch about your application.",
   },
   8: {
     title: "Confirm that your info is accurate",
