@@ -121,8 +121,9 @@ for (const template of TEMPLATES) {
   }
   if (!canonical) continue;
   for (const name of canonical) {
-    // Tuning knobs with a working default need not appear in every file.
-    if (name === "DATABASE_POOL_MAX") continue;
+    // Tuning knobs with a working default, and test-only variables, need not
+    // appear in every per-environment template.
+    if (name === "DATABASE_POOL_MAX" || name === "TEST_DATABASE_URL") continue;
     if (!names.has(name)) problems.push(`${name} is in ${CANONICAL} but missing from ${template}.`);
   }
   for (const name of names) {
