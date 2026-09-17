@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
-import { monthParts } from "@/lib/income-extraction";
+import { incomeResultFrom, type ExtractResponse } from "@/lib/income-result";
 import { nextPathAfterSubmit } from "@/lib/post-submit-nav";
 
 export const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -14,17 +14,6 @@ export const PROCESSING_STATUSES = [
   "Calculating your last 3 months' average…",
   "Almost done…",
 ];
-
-/**
- * Shown until the uploaded documents have been read, and left in place if
- * reading is not switched on - ANTHROPIC_API_KEY unset locally, say.
- *
- * `extractionFailed` below says which of those happened. The page does not
- * render it yet: showing figures nobody read as though they came off a
- * payslip is a UI decision, not one to make here.
- */
-const DUMMY_MONTHLY_INCOMES = [4280, 4150, 4200];
-const DEMO_EMPLOYER = "Grab Holdings Limited";
 
 export type SelectedFile = {
   id: string;
@@ -65,18 +54,6 @@ export function lastThreeMonthNames(from: Date = new Date()): string {
     .join(", ");
 }
 
-export function lastThreeMonths(from: Date = new Date()): IncomeMonth[] {
-  return lastThreeMonthDates(from)
-    .reverse()
-    .map((date, index) => ({
-      label: date.toLocaleDateString("en-SG", { month: "long", year: "numeric" }),
-      month: date.toLocaleDateString("en-SG", { month: "long" }),
-      year: date.toLocaleDateString("en-SG", { year: "numeric" }),
-      amount: DUMMY_MONTHLY_INCOMES[index],
-      employer: DEMO_EMPLOYER,
-    }));
-}
-
 /**
  * Sends the extracted figures to Ascend, and follows wherever that lands.
  *
@@ -93,6 +70,11 @@ export async function submitIncome(
   months: IncomeMonth[],
   selected: SelectedFile[],
 ): Promise<string | null> {
+  if (months.length === 0) {
+    console.error("Income submission refused: no months were read");
+    return null;
+  }
+
   try {
     // Documents first: Ascend refuses income with nothing behind it
     // (`600: orderFile is required`), so a failed upload must stop here
@@ -152,18 +134,12 @@ export function useVerifyIncome(initialShowResults = false) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showResults, setShowResults] = useState(initialShowResults);
 
-  // Starts as the demo figures and is replaced by whatever the documents
-  // actually say. State rather than a useMemo so reading them can update it.
-  const [incomeMonths, setIncomeMonths] = useState<IncomeMonth[]>(() => lastThreeMonths());
-  const [extractionFailed, setExtractionFailed] = useState<string | null>(null);
+  // Empty until the documents have actually been read. Nothing is seeded:
+  // a figure on this screen means a figure off a payslip.
+  const [incomeMonths, setIncomeMonths] = useState<IncomeMonth[]>([]);
+  const [averageIncome, setAverageIncome] = useState(0);
+  const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
   const uploadMonthNames = useMemo(() => lastThreeMonthNames(), []);
-  const averageIncome = useMemo(
-    () =>
-      Math.round(
-        incomeMonths.reduce((sum, month) => sum + month.amount, 0) / incomeMonths.length,
-      ),
-    [incomeMonths],
-  );
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const next: SelectedFile[] = [];
@@ -186,7 +162,7 @@ export function useVerifyIncome(initialShowResults = false) {
 
   const startProcessing = useCallback(() => {
     setIsProcessing(true);
-    setExtractionFailed(null);
+    setExtractionAsk(null);
 
     // Reading runs while the processing sheet is up. The sheet closes on its
     // own timer, so a slower read lands afterwards and the figures update in
@@ -197,30 +173,26 @@ export function useVerifyIncome(initialShowResults = false) {
         for (const item of files) body.append("files", item.file);
 
         const res = await fetch("/api/apply/income/extract", { method: "POST", body });
-        const result = (await res.json()) as {
-          status?: string;
-          months?: Array<{ month: string; amount: number; employer: string | null }>;
-          reason?: string;
-          error?: string;
-        };
+        const outcome = incomeResultFrom((await res.json()) as ExtractResponse);
 
-        if (result.status === "usable" && result.months?.length) {
-          setIncomeMonths(
-            result.months.map((m) => ({
-              ...monthParts(m.month),
-              amount: m.amount,
-              employer: m.employer || "",
-            })),
-          );
+        if (outcome.kind === "read") {
+          setIncomeMonths(outcome.months);
+          setAverageIncome(outcome.average);
           return;
         }
 
-        // Read, but not confidently enough to put into a credit decision -
-        // or not attempted at all.
-        setExtractionFailed(result.reason ?? result.error ?? "unreadable");
+        // Read, but not enough of it to put into a credit decision - or not
+        // attempted at all. The ask names the payslip that would finish it.
+        setIncomeMonths([]);
+        setAverageIncome(0);
+        setExtractionAsk(outcome.ask);
       } catch (err) {
         console.error("Income extraction failed", err);
-        setExtractionFailed("unreachable");
+        setIncomeMonths([]);
+        setAverageIncome(0);
+        setExtractionAsk(
+          "We could not read those documents just now. Please try uploading them again.",
+        );
       }
     })();
   }, [files]);
@@ -257,10 +229,12 @@ export function useVerifyIncome(initialShowResults = false) {
     averageIncome,
     submitIncome,
     /**
-     * Set when the documents could not be read, or reading is not switched
-     * on. The figures on screen are then the placeholder ones, not anything
-     * off a payslip - the page does not surface this yet.
+     * What to ask the applicant for, when the documents did not yield three
+     * months. Null once they have. Exactly one of this and `incomeMonths` is
+     * ever populated.
      */
-    extractionFailed,
+    extractionAsk,
+    /** False whenever there is nothing read to submit. */
+    canSubmit: incomeMonths.length > 0,
   };
 }

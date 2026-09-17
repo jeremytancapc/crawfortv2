@@ -37,6 +37,8 @@ export function VerifyIncomeForm({
     finishProcessing: handleProcessingDone,
     showResults,
     incomeMonths,
+    extractionAsk,
+    canSubmit,
     uploadMonthNames,
     averageIncome,
     submitIncome,
@@ -78,12 +80,18 @@ export function VerifyIncomeForm({
       <MobileGateSheet>
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="ios-type-title">
-          {showResults ? "Confirm your income" : "Upload your income proof"}
+          {!showResults
+            ? "Upload your income proof"
+            : canSubmit
+              ? "Confirm your income"
+              : "We need a bit more"}
         </h1>
         <p className="ios-type-subtitle mt-1.5">
-          {showResults
-            ? "Check the last 3 months we read from your documents."
-            : "Payslips, income statements and bank statements."}
+          {!showResults
+            ? "Payslips, income statements and bank statements."
+            : canSubmit
+              ? "Check the last 3 months we read from your documents."
+              : "Here is what is still missing."}
         </p>
       </div>
 
@@ -97,6 +105,15 @@ export function VerifyIncomeForm({
         {showResults ? (
           <div key="results" className="ios-income-fit w-full animate-fade-up">
             <section>
+              {!canSubmit ? (
+                <Card>
+                  <div className="px-4 py-5">
+                    <p className="ios-income-fit-label leading-snug text-[var(--text-primary)]">
+                      {extractionAsk}
+                    </p>
+                  </div>
+                </Card>
+              ) : (
               <Card>
                 {incomeMonths.map((month) => (
                   <CardRow key={month.label}>
@@ -122,6 +139,7 @@ export function VerifyIncomeForm({
                   </span>
                 </div>
               </Card>
+              )}
             </section>
           </div>
         ) : (
@@ -230,9 +248,15 @@ export function VerifyIncomeForm({
 
       <StickyFooter nav={stepNav}>
         {showResults ? (
-          <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
-            {isSubmitting ? "Submitting\u2026" : "Submit income"}
-          </PrimaryButton>
+          canSubmit ? (
+            <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
+              {isSubmitting ? "Submitting\u2026" : "Submit income"}
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton onClick={() => window.history.back()}>
+              Add documents
+            </PrimaryButton>
+          )
         ) : (
           <PrimaryButton onClick={handleUpload}>
             Upload documents

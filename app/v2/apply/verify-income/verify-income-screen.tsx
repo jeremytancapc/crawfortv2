@@ -35,6 +35,8 @@ export function VerifyIncomeScreen({
     uploadMonthNames,
     averageIncome,
     submitIncome,
+    extractionAsk,
+    canSubmit,
   } = useVerifyIncome(initialShowResults);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -60,6 +62,27 @@ export function VerifyIncomeScreen({
     setResumeGateStep(3);
     router.push(applyHref("/"));
   };
+
+  // Nothing read means no figures to show and nothing to submit - the ask
+  // names the payslip that would finish the application, so it goes where the
+  // figures would have been rather than leaving placeholders on a screen
+  // titled "confirmed".
+  if (showResults && !canSubmit) {
+    return (
+      <V2Screen key="results-incomplete">
+        <V2Header onBack={goBack} progress={{ stage: "verify", fraction: 0.9 }} />
+        <V2Body justify="center">
+          <V2Title title="We need a bit more" subtitle="Here is what is still missing." />
+          <p className="v2-note v2-enter mt-4" style={{ ["--i" as string]: 1 }}>
+            {extractionAsk ?? "Please upload your last 3 monthly payslips."}
+          </p>
+        </V2Body>
+        <V2Footer note="Your documents are saved. Add the missing one to continue.">
+          <Pill onClick={() => window.history.back()}>Add documents</Pill>
+        </V2Footer>
+      </V2Screen>
+    );
+  }
 
   if (showResults) {
     return (
