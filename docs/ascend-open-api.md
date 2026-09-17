@@ -153,7 +153,7 @@ credible income"), `m1`/`m2`/`m3` (previous three months), `monthlyIncome`,
 | `/openApi/singPass/v5/authUrl` | Ascend's own MyInfo v5 authorisation URL |
 | `/openApi/file/upload` | multipart; returns a file URL |
 | `/openApi/order/file/relate` | Attach an uploaded file to an order |
-| `/openApi/order/comments` | Free-text note against an order |
+| `/openApi/order/comments` | Free-text note against an order. **(observed)** Validates the order (`600: order not found`); accepts more than one per order, but there is no read-back endpoint so append-vs-overwrite is unconfirmed |
 | `/openApi/orderList` | GET, paginated. `ACTIVE` / `OVERDUE` / `SETTLED` |
 | `/openApi/docusign` | multipart; initiate signing |
 | `/openApi/docusign/notify` | Signing callback (`xmlData`) |

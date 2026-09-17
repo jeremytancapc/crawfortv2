@@ -231,8 +231,11 @@ try {
     }
     console.log(`  orderId: ${orderId}`);
     console.log(`  text:    ${comments}\n`);
+    // callAscend throws unless code is "10000", so reaching here IS the
+    // success signal. `data` is {} by design, which reads like a failure if
+    // printed raw.
     const result = await callAscend("/openApi/order/comments", { orderId, comments });
-    console.log("  accepted:", JSON.stringify(result));
+    console.log(`  ✓ accepted (code 10000, data ${JSON.stringify(result ?? {})})`);
   } else if (command === "query") {
     const orderId = arg("orderId");
     if (!orderId) {
