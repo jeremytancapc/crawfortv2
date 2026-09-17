@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decideApplyOutcome, decideIdentityOutcome } from "./apply-outcome";
+import { decideApplyOutcome, decideIdentityOutcome, decideSubmission } from "./apply-outcome";
 import type { AscendCreditResult } from "./ascend/client";
 
 /** A PASS exactly as /openApi/apply/credit returned one on 2026-09-16. */
@@ -108,5 +108,47 @@ describe("decideIdentityOutcome", () => {
 
     // Saves sending an 8.6 KB payload Ascend already has.
     expect(outcome).toMatchObject({ kind: "continue", creditCallUses: "userId" });
+  });
+});
+
+describe("decideSubmission", () => {
+  const ELIGIBLE = { status: "ELIGIBLE", notes: null, reloanReason: null };
+
+  it("declines on AirConnect ineligibility without consulting Ascend", () => {
+    const decision = decideSubmission({
+      eligibility: { status: "NOT_ELIGIBLE", notes: "Blacklisted", reloanReason: null },
+      ascend: null,
+    });
+
+    // Eligibility is settled before any credit decision, so a blacklisted
+    // applicant never costs a credit pull.
+    expect(decision).toMatchObject({ kind: "declined", destination: "/apply/pending" });
+  });
+
+  it("offers Ascend's A-Card Limit, not the local engine's number", () => {
+    const decision = decideSubmission({ eligibility: ELIGIBLE, ascend: PASSED });
+
+    expect(decision).toMatchObject({ kind: "approved", aCardLimit: 8000 });
+  });
+
+  it("lets Ascend reject a Singpass applicant", () => {
+    // The clamp this replaces forced every Singpass applicant to approval
+    // with a $500 floor, so the Singpass path could not decline anyone. With
+    // Ascend authoritative that clamp would override a genuine REJECT.
+    const decision = decideSubmission({
+      eligibility: ELIGIBLE,
+      ascend: { ...PASSED, risk: { riskStatus: "REJECT", riskMsg: "Too much outstanding" }, creditScore: {} },
+    });
+
+    expect(decision).toMatchObject({ kind: "declined", destination: "/apply/pending" });
+  });
+
+  it("shows a failure state when Ascend gave no answer, never an offer", () => {
+    // ADR-0001: the other external calls never block, but this one must.
+    // Without Ascend there is no amount to show.
+    const decision = decideSubmission({ eligibility: ELIGIBLE, ascend: null });
+
+    expect(decision.kind).toBe("unavailable");
+    expect(decision).not.toHaveProperty("aCardLimit");
   });
 });

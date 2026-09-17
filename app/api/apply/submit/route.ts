@@ -40,6 +40,10 @@ import {
   upsertMyinfoProfileForLead,
 } from "@/lib/myinfo-profile";
 import { checkLeadEligibility } from "@/lib/eligibility-check";
+import { decideSubmission } from "@/lib/apply-outcome";
+import { requestAscendDecision } from "@/lib/ascend/decision";
+import { DuplicateAscendOrderError, recordAscendOrder } from "@/lib/db/ascend-orders";
+import { isDatabaseConfigured } from "@/lib/db/sql";
 
 export const runtime = "nodejs";
 
@@ -220,12 +224,11 @@ export async function POST(request: NextRequest) {
     authMethod: formData.authMethod,
   });
 
-  // Singpass identity is simulated locally (no real Singpass/AirConnect backing it),
-  // so it must never present as "pending"/rejected - always a success outcome.
-  const isSimulatedSingpass = formData.authMethod === "singpass";
-
-  // If NOT ELIGIBLE (blacklisted) or RELOAN per AirConnect, reject but save real income data
-  if (!isSimulatedSingpass && (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN")) {
+  // Eligibility now applies to every applicant. It used to be skipped for the
+  // Singpass path because that identity was simulated - there was no real
+  // Singpass or AirConnect behind it, so a rejection would have been noise.
+  // The identity is real now, and so is the rejection.
+  if (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN") {
     const rejectionReason = eligibility.status === "RELOAN"
       ? "airconnect_reloan"
       : "airconnect_not_eligible";
@@ -267,20 +270,15 @@ export async function POST(request: NextRequest) {
     return rejectRes;
   }
 
-  // Simulated Singpass applicants always clear underwriting - clamp the
-  // real engine's output to a guaranteed approval instead of letting an
-  // edge case (e.g. a bad moneylender declaration) send them to /apply/pending.
-  const guaranteedApprovedAmount = Math.max(500, Math.floor(formData.amount / 100) * 100);
-  const finalAssessment =
-    isSimulatedSingpass && !(assessment.isEligible && assessment.approvedLoanAmount > 0)
-      ? {
-          ...assessment,
-          isEligible: true,
-          approvedLoanAmount: guaranteedApprovedAmount,
-          maxEligibleLoan: Math.max(assessment.maxEligibleLoan, guaranteedApprovedAmount),
-          explanation: `${assessment.explanation} (Singpass-verified applicant - approved.)`,
-        }
-      : assessment;
+  // The guaranteed-approval clamp that used to sit here is gone. It forced
+  // every Singpass applicant to approval with a $500 floor, so the Singpass
+  // path could not decline anyone - which was right while the identity was
+  // simulated, and is wrong now that Ascend decides. It would override a
+  // genuine REJECT (ADR-0001).
+  //
+  // The engine still runs. Its Underwritten Cap is still persisted below, for
+  // comparison against what Ascend returns. It no longer decides anything.
+  const finalAssessment = assessment;
 
   const creditRejectionReason = deriveCreditRejectionReason(finalAssessment);
 
@@ -301,6 +299,34 @@ export async function POST(request: NextRequest) {
     raw_assessment: assessment as unknown as Record<string, unknown>,
   });
 
+  // ── 4b. Ask Ascend, which owns the borrowable amount (ADR-0001) ───────────
+  //
+  // Not a quote: this creates an Order, once per applicant, guarded by the
+  // UNIQUE constraint on ascend_orders.applicant_id. When Ascend is not
+  // configured the call is skipped and `null` flows into the decision, which
+  // resolves to a failure state rather than an offer - there is no amount to
+  // show without it.
+  const ascendResult = await requestAscendDecision({
+    desiredAmount: formData.amount,
+    singpassRawKey: formData.singpassRawKey,
+    ascendUserId: null,
+  });
+
+  const decision = decideSubmission({ eligibility, ascend: ascendResult });
+
+  if (ascendResult && isDatabaseConfigured()) {
+    try {
+      await recordAscendOrder(leadId, ascendResult);
+    } catch (err) {
+      if (err instanceof DuplicateAscendOrderError) {
+        // Already decided. Keep the first Order rather than buying a second.
+        console.warn("[apply/submit] order already exists, keeping the first", leadId);
+      } else {
+        console.error("[apply/submit] could not record Ascend order", err);
+      }
+    }
+  }
+
   // ── 5. Update session with approval result (slim cookie - no CPF/NOA blobs) ─
   const updatedSession = buildPostSubmitSession(sessionData, leadId, {
     approvedLoanAmount: finalAssessment.approvedLoanAmount,
@@ -314,12 +340,18 @@ export async function POST(request: NextRequest) {
     approvedLoanAmount: finalAssessment.approvedLoanAmount,
     verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
     incomeSource: finalAssessment.incomeSource,
-    isEligible: finalAssessment.isEligible,
+    // Ascend decides where the applicant goes. `isEligible` stays for the
+    // analytics event the client still fires, but it no longer picks a page.
+    destination: decision.destination,
+    outcome: decision.kind,
+    isEligible: decision.kind === "approved",
+    aCardLimit: decision.kind === "approved" ? decision.aCardLimit : null,
+    maximumLoanQuantum: decision.kind === "approved" ? decision.maximumLoanQuantum : null,
     maxEligibleLoan: finalAssessment.maxEligibleLoan,
     explanation: finalAssessment.explanation,
-    eligibilityStatus: isSimulatedSingpass ? "ELIGIBLE" : eligibility.status,
+    eligibilityStatus: eligibility.status,
     eligibilityNotes: eligibility.notes,
-    reloanReason: isSimulatedSingpass ? null : eligibility.reloanReason,
+    reloanReason: eligibility.reloanReason,
   });
 
   // Clear draft_lead + MyInfo blobs - no longer needed after full submit.

@@ -91,38 +91,47 @@ export async function POST(request: NextRequest) {
   const activateUrl = new URL("/api/apply/activate", getRequestOrigin(request));
   activateUrl.searchParams.set("token", activateToken);
 
+  // Persist the verbatim payload, always - not only when the debug capture is
+  // on. This is the durable replacement for the in-memory auth-callback-store,
+  // and submit reads it back to hand Ascend the MyInfo object. Keyed by the
+  // same id that travels in the session as singpassRawKey.
+  //
+  // Failure here must not cost the applicant their journey: the mapped fields
+  // are already in the session, so the funnel continues either way.
+  let retrievalStored = false;
+  if (payload.myinfo && isDatabaseConfigured()) {
+    try {
+      await saveMyinfoRetrieval(payload.myinfo, debugRid);
+      retrievalStored = true;
+    } catch (err) {
+      console.error("[auth/callback] could not store MyInfo retrieval", err);
+    }
+  }
+
   // Debug detour. The caller decides nothing about where the browser goes -
   // it reads the `data` field below - so pointing it at the inspector is a
   // matter of returning a different URL, with no change on the Lambda's side.
   //
-  // Off by default, so the funnel is untouched unless someone deliberately
-  // switches capture on.
-  if (process.env.MYINFO_CAPTURE_ENABLED === "true" && payload.myinfo && isDatabaseConfigured()) {
-    try {
-      const rid = await saveMyinfoRetrieval(payload.myinfo, debugRid);
-      const inspectUrl = new URL("/auth/callback-result", getRequestOrigin(request));
-      inspectUrl.searchParams.set("rid", rid);
+  // Off by default, so the funnel is untouched unless someone switches it on.
+  if (process.env.MYINFO_CAPTURE_ENABLED === "true" && retrievalStored) {
+    const inspectUrl = new URL("/auth/callback-result", getRequestOrigin(request));
+    inspectUrl.searchParams.set("rid", debugRid);
 
-      await logApplyFlowEvent({
-        event: "auth_callback_captured",
-        traceId: newApplyTraceId(),
-        singpassRawKey: debugRid,
-        request,
-        requestPath: "/api/auth/callback",
-        details: { captured_to: "myinfo_retrievals", rid },
-      });
+    await logApplyFlowEvent({
+      event: "auth_callback_captured",
+      traceId: newApplyTraceId(),
+      singpassRawKey: debugRid,
+      request,
+      requestPath: "/api/auth/callback",
+      details: { captured_to: "myinfo_retrievals", rid: debugRid },
+    });
 
-      return NextResponse.json({
-        code: 200,
-        message: "success",
-        data: inspectUrl.toString(),
-        redirect: inspectUrl.toString(),
-      });
-    } catch (err) {
-      // A failed capture must not cost the applicant their journey: fall
-      // through to the normal activate URL rather than returning an error.
-      console.error("[auth/callback] capture failed, continuing to activate", err);
-    }
+    return NextResponse.json({
+      code: 200,
+      message: "success",
+      data: inspectUrl.toString(),
+      redirect: inspectUrl.toString(),
+    });
   }
 
   const traceId = newApplyTraceId();

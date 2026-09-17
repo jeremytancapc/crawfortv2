@@ -1,6 +1,6 @@
 import { trackEvent } from "@/lib/analytics";
 import type { LoanFormData } from "@/lib/loan-form";
-import { postSubmitUrl } from "@/lib/post-submit-nav";
+import { nextPathAfterSubmit } from "@/lib/post-submit-nav";
 
 export const NRIC_PATTERN = /^[STFGM]\d{7}[A-Z]$/i;
 export const SG_MOBILE_PATTERN = /^[89]\d{7}$/;
@@ -54,13 +54,18 @@ export async function submitReview(
     console.error("Submit failed", await res.text());
     return null;
   }
-  const result = (await res.json()) as { isEligible: boolean; leadId?: string };
-  const leadId = typeof result.leadId === "string" ? result.leadId : null;
-  const base = result.isEligible ? "/apply/approval" : "/apply/pending";
-  if (result.isEligible) trackEvent("step_09_offer_presented");
-  return {
-    nextPath: postSubmitUrl(base, leadId),
-    isEligible: result.isEligible,
-    leadId,
+  const result = (await res.json()) as {
+    isEligible: boolean;
+    leadId?: string;
+    destination?: string;
   };
+  const leadId = typeof result.leadId === "string" ? result.leadId : null;
+
+  // The server names the page. It used to be derived here from `isEligible`,
+  // which can only pick between two - and an applicant Ascend leaves PENDING
+  // belongs on neither, they are sent to upload payslips.
+  const nextPath = nextPathAfterSubmit({ destination: result.destination, leadId });
+
+  if (result.isEligible) trackEvent("step_09_offer_presented");
+  return { nextPath, isEligible: result.isEligible, leadId };
 }
