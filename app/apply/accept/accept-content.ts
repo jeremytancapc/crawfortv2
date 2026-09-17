@@ -43,7 +43,7 @@ export const KEY_TERM_ACKS = [
   {
     key: "drawdownWindow",
     Icon: ClockCountdown,
-    label: "Collect Funds in 3 Days",
+    label: "Draw down in 3 Days",
     title: "I need to draw down within 3 business days",
     ctaLabel: "Next: Payments on time",
     terms: [
@@ -66,7 +66,7 @@ export const KEY_TERM_ACKS = [
 
 export const DISBURSEMENT_NOTICE_ITEMS = [
   "Funds are disbursed via PayNow on the spot at your appointment.",
-  "Your PayNow must be linked to your NRIC - we'll pay out to your NRIC-linked PayNow, not your mobile number.",
+  "We'll pay out to your NRIC-linked PayNow, not your mobile number.",
   "Cash disbursement is strongly discouraged.",
 ];
 
@@ -74,7 +74,7 @@ export const DISBURSEMENT_NOTICE_ITEMS = [
 export const SCHEDULE_ACK_STATEMENT =
   "I agree to repay as per this payment schedule.";
 
-export const SCHEDULE_CTA_LABEL = "Next: Funds Disburse Method";
+export const SCHEDULE_CTA_LABEL = "Next: Funds Disbursement Method";
 
 export const DISBURSEMENT_CTA_LABEL = "Next: Acknowledgement";
 

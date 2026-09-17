@@ -19,6 +19,7 @@ import {
   resetApplySheetScroll,
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
+import { hasVisitedApplyStep } from "@/lib/apply-step-nav";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
 import { trackDisplayStep } from "@/lib/analytics";
@@ -165,8 +166,10 @@ export function ReviewForm({ initialData }: Props) {
       scrollToTop();
       return;
     }
-    window.history.back();
-  }, [history, scrollToTop]);
+    router.push(
+      applyHref(hasVisitedApplyStep("verify") ? "/apply/verify-income" : "/?gate=3"),
+    );
+  }, [applyHref, history, router, scrollToTop]);
 
   // Step 8 (Review) "Yes, I confirm" → create partial lead then go to contact step.
   // The draft endpoint sets a draft_lead cookie server-side - no state update needed.
