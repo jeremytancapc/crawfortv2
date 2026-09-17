@@ -102,6 +102,16 @@ export function canEnterReview(session: Partial<LoanFormData> | null): boolean {
   return true;
 }
 
+/**
+ * Whether this applicant has actually been through submit.
+ *
+ * Each of these is written only on the far side of it, so none of them can be
+ * true for someone who has merely finished MyInfo.
+ */
+function hasSubmitted(ctx: ApplyFunnelContext): boolean {
+  return ctx.hasReviewGate || ctx.hasIncomeGate || Boolean(ctx.approvalOffer) || ctx.hasBookingConfirm;
+}
+
 export function resolveApplyFunnelStage(ctx: ApplyFunnelContext): ApplyFunnelStage {
   const path = normalizePath(ctx.pathname);
 
@@ -123,14 +133,18 @@ export function resolveApplyFunnelStage(ctx: ApplyFunnelContext): ApplyFunnelSta
     // Asked for income and not yet approved: the income step is the only
     // thing that can move this applicant on, so it outranks pending.
     if (ctx.hasIncomeGate) return "verify";
-    return "pending";
+    // A leadId alone no longer means "submitted". `activate` writes one into
+    // the session the moment MyInfo returns, so reading it as post-submit sent
+    // applicants from MyInfo straight to the pending page - never reaching
+    // review, never being assessed at all.
+    if (hasSubmitted(ctx)) return "pending";
   }
 
   if (ctx.hasApplyGate && canEnterReview(ctx.session)) {
     return "review";
   }
 
-  return "landing";
+  return leadId ? "pending" : "landing";
 }
 
 export function canonicalPathForStage(
@@ -209,6 +223,14 @@ export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
     stage === "book" &&
     (path.startsWith("/apply/approval") || path.startsWith("/apply/choose-plan"))
   ) {
+    return null;
+  }
+
+  // The income step is never taken away from someone who has an application.
+  // The gate cookie says they belong there; its absence must not mean they do
+  // not, or a cleared cookie, an older session or a second device would push
+  // them off the only screen that can move them forward.
+  if (path.startsWith("/apply/verify-income") && pickLeadId(ctx)) {
     return null;
   }
 

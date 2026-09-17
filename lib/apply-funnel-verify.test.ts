@@ -80,3 +80,54 @@ describe("the income step as a funnel stage", () => {
     expect(resolveApplyFunnelStage(approved)).not.toBe("verify");
   });
 });
+
+describe("a draft lead is not a submission", () => {
+  // `activate` writes leadId into the session as soon as MyInfo returns, so an
+  // applicant has one before they have submitted anything. The stage machine
+  // predates that and read any leadId as post-submit, which sent people
+  // straight from MyInfo to the pending page - never reaching review, never
+  // being assessed. Applicant fba5e630 on staging: in_progress, no order, no
+  // Ascend call at all.
+  const draft = (over: Partial<ApplyFunnelContext> = {}): ApplyFunnelContext => ({
+    pathname: "/apply/review",
+    // What activate leaves behind: MyInfo merged, and a draft leadId.
+    session: {
+      leadId: LEAD,
+      amount: 5000,
+      tenure: 12,
+      authMethod: "singpass",
+      nric: "S1234567D",
+      fullName: "TAN WEI MING",
+    },
+    hasApplyGate: true,
+    hasReviewGate: false,
+    hasIncomeGate: false,
+    approvalOffer: null,
+    hasBookingConfirm: false,
+    queryLeadId: null,
+    ...over,
+  });
+
+  it("sends a freshly identified applicant to review, not to pending", () => {
+    expect(resolveApplyFunnelStage(draft())).toBe("review");
+  });
+
+  it("leaves them on the review page", () => {
+    expect(getFunnelRedirectUrl(draft())).toBeNull();
+  });
+
+  it("still sends them to pending once they have actually submitted", () => {
+    expect(resolveApplyFunnelStage(draft({ hasReviewGate: true, pathname: "/apply/pending" }))).toBe(
+      "pending",
+    );
+  });
+
+  it("never evicts anyone from the income page while they have an application", () => {
+    // Belt and braces for the cookie: a session that predates the income gate,
+    // a cleared cookie or a second device must not push someone off the one
+    // screen that can move them forward.
+    expect(
+      getFunnelRedirectUrl(draft({ pathname: "/apply/verify-income", hasIncomeGate: false })),
+    ).toBeNull();
+  });
+});
