@@ -21,10 +21,18 @@ const MAX_FILES = 6;
 
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-    // Distinct from "we could not read them": nothing was attempted. The
-    // caller falls back to asking the applicant to type the figures.
+    // Distinct from "we could not read them": nothing was attempted. `error`
+    // is the code for our logs and `message` is the half an applicant sees,
+    // so the two must not be swapped - a screen showing "not_configured"
+    // tells them nothing and looks broken.
     return NextResponse.json(
-      { error: "not_configured", message: "Income reading is not switched on." },
+      {
+        error: "not_configured",
+        // The applicant did nothing wrong and can do nothing about it, so
+        // this says what they can do - try later - while `error` tells us
+        // what actually needs fixing.
+        message: "We cannot read documents right now. Please try again shortly.",
+      },
       { status: 503 },
     );
   }
@@ -94,7 +102,10 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[apply/income/extract] extraction failed", err);
     return NextResponse.json(
-      { error: "We could not read those documents just now. Please try again." },
+      {
+        error: "extraction_failed",
+        message: "We could not read those documents just now. Please try again.",
+      },
       { status: 502 },
     );
   }

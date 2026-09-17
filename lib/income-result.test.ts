@@ -60,6 +60,28 @@ describe("incomeResultFrom", () => {
     });
   });
 
+  it("never shows the machine code when reading is switched off", () => {
+    // What /api/apply/income/extract really returns with no ANTHROPIC_API_KEY.
+    // The sentence is in `message`; `error` is a code for our logs.
+    const result = incomeResultFrom({
+      error: "not_configured",
+      message: "Income reading is not switched on.",
+    });
+
+    expect(result.kind).toBe("not_read");
+    if (result.kind !== "not_read") return;
+    expect(result.ask).not.toContain("not_configured");
+    expect(result.ask).toMatch(/[a-z] [a-z]/i);
+  });
+
+  it("ignores any bare code in error, whatever it is", () => {
+    const result = incomeResultFrom({ error: "upstream_timeout" });
+
+    expect(result.kind).toBe("not_read");
+    if (result.kind !== "not_read") return;
+    expect(result.ask).not.toContain("upstream_timeout");
+  });
+
   it("falls back to a sentence rather than a status code", () => {
     // Whatever goes wrong, an applicant must never be shown "unreadable".
     const result = incomeResultFrom({ status: "needs_review", months: [] });
