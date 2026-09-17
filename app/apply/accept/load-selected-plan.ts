@@ -3,7 +3,7 @@ import {
   mergeOfferIntoFormData,
 } from "@/lib/approval-offer";
 import { getApplySession } from "@/lib/apply-session";
-import { createAdminClient } from "@/lib/db/client";
+import { getApplicant } from "@/lib/db/applicants";
 import { initialLoanFormData } from "@/lib/loan-form";
 import {
   PLAN_TITLES,
@@ -60,16 +60,9 @@ export async function loadSelectedPlan(
 
   if (!leadId) return null;
 
-  const admin = createAdminClient();
-  const { data: row } = await admin
-    .from("leads")
-    .select(
-      "selected_plan, loan_tenure, loan_amount, plan_monthly_rate, plan_monthly_instalment",
-    )
-    .eq("id", leadId)
-    .maybeSingle();
+  const row = await getApplicant(leadId);
 
-  const persistedAmount = Number(row?.loan_amount) || 0;
+  const persistedAmount = Number(row?.desired_amount) || 0;
   const approvedAmount = Number(merged.approvedLoanAmount) || 0;
   // Prefer an explicit overwrite from the plan page (query) over the lead
   // row, which still holds the original application request until select-plan

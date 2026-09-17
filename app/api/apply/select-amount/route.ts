@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/db/client";
+import { setDesiredAmount } from "@/lib/db/applicants";
 import { decodeSession, SESSION_COOKIE } from "@/lib/apply-session";
 import {
   approvalOfferWithAmount,
@@ -48,16 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "amount must be at least 500" }, { status: 400 });
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("leads")
-      .update({ loan_amount: amount })
-      .eq("id", leadId);
-
-    if (error) {
-      console.error(`${LOG} db error`, error);
-      return NextResponse.json({ error: "Failed to save amount" }, { status: 500 });
-    }
+    await setDesiredAmount(leadId, amount);
 
     const res = NextResponse.json({ ok: true });
     const offerCookie = approvalOfferWithAmount(

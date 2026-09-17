@@ -15,7 +15,8 @@ import {
   newApplyTraceId,
 } from "@/lib/apply-flow-log";
 import type { LoanFormData } from "@/lib/loan-form";
-import { createAdminClient } from "@/lib/db/client";
+import { insertApplicant } from "@/lib/db/applicants";
+import type { IdType } from "@/lib/db/types";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
 import {
@@ -23,7 +24,7 @@ import {
   myinfoCookieValue,
 } from "@/lib/apply-myinfo-cookie";
 import { buildActivateSessionCookie } from "@/lib/apply-session-slim";
-import { upsertMyinfoProfileForLead } from "@/lib/myinfo-profile";
+import { upsertMyinfoProfileForApplicant } from "@/lib/myinfo-profile";
 import {
   APPLY_VARIANT_COOKIE,
   applyPath,
@@ -67,32 +68,25 @@ export async function GET(request: NextRequest) {
   let newDraftLeadId: string | null = null;
   if (hasLoanDetails && !alreadyHasDraft) {
     try {
-      const admin = createAdminClient();
-      const { data: partialLead } = await admin
-        .from("leads")
-        .insert({
-          loan_amount: merged.amount!,
-          loan_tenure: merged.tenure!,
-          loan_purpose: merged.loanPurpose || null,
-          urgency: merged.urgency || null,
-          auth_method: "singpass",
-          id_type: (merged.idType || null) as "singaporean" | "pr" | "foreigner" | null,
-          full_name: merged.fullName || null,
-          nric: merged.nric || null,
-          email: merged.email || null,
-          mobile: merged.mobile || null,
-          address: merged.address || null,
-          postal_code: merged.postalCode || null,
-          monthly_income: merged.monthlyIncome || null,
-          status: "in_progress",
-          moneylender_no_loans: false,
-        })
-        .select("id")
-        .single();
-
-      if (partialLead?.id) {
-        newDraftLeadId = partialLead.id as string;
-      }
+      newDraftLeadId = await insertApplicant({
+        desiredAmount: merged.amount!,
+        loanTenure: merged.tenure!,
+        loanPurpose: merged.loanPurpose || null,
+        urgency: merged.urgency || null,
+        authMethod: "singpass",
+        idType: (merged.idType as IdType | undefined) || null,
+        fullName: merged.fullName || null,
+        nric: merged.nric || null,
+        email: merged.email || null,
+        mobile: merged.mobile || null,
+        address: merged.address || null,
+        postalCode: merged.postalCode || null,
+        monthlyIncome: merged.monthlyIncome || null,
+        // Partial until final submit makes it `new`. Captured here so an
+        // applicant who drops off after MyInfo can still be followed up.
+        status: "in_progress",
+        moneylenderNoLoans: false,
+      });
     } catch (err) {
       console.error("[activate] partial lead creation failed:", err);
     }
@@ -109,8 +103,7 @@ export async function GET(request: NextRequest) {
     merged.fullName?.trim()
   ) {
     try {
-      const admin = createAdminClient();
-      await upsertMyinfoProfileForLead(admin, draftLeadId, merged);
+      await upsertMyinfoProfileForApplicant(draftLeadId, merged);
     } catch (err) {
       console.error("[activate] myinfo_profiles upsert failed:", err);
     }

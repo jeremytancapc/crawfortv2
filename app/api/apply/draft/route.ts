@@ -10,7 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/db/client";
+import { insertApplicant } from "@/lib/db/applicants";
+import type { AuthMethod, IdType } from "@/lib/db/types";
 import { initialLoanFormData } from "@/lib/loan-form";
 import type { LoanFormData } from "@/lib/loan-form";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
@@ -41,31 +42,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const admin = createAdminClient();
-  const { data: lead, error } = await admin
-    .from("leads")
-    .insert({
-      loan_amount: formData.amount,
-      loan_tenure: formData.tenure,
-      loan_purpose: formData.loanPurpose || null,
+  let leadId: string;
+  try {
+    leadId = await insertApplicant({
+      desiredAmount: formData.amount,
+      loanTenure: formData.tenure,
+      loanPurpose: formData.loanPurpose || null,
       urgency: formData.urgency || null,
-      auth_method: (formData.authMethod || null) as "manual" | "singpass" | null,
-      id_type: (formData.idType || null) as "singaporean" | "pr" | "foreigner" | null,
-      full_name: formData.fullName || null,
+      authMethod: (formData.authMethod as AuthMethod | undefined) || null,
+      idType: (formData.idType as IdType | undefined) || null,
+      fullName: formData.fullName || null,
       nric: formData.nric || null,
-      monthly_income: formData.monthlyIncome || null,
+      monthlyIncome: formData.monthlyIncome || null,
+      // Partial until submit. Captured so an applicant who drops off after
+      // the review confirm can still be followed up.
       status: "in_progress",
-      moneylender_no_loans: false,
-    })
-    .select("id")
-    .single();
-
-  if (error || !lead) {
-    console.error("[draft] Failed to create partial lead:", error);
+      moneylenderNoLoans: false,
+    });
+  } catch (err) {
+    console.error("[draft] Failed to create partial applicant:", err);
     return NextResponse.json({ error: "Failed to create draft" }, { status: 500 });
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(draftLeadCookieValue(lead.id as string));
+  res.cookies.set(draftLeadCookieValue(leadId));
   return res;
 }

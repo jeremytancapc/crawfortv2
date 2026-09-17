@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { saveAuthCallbackPayload } from "@/lib/auth-callback-store";
 import { encodeSession } from "@/lib/apply-session";
 import { buildMyInfoPatch } from "@/lib/myinfo";
 import { buildSimulatedMyInfoPayload } from "@/lib/singpass-simulate";
@@ -68,7 +67,6 @@ export async function GET(request: NextRequest) {
 
   const payload = buildSimulatedMyInfoPayload();
   const debugRid = randomUUID();
-  saveAuthCallbackPayload(debugRid, payload);
 
   const myinfoPatch = buildMyInfoPatch(payload.myinfo);
   const sessionData: Partial<LoanFormData> = { ...myinfoPatch, singpassRawKey: debugRid };

@@ -29,15 +29,23 @@ import { initialLoanFormData } from "@/lib/loan-form";
 import type { LoanFormData } from "@/lib/loan-form";
 import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
-import { createAdminClient } from "@/lib/db/client";
+import {
+  insertApplicant,
+  setEligibility,
+  setApplicantStatus,
+  updateApplicantDetails,
+  type NewApplicant,
+} from "@/lib/db/applicants";
+import { upsertCreditAssessment } from "@/lib/db/credit-assessments";
+import type { AuthMethod, BankruptcyDeclaration, IdType } from "@/lib/db/types";
 import { buildPostSubmitSession } from "@/lib/apply-session-slim";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
 import { clearMyinfoCookie, decodeMyinfoCookie, MYINFO_COOKIE } from "@/lib/apply-myinfo-cookie";
 import {
   loadMyinfoProcessedPayload,
-  processedPayloadFromAuthStore,
-  upsertMyinfoProfileForLead,
+  processedPayloadFromRetrieval,
+  upsertMyinfoProfileForApplicant,
 } from "@/lib/myinfo-profile";
 import { checkLeadEligibility } from "@/lib/eligibility-check";
 import { decideSubmission } from "@/lib/apply-outcome";
@@ -82,64 +90,49 @@ export async function POST(request: NextRequest) {
   // (manual). It is separate from the session so the funnel is never affected.
   const draftLeadId = (request.cookies.get(DRAFT_LEAD_COOKIE)?.value ?? "").trim();
 
-  const admin = createAdminClient();
-
-  // ── 1. Save lead (UPDATE if partial lead exists, INSERT otherwise) ─────────
-  const leadFields = {
-    loan_amount: formData.amount,
-    loan_tenure: formData.tenure,
-    loan_purpose: formData.loanPurpose || null,
+  // ── 1. Save the applicant (UPDATE if a partial row exists, INSERT otherwise) ─
+  const applicantFields: NewApplicant = {
+    desiredAmount: formData.amount,
+    loanTenure: formData.tenure,
+    loanPurpose: formData.loanPurpose || null,
     urgency: formData.urgency || null,
-    auth_method: (formData.authMethod || null) as "manual" | "singpass" | null,
-    id_type: (formData.idType || null) as "singaporean" | "pr" | "foreigner" | null,
-    full_name: formData.fullName || null,
+    authMethod: (formData.authMethod as AuthMethod | undefined) || null,
+    idType: (formData.idType as IdType | undefined) || null,
+    fullName: formData.fullName || null,
     nric: formData.nric || null,
     email: formData.email || null,
     mobile: formData.mobile || null,
-    secondary_mobile: formData.secondaryMobile || null,
-    postal_code: formData.postalCode || null,
+    secondaryMobile: formData.secondaryMobile || null,
+    postalCode: formData.postalCode || null,
     address: formData.address || null,
-    mailing_address: formData.mailingAddress || null,
-    employment_status: formData.employmentStatus || null,
-    monthly_income: formData.monthlyIncome || null,
-    work_industry: formData.workIndustry || null,
+    mailingAddress: formData.mailingAddress || null,
+    employmentStatus: formData.employmentStatus || null,
+    monthlyIncome: formData.monthlyIncome || null,
+    workIndustry: formData.workIndustry || null,
     position: formData.position || null,
-    employment_duration: formData.employmentDuration || null,
-    office_phone: formData.officePhone || null,
-    marital_status: formData.maritalStatus || null,
-    bankruptcy_declaration: (formData.bankruptcyDeclaration || null) as "clear" | "discharged_lt5" | "active" | null,
-    moneylender_no_loans: formData.moneylenderNoLoans,
-    moneylender_loan_amount: formData.moneylenderLoanAmount || null,
-    moneylender_payment_history: formData.moneylenderPaymentHistory || null,
-    status: "new" as const,
+    employmentDuration: formData.employmentDuration || null,
+    officePhone: formData.officePhone || null,
+    maritalStatus: formData.maritalStatus || null,
+    bankruptcyDeclaration: (formData.bankruptcyDeclaration as BankruptcyDeclaration | undefined) || null,
+    moneylenderNoLoans: formData.moneylenderNoLoans,
+    moneylenderLoanAmount: formData.moneylenderLoanAmount || null,
+    moneylenderPaymentHistory: formData.moneylenderPaymentHistory || null,
+    status: "new",
   };
 
   let leadId: string;
 
-  if (looksLikeLeadUuid(draftLeadId)) {
-    // Partial lead created at activate (Singpass) or draft (manual) - update it.
-    const { error: updateError } = await admin
-      .from("leads")
-      .update(leadFields)
-      .eq("id", draftLeadId);
-
-    if (updateError) {
-      console.error("Failed to update lead:", updateError);
-      return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
+  try {
+    if (looksLikeLeadUuid(draftLeadId)) {
+      // Partial row created at activate (Singpass) or draft (manual).
+      await updateApplicantDetails(draftLeadId, applicantFields);
+      leadId = draftLeadId;
+    } else {
+      leadId = await insertApplicant(applicantFields);
     }
-    leadId = draftLeadId;
-  } else {
-    const { data: lead, error: leadError } = await admin
-      .from("leads")
-      .insert(leadFields)
-      .select("id")
-      .single();
-
-    if (leadError || !lead) {
-      console.error("Failed to save lead:", leadError);
-      return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
-    }
-    leadId = lead.id as string;
+  } catch (err) {
+    console.error("Failed to save applicant:", err);
+    return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
   }
 
   // ── 2. MyInfo profile (Singpass) - upsert; hydrate CPF/NOA from DB if cookie was slim ─
@@ -158,11 +151,11 @@ export async function POST(request: NextRequest) {
             fromMyinfoCookie.noaHistory.length > 0),
       );
       const fromDb = looksLikeLeadUuid(leadId)
-        ? await loadMyinfoProcessedPayload(admin, leadId)
+        ? await loadMyinfoProcessedPayload(leadId)
         : null;
       const fromStore =
         !fromDb && formData.singpassRawKey
-          ? processedPayloadFromAuthStore(formData.singpassRawKey)
+          ? await processedPayloadFromRetrieval(formData.singpassRawKey)
           : null;
       const fallback = (cookieHasBulk ? fromMyinfoCookie : null) ?? fromDb ?? fromStore;
       if (fallback) {
@@ -173,7 +166,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await upsertMyinfoProfileForLead(admin, leadId, {
+      await upsertMyinfoProfileForApplicant(leadId, {
         ...formData,
         cpfContributions,
         noaHistory,
@@ -200,15 +193,11 @@ export async function POST(request: NextRequest) {
     leadId,
   });
 
-  // Save eligibility result to the lead
-  await admin
-    .from("leads")
-    .update({
-      eligibility_status: eligibility.status,
-      eligibility_notes: eligibility.notes,
-      eligibility_reloan_reason: eligibility.reloanReason,
-    })
-    .eq("id", leadId);
+  await setEligibility(leadId, {
+    status: eligibility.status,
+    notes: eligibility.notes,
+    reloanReason: eligibility.reloanReason,
+  });
 
   // Always run credit scoring (for analytics even if rejected)
   const assessment = assessCredit({
@@ -233,25 +222,24 @@ export async function POST(request: NextRequest) {
       ? "airconnect_reloan"
       : "airconnect_not_eligible";
 
-    // Save credit assessment with real income data for analytics
-    await admin.from("credit_assessments").insert({
-      lead_id: leadId,
-      income_source: assessment.incomeSource,
-      verified_monthly_income: assessment.verifiedMonthlyIncome,
-      approved_loan_amount: 0,
-      max_eligible_loan: assessment.maxEligibleLoan,
-      is_eligible: false,
-      credit_rejection_reason: rejectionReason,
-      age_at_application: assessment.age || null,
-      existing_loans: assessment.existingLoans,
-      moneylender_loan_amount: assessment.existingLoans > 0 ? assessment.existingLoans : null,
-      moneylender_payment_history: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
+    // Still scored, so the engine's numbers exist for analytics even though
+    // this applicant never reaches a credit decision.
+    await upsertCreditAssessment(leadId, {
+      incomeSource: assessment.incomeSource,
+      verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
+      underwrittenCap: assessment.maxEligibleLoan,
+      engineOfferAmount: 0,
+      isEligible: false,
+      creditRejectionReason: rejectionReason,
+      ageAtApplication: assessment.age || null,
+      existingLoans: assessment.existingLoans,
+      moneylenderLoanAmount: assessment.existingLoans > 0 ? assessment.existingLoans : null,
+      moneylenderPaymentHistory: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
       explanation: `AirConnect: ${eligibility.notes}${eligibility.reloanReason ? ` (reloan: ${eligibility.reloanReason})` : ""} | Income: ${assessment.explanation}`,
-      raw_assessment: { eligibility: eligibility.raw, assessment } as unknown as Record<string, unknown>,
+      rawAssessment: { eligibility: eligibility.raw, assessment } as unknown as Record<string, unknown>,
     });
 
-    // Update lead status
-    await admin.from("leads").update({ status: "rejected" }).eq("id", leadId);
+    await setApplicantStatus(leadId, "rejected");
 
     const rejectRes = NextResponse.json({
       leadId,
@@ -282,21 +270,24 @@ export async function POST(request: NextRequest) {
 
   const creditRejectionReason = deriveCreditRejectionReason(finalAssessment);
 
-  // ── 4. Save credit assessment ─────────────────────────────────────────────
-  await admin.from("credit_assessments").insert({
-    lead_id: leadId,
-    income_source: finalAssessment.incomeSource,
-    verified_monthly_income: finalAssessment.verifiedMonthlyIncome,
-    approved_loan_amount: finalAssessment.approvedLoanAmount,
-    max_eligible_loan: finalAssessment.maxEligibleLoan,
-    is_eligible: finalAssessment.isEligible,
-    credit_rejection_reason: creditRejectionReason,
-    age_at_application: finalAssessment.age || null,
-    existing_loans: finalAssessment.existingLoans,
-    moneylender_loan_amount: finalAssessment.existingLoans > 0 ? finalAssessment.existingLoans : null,
-    moneylender_payment_history: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
+  // ── 4. Save what the engine made of it ───────────────────────────────────
+  //
+  // Persisted, not acted on. Since ADR-0001 these numbers exist so they can
+  // be compared against Ascend's - the only way anyone would notice Ascend
+  // mis-reading, say, a platform worker's CPF.
+  await upsertCreditAssessment(leadId, {
+    incomeSource: finalAssessment.incomeSource,
+    verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+    underwrittenCap: finalAssessment.maxEligibleLoan,
+    engineOfferAmount: finalAssessment.approvedLoanAmount,
+    isEligible: finalAssessment.isEligible,
+    creditRejectionReason,
+    ageAtApplication: finalAssessment.age || null,
+    existingLoans: finalAssessment.existingLoans,
+    moneylenderLoanAmount: finalAssessment.existingLoans > 0 ? finalAssessment.existingLoans : null,
+    moneylenderPaymentHistory: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
     explanation: finalAssessment.explanation,
-    raw_assessment: assessment as unknown as Record<string, unknown>,
+    rawAssessment: assessment as unknown as Record<string, unknown>,
   });
 
   // ── 4b. Ask Ascend, which owns the borrowable amount (ADR-0001) ───────────

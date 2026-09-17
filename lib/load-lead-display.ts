@@ -1,53 +1,42 @@
-import { createAdminClient } from "@/lib/db/client";
 import type { CustomOfferDisplay } from "@/lib/custom-offer-display";
+import { getApplicant } from "@/lib/db/applicants";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import type { PendingDisplay } from "@/lib/pending-display";
 
 /**
- * Server loaders for the two "we'll be in touch" confirmation screens. Both
- * survive reload via `?leadId=` only - apply cookies are cleared by then.
+ * Server loaders for the confirmation screens. All of them survive reload via
+ * `?leadId=` only - apply cookies are cleared by the time they render.
  */
 
-/** First `leadId` query value if it looks like a lead UUID, else null. */
+/** First `leadId` query value if it looks like an applicant UUID, else null. */
 export function leadIdFromQuery(raw: string | string[] | undefined): string | null {
   const value = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
   return value && looksLikeLeadUuid(value) ? value.trim() : null;
 }
 
 export async function loadPendingDisplay(leadId: string): Promise<PendingDisplay | null> {
-  const admin = createAdminClient();
-  const { data: lead, error } = await admin
-    .from("leads")
-    .select("full_name, loan_amount, id_type")
-    .eq("id", leadId)
-    .maybeSingle();
-
-  if (error || !lead) return null;
+  const applicant = await getApplicant(leadId);
+  if (!applicant) return null;
 
   return {
     leadId,
-    fullName: (lead.full_name as string) ?? "",
-    amount: Number(lead.loan_amount) || 0,
-    idType: (lead.id_type as string) ?? "",
+    fullName: applicant.full_name ?? "",
+    // numeric columns arrive as strings, so the conversion is explicit.
+    amount: Number(applicant.desired_amount) || 0,
+    idType: applicant.id_type ?? "",
   };
 }
 
 export async function loadCustomOfferDisplay(
   leadId: string,
 ): Promise<CustomOfferDisplay | null> {
-  const admin = createAdminClient();
-  const { data: lead, error } = await admin
-    .from("leads")
-    .select("full_name, loan_amount, loan_tenure")
-    .eq("id", leadId)
-    .maybeSingle();
-
-  if (error || !lead) return null;
+  const applicant = await getApplicant(leadId);
+  if (!applicant) return null;
 
   return {
     leadId,
-    fullName: (lead.full_name as string) ?? "",
-    amount: Number(lead.loan_amount) || 0,
-    tenure: Number(lead.loan_tenure) || 0,
+    fullName: applicant.full_name ?? "",
+    amount: Number(applicant.desired_amount) || 0,
+    tenure: Number(applicant.loan_tenure) || 0,
   };
 }

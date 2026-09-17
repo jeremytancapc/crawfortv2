@@ -17,7 +17,8 @@ import {
   aipBookingConfirmCookieValue,
   clearAipSessionCookie,
 } from "@/lib/aip-session";
-import { createAdminClient } from "@/lib/db/client";
+import { insertApplicant } from "@/lib/db/applicants";
+import { insertAppointment } from "@/lib/db/appointments";
 import { logExternalApi } from "@/lib/external-api-logger";
 
 export const runtime = "nodejs";
@@ -134,47 +135,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "date and time are required" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-
-  // Create the lead row - AIP leads skip all form steps so most fields are null.
+  // Create the applicant row - AIP applicants skip every form step, so most
+  // fields are null.
   const e164Phone = `+65${session.mobile}`;
 
-  const { data: lead, error: leadError } = await admin
-    .from("leads")
-    .insert({
+  let leadId: string;
+  try {
+    leadId = await insertApplicant({
       mobile: e164Phone,
-      auth_method: "aip",
+      authMethod: "aip",
+      // Pre-approved, booking directly: there is no desired amount or term
+      // because AIP applicants never see the form that collects them.
       status: "appointed",
-      loan_amount: 0,
-      loan_tenure: 0,
-      moneylender_no_loans: false,
-    })
-    .select("id")
-    .single();
-
-  if (leadError || !lead?.id) {
-    console.error(`${LOG} insert lead failed`, leadError);
+      desiredAmount: 0,
+      loanTenure: 0,
+      moneylenderNoLoans: false,
+    });
+  } catch (leadError) {
+    console.error(`${LOG} insert applicant failed`, leadError);
     return NextResponse.json({ error: "Failed to create application" }, { status: 500 });
   }
 
-  const leadId = lead.id as string;
   const cfh5Id = cfh5ApplicationRef(leadId);
 
   console.info(`${LOG} lead created`, { leadId, cfh5Id });
 
-  // Create the appointment row.
-  const { data: appointment, error: apptError } = await admin
-    .from("appointments")
-    .insert({
-      lead_id: leadId,
-      appointment_date: date,
-      appointment_time: time,
+  let appointment: { id: string };
+  try {
+    appointment = await insertAppointment({
+      applicantId: leadId,
+      date,
+      time,
       status: "confirmed",
-    })
-    .select("id")
-    .single();
-
-  if (apptError || !appointment?.id) {
+    });
+  } catch (apptError) {
     console.error(`${LOG} insert appointment failed`, apptError);
     return NextResponse.json({ error: "Failed to book appointment" }, { status: 500 });
   }

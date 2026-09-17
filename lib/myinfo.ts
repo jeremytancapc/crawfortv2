@@ -138,7 +138,7 @@ export function buildMyInfoPatch(payload: Record<string, unknown>): Partial<Loan
           const amount = Number(row.amount?.value   ?? 0);
           // Employer name is truncated to 50 chars in the session cookie to stay
           // within the 4 KB browser limit. The full name is preserved in the raw
-          // MyInfo payload saved to the DB via the auth-callback-store.
+          // MyInfo payload saved to myinfo_retrievals.
           const employer = String(row.employer?.value ?? "");
           return month && amount > 0
             ? {

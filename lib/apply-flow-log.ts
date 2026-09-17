@@ -1,12 +1,12 @@
 /**
- * Persist apply / Singpass funnel diagnostics to in-memory `apply_flow_events`.
+ * Persist apply / Singpass funnel diagnostics to `apply_flow_events`.
  * Used to debug customer complaints without storing full PII.
  */
 
 import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 
-import { createAdminClient } from "@/lib/db/client";
+import { insertApplyFlowEvent } from "@/lib/db/events";
 import type { LoanFormData } from "@/lib/loan-form";
 
 export const APPLY_TRACE_ID_KEY = "applyTraceId";
@@ -129,7 +129,6 @@ function runtimeMeta() {
  */
 export async function logApplyFlowEvent(input: ApplyFlowLogInput): Promise<void> {
   try {
-    const db = createAdminClient();
     const mergedBytes = input.cookieMergedBytes ?? null;
     const suffixes = lookupSuffixes(input.sessionAfter, input.sessionBefore);
 
@@ -160,10 +159,7 @@ export async function logApplyFlowEvent(input: ApplyFlowLogInput): Promise<void>
       },
     };
 
-    const { error } = await db.from("apply_flow_events").insert(row);
-    if (error) {
-      console.error("[apply-flow-log] insert failed", error.message, { event: input.event });
-    }
+    await insertApplyFlowEvent(row);
   } catch (err) {
     console.error("[apply-flow-log] unexpected error", err);
   }

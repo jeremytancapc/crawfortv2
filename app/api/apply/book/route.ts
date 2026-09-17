@@ -19,7 +19,8 @@ import {
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
 import { bookingConfirmCookieValue } from "@/lib/booking-confirmation";
-import { createAdminClient } from "@/lib/db/client";
+import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
+import { insertAppointment } from "@/lib/db/appointments";
 import { logExternalApi } from "@/lib/external-api-logger";
 
 export const runtime = "nodejs";
@@ -150,21 +151,16 @@ export async function POST(request: NextRequest) {
 
   console.info(`${LOG} booking slot`, { date, time, idNumber: idNumber ?? null, cfh5Hint: cfh5ApplicationRef(leadId) });
 
-  const admin = createAdminClient();
-
-  const { data: appointment, error } = await admin
-    .from("appointments")
-    .insert({
-      lead_id: leadId,
-      appointment_date: date,
-      appointment_time: time,
+  let appointment: { id: string };
+  try {
+    appointment = await insertAppointment({
+      applicantId: leadId,
+      date,
+      time,
       status: "confirmed",
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    console.error(`${LOG} insert appointment failed`, error);
+    });
+  } catch (err) {
+    console.error(`${LOG} insert appointment failed`, err);
     return NextResponse.json({ error: "Failed to book appointment" }, { status: 500 });
   }
 
@@ -180,26 +176,19 @@ export async function POST(request: NextRequest) {
     cfh5Hint: cfh5ApplicationRef(leadId),
   });
 
-  // Fetch lead details for the AirConnect notification
-  const { data: lead } = await admin
-    .from("leads")
-    .select("full_name, mobile, loan_amount")
-    .eq("id", leadId)
-    .single();
+  // Applicant details for the AirConnect notification.
+  const lead = await getApplicant(leadId);
 
-  // Update the lead status to "appointed"
-  const { error: leadUpdateError } = await admin
-    .from("leads")
-    .update({ status: "appointed" })
-    .eq("id", leadId);
-
-  if (leadUpdateError) {
-    console.error(`${LOG} lead status update failed`, leadUpdateError);
-  } else {
-    console.info(`${LOG} lead status → appointed`, { cfh5Hint: cfh5ApplicationRef(leadId) });
+  try {
+    await setApplicantStatus(leadId, "appointed");
+    console.info(`${LOG} applicant status → appointed`, { cfh5Hint: cfh5ApplicationRef(leadId) });
+  } catch (err) {
+    // The appointment itself is already booked; a status that did not move is
+    // a reporting problem, not a lost booking.
+    console.error(`${LOG} applicant status update failed`, err);
   }
 
-  const loanAmount = Number(lead?.loan_amount ?? 0) || 0;
+  const loanAmount = Number(lead?.desired_amount ?? 0) || 0;
   const cfh5Id = cfh5ApplicationRef(leadId);
 
   if (!lead) {

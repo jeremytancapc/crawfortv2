@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { saveAuthCallbackPayload } from "@/lib/auth-callback-store";
 import { saveMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { encodeSession } from "@/lib/apply-session";
@@ -84,7 +83,6 @@ export async function POST(request: NextRequest) {
   }
 
   const debugRid = randomUUID();
-  saveAuthCallbackPayload(debugRid, payload);
 
   // Described before it is mapped, so a payload the mapper cannot read still
   // leaves a trace. Field names and counts only - no NRIC, no name, nothing
@@ -129,7 +127,7 @@ export async function POST(request: NextRequest) {
   activateUrl.searchParams.set("token", activateToken);
 
   // Persist the verbatim payload, always - not only when the debug capture is
-  // on. This is the durable replacement for the in-memory auth-callback-store,
+  // on. myinfo_retrievals is where the verbatim payload lives,
   // and submit reads it back to hand Ascend the MyInfo object. Keyed by the
   // same id that travels in the session as singpassRawKey.
   //

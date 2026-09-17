@@ -2,19 +2,22 @@ import { cookies } from "next/headers";
 
 import { decodeMyinfoCookie, MYINFO_COOKIE } from "@/lib/apply-myinfo-cookie";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session-codec";
-import { createAdminClient } from "@/lib/db/client";
 import type { LoanFormData } from "@/lib/loan-form";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import {
   loadMyinfoProcessedPayload,
-  processedPayloadFromAuthStore,
+  processedPayloadFromRetrieval,
 } from "@/lib/myinfo-profile";
 
 /**
- * Merge CPF/NOA into session for /apply/review when the cookie was slimmed at activate.
- * Prefer the signed apply_myinfo cookie - it survives serverless isolates, unlike
- * the in-memory myinfo_profiles table and auth-callback-store.
+ * Merge CPF/NOA into session for /apply/review when the cookie was slimmed at
+ * activate.
+ *
+ * The signed apply_myinfo cookie is tried first because it needs no round
+ * trip, then myinfo_profiles, then the stored retrieval. All three are now
+ * durable - the note about surviving serverless isolates described the
+ * in-memory store, which is gone.
  */
 export async function hydrateSingpassReviewSession(
   session: Partial<LoanFormData> | null,
@@ -47,15 +50,18 @@ export async function hydrateSingpassReviewSession(
 
   if (looksLikeLeadUuid(draftLeadId)) {
     try {
-      const admin = createAdminClient();
-      processed = await loadMyinfoProcessedPayload(admin, draftLeadId);
+      processed = await loadMyinfoProcessedPayload(draftLeadId);
     } catch (err) {
       console.error("[hydrate] myinfo_profiles load failed:", err);
     }
   }
 
   if (!processed && session.singpassRawKey) {
-    processed = processedPayloadFromAuthStore(session.singpassRawKey);
+    try {
+      processed = await processedPayloadFromRetrieval(session.singpassRawKey);
+    } catch (err) {
+      console.error("[hydrate] myinfo_retrievals load failed:", err);
+    }
   }
 
   if (!processed) return withDemoReviewMyInfo(session);

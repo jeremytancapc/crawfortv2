@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/db/client";
+import { getApplicant, setDesiredAmount, setSelectedPlan } from "@/lib/db/applicants";
 import { recordPlanOnAscendOrder } from "@/lib/ascend/record-plan";
 import {
   MIN_OFFER_TENURE,
@@ -95,17 +95,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "amount must be at least 500" }, { status: 400 });
     }
 
-    const admin = createAdminClient();
-
-    // Persist the chosen withdraw amount so /apply/accept shows the same figure.
-    const update: Record<string, unknown> = {
-      loan_tenure: tenure,
-      loan_amount: amount,
-      selected_plan: planId,
-      plan_monthly_rate: monthlyRate ?? null,
-      plan_monthly_instalment: monthlyInstalment ?? null,
-    };
-
     // Append short ops-facing notes when the customer ticked additional requests
     // or asked for a custom (out-of-policy) offer that needs staff follow-up.
     const requestLabels = formatPlanAdditionalRequestsLabel(additionalRequests);
@@ -118,13 +107,10 @@ export async function POST(request: NextRequest) {
         `Custom offer requested: $${amount.toLocaleString("en-SG")} over ${tenure} ${tenure === 1 ? "month" : "months"} — needs staff follow-up (call/WhatsApp)`,
       );
     }
+    let notes: string | null = null;
     if (noteLines.length > 0) {
-      const { data: existing } = await admin
-        .from("leads")
-        .select("notes")
-        .eq("id", leadId)
-        .maybeSingle();
-      const previousNotes = typeof existing?.notes === "string" ? existing.notes.trim() : "";
+      const existing = await getApplicant(leadId);
+      const previousNotes = existing?.notes?.trim() ?? "";
       const stripped = previousNotes
         .split("\n")
         .filter(
@@ -134,13 +120,22 @@ export async function POST(request: NextRequest) {
         .join("\n")
         .trim();
       const freshNotes = noteLines.join("\n");
-      update.notes = stripped ? `${stripped}\n${freshNotes}` : freshNotes;
+      notes = stripped ? `${stripped}\n${freshNotes}` : freshNotes;
     }
 
-    const { error } = await admin.from("leads").update(update).eq("id", leadId);
-
-    if (error) {
-      console.error(`${LOG} db error`, error);
+    try {
+      // The chosen withdraw amount is persisted so /apply/accept shows the
+      // same figure the applicant picked.
+      await setDesiredAmount(leadId, amount);
+      await setSelectedPlan(leadId, {
+        plan: planId,
+        tenure,
+        monthlyRate: monthlyRate ?? null,
+        monthlyInstalment: monthlyInstalment ?? null,
+        notes,
+      });
+    } catch (err) {
+      console.error(`${LOG} db error`, err);
       return NextResponse.json({ error: "Failed to save plan" }, { status: 500 });
     }
 

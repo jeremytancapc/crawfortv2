@@ -8,7 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/db/client";
+import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
+import { insertAppointment } from "@/lib/db/appointments";
 import { verifyAxsToken } from "@/lib/axs-token";
 import { logExternalApi } from "@/lib/external-api-logger";
 
@@ -119,39 +120,27 @@ export async function POST(request: NextRequest) {
 
   console.info(`${LOG} POST`, { leadId, axsRef, cfh5Id, date, time });
 
-  const admin = createAdminClient();
-
-  // Fetch lead details
-  const { data: lead } = await admin
-    .from("leads")
-    .select("full_name, mobile, nric")
-    .eq("id", leadId)
-    .single();
+  const lead = await getApplicant(leadId);
 
   if (!lead) {
     console.error(`${LOG} lead not found`, { leadId });
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
-  // Create appointment
-  const { data: appointment, error: apptError } = await admin
-    .from("appointments")
-    .insert({
-      lead_id: leadId,
-      appointment_date: date,
-      appointment_time: time,
+  let appointment: { id: string };
+  try {
+    appointment = await insertAppointment({
+      applicantId: leadId,
+      date,
+      time,
       status: "confirmed",
-    })
-    .select("id")
-    .single();
-
-  if (apptError || !appointment?.id) {
+    });
+  } catch (apptError) {
     console.error(`${LOG} insert appointment failed`, apptError);
     return NextResponse.json({ error: "Failed to book appointment" }, { status: 500 });
   }
 
-  // Update lead status
-  await admin.from("leads").update({ status: "appointed" }).eq("id", leadId);
+  await setApplicantStatus(leadId, "appointed");
 
   console.info(`${LOG} appointment saved`, { appointmentId: appointment.id, cfh5Id, date, time });
 

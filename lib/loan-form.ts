@@ -48,7 +48,7 @@ export interface LoanFormData {
   cpfContributions: CpfContribution[];      // up to 12 months
   noaHistory: NoaRecord[];                  // all available YA records
 
-  // UUID key into the server-side auth-callback-store; raw blobs are never put in
+  // UUID key into myinfo_retrievals; raw blobs are never put in
   // the session cookie (they would exceed the 4 KB browser limit).
   singpassRawKey: string;
 

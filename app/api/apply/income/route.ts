@@ -64,6 +64,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Ascend rejects income with no documents behind it: `600: orderFile is
+  // required`. Refusing here rather than there keeps the failure legible -
+  // sending figures Ascend will not accept returns a 502 that reads like an
+  // outage rather than a missing upload.
+  //
+  // NOT YET WIRED: the verify-income page collects files in the browser and
+  // they are never uploaded. Reaching Ascend needs /openApi/file/upload
+  // first, then its returned URLs passed here as `files`.
+  const files = body.files ?? [];
+  if (files.length === 0) {
+    console.error("[apply/income] no documents to submit - file upload is not wired yet");
+    return NextResponse.json(
+      { error: "Please attach your income documents before submitting." },
+      { status: 400 },
+    );
+  }
+
   try {
     const result = await ascendSubmitIncome({
       orderId: order.order_id,
@@ -74,7 +91,7 @@ export async function POST(request: NextRequest) {
       // The figures come from documents the applicant uploaded, so Ascend
       // should treat them as credible income rather than self-declared.
       incomeFile: true,
-      files: body.files ?? [],
+      files,
     });
 
     await updateAscendOrderDecision(applicantId, result);

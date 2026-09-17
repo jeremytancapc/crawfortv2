@@ -3,7 +3,7 @@
  * in-memory `api_logs` table for local diagnostics.
  */
 
-import { createAdminClient } from "@/lib/db/client";
+import { insertApiLog } from "@/lib/db/events";
 
 export interface ExternalApiLog {
   /** Label for the caller, e.g. "[apply/book]" */
@@ -110,30 +110,29 @@ export function logExternalApi(log: ExternalApiLog): void {
  * Headers are masked before storage (no raw API keys).
  */
 async function persistToDb(log: ExternalApiLog): Promise<void> {
-  try {
-    const admin = createAdminClient();
-
-    const { error } = await admin.from("api_logs").insert({
-      tag: log.tag,
-      method: log.method,
-      url: log.url,
-      request_headers: maskHeaders(log.headers),
-      request_body: typeof log.body === "string" ? JSON.parse(log.body) : log.body,
-      response_status: log.status,
-      response_ok: log.ok,
-      response_body: log.responseBody?.slice(0, 2000) ?? null,
-      duration_ms: log.ms,
-      lead_id: log.leadId ?? null,
-      error: log.error ?? null,
-    });
-
-    if (error) {
-      console.error(`[api-logger] DB insert error`, { code: error.code, message: error.message, details: error.details });
-    } else {
-      console.info(`[api-logger] Persisted to api_logs`, { tag: log.tag, leadId: log.leadId ?? null });
+  // insertApiLog swallows its own errors: logging must never break the flow
+  // it is logging. The body is parsed here rather than there so a malformed
+  // one is caught alongside the request that produced it.
+  let requestBody: unknown = log.body;
+  if (typeof log.body === "string") {
+    try {
+      requestBody = JSON.parse(log.body);
+    } catch {
+      requestBody = { unparsed: log.body.slice(0, 2000) };
     }
-  } catch (err) {
-    // Swallow - we never want DB logging to crash the main flow
-    console.error(`[api-logger] DB insert failed`, err);
   }
+
+  await insertApiLog({
+    tag: log.tag,
+    method: log.method,
+    url: log.url,
+    request_headers: maskHeaders(log.headers),
+    request_body: requestBody,
+    response_status: log.status,
+    response_ok: log.ok,
+    response_body: log.responseBody?.slice(0, 2000) ?? null,
+    duration_ms: log.ms,
+    applicant_id: log.leadId ?? null,
+    error: log.error ?? null,
+  });
 }

@@ -5,7 +5,8 @@ import {
   mergeOfferIntoFormData,
 } from "@/lib/approval-offer";
 import { getApplySession } from "@/lib/apply-session";
-import { createAdminClient } from "@/lib/db/client";
+import { getAscendOrder } from "@/lib/db/ascend-orders";
+import { getCreditAssessment } from "@/lib/db/credit-assessments";
 import { initialLoanFormData, type LoanFormData } from "@/lib/loan-form";
 import { applyRedirectPath } from "@/lib/apply-variant-server";
 
@@ -32,17 +33,19 @@ export async function loadApprovalFormData(): Promise<LoanFormData> {
   };
 
   if (!formData.approvedLoanAmount || formData.approvedLoanAmount <= 0) {
-    const admin = createAdminClient();
-    const { data: row } = await admin
-      .from("credit_assessments")
-      .select("approved_loan_amount, verified_monthly_income, income_source")
-      .eq("lead_id", leadId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Ascend's A-Card Limit is the authority on what can be borrowed
+    // (ADR-0001). The engine's figure is only a fallback for an applicant who
+    // has no order - one who came through before Ascend was switched on.
+    const order = await getAscendOrder(leadId);
+    if (order?.a_card_limit) {
+      formData.approvedLoanAmount = Number(order.a_card_limit) || 0;
+    }
+
+    const row = await getCreditAssessment(leadId);
 
     if (row) {
-      formData.approvedLoanAmount = Number(row.approved_loan_amount) || 0;
+      formData.approvedLoanAmount =
+        formData.approvedLoanAmount || Number(row.engine_offer_amount) || 0;
       formData.verifiedMonthlyIncome = Number(row.verified_monthly_income) || 0;
       const src = row.income_source;
       if (src === "cpf" || src === "noa" || src === "self_declared") {

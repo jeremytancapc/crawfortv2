@@ -201,13 +201,27 @@ export async function setEligibility(
     where id = ${id}`;
 }
 
+/**
+ * Records the plan the applicant chose.
+ *
+ * `loan_tenure` moves with it: the plan IS a tenure, and leaving the two to
+ * drift means the booking confirmation and the AirConnect notification quote
+ * a different term than the applicant agreed to.
+ */
 export async function setSelectedPlan(
   id: string,
-  input: { plan: string; monthlyRate: number | null; monthlyInstalment: number | null; notes?: string | null },
+  input: {
+    plan: string;
+    tenure: number;
+    monthlyRate: number | null;
+    monthlyInstalment: number | null;
+    notes?: string | null;
+  },
 ): Promise<void> {
   await sql`
     update applicants set
       selected_plan = ${input.plan},
+      loan_tenure = ${input.tenure},
       plan_monthly_rate = ${input.monthlyRate},
       plan_monthly_instalment = ${input.monthlyInstalment},
       notes = coalesce(${input.notes ?? null}, notes)
