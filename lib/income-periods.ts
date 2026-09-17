@@ -236,29 +236,39 @@ function previousMonth(key: string): string {
 const MONTHS_REQUIRED = 3;
 
 /**
- * What to ask the applicant for next, or null when nothing is missing.
+ * The months the upload screen actually asks for: the three complete calendar
+ * months before this one.
  *
- * The screen asks for three monthly payslips, and most people still send one.
- * Repeating the original instruction is the worst thing to say to someone who
- * has just followed it as best they can, so this names the specific month -
- * or the specific half of a month - that would finish the application.
+ * Anchoring on today rather than on whatever arrived is the whole point. A
+ * single stale May payslip used to produce "please add your April 2026
+ * payslip" - walking further into the past, away from the months the screen
+ * had already named, and asking for a document no decision needs.
  */
+function requiredMonths(today: Date): string[] {
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth();
+  return [3, 2, 1].map((back) =>
+    new Date(Date.UTC(year, month - back, 1)).toISOString().slice(0, 7),
+  );
+}
+
 export function nextUploadAsk(
   assembly: Assembly,
-  options?: { monthlyOnly?: boolean },
+  options?: { monthlyOnly?: boolean; today?: Date },
 ): string | null {
   const monthlyOnly = options?.monthlyOnly ?? false;
+  const wanted = requiredMonths(options?.today ?? new Date());
 
-  if (assembly.overlapping.length > 0) {
+  if (assembly.overlapping.some((m) => wanted.includes(m))) {
     return (
-      `The payslips for ${listMonths(assembly.overlapping)} cover some of the same days. ` +
-      "Please upload one payslip per pay period."
+      `The payslips for ${listMonths(assembly.overlapping.filter((m) => wanted.includes(m)))} ` +
+      "cover some of the same days. Please upload one payslip per pay period."
     );
   }
 
   // Under a monthly-only policy an apportioned month is not underwritable,
   // however completely the weekly payslips cover it.
-  const apportioned = assembly.months.filter((m) => !m.exact);
+  const apportioned = assembly.months.filter((m) => !m.exact && wanted.includes(m.month));
   if (monthlyOnly && apportioned.length > 0) {
     return (
       `We can only use a monthly payslip for ${listMonths(apportioned.map((m) => m.month))}. ` +
@@ -266,42 +276,32 @@ export function nextUploadAsk(
     );
   }
 
-  const usable = monthlyOnly ? assembly.months.filter((m) => m.exact) : assembly.months;
+  // Only the months being asked for count. A complete May sitting next to a
+  // wanted June is still not one of the three, and must not be treated as
+  // progress towards them.
+  const have = assembly.months
+    .filter((m) => wanted.includes(m.month) && (!monthlyOnly || m.exact))
+    .map((m) => m.month);
+  const missing = wanted.filter((m) => !have.includes(m));
 
-  // A half-covered month is the cheapest thing to finish, so ask for that first.
-  const partial = assembly.incomplete[0];
-  if (partial && usable.length < MONTHS_REQUIRED) {
-    const gap = partial.missing[0];
-    if (gap) {
-      const from = new Date(`${gap.from}T00:00:00Z`).getUTCDate();
-      const to = new Date(`${gap.to}T00:00:00Z`).getUTCDate();
-      const span = from === to ? `${from}` : `${from} to ${to}`;
-      return `We have part of ${monthName(partial.month)}. Please add the payslip covering ${span} ${monthName(partial.month)}.`;
-    }
+  if (missing.length === 0) return null;
+
+  // A half-covered month inside the window is the cheapest thing to finish,
+  // so ask for the rest of it before asking for a whole other month.
+  const partial = assembly.incomplete.find((i) => wanted.includes(i.month));
+  const gap = partial?.missing[0];
+  if (partial && gap) {
+    const from = new Date(`${gap.from}T00:00:00Z`).getUTCDate();
+    const to = new Date(`${gap.to}T00:00:00Z`).getUTCDate();
+    const span = from === to ? `${from}` : `${from} to ${to}`;
+    return `We have part of ${monthName(partial.month)}. Please add the payslip covering ${span} ${monthName(partial.month)}.`;
   }
 
-  if (usable.length === 0) return "Please upload your last 3 monthly payslips.";
-  if (usable.length >= MONTHS_REQUIRED) {
-    // Enough months, but they must be consecutive - a gap between them is a
-    // month of income nobody has seen.
-    const keys = usable.map((m) => m.month).sort().reverse();
-    const run = [keys[0]];
-    for (const key of keys.slice(1)) {
-      if (key === previousMonth(run[run.length - 1])) run.push(key);
-      else break;
-    }
-    if (run.length >= MONTHS_REQUIRED) return null;
-
-    const wanted = previousMonth(run[run.length - 1]);
-    return `We have ${listMonths(run)}. Please add your ${monthName(wanted)} payslip.`;
+  if (have.length === 0) {
+    return `Please upload your payslips for ${listMonths(missing)}.`;
   }
 
-  const keys = usable.map((m) => m.month).sort().reverse();
-  const run = [keys[0]];
-  for (const key of keys.slice(1)) {
-    if (key === previousMonth(run[run.length - 1])) run.push(key);
-    else break;
-  }
-  const wanted = previousMonth(run[run.length - 1]);
-  return `We have ${listMonths(run)}. Please add your ${monthName(wanted)} payslip.`;
+  return `We have ${listMonths(have)}. Please add your ${
+    missing.length === 1 ? `${monthName(missing[0])} payslip` : `${listMonths(missing)} payslips`
+  }.`;
 }

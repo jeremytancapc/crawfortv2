@@ -124,22 +124,25 @@ describe("missing ranges", () => {
 });
 
 describe("nextUploadAsk", () => {
+  // Pinned so "the last three months" is August, September and October 2025,
+  // which is the window these cases are written against.
+  const NOV = new Date("2025-11-15T00:00:00Z");
   const OCT = monthly("2025-10-01", "2025-10-31", 3200);
   const SEP = monthly("2025-09-01", "2025-09-30", 3100);
   const AUG = monthly("2025-08-01", "2025-08-31", 3000);
 
   it("asks for nothing when three consecutive months are covered", () => {
-    expect(nextUploadAsk(assembleMonths([OCT, SEP, AUG]))).toBeNull();
+    expect(nextUploadAsk(assembleMonths([OCT, SEP, AUG]), { today: NOV })).toBeNull();
   });
 
   it("names the month still needed when two of three are in", () => {
-    const ask = nextUploadAsk(assembleMonths([OCT, SEP]));
+    const ask = nextUploadAsk(assembleMonths([OCT, SEP]), { today: NOV });
 
     expect(ask).toBe("We have September and October 2025. Please add your August 2025 payslip.");
   });
 
   it("names the gap rather than asking for everything again", () => {
-    const ask = nextUploadAsk(assembleMonths([OCT, AUG]));
+    const ask = nextUploadAsk(assembleMonths([OCT, AUG]), { today: NOV });
 
     expect(ask).toContain("September 2025");
   });
@@ -148,7 +151,9 @@ describe("nextUploadAsk", () => {
     // What a customer paid twice a month gets today is "upload 3 payslips",
     // which is what they just did. Naming the half they are missing is the
     // difference between finishing and dropping off.
-    const ask = nextUploadAsk(assembleMonths([monthly("2025-08-16", "2025-08-31", 1408)]));
+    const ask = nextUploadAsk(assembleMonths([monthly("2025-08-16", "2025-08-31", 1408)]), {
+      today: NOV,
+    });
 
     expect(ask).toContain("1 to 15 August 2025");
   });
@@ -165,8 +170,82 @@ describe("nextUploadAsk", () => {
       monthly("2025-10-27", "2025-11-02", 600),
     ]);
 
-    expect(nextUploadAsk(weekly, { monthlyOnly: true })).toContain("monthly payslip");
+    expect(nextUploadAsk(weekly, { monthlyOnly: true, today: NOV })).toContain("monthly payslip");
     // The same documents are fine once weekly pay is accepted.
-    expect(nextUploadAsk(weekly, { monthlyOnly: false })).not.toContain("monthly payslip");
+    expect(nextUploadAsk(weekly, { monthlyOnly: false, today: NOV })).not.toContain(
+      "monthly payslip",
+    );
+  });
+});
+
+describe("nextUploadAsk anchors on today, not on what was uploaded", () => {
+  // Reference date 17 Sep 2026, so the screen asks for June, July and August.
+  const REF = new Date("2026-09-17T00:00:00Z");
+  const slip = (start: string, end: string, gross: number): PayPeriod => ({
+    employer: "Kimseng Food", start, end, gross,
+  });
+
+  it("does not walk backwards out of the window", () => {
+    // The reported bug: one May payslip produced "please add your April 2026
+    // payslip". April is further from the months actually wanted, and the
+    // upload screen had already asked for June, July and August.
+    const ask = nextUploadAsk(assembleMonths([slip("2026-05-01", "2026-05-31", 1680)]), {
+      monthlyOnly: true,
+      today: REF,
+    });
+
+    expect(ask).not.toContain("April");
+    expect(ask).toContain("June");
+    expect(ask).toContain("July");
+    expect(ask).toContain("August");
+  });
+
+  it("asks only for the months still missing from the window", () => {
+    const ask = nextUploadAsk(
+      assembleMonths([
+        slip("2026-08-01", "2026-08-31", 1690),
+        slip("2026-07-01", "2026-07-31", 1670),
+      ]),
+      { monthlyOnly: true, today: REF },
+    );
+
+    expect(ask).toBe("We have July and August 2026. Please add your June 2026 payslip.");
+  });
+
+  it("is satisfied by exactly the three months the screen asked for", () => {
+    const ask = nextUploadAsk(
+      assembleMonths([
+        slip("2026-08-01", "2026-08-31", 1690),
+        slip("2026-07-01", "2026-07-31", 1670),
+        slip("2026-06-01", "2026-06-30", 1700),
+      ]),
+      { monthlyOnly: true, today: REF },
+    );
+
+    expect(ask).toBeNull();
+  });
+
+  it("ignores an older month that happens to sit next to a wanted one", () => {
+    // May is complete, but it is not one of the three being asked for, so it
+    // must not count towards them or drag the ask backwards.
+    const ask = nextUploadAsk(
+      assembleMonths([
+        slip("2026-05-01", "2026-05-31", 1680),
+        slip("2026-06-01", "2026-06-30", 1700),
+        slip("2026-07-01", "2026-07-31", 1670),
+      ]),
+      { monthlyOnly: true, today: REF },
+    );
+
+    expect(ask).toBe("We have June and July 2026. Please add your August 2026 payslip.");
+  });
+
+  it("still names a half-month gap inside the window", () => {
+    const ask = nextUploadAsk(assembleMonths([slip("2026-08-16", "2026-08-31", 800)]), {
+      monthlyOnly: true,
+      today: REF,
+    });
+
+    expect(ask).toContain("1 to 15 August 2026");
   });
 });
