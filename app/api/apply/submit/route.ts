@@ -56,6 +56,10 @@ import { requestAscendDecision } from "@/lib/ascend/decision";
 import { DuplicateAscendOrderError, recordAscendOrder } from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { resolveAscendIdentity } from "@/lib/ascend/identity";
+import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-info";
+import { deriveBorrowerFields } from "@/lib/ascend/borrower-derive";
+import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
+import { myinfoPersonData } from "@/lib/myinfo";
 
 export const runtime = "nodejs";
 
@@ -357,6 +361,36 @@ export async function POST(request: NextRequest) {
   // configured the call is skipped and `null` flows into the decision, which
   // resolves to a failure state rather than an offer - there is no amount to
   // show without it.
+  // The five answers MyInfo cannot give: two the applicant stated, three
+  // worked out from what MyInfo did provide. Built before the call so a bad
+  // value fails here, with the applicant still on the page, rather than
+  // arriving at Ascend as a rejected credit application.
+  let borrowerMyInfo: Record<string, unknown> | undefined;
+  try {
+    // The same retrieval the credit call sends, read for the two fields the
+    // derivation needs: cpfemployers for how long they have been there, and
+    // occupation for their position.
+    const stored = formData.singpassRawKey
+      ? await getMyinfoRetrieval(formData.singpassRawKey)
+      : null;
+    const person = stored ? myinfoPersonData(stored) : {};
+    borrowerMyInfo = buildBorrowerMyInfo(
+      {
+        ...deriveBorrowerFields(person),
+        employmentType: formData.employmentStatus as never,
+        bankruptcyDeclaration: ascendBankruptcy(
+          formData.bankruptcyDeclaration as never,
+        ),
+      },
+      { passExpiryDate: (person.passexpirydate as { value?: string })?.value },
+    );
+  } catch (err) {
+    // Not fatal: Ascend documents borrowerMyInfo as required but currently
+    // accepts a call without it. Sending nothing beats sending a value it
+    // will reject, and the log says which applicant to look at.
+    console.error("[apply/submit] could not build borrowerMyInfo", err);
+  }
+
   const ascendResult = await requestAscendDecision({
     desiredAmount: formData.amount,
     singpassRawKey: formData.singpassRawKey,
@@ -367,6 +401,7 @@ export async function POST(request: NextRequest) {
         ? identity.userId
         : null,
     applicantId: leadId,
+    borrowerMyInfo,
   });
 
   const decision = decideSubmission({ eligibility, ascend: ascendResult });

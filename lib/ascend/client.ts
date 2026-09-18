@@ -232,6 +232,8 @@ export function ascendApplyCredit(
     desiredAmount: number;
     myinfo?: Record<string, unknown>;
     userId?: string;
+    /** The five answers MyInfo cannot give. Documented as required. */
+    borrowerMyInfo?: Record<string, unknown>;
     remark?: string;
   },
   options?: AscendCallOptions,

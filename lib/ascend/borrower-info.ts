@@ -26,6 +26,24 @@ export const EMPLOYMENT_TYPE_OPTIONS = [
   "UNEMPLOYED WITHOUT INCOME",
 ] as const;
 
+/**
+ * Ascend's values are what travel; these are what a person reads. Sentence
+ * case, and "platform worker" spelled out - a Grab or foodpanda rider does
+ * not necessarily recognise themselves in "FULL TIME PLATFORM WORKER".
+ */
+export const EMPLOYMENT_TYPE_LABELS: Record<
+  (typeof EMPLOYMENT_TYPE_OPTIONS)[number],
+  string
+> = {
+  EMPLOYED: "Employed",
+  "SELF EMPLOYED": "Self-employed",
+  "FULL TIME PLATFORM WORKER": "Platform worker, full time (Grab, foodpanda and similar)",
+  "EMPLOYED + PART TIME PLATFORM WORKER": "Employed, plus part-time platform work",
+  "SELF EMPLOYED + PART TIME PLATFORM WORKER": "Self-employed, plus part-time platform work",
+  "UNEMPLOYED WITH INCOME": "Not working, but I have income",
+  "UNEMPLOYED WITHOUT INCOME": "Not working, and I have no income",
+};
+
 export const EMPLOYMENT_PERIOD_OPTIONS = [
   "JUST START WORKING, LESS THAN A MONTH",
   "1 MONTH",

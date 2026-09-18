@@ -15,7 +15,11 @@ import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
 import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
 import { SHOW_BANKRUPTCY_DECLARATION } from "@/lib/apply-progress";
-import { DISCHARGE_BANDS } from "@/lib/ascend/borrower-info";
+import {
+  DISCHARGE_BANDS,
+  EMPLOYMENT_TYPE_LABELS,
+  EMPLOYMENT_TYPE_OPTIONS,
+} from "@/lib/ascend/borrower-info";
 import {
   CheckCircle,
   ShieldCheck,
@@ -1911,6 +1915,69 @@ function DeclarationChoiceCard({
         )}
       </span>
     </button>
+  );
+}
+
+/**
+ * Employment type, which Ascend requires and MyInfo cannot answer.
+ *
+ * Sits with the bankruptcy declaration on the mobile-number step: both are
+ * things only the applicant can state, and putting them on their own screen
+ * would add a step to a funnel people already leave.
+ *
+ * EMPLOYED is offered first because that is nearly everyone; nothing is
+ * pre-selected, so an answer on the record is always one somebody gave.
+ */
+export function Step7_EmploymentType({
+  formData,
+  updateField,
+}: {
+  formData: FormData;
+  updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
+}) {
+  return (
+    <div>
+      <p className="ios-type-label mb-2.5 text-[var(--text-secondary)]">
+        What is your employment status?
+      </p>
+      <div
+        className="flex flex-col gap-2"
+        role="group"
+        aria-label="Employment status"
+      >
+        {EMPLOYMENT_TYPE_OPTIONS.map((option) => {
+          const selected = formData.employmentStatus === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => updateField("employmentStatus", option)}
+              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
+              style={{
+                borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
+                background: selected ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+              }}
+            >
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                style={{
+                  borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
+                  background: selected ? "var(--brand-blue-hex)" : "transparent",
+                }}
+              >
+                {selected && <CheckCircle size={14} weight="fill" color="white" />}
+              </span>
+              <span
+                className="ios-type-option"
+                style={{ color: selected ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
+              >
+                {EMPLOYMENT_TYPE_LABELS[option]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

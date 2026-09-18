@@ -7,6 +7,7 @@ import {
   Step6_Contact,
   Step7_Additional,
   Step7_BankruptcyDeclaration,
+  Step7_EmploymentType,
   Step8_Review,
 } from "@/app/loan-application-form";
 import {
@@ -95,6 +96,10 @@ export function ReviewForm({ initialData }: Props) {
       case 5:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
+          // Ascend requires employment status and a declaration, and neither
+          // can be inferred - an unanswered one is not a default, it is a
+          // field nobody filled in.
+          formData.employmentStatus !== "" &&
           formData.bankruptcyDeclaration !== "" &&
           formData.bankruptcyDeclaration !== "active"
         );
@@ -103,6 +108,10 @@ export function ReviewForm({ initialData }: Props) {
       case 7:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
+          // Ascend requires employment status and a declaration, and neither
+          // can be inferred - an unanswered one is not a default, it is a
+          // field nobody filled in.
+          formData.employmentStatus !== "" &&
           formData.bankruptcyDeclaration !== "" &&
           formData.bankruptcyDeclaration !== "active"
         );
@@ -273,6 +282,7 @@ export function ReviewForm({ initialData }: Props) {
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step7_EmploymentType formData={formData} updateField={updateField} />
                       <Step7_BankruptcyDeclaration
                         formData={formData}
                         updateField={updateField}
@@ -285,6 +295,7 @@ export function ReviewForm({ initialData }: Props) {
                   {step === 7 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step7_EmploymentType formData={formData} updateField={updateField} />
                       <Step7_BankruptcyDeclaration
                         formData={formData}
                         updateField={updateField}

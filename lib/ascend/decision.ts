@@ -26,6 +26,8 @@ export async function requestAscendDecision(input: {
   ascendUserId: string | null;
   /** Stamps the log rows, so one customer's calls can be found. */
   applicantId?: string | null;
+  /** The five borrowerMyInfo answers. Ascend documents these as required. */
+  borrowerMyInfo?: Record<string, unknown>;
 }): Promise<AscendCreditResult | null> {
   // Each `return null` below means no Order, and therefore an applicant who
   // submitted but never appears in Ascend. Recording why is the difference
@@ -75,6 +77,7 @@ export async function requestAscendDecision(input: {
       {
         desiredAmount: input.desiredAmount,
         ...(input.ascendUserId ? { userId: input.ascendUserId } : { myinfo }),
+        ...(input.borrowerMyInfo ? { borrowerMyInfo: input.borrowerMyInfo } : {}),
       },
       { applicantId: input.applicantId ?? null },
     );
