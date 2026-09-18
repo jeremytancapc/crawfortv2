@@ -162,26 +162,30 @@ export function buildBorrowerMyInfo(
 }
 
 /**
- * Our bankruptcy question, in Ascend's words.
+ * Our bankruptcy declaration, in Ascend's words.
  *
- * The form asks three things; Ascend recognises six. `clear` and `active` map
- * straight across. `discharged_lt5` - discharged less than five years ago -
- * covers three of Ascend's bands and we never asked which, so it becomes the
- * shortest: the only reading that cannot understate how recent the discharge
- * was. A lender may lend on a cautious reading of a declaration. It should
- * never lend on an optimistic one.
+ * Stored as our own slugs so that Ascend rephrasing an option does not reach
+ * the database, and translated here.
  *
- * The honest fix is to ask Ascend's six directly, which costs one screen and
- * removes the guess. Until then this is deliberately pessimistic, and it is
- * worth knowing that a customer discharged four years ago is presented to
- * Ascend as though discharged last year.
+ * `discharged_lt5` is the only inexact one, and only for rows written before
+ * the bands existed: the old question covered the whole under-five-years span,
+ * so those rows take the shortest band - the only reading that cannot
+ * understate how recent the discharge was. A lender may lend on a cautious
+ * reading of a declaration. It should never lend on an optimistic one.
  */
 export function ascendBankruptcy(
-  ours: "clear" | "discharged_lt5" | "active" | "" | null | undefined,
+  ours: BankruptcyBand | "" | null | undefined,
 ): (typeof BANKRUPTCY_OPTIONS)[number] {
   switch (ours) {
     case "clear":
       return "NOT BANKRUPTCY";
+    case "discharged_gt5":
+      return "Bankruptcy Discharge > 5 years";
+    case "discharged_4_5":
+      return "Bankruptcy Discharge 4 to 5 years";
+    case "discharged_1_3":
+      return "Bankruptcy Discharge 1 to 3 years";
+    case "discharged_lt1":
     case "discharged_lt5":
       return "Bankruptcy Discharge < 1 year";
     case "active":
@@ -192,3 +196,23 @@ export function ascendBankruptcy(
       throw new Error("No bankruptcy declaration was given, and one is required");
   }
 }
+
+/**
+ * What the form offers, in the order it offers it: the commonest answer
+ * first, then discharges from longest ago to most recent, then undischarged.
+ * Nothing is pre-selected - this is a declaration with legal weight, and a
+ * default lets someone submit it unread.
+ */
+export const BANKRUPTCY_BANDS = [
+  { value: "clear", label: "I have never been made bankrupt" },
+  { value: "discharged_gt5", label: "Discharged more than 5 years ago" },
+  { value: "discharged_4_5", label: "Discharged 4 to 5 years ago" },
+  { value: "discharged_1_3", label: "Discharged 1 to 3 years ago" },
+  { value: "discharged_lt1", label: "Discharged less than a year ago" },
+  { value: "active", label: "I am currently an undischarged bankrupt" },
+] as const;
+
+export type BankruptcyBand =
+  | (typeof BANKRUPTCY_BANDS)[number]["value"]
+  /** Written before the bands existed; still read back. */
+  | "discharged_lt5";

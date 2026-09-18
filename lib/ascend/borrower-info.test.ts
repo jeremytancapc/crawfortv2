@@ -87,20 +87,19 @@ describe("borrowerMyInfo", () => {
 });
 
 describe("mapping our bankruptcy answer to Ascend's", () => {
-  it("maps a clean declaration straight across", () => {
+  it("says each band in Ascend's own words", () => {
     expect(ascendBankruptcy("clear")).toBe("NOT BANKRUPTCY");
-  });
-
-  it("maps an undischarged bankrupt straight across", () => {
+    expect(ascendBankruptcy("discharged_gt5")).toBe("Bankruptcy Discharge > 5 years");
+    expect(ascendBankruptcy("discharged_4_5")).toBe("Bankruptcy Discharge 4 to 5 years");
+    expect(ascendBankruptcy("discharged_1_3")).toBe("Bankruptcy Discharge 1 to 3 years");
+    expect(ascendBankruptcy("discharged_lt1")).toBe("Bankruptcy Discharge < 1 year");
     expect(ascendBankruptcy("active")).toBe("Bankrupted");
   });
 
-  it("takes the most cautious reading of a discharge we did not date", () => {
-    // Our form asks one question - discharged under five years ago - and
-    // Ascend splits that into three bands. Without the date we cannot say
-    // which, and the shortest is the only one that cannot understate how
-    // recent it was. A lender may lend on a cautious reading; it should never
-    // lend on an optimistic one.
+  it("still reads a row written before the bands existed", () => {
+    // The old question covered the whole under-five-years span. Those rows
+    // cannot say which band, so they keep the most cautious reading - the
+    // only one that cannot understate how recent the discharge was.
     expect(ascendBankruptcy("discharged_lt5")).toBe("Bankruptcy Discharge < 1 year");
   });
 
@@ -111,8 +110,11 @@ describe("mapping our bankruptcy answer to Ascend's", () => {
     expect(() => ascendBankruptcy("")).toThrow(/declaration/i);
   });
 
-  it("produces a value Ascend accepts", () => {
-    for (const ours of ["clear", "discharged_lt5", "active"] as const) {
+  it("produces a value Ascend accepts, for every band", () => {
+    for (const ours of [
+      "clear", "discharged_gt5", "discharged_4_5",
+      "discharged_1_3", "discharged_lt1", "active", "discharged_lt5",
+    ] as const) {
       expect(BANKRUPTCY_OPTIONS).toContain(ascendBankruptcy(ours));
     }
   });

@@ -25,7 +25,22 @@ export type ApplicantStatus =
 
 export type AuthMethod = "manual" | "singpass" | "aip" | "axs";
 export type IdType = "singaporean" | "pr" | "foreigner";
-export type BankruptcyDeclaration = "clear" | "discharged_lt5" | "active";
+/**
+ * Ascend recognises six. Ours are slugs rather than their wording, so a
+ * rephrased option on their side does not need a migration here.
+ *
+ * `discharged_lt5` is legacy: the form used to ask one question covering the
+ * whole under-five-years span, and rows written then still read back. Nothing
+ * writes it now.
+ */
+export type BankruptcyDeclaration =
+  | "clear"
+  | "discharged_gt5"
+  | "discharged_4_5"
+  | "discharged_1_3"
+  | "discharged_lt1"
+  | "active"
+  | "discharged_lt5";
 export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed";
 
 /**
