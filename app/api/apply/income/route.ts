@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { decideApplyOutcome } from "@/lib/apply-outcome";
+import { decideAfterIncome } from "@/lib/apply-outcome";
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { ascendSubmitIncome, AscendError } from "@/lib/ascend/client";
 import { ascendConfig } from "@/lib/ascend/config";
@@ -97,7 +97,9 @@ export async function POST(request: NextRequest) {
 
     await updateAscendOrderDecision(applicantId, result);
 
-    const outcome = decideApplyOutcome(result);
+    // Not decideApplyOutcome: PENDING here means the income was taken and is
+    // being reviewed, not that more is wanted.
+    const outcome = decideAfterIncome(result);
     const res = NextResponse.json({
       destination: outcome.destination,
       outcome: outcome.kind,
@@ -108,9 +110,9 @@ export async function POST(request: NextRequest) {
     // Income has been accepted and re-scored. Unless Ascend is still asking
     // for more, the income step stops being where this applicant belongs -
     // otherwise the lock would keep pulling them back to it.
-    if (outcome.kind !== "needs_income") {
-      res.cookies.set(clearIncomeGateCookie());
-    }
+    // The income step is behind them either way now - approved, declined, or
+    // waiting on a human. Leaving the gate set would pull them back to it.
+    res.cookies.set(clearIncomeGateCookie());
     return res;
   } catch (err) {
     if (err instanceof AscendError) {

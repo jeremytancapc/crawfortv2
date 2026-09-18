@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { decideApplyOutcome, decideIdentityOutcome, decideSubmission } from "./apply-outcome";
+import { decideAfterIncome,
+  decideApplyOutcome, decideIdentityOutcome, decideSubmission } from "./apply-outcome";
 import type { AscendCreditResult } from "./ascend/client";
 
 /** A PASS exactly as /openApi/apply/credit returned one on 2026-09-16. */
@@ -188,5 +189,57 @@ describe("decideSubmission", () => {
 
     expect(decision.kind).toBe("unavailable");
     expect(decision).not.toHaveProperty("aCardLimit");
+  });
+});
+
+describe("decideAfterIncome", () => {
+  // PENDING means two different things depending on which call answered it.
+  // From apply/credit it means "no income on file, send me some", and the
+  // applicant belongs on the upload page. From income/credit it means the
+  // income has been taken and a human is looking - sending them back to the
+  // upload page loops them onto documents they just submitted, which is what
+  // happened on staging on 2026-09-18.
+  const pending = {
+    orderId: "1550205686196785152",
+    userId: "1550194515653763072",
+    newCustomer: true,
+    risk: { riskStatus: "PENDING" as const },
+    creditScore: {},
+  };
+
+  it("does not send an applicant back to upload what they just uploaded", () => {
+    const outcome = decideAfterIncome(pending);
+
+    expect(outcome.destination).not.toBe("/apply/verify-income");
+  });
+
+  it("puts them in the review queue instead", () => {
+    expect(decideAfterIncome(pending)).toMatchObject({
+      kind: "in_review",
+      destination: "/apply/pending",
+    });
+  });
+
+  it("still approves when Ascend approves", () => {
+    const outcome = decideAfterIncome({
+      ...pending,
+      risk: { riskStatus: "PASS" as const },
+      creditScore: { creditLimit: 8000, mlcbMaxLoanAmount: 12000 },
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "approved",
+      destination: "/apply/approval",
+      aCardLimit: 8000,
+    });
+  });
+
+  it("still declines when Ascend rejects", () => {
+    const outcome = decideAfterIncome({
+      ...pending,
+      risk: { riskStatus: "REJECT" as const, riskMsg: "Income below threshold" },
+    });
+
+    expect(outcome).toMatchObject({ kind: "declined", destination: "/apply/pending" });
   });
 });

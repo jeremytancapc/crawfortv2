@@ -14,6 +14,16 @@
 
 import type { AscendCreditResult, AscendUser } from "./ascend/client";
 
+/** Where an applicant goes once their income has been submitted and re-scored. */
+export type AfterIncomeOutcome =
+  | Extract<ApplyOutcome, { kind: "approved" } | { kind: "declined" }>
+  | {
+      kind: "in_review";
+      /** The credit review queue, not a dead end. */
+      destination: "/apply/pending";
+      reason: string | null;
+    };
+
 export type ApplyOutcome =
   | {
       kind: "approved";
@@ -63,6 +73,37 @@ export function decideApplyOutcome(result: AscendCreditResult): ApplyOutcome {
     aCardLimit,
     maximumLoanQuantum: result.creditScore.mlcbMaxLoanAmount ?? 0,
   };
+}
+
+/**
+ * Where an applicant goes after /openApi/income/credit has re-scored them.
+ *
+ * Deliberately not decideApplyOutcome. PENDING means two different things
+ * depending on which call answered it: from apply/credit it means "no income
+ * on file, send me some", and the applicant belongs on the upload page. From
+ * income/credit it means the income has been taken and a human is looking -
+ * and sending them back to the upload page loops them onto the documents they
+ * just submitted. Seen on staging on 2026-09-18, where three payslips
+ * uploaded cleanly, income/credit answered PENDING with no riskMsg, and the
+ * applicant was returned to the upload screen.
+ */
+export function decideAfterIncome(result: AscendCreditResult): AfterIncomeOutcome {
+  if (result.risk.riskStatus === "PENDING") {
+    return {
+      kind: "in_review",
+      destination: "/apply/pending",
+      reason: result.risk.riskMsg ?? null,
+    };
+  }
+
+  const decided = decideApplyOutcome(result);
+  // Unreachable: decideApplyOutcome only answers needs_income for PENDING,
+  // which is handled above. Narrowed rather than cast so a future status
+  // cannot slip through as an approval.
+  if (decided.kind === "needs_income") {
+    return { kind: "in_review", destination: "/apply/pending", reason: decided.reason };
+  }
+  return decided;
 }
 
 /**
