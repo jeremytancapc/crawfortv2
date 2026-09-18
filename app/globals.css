@@ -1273,14 +1273,6 @@ body:has(.theme-fresh)::before {
   color: var(--text-primary);
 }
 
-@media (min-width: 1024px) {
-  .theme-ios .ios-type-title {
-    font-size: 44px;
-    line-height: 1.08;
-    letter-spacing: -0.024em;
-  }
-}
-
 .theme-ios .ios-type-subtitle {
   font-size: 17px;
   line-height: 1.4;
@@ -1911,6 +1903,22 @@ input[type="range"].ios-slider::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   transform-origin: top left;
+}
+
+/* Pin the step title to the sidebar tagline: aside pad + wordmark + gap.
+   Beat the title block's own pt-7 so both headlines share a top edge. */
+@media (min-width: 1024px) {
+  .apply-pane-fit-inner > :first-child:not(.apply-headline-to-wordmark),
+  .apply-pane-fit-natural-col > :first-child:not(.apply-headline-to-wordmark) {
+    padding-top: 8.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .apply-pane-fit-inner > :first-child:not(.apply-headline-to-wordmark),
+  .apply-pane-fit-natural-col > :first-child:not(.apply-headline-to-wordmark) {
+    padding-top: 9.5rem;
+  }
 }
 
 .apply-pane-fit-inner > .flex-1,

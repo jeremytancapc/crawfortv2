@@ -429,7 +429,7 @@ export function AppointmentBooking({
   }
 
   return (
-    <div className="animate-fade-up flex flex-col gap-5 sm:gap-8">
+    <div className="animate-fade-up flex flex-col gap-5 sm:gap-8 lg:gap-8">
       {/* ── Header ─────────────────────────────────────────────── */}
       {!hideHeaderOnMobile && (
       <div
@@ -489,7 +489,7 @@ export function AppointmentBooking({
         }}
       >
         {/* Location blurb */}
-        <div className="mb-4 lg:mb-5">
+        <div className="mb-4 lg:mb-8">
           <span className="inline-flex items-center gap-1.5">
             <p className="text-lg font-bold text-[var(--text-primary)]">Location</p>
             {/* Tooltip trigger */}
@@ -528,7 +528,7 @@ export function AppointmentBooking({
           </div>
         </div>
 
-        <p className="mb-3 text-lg font-bold text-[var(--text-primary)]">Select a date &amp; time</p>
+        <p className="mb-3 text-lg font-bold text-[var(--text-primary)] lg:mb-4">Select a date &amp; time</p>
 
         <div className="flex flex-col gap-3">
 

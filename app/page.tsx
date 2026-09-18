@@ -3,7 +3,7 @@ import Image from "next/image";
 
 import { LoanApplicationForm } from "./loan-application-form";
 import { SidebarTrustFeatures } from "./sidebar-trust-features";
-import { LiveApplyProgressPanel } from "./apply-gate/ios-ui";
+import { ApplySidebarTagline, LiveApplyProgressPanel } from "./apply-gate/ios-ui";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { getApplySession } from "@/lib/apply-session";
 import { gateInitialSession } from "@/lib/apply-flow-guard";
@@ -48,9 +48,7 @@ function ApplyLandingLayout({
           </div>
 
           {/* Marketing tagline, not the page heading - the gate step owns the h1. */}
-          <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Get the funds you need, in 8 minutes
-          </p>
+          <ApplySidebarTagline />
 
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
             One simple application. Licensed and trusted by over 200,000
