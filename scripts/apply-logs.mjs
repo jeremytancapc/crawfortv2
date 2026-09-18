@@ -7,6 +7,7 @@
  *   node scripts/apply-logs.mjs fba5e630-5e00-...  # one applicant, by id
  *   node scripts/apply-logs.mjs --body CFH5-06A2D6A1     # with Ascend's reply
  *   node scripts/apply-logs.mjs --full CFH5-06A2D6A1     # what we sent, and their reply
+ *   node scripts/apply-logs.mjs --curl --failed          # the failed uploads as curl, to send on
  *
  * Answers the question the browser cannot: an applicant on the pending page
  * may have been declined, may have had Ascend fail, or may never have been
@@ -33,6 +34,8 @@ const failedOnly = args.includes("--failed");
 const withBody = args.includes("--body");
 /** What we sent, not just what came back - the first question when a call is refused. */
 const withRequest = args.includes("--request") || args.includes("--full");
+/** Rebuild a runnable curl from a logged call, to hand to Ascend verbatim. */
+const asCurl = args.includes("--curl");
 const subject = args.find((a) => !a.startsWith("--")) ?? null;
 
 const { sql } = await import(join(ROOT, "lib/db/sql.ts"));
@@ -48,6 +51,28 @@ async function resolveApplicant(raw) {
   return rows;
 }
 
+/**
+ * The exact request that was sent, as curl.
+ *
+ * Rebuilt from the log rather than signed afresh, so it is what Ascend
+ * actually received - same timestamp, same nonce, same signature. It will not
+ * run now (the timestamp is outside their five-minute window), and that is the
+ * point: it is evidence, not a test.
+ */
+function curlFor(l) {
+  const b = l.request_body ?? {};
+  if (!String(l.tag).includes("file/upload") || !b.fileInfoAsSent) return null;
+  return [
+    `curl -i --location 'https://api-mms.newtime.top/openApi/file/upload'`,
+    `  --form 'file=@"/path/to/${b.fileName}"'`,
+    `  --form 'fileInfo=${b.fileInfoAsSent}'`,
+    `  --form 'appId=${b.appId}'`,
+    `  --form 'timestamp=${b.timestamp}'`,
+    `  --form 'nonce=${b.nonce}'`,
+    `  --form 'sign=${b.sign}'`,
+  ].join(" \\\n");
+}
+
 function line(l) {
   const when = l.created_at.toISOString().slice(0, 19).replace("T", " ");
   const verdict = l.error ?? "ok";
@@ -57,6 +82,15 @@ function line(l) {
   }
   if ((withBody || withRequest) && l.response_body) {
     console.log(`      back ←  ${String(l.response_body).slice(0, 600)}`);
+  }
+  if (asCurl) {
+    const curl = curlFor(l);
+    if (curl) {
+      console.log(`\n# Sent ${l.created_at.toISOString()} - ${l.error ?? "ok"}`);
+      console.log(`# The file was ${l.request_body.fileName}, ${l.request_body.bytes} bytes, ${l.request_body.contentType}.`);
+      console.log(curl);
+      console.log(`# Response: ${l.response_body}\n`);
+    }
   }
 }
 
