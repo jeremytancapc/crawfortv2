@@ -212,6 +212,11 @@ export const BANKRUPTCY_BANDS = [
   { value: "active", label: "I am currently an undischarged bankrupt" },
 ] as const;
 
+/** The four discharge bands, for the sub-options behind "Something to declare". */
+export const DISCHARGE_BANDS = BANKRUPTCY_BANDS.filter(
+  (band) => band.value !== "clear" && band.value !== "active",
+);
+
 export type BankruptcyBand =
   | (typeof BANKRUPTCY_BANDS)[number]["value"]
   /** Written before the bands existed; still read back. */

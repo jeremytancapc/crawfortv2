@@ -11,7 +11,7 @@ export const SHOW_INCOME_STEP = false;
  * Flip SHOW_BANKRUPTCY_DECLARATION to put the Nothing / Something to declare
  * cards back on the complete-application step.
  */
-export const SHOW_BANKRUPTCY_DECLARATION = false;
+export const SHOW_BANKRUPTCY_DECLARATION = true;
 
 const OFFSET = SHOW_INCOME_STEP ? 1 : 0;
 

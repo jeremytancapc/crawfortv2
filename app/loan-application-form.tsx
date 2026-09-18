@@ -15,6 +15,7 @@ import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
 import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
 import { SHOW_BANKRUPTCY_DECLARATION } from "@/lib/apply-progress";
+import { DISCHARGE_BANDS } from "@/lib/ascend/borrower-info";
 import {
   CheckCircle,
   ShieldCheck,
@@ -1921,8 +1922,11 @@ export function Step7_BankruptcyDeclaration({
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
 }) {
   const isClear      = formData.bankruptcyDeclaration === "clear";
-  const isDischarged = formData.bankruptcyDeclaration === "discharged_lt5";
   const isActive     = formData.bankruptcyDeclaration === "active";
+  // Ascend recognises four discharge bands. One question covering the whole
+  // under-five-years span meant someone discharged four years ago had to be
+  // sent as though discharged last year.
+  const isDischarged = DISCHARGE_BANDS.some((b) => b.value === formData.bankruptcyDeclaration);
   const hasRecord    = isDischarged || isActive;
 
   // The record sub-options stay revealed once one of them is chosen, even if
@@ -1970,32 +1974,39 @@ export function Step7_BankruptcyDeclaration({
 
             {expanded && (
               <div className="animate-fade-up flex flex-col gap-2">
-                {/* Discharged bankrupt option - blue when selected */}
-                <button
-                  type="button"
-                  onClick={() => updateField("bankruptcyDeclaration", "discharged_lt5")}
-                  className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
-                  style={{
-                    borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-subtle)",
-                    background:  isDischarged ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
-                  }}
-                >
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
-                    style={{
-                      borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-medium)",
-                      background:  isDischarged ? "var(--brand-blue-hex)" : "transparent",
-                    }}
-                  >
-                    {isDischarged && <CheckCircle size={14} weight="fill" color="white" />}
-                  </span>
-                  <span
-                    className="ios-type-option"
-                    style={{ color: isDischarged ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
-                  >
-                    I have previously been discharged from bankruptcy (within the last 5 years).
-                  </span>
-                </button>
+                {/* One button per discharge band, so the answer is the
+                    applicant's rather than the nearest we could infer. */}
+                {DISCHARGE_BANDS.map((band) => {
+                  const selected = formData.bankruptcyDeclaration === band.value;
+                  return (
+                    <button
+                      key={band.value}
+                      type="button"
+                      onClick={() => updateField("bankruptcyDeclaration", band.value)}
+                      className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
+                      style={{
+                        borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
+                        background:  selected ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+                      }}
+                    >
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                        style={{
+                          borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
+                          background:  selected ? "var(--brand-blue-hex)" : "transparent",
+                        }}
+                      >
+                        {selected && <CheckCircle size={14} weight="fill" color="white" />}
+                      </span>
+                      <span
+                        className="ios-type-option"
+                        style={{ color: selected ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
+                      >
+                        {band.label}
+                      </span>
+                    </button>
+                  );
+                })}
 
                 {isDischarged && (
                   <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
