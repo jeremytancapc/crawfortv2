@@ -20,6 +20,7 @@ import { getAscendOrder, updateAscendOrderDecision } from "@/lib/db/ascend-order
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { clearIncomeGateCookie } from "@/lib/apply-session";
+import { creditAfterIncome } from "@/lib/ascend/after-income";
 
 export const runtime = "nodejs";
 
@@ -95,11 +96,16 @@ export async function POST(request: NextRequest) {
       files,
     });
 
-    await updateAscendOrderDecision(applicantId, result);
+    // income/credit answers immediately and Ascend settles afterwards, so ask
+    // again before deciding where the applicant goes. A failed re-ask keeps
+    // the pending answer rather than inventing progress.
+    const settled = await creditAfterIncome(result.orderId, result, { applicantId });
+
+    await updateAscendOrderDecision(applicantId, settled);
 
     // Not decideApplyOutcome: PENDING here means the income was taken and is
     // being reviewed, not that more is wanted.
-    const outcome = decideAfterIncome(result);
+    const outcome = decideAfterIncome(settled);
     const res = NextResponse.json({
       destination: outcome.destination,
       outcome: outcome.kind,
