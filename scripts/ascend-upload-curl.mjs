@@ -75,13 +75,20 @@ const curl = [
 if (!run) {
   console.log(`\n# Signed at ${new Date(Number(signed.timestamp)).toISOString()} - valid for ~5 minutes.\n`);
   console.log(curl);
-  console.log(`\n# String that was signed:\n#   ${
-    Object.keys({ ...signed, data: undefined })
-      .filter((k) => k !== "sign" && k !== "data")
-      .sort()
-      .map((k) => `${k}=${signed[k]}`)
-      .join("&")
-  }&data=${JSON.stringify(fileInfo)}\n`);
+  // The real signing string, built the way the signature was - not reassembled
+  // here, which is how this line came to print `data` last instead of in its
+  // ASCII place between appId and nonce.
+  const { buildSignString } = await import(join(ROOT, "lib/ascend/sign.ts"));
+  console.log(
+    "\n# String that was signed (keys in ASCII order, as the rule requires):\n#   " +
+      buildSignString({
+        appId: signed.appId,
+        timestamp: signed.timestamp,
+        nonce: signed.nonce,
+        data: JSON.stringify(fileInfo),
+      }) +
+      "\n",
+  );
   process.exit(0);
 }
 
