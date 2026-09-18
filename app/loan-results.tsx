@@ -1459,7 +1459,6 @@ function PlanPicker({
     el.classList.remove("is-zooming");
     void el.offsetWidth;
     el.classList.add("is-zooming");
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [needsInput, attentionNonce]);
 
   // Which card stands forward in the row. Only the customer's own pick claims
@@ -1519,7 +1518,7 @@ function PlanPicker({
       {needsInput ? (
         <p
           id="plan-lane-hint"
-          className="px-1 text-[13px] font-medium leading-snug text-[#D70015]"
+          className="-mt-2 px-1 text-center text-[13px] font-medium leading-snug text-[#D70015]"
           role="alert"
         >
           Choose a repayment plan to continue.
