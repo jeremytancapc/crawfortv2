@@ -47,7 +47,7 @@ const info = { userId, fileSource: "web", fileBusiness: "income" };
  * a credentials problem and is not.
  */
 function envelope(form) {
-  const signed = buildSignedRequest(info, config);
+  const signed = buildSignedRequest(info, config, { payloadKey: "fileInfo" });
   form.append("appId", signed.appId);
   form.append("timestamp", signed.timestamp);
   form.append("nonce", signed.nonce);

@@ -60,10 +60,19 @@ export function signParams(params: Record<string, string>, secret: string): stri
 export function buildSignedRequest(
   data: Record<string, unknown>,
   config: AscendConfig,
-  overrides?: { timestamp?: string; nonce?: string },
+  overrides?: { timestamp?: string; nonce?: string; payloadKey?: string },
 ): SignedRequest {
   const timestamp = overrides?.timestamp ?? String(Date.now());
   const nonce = overrides?.nonce ?? randomUUID();
+
+  // Ascend verifies the signature against the name the payload arrives under,
+  // and the two endpoint families disagree about what that is. The JSON ones
+  // send it as `data`; /openApi/file/upload sends a multipart field called
+  // `fileInfo` and expects that name in the signature. Signing an upload as
+  // `data` returns `600: Signature verification failed` - established against
+  // the live endpoint on 2026-09-18, after which the same request signed as
+  // `fileInfo` succeeded.
+  const payloadKey = overrides?.payloadKey ?? "data";
 
   // One serialisation, used for the signature and then sent as the object it
   // came from. Re-stringifying elsewhere risks a different key order and a
@@ -71,7 +80,7 @@ export function buildSignedRequest(
   const dataJson = JSON.stringify(data);
 
   const sign = signParams(
-    { appId: config.appId, timestamp, nonce, data: dataJson },
+    { appId: config.appId, timestamp, nonce, [payloadKey]: dataJson },
     config.secret,
   );
 

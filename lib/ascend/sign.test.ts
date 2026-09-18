@@ -137,3 +137,41 @@ describe("ascendConfig", () => {
     expect(ascendConfig()?.baseUrl).toBe("https://api-mms.newtime.top");
   });
 });
+
+describe("the payload's key in the signature", () => {
+  const config = { baseUrl: "https://x", appId: "10001", secret: "s3cret" };
+  const fixed = { timestamp: "1789698194691", nonce: "1f65f96b-1ca3-4c25-912d-1d7630a01010" };
+
+  it("signs the payload as `data` by default, as the JSON endpoints expect", () => {
+    const req = buildSignedRequest({ userId: "1" }, config, fixed);
+
+    expect(req.sign).toBe(
+      signParams(
+        { appId: "10001", ...fixed, data: JSON.stringify({ userId: "1" }) },
+        "s3cret",
+      ),
+    );
+  });
+
+  it("signs the payload under a given name instead", () => {
+    // /openApi/file/upload sends the payload as a multipart field called
+    // fileInfo and verifies the signature against that name. Signing it as
+    // `data` returns `600: Signature verification failed`; signing it as
+    // `fileInfo` succeeds. Established against the live endpoint 2026-09-18.
+    const payload = { userId: "1550194515653763072", fileSource: "web", fileBusiness: "income" };
+    const req = buildSignedRequest(payload, config, { ...fixed, payloadKey: "fileInfo" });
+
+    expect(req.sign).toBe(
+      signParams(
+        { appId: "10001", ...fixed, fileInfo: JSON.stringify(payload) },
+        "s3cret",
+      ),
+    );
+  });
+
+  it("still returns the payload as an object, whatever it was signed as", () => {
+    const req = buildSignedRequest({ userId: "1" }, config, { ...fixed, payloadKey: "fileInfo" });
+
+    expect(req.data).toEqual({ userId: "1" });
+  });
+});

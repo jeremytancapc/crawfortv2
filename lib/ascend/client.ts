@@ -317,29 +317,19 @@ export type AscendUploadedFile = {
  * signed envelope as sibling fields - the shape /openApi/docusign uses, since
  * this endpoint's own documentation does not say whether it wants one.
  *
- * UNVERIFIED against a live endpoint, and the evidence says that is not our
- * doing. On the `test` environment, 2026-09-17, this answered
- * `500: System error` to 21 attempts: 11 request shapes - the documented
- * fileInfo, a signed envelope, `data` in place of `fileInfo`, flattened
- * fields, dot and bracket notation for the nested object, and their own
- * example value `fileBusiness: "test"` - across three PDFs from 1KB to 415KB,
- * for a userId holding a valid PENDING order.
+ * Verified working against the live test environment on 2026-09-18, after two
+ * separate problems were cleared.
  *
- * The control settles it: a completely empty POST returns 500 as well, so the
- * endpoint is not reading the request at all. A malformed request returns 502
- * by their own error table, and /openApi/users on the same host at the same
- * moment answers an empty body with a precise
- * `600: Missing request body for signature verification`.
+ * The first was Ascend's: every request shape answered `500: System error`,
+ * including their own documented example and a completely empty POST, while
+ * /openApi/users on the same host validated an empty body correctly. They
+ * released a fix.
  *
- * Ascend's own documented example fails the same way. Their curl - session
- * cookie, empty userId, no signature - returns 500 unchanged, and so does the
- * same request with a made-up cookie, so neither the cookie nor the userId is
- * being read. That example is the thing to quote when escalating: not "our
- * integration fails" but "the example in your documentation fails".
- *
- * So the shape below is as documented and is not what is failing. Re-test
- * after Ascend's next release rather than rewriting it:
- *   node scripts/ascend-upload-curl.mjs <userId> <file.pdf> --run
+ * The second was ours, and the release exposed it - the 500 had been hiding a
+ * `600: Signature verification failed`. Ascend verifies the signature against
+ * the name the payload arrives under, and this endpoint sends it as the
+ * multipart field `fileInfo` rather than the `data` every JSON endpoint uses.
+ * Signed as `fileInfo`, the same request succeeds and returns the file URL.
  */
 export async function ascendUploadFile(
   input: {
@@ -360,7 +350,8 @@ export async function ascendUploadFile(
     fileSource: input.fileSource ?? "web",
     fileBusiness: input.fileBusiness ?? "income",
   };
-  const signed = buildSignedRequest(fileInfo, config);
+  // Signed as `fileInfo`, the name this endpoint sends it under - not `data`.
+  const signed = buildSignedRequest(fileInfo, config, { payloadKey: "fileInfo" });
 
   const form = new FormData();
   form.append("file", new Blob([input.bytes], { type: input.contentType }), input.fileName);

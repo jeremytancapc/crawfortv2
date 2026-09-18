@@ -59,7 +59,9 @@ const { buildSignedRequest } = await import(join(ROOT, "lib/ascend/sign.ts"));
 // Exactly what the application sends: fileInfo is the signed payload, and the
 // envelope fields travel beside it rather than wrapping it.
 const fileInfo = { userId, fileSource: "web", fileBusiness: "income" };
-const signed = buildSignedRequest(fileInfo, config);
+// Signed as `fileInfo`: this endpoint verifies against the field name it
+// sends the payload under, not `data`.
+const signed = buildSignedRequest(fileInfo, config, { payloadKey: "fileInfo" });
 const url = `${config.baseUrl}/openApi/file/upload`;
 
 const curl = [
@@ -85,7 +87,7 @@ if (!run) {
         appId: signed.appId,
         timestamp: signed.timestamp,
         nonce: signed.nonce,
-        data: JSON.stringify(fileInfo),
+        fileInfo: JSON.stringify(fileInfo),
       }) +
       "\n",
   );
