@@ -11,7 +11,7 @@
  */
 
 import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
-import { myinfoPersonData } from "@/lib/myinfo";
+import { myinfoAscendPayload } from "@/lib/myinfo";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 
 import { ascendApplyCredit, AscendError, type AscendCreditResult } from "./client";
@@ -65,11 +65,13 @@ export async function requestAscendDecision(input: {
     // applicant to Ascend, and inventing one is not an option.
     if (!stored) return skip("the stored MyInfo retrieval has expired or was never written");
 
-    // Unwrapped, not forwarded verbatim. A FAPI 2.0 payload wraps the person
-    // in `person_info` alongside sub, iss and aud; Ascend was verified
-    // against the flat shape and looks for `uinfin` at the top level, so
-    // handing it the envelope would find nothing there.
-    myinfo = myinfoPersonData(stored);
+    // Flattened, not forwarded verbatim, and not stripped either. A FAPI 2.0
+    // payload wraps the person in `person_info` alongside sub, iss and aud;
+    // Ascend was built against the legacy flat shape, which has the person at
+    // the top level WITH those claims beside them. Unwrapping alone got the
+    // person right and dropped `sub`, which is the field Ascend identifies a
+    // user by.
+    myinfo = myinfoAscendPayload(stored);
   }
 
   try {

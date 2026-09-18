@@ -55,6 +55,35 @@ export function myinfoPersonData(payload: Record<string, unknown>): Record<strin
   return payload;
 }
 
+/**
+ * The MyInfo object as Ascend expects it.
+ *
+ * Ascend was built against the legacy MyInfo shape, which is flat: the
+ * person's fields at the top level, alongside the JWT claims iss, sub, aud
+ * and iat. FAPI 2.0 nests the person under `person_info` and keeps the claims
+ * outside it, so unwrapping alone gets the person to the right level but
+ * leaves the claims behind.
+ *
+ * `sub` is the one that matters. Ascend resolves its user from `sub` rather
+ * than `uinfin` - established by submitting a payload with a changed NRIC but
+ * the original sub, which came back as the original user. Sending the person
+ * without it hands Ascend everything except the field it identifies people by.
+ *
+ * The person wins any collision. A claim sharing a name with a MyInfo field
+ * would be a curiosity; losing the MyInfo field would be a real loss.
+ */
+export function myinfoAscendPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const person = myinfoPersonData(payload);
+  if (person === payload) return payload;
+
+  const claims: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (key !== "person_info") claims[key] = value;
+  }
+
+  return { ...claims, ...person };
+}
+
 export function buildMyInfoPatch(payload: Record<string, unknown>): Partial<LoanFormData> {
   const myinfo = myinfoPersonData(payload);
   const patch: Partial<LoanFormData> = {};
