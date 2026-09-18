@@ -331,6 +331,12 @@ export type AscendUploadedFile = {
  * moment answers an empty body with a precise
  * `600: Missing request body for signature verification`.
  *
+ * Ascend's own documented example fails the same way. Their curl - session
+ * cookie, empty userId, no signature - returns 500 unchanged, and so does the
+ * same request with a made-up cookie, so neither the cookie nor the userId is
+ * being read. That example is the thing to quote when escalating: not "our
+ * integration fails" but "the example in your documentation fails".
+ *
  * So the shape below is as documented and is not what is failing. Re-test
  * after Ascend's next release rather than rewriting it:
  *   node scripts/ascend-upload-curl.mjs <userId> <file.pdf> --run
