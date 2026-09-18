@@ -383,8 +383,18 @@ export async function ascendUploadFile(
       url,
       method: "POST",
       headers: { "Content-Type": "multipart/form-data" },
+      // Recorded in full, unlike every other Ascend call: fileInfo carries no
+      // personal data - a user id and two constants - and "show me exactly
+      // what you sent" is the first thing asked when an upload is refused.
+      // The file's bytes are never recorded, only its name, type and size.
       body: {
-        ...redactAscendRequest({ ...signed, data: fileInfo }),
+        multipartFields: ["file", "fileInfo", "appId", "timestamp", "nonce", "sign"],
+        fileInfo,
+        fileInfoAsSent: JSON.stringify(fileInfo),
+        appId: signed.appId,
+        timestamp: signed.timestamp,
+        nonce: signed.nonce,
+        sign: signed.sign,
         fileName: input.fileName,
         contentType: input.contentType,
         bytes: input.bytes.byteLength,

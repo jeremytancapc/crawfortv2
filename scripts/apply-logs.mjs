@@ -5,7 +5,8 @@
  *   node scripts/apply-logs.mjs --failed           # only the ones that failed
  *   node scripts/apply-logs.mjs CFH5-06A2D6A1      # one applicant, by reference
  *   node scripts/apply-logs.mjs fba5e630-5e00-...  # one applicant, by id
- *   node scripts/apply-logs.mjs --body CFH5-06A2D6A1   # with Ascend's reply in full
+ *   node scripts/apply-logs.mjs --body CFH5-06A2D6A1     # with Ascend's reply
+ *   node scripts/apply-logs.mjs --full CFH5-06A2D6A1     # what we sent, and their reply
  *
  * Answers the question the browser cannot: an applicant on the pending page
  * may have been declined, may have had Ascend fail, or may never have been
@@ -30,6 +31,8 @@ for (const line of readFileSync(join(ROOT, ".env.local"), "utf8").split("\n")) {
 const args = process.argv.slice(2);
 const failedOnly = args.includes("--failed");
 const withBody = args.includes("--body");
+/** What we sent, not just what came back - the first question when a call is refused. */
+const withRequest = args.includes("--request") || args.includes("--full");
 const subject = args.find((a) => !a.startsWith("--")) ?? null;
 
 const { sql } = await import(join(ROOT, "lib/db/sql.ts"));
@@ -49,7 +52,12 @@ function line(l) {
   const when = l.created_at.toISOString().slice(0, 19).replace("T", " ");
   const verdict = l.error ?? "ok";
   console.log(`  ${when}  ${String(l.tag).padEnd(34)} ${verdict}`);
-  if (withBody && l.response_body) console.log(`      ${String(l.response_body).slice(0, 600)}`);
+  if (withRequest && l.request_body) {
+    console.log(`      sent →  ${JSON.stringify(l.request_body, null, 2).split("\n").join("\n      ")}`);
+  }
+  if ((withBody || withRequest) && l.response_body) {
+    console.log(`      back ←  ${String(l.response_body).slice(0, 600)}`);
+  }
 }
 
 if (subject) {
@@ -78,7 +86,7 @@ if (subject) {
   );
 
   const logs = await sql`
-    select created_at, tag, error, response_body
+    select created_at, tag, error, response_body, request_body
     from api_logs where applicant_id = ${a.id} order by created_at`;
   console.log(`\n  Calls to Ascend (${logs.length})`);
   if (logs.length === 0) console.log("    none - Ascend was never asked about this applicant");
@@ -88,9 +96,9 @@ if (subject) {
 }
 
 const logs = failedOnly
-  ? await sql`select created_at, tag, error, response_body from api_logs
+  ? await sql`select created_at, tag, error, response_body, request_body from api_logs
               where response_ok is not true order by created_at desc limit 20`
-  : await sql`select created_at, tag, error, response_body from api_logs
+  : await sql`select created_at, tag, error, response_body, request_body from api_logs
               order by created_at desc limit 20`;
 
 console.log(`\n${failedOnly ? "Failed calls" : "Recent calls"} (${logs.length})`);
