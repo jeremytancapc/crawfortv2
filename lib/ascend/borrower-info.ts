@@ -160,3 +160,35 @@ export function buildBorrowerMyInfo(
 
   return built;
 }
+
+/**
+ * Our bankruptcy question, in Ascend's words.
+ *
+ * The form asks three things; Ascend recognises six. `clear` and `active` map
+ * straight across. `discharged_lt5` - discharged less than five years ago -
+ * covers three of Ascend's bands and we never asked which, so it becomes the
+ * shortest: the only reading that cannot understate how recent the discharge
+ * was. A lender may lend on a cautious reading of a declaration. It should
+ * never lend on an optimistic one.
+ *
+ * The honest fix is to ask Ascend's six directly, which costs one screen and
+ * removes the guess. Until then this is deliberately pessimistic, and it is
+ * worth knowing that a customer discharged four years ago is presented to
+ * Ascend as though discharged last year.
+ */
+export function ascendBankruptcy(
+  ours: "clear" | "discharged_lt5" | "active" | "" | null | undefined,
+): (typeof BANKRUPTCY_OPTIONS)[number] {
+  switch (ours) {
+    case "clear":
+      return "NOT BANKRUPTCY";
+    case "discharged_lt5":
+      return "Bankruptcy Discharge < 1 year";
+    case "active":
+      return "Bankrupted";
+    default:
+      // Never defaulted. Declaring "not bankrupt" for someone who declared
+      // nothing would put a statement in their application they never made.
+      throw new Error("No bankruptcy declaration was given, and one is required");
+  }
+}

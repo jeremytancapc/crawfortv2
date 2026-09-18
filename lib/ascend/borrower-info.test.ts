@@ -6,6 +6,7 @@ import {
   EMPLOYMENT_TYPE_OPTIONS,
   JOB_CATEGORY_OPTIONS,
   WORKING_POSITION_OPTIONS,
+  ascendBankruptcy,
   buildBorrowerMyInfo,
 } from "./borrower-info";
 
@@ -82,5 +83,37 @@ describe("borrowerMyInfo", () => {
     // by everyone to spell a rare case slightly faster.
     expect(EMPLOYMENT_TYPE_OPTIONS[0]).toBe("EMPLOYED");
     expect(BANKRUPTCY_OPTIONS[0]).toBe("NOT BANKRUPTCY");
+  });
+});
+
+describe("mapping our bankruptcy answer to Ascend's", () => {
+  it("maps a clean declaration straight across", () => {
+    expect(ascendBankruptcy("clear")).toBe("NOT BANKRUPTCY");
+  });
+
+  it("maps an undischarged bankrupt straight across", () => {
+    expect(ascendBankruptcy("active")).toBe("Bankrupted");
+  });
+
+  it("takes the most cautious reading of a discharge we did not date", () => {
+    // Our form asks one question - discharged under five years ago - and
+    // Ascend splits that into three bands. Without the date we cannot say
+    // which, and the shortest is the only one that cannot understate how
+    // recent it was. A lender may lend on a cautious reading; it should never
+    // lend on an optimistic one.
+    expect(ascendBankruptcy("discharged_lt5")).toBe("Bankruptcy Discharge < 1 year");
+  });
+
+  it("refuses to invent an answer when none was given", () => {
+    // Declaring "not bankrupt" for someone who declared nothing would put a
+    // statement in their application that they never made.
+    expect(() => ascendBankruptcy(null)).toThrow(/declaration/i);
+    expect(() => ascendBankruptcy("")).toThrow(/declaration/i);
+  });
+
+  it("produces a value Ascend accepts", () => {
+    for (const ours of ["clear", "discharged_lt5", "active"] as const) {
+      expect(BANKRUPTCY_OPTIONS).toContain(ascendBankruptcy(ours));
+    }
   });
 });
