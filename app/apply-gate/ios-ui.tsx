@@ -105,7 +105,7 @@ export function resetApplySheetScroll(scroller?: HTMLElement | null) {
 
 const ApplyFooterSlotContext = createContext<HTMLElement | null>(null);
 
-const APPLY_FIT_MAX_SCALE = 1.85;
+const APPLY_FIT_MAX_SCALE = 1;
 const APPLY_FIT_MIN_SCALE = 0.62;
 /** Below this on a phone, scroll instead of shrinking further - width
  *  shrinks with height on a single uniform transform, so a squarish/short
@@ -119,11 +119,11 @@ const APPLY_FIT_SLACK = 16;
 const APPLY_FIT_PHONE_WIDTH = 1.02;
 
 /**
- * Scales the designed apply column to the pane it sits in. Short steps grow
- * so the right-hand desktop column fills instead of leaving a dead band.
- * Tall steps shrink so every field stays above the action bar. Only when
- * that would go below APPLY_FIT_MIN_SCALE does the pane scroll. The action
- * bar is portaled out so it is not scaled.
+ * Scales the designed apply column to the pane it sits in. The column never
+ * grows past 1× — leftover height is handed to cards instead of zooming type
+ * past the sidebar. Tall steps shrink so every field stays above the action
+ * bar. Only when that would go below APPLY_FIT_MIN_SCALE does the pane
+ * scroll. The action bar is portaled out so it is not scaled.
  */
 function ApplyPaneFit({
   children,
@@ -136,8 +136,8 @@ function ApplyPaneFit({
   maxWidth: number;
   /** When false the column stays 1×, uses the pane width, and scrolls. */
   scaleToFit?: boolean;
-  /** Cap how far a short step grows. Book stays 1× so leftover is empty
-   *  space under the last field instead of a blown-up photo. */
+  /** Cap how far a short step grows. Defaults to 1× so desktop type stays
+   *  aligned with the sidebar instead of filling the pane by zooming. */
   maxScale?: number;
   /** After the first layout, ignore content mutations so swiping cards
    *  or picking a date cannot rescale the column. */
