@@ -11,6 +11,7 @@ import {
 } from "@/app/loan-application-form";
 import {
   ApplyProgressPanel,
+  ApplySidebarTagline,
   ApplySidebarWordmark,
   MobileGateHeader,
   MobileGateSheet,
@@ -232,9 +233,7 @@ export function ReviewForm({ initialData }: Props) {
           <div className="mb-16">
             <ApplySidebarWordmark />
           </div>
-          <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Get the funds you need, in 8 minutes
-          </p>
+          <ApplySidebarTagline />
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
             One simple application. Licensed and trusted by over 200,000
             Singaporeans since 2011.
@@ -251,7 +250,13 @@ export function ReviewForm({ initialData }: Props) {
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet scaleToFit={step !== 8}>
               {stepMeta && (
-                <div className="shrink-0 px-5 pb-6 pt-7">
+                <div
+                  className={`shrink-0 px-5 pb-6 pt-7${
+                    step === 8
+                      ? " apply-headline-to-wordmark lg:!pt-12 lg:!pb-4 xl:!pt-16"
+                      : ""
+                  }`}
+                >
                   <h1 className="ios-type-title">
                     {stepMeta.title}
                   </h1>

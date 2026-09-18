@@ -48,6 +48,17 @@ export function ApplySidebarWordmark() {
   );
 }
 
+/** Forced two-line break so "need, in 8 minutes" never orphans as just "minutes". */
+export function ApplySidebarTagline() {
+  return (
+    <p className="max-w-[420px] text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-white">
+      Get the funds you
+      <br />
+      need, in 8 minutes
+    </p>
+  );
+}
+
 /**
  * Full-bleed brand-blue bar with a centered wordmark. Mobile apply chrome only.
  */
@@ -503,9 +514,7 @@ export function ApplyIosShell({
           <div className="mb-16">
             <ApplySidebarWordmark />
           </div>
-          <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Get the funds you need, in 8 minutes
-          </p>
+          <ApplySidebarTagline />
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
             One simple application. Licensed and trusted by over 200,000
             Singaporeans since 2011.

@@ -3,12 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
-  CalendarBlank,
+  ArrowRight,
   CheckCircle,
   ClockCountdown,
   Copy,
   Check,
-  DownloadSimple,
 } from "@phosphor-icons/react";
 import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
 
@@ -61,22 +60,52 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
     <div className="animate-fade-up flex flex-col gap-3.5 text-left">
       {/* Appointment ticket ------------------------------------------------ */}
       <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)]">
-        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] bg-brand-teal/12 px-5 py-2.5">
-          <CheckCircle size={17} weight="fill" className="shrink-0 text-[oklch(0.55_0.13_178)]" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
-            Appointment confirmed
-          </span>
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-brand-teal/12 px-5 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <CheckCircle size={17} weight="fill" className="shrink-0 text-[oklch(0.55_0.13_178)]" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
+              Appointment confirmed
+            </span>
+          </div>
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="min-w-0 truncate text-[11px] font-bold tabular-nums tracking-tight text-[var(--text-secondary)]">
+              {booking.cfh5Id}
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyRef}
+              aria-label="Copy reference number"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-opacity duration-150 hover:opacity-60 active:scale-95"
+            >
+              {copied
+                ? <Check size={14} weight="bold" />
+                : <Copy size={14} weight="regular" />
+              }
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 px-5 pt-5 pb-3">
+        <div className="relative">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] text-white"
-            style={{ background: "var(--brand-blue-hex)" }}
-            aria-hidden="true"
+            aria-hidden
+            className="pointer-events-none absolute -right-5 -bottom-10 top-auto"
           >
-            <CalendarBlank size={24} weight="fill" />
+            <svg viewBox="0 0 256 256" className="block h-[11rem] w-[11rem]">
+              <g className="deck-card-watermark-spin">
+                <path
+                  fill="color-mix(in srgb, var(--brand-blue-hex) 22%, white)"
+                  opacity="0.28"
+                  d="M240,128c0,10.44-7.51,18.27-14.14,25.18-3.77,3.94-7.67,8-9.14,11.57-1.36,3.27-1.44,8.69-1.52,13.94-.15,9.76-.31,20.82-8,28.51s-18.75,7.85-28.51,8c-5.25.08-10.67.16-13.94,1.52-3.57,1.47-7.63,5.37-11.57,9.14C146.27,232.49,138.44,240,128,240s-18.27-7.51-25.18-14.14c-3.94-3.77-8-7.67-11.57-9.14-3.27-1.36-8.69-1.44-13.94-1.52-9.76-.15-20.82-.31-28.51-8s-7.85-18.75-8-28.51c-.08-5.25-.16-10.67-1.52-13.94-1.47-3.57-5.37-7.63-9.14-11.57C23.51,146.27,16,138.44,16,128s7.51-18.27,14.14-25.18c3.77-3.94,7.67-8,9.14-11.57,1.36-3.27,1.44-8.69,1.52-13.94.15-9.76.31-20.82,8-28.51s18.75-7.85,28.51-8c5.25-.08,10.67-.16,13.94-1.52,3.57-1.47,7.63-5.37,11.57-9.14C109.73,23.51,117.56,16,128,16s18.27,7.51,25.18,14.14c3.94,3.77,8,7.67,11.57,9.14,3.27,1.36,8.69,1.44,13.94,1.52,9.76.15,20.82.31,28.51,8s7.85,18.75,8,28.51c.08,5.25.16,10.67,1.52,13.94,1.47,3.57,5.37,7.63,9.14,11.57C232.49,109.73,240,117.56,240,128Z"
+                />
+              </g>
+              <path
+                fill="var(--brand-teal-hex, #06dec0)"
+                opacity="0.14"
+                d="M173.66,109.66l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"
+              />
+            </svg>
           </div>
-          <div className="min-w-0">
+          <div className="px-5 pt-5 pb-3">
             <p className="text-[16px] font-semibold text-[var(--text-secondary)]">
               {weekday}, {full}
             </p>
@@ -84,34 +113,18 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
               {formatDisplayTime(booking.time)}
             </p>
           </div>
-        </div>
-        <p className="flex items-center gap-1.5 px-5 pb-4 text-[16px] leading-snug text-[var(--text-secondary)]">
-          <ClockCountdown
-            size={18}
-            weight="fill"
-            className="shrink-0 text-brand-blue"
-          />
-          Your slot will be reserved for 30 mins
-        </p>
-
-        <div className="flex items-center justify-between gap-3 border-y border-dashed border-white/25 bg-black px-5 py-2">
-          <p className="min-w-0 truncate text-[13px] font-semibold tabular-nums tracking-tight text-white">
-            <span className="mr-1.5 font-medium text-white/60">
-              Application Ref ID:
-            </span>
-            {booking.cfh5Id}
+          <p className="flex items-center gap-1.5 px-5 pb-4 text-[16px] leading-snug text-[var(--text-secondary)]">
+            <ClockCountdown
+              size={18}
+              weight="fill"
+              className="shrink-0 text-brand-blue"
+            />
+            Your slot will be reserved for 30 mins
           </p>
-          <button
-            type="button"
-            onClick={handleCopyRef}
-            aria-label="Copy reference number"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-opacity duration-150 hover:opacity-60 active:scale-95"
-          >
-            {copied
-              ? <Check size={16} weight="bold" />
-              : <Copy size={16} weight="regular" />
-            }
-          </button>
+          <div
+            aria-hidden
+            className="mx-auto mt-3 mb-0 h-px w-[68%] bg-gradient-to-r from-transparent via-[var(--border-medium)] to-transparent"
+          />
         </div>
 
         <div className="px-5 py-5">
@@ -121,9 +134,9 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
               alt="Crawfort app"
               width={1000}
               height={1000}
-              className="h-12 w-12 shrink-0"
+              className="h-12 w-12 shrink-0 lg:h-8 lg:w-8"
             />
-            <p className="text-[20px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+            <p className="text-[18px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
               What to do next
             </p>
           </div>
@@ -145,19 +158,15 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
               </p>
             </li>
           </ol>
-          <div className="mt-5 flex items-center gap-3">
-            <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] text-white"
-              style={{ background: "var(--brand-blue-hex)" }}
-              aria-hidden="true"
-            >
-              <DownloadSimple size={22} weight="bold" />
-            </span>
-            <p className="text-[20px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
-              Download here
-            </p>
-          </div>
-          <div className="mt-2 flex items-center justify-center gap-2">
+        </div>
+
+        <div className="flex items-center gap-2 border-y border-dashed border-white/25 bg-black px-5 py-2.5">
+          <ArrowRight size={17} weight="bold" className="shrink-0 text-white" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+            Download the App
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 bg-[var(--surface-elevated)] px-5 py-2">
             <a
               href={MOBILE_APP_URL}
               target="_blank"
@@ -171,7 +180,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
                 alt="Download on the App Store"
                 width={120}
                 height={40}
-                className="h-10 w-auto"
+                className="h-12 w-auto"
               />
             </a>
             <a
@@ -187,10 +196,9 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
                 alt="Get it on Google Play"
                 width={155}
                 height={58}
-                className="h-[58px] w-auto"
+                className="h-[70px] w-auto"
               />
             </a>
-          </div>
         </div>
       </section>
     </div>
