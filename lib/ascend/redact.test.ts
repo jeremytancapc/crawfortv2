@@ -74,3 +74,55 @@ describe("redactAscendRequest", () => {
     expect(redacted.myinfoFields).toBeUndefined();
   });
 });
+
+describe("borrowerMyInfo in the log", () => {
+  const withBorrower = {
+    appId: "10001", timestamp: "1", nonce: "n", sign: "s",
+    data: {
+      desiredAmount: 5000,
+      myinfo: { uinfin: "S1234567D", name: "TAN WEI MING" },
+      borrowerMyInfo: {
+        employmentType: "EMPLOYED",
+        employmentPeriod: "1 MONTH",
+        wokingPosition: "OTHERS",
+        jobCategory: "ACTIVITIES NOT ADEQUATELY DEFINED",
+        bankruptcyDeclaration: "NOT BANKRUPTCY",
+      },
+    },
+  };
+
+  it("records it in full, so what was sent needs no reconstructing", () => {
+    expect(redactAscendRequest(withBorrower).borrowerMyInfo).toEqual({
+      employmentType: "EMPLOYED",
+      employmentPeriod: "1 MONTH",
+      wokingPosition: "OTHERS",
+      jobCategory: "ACTIVITIES NOT ADEQUATELY DEFINED",
+      bankruptcyDeclaration: "NOT BANKRUPTCY",
+    });
+  });
+
+  it("still keeps the MyInfo payload to field names only", () => {
+    const serialised = JSON.stringify(redactAscendRequest(withBorrower));
+
+    expect(serialised).not.toContain("S1234567D");
+    expect(serialised).not.toContain("TAN WEI MING");
+  });
+
+  it("drops the two borrower fields that are personal", () => {
+    const built = redactAscendRequest({
+      ...withBorrower,
+      data: {
+        ...withBorrower.data,
+        borrowerMyInfo: {
+          ...withBorrower.data.borrowerMyInfo,
+          mailingAddress: "910 Tampines Street 91 #08-321",
+          secondaryPhone: "97399245",
+        },
+      },
+    });
+
+    expect(built.borrowerMyInfo).not.toHaveProperty("mailingAddress");
+    expect(built.borrowerMyInfo).not.toHaveProperty("secondaryPhone");
+    expect(built.borrowerMyInfo).toHaveProperty("employmentType");
+  });
+});
