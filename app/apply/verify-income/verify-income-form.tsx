@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
@@ -14,6 +15,7 @@ import {
   StickyFooter,
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
+import { useApplyPath } from "@/app/use-apply-path";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
@@ -39,10 +41,19 @@ export function VerifyIncomeForm({
     incomeMonths,
     uploadMonthNames,
     averageIncome,
-    continueToReview,
   } = useVerifyIncome(initialShowResults);
+  const router = useRouter();
+  const applyHref = useApplyPath();
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Staging: walk the "bad case" demo chain (pending → rejected → existing
+  // customer) before the Singpass handoff, so every outcome can be shown.
+  // The real handoff (`continueToReview`) now lives at the end of that
+  // chain - see app/apply/existing-customer/existing-customer-view.tsx.
+  const goToBadCaseChain = () => {
+    router.push(applyHref("/apply/pending-review"));
+  };
 
   const applyNav = useApplyStepNav("verify");
 
@@ -215,7 +226,7 @@ export function VerifyIncomeForm({
 
       <StickyFooter nav={stepNav}>
         {showResults ? (
-          <PrimaryButton onClick={continueToReview}>Review Application</PrimaryButton>
+          <PrimaryButton onClick={goToBadCaseChain}>Review Application</PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleUpload}>
             Upload documents

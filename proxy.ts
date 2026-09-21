@@ -4,11 +4,19 @@ import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-resp
 import { applyVariantCookie, variantFromPathname } from "@/lib/apply-paths";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 
+/** Exact segment match only - `/apply/pending-review` (a staging "bad case"
+ *  page, not the real pending screen) must never satisfy this. */
+function isPendingPath(pathname: string): boolean {
+  return (
+    pathname === "/apply/pending" ||
+    pathname.startsWith("/apply/pending/") ||
+    pathname === "/v2/apply/pending" ||
+    pathname.startsWith("/v2/apply/pending/")
+  );
+}
+
 function isPendingWithLeadId(request: NextRequest): boolean {
-  const path = request.nextUrl.pathname;
-  if (!path.startsWith("/apply/pending") && !path.startsWith("/v2/apply/pending")) {
-    return false;
-  }
+  if (!isPendingPath(request.nextUrl.pathname)) return false;
   const q = request.nextUrl.searchParams.get("leadId")?.trim() ?? "";
   return Boolean(q && looksLikeLeadUuid(q));
 }
