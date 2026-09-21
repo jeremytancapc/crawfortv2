@@ -369,6 +369,26 @@ input[type="range"]::-moz-range-thumb {
   to   { transform: rotate(360deg); }
 }
 
+/* ─── Hourglass flip - holds flat, flips, holds upside-down, flips back.
+   A slow periodic turn (not a spinner) reads as "still waiting", matching
+   the pending-review status card rather than implying busy processing. */
+
+@keyframes hourglass-flip {
+  0%, 40%  { transform: rotate(0deg); }
+  50%, 90% { transform: rotate(180deg); }
+  100%     { transform: rotate(360deg); }
+}
+
+.animate-hourglass-flip {
+  animation: hourglass-flip 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hourglass-flip {
+    animation: none;
+  }
+}
+
 /* ─── Status text fade cycle ─────────────────────────────────────── */
 
 @keyframes status-fade {
@@ -1513,6 +1533,10 @@ body:has(.theme-ios) {
 .theme-ios {
   --ios-danger: #d70015;
   --ios-danger-soft: #ffebe9;
+  /* Amber, not pure yellow - #b45309-family text stays legible on the soft
+     wash below, matching the danger pair's contrast at the same weight. */
+  --ios-warning: #b45309;
+  --ios-warning-soft: #fef3c7;
 }
 
 @keyframes ios-field-zoom {

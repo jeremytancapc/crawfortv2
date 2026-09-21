@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Step4_Identity,
   Step6_Contact,
   Step7_Additional,
   Step7_BankruptcyDeclaration,
@@ -37,10 +36,6 @@ interface Props {
 // 4=Identity, 5=Contact, 6=Additional, 7=Bankruptcy (final step), 8=Review
 
 const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
-  4: {
-    title: "Confirm your identity",
-    subtitle: "We need this to verify your identity and eligibility.",
-  },
   5: {
     title: "Enter your mobile number",
   },
@@ -68,13 +63,20 @@ export function ReviewForm({ initialData }: Props) {
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Singpass users skip identity (already filled); manual users start at 4.
-  const firstStep = initialData.authMethod === "singpass" ? 8 : 4;
-  const [history, setHistory] = useState<number[]>([firstStep]);
+  // Identity is collected via Singpass / session — never a review screen.
+  const [history, setHistory] = useState<number[]>([8]);
   const step = history[history.length - 1];
   const sheetScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    setHistory((h) => {
+      const next = h.filter((s) => s !== 4);
+      return next.length > 0 ? next : [8];
+    });
+  }, [step]);
 
   const updateField = useCallback(
     <K extends keyof LoanFormData>(key: K, value: LoanFormData[K]) => {
@@ -85,12 +87,6 @@ export function ReviewForm({ initialData }: Props) {
 
   const canProceed = useMemo(() => {
     switch (step) {
-      case 4:
-        return (
-          formData.idType !== "" &&
-          formData.fullName.trim().length > 1 &&
-          /^[STFGM]\d{7}[A-Z]$/i.test(formData.nric.trim())
-        );
       case 5:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
@@ -113,6 +109,7 @@ export function ReviewForm({ initialData }: Props) {
   }, [step, formData]);
 
   const navigateTo = useCallback((next: number) => {
+    if (next === 4) return;
     setHistory((h) => [...h, next]);
   }, []);
 
@@ -154,21 +151,25 @@ export function ReviewForm({ initialData }: Props) {
   }
 
   const handleNext = useCallback(() => {
-    if (step === 4) { navigateTo(8); scrollToTop(); return; }
     navigateTo(step + 1);
     scrollToTop();
   }, [step, navigateTo, scrollToTop]);
 
-  const handleBack = useCallback(() => {
-    if (history.length > 1) {
-      setHistory((h) => h.slice(0, -1));
-      scrollToTop();
-      return;
-    }
+  const leaveReview = useCallback(() => {
     router.push(
       applyHref(hasVisitedApplyStep("verify") ? "/apply/verify-income" : "/?gate=3"),
     );
-  }, [applyHref, history, router, scrollToTop]);
+  }, [applyHref, router]);
+
+  const handleBack = useCallback(() => {
+    const previous = history.slice(0, -1).filter((s) => s !== 4);
+    if (previous.length > 0) {
+      setHistory(previous);
+      scrollToTop();
+      return;
+    }
+    leaveReview();
+  }, [history, leaveReview, scrollToTop]);
 
   // Step 8 (Review) "Yes, I confirm" → create partial lead then go to contact step.
   // The draft endpoint sets a draft_lead cookie server-side - no state update needed.
@@ -180,11 +181,9 @@ export function ReviewForm({ initialData }: Props) {
 
   // Progress: shared funnel scale (visit = 100%, never shown in-app).
   const progressStep =
-    step === 4
-      ? APPLY_PROGRESS.verifyOrIdentity
-      : step === 8 || step === 6
-        ? APPLY_PROGRESS.reviewInfo
-        : APPLY_PROGRESS.completeApp;
+    step === 8 || step === 6
+      ? APPLY_PROGRESS.reviewInfo
+      : APPLY_PROGRESS.completeApp;
   const stepMeta = REVIEW_STEP_META[step];
 
   const handlePrimary = () => {
@@ -274,9 +273,6 @@ export function ReviewForm({ initialData }: Props) {
                 className="flex-1 px-5 pb-8"
               >
                 <div className="animate-fade-up">
-                  {step === 4 && (
-                    <Step4_Identity formData={formData} updateField={updateField} />
-                  )}
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
