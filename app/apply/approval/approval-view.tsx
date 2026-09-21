@@ -7,7 +7,7 @@ import type { LoanFormData } from "@/lib/loan-form";
 import { LoanResults } from "@/app/loan-results";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
-import { approvalOfferDisplay } from "@/lib/approval-display";
+import { approvalOfferDisplay, type AscendLimits } from "@/lib/approval-display";
 import {
   readStoredWithdrawAmount,
   storeWithdrawAmount,
@@ -18,17 +18,19 @@ import { useApplyPath } from "@/app/use-apply-path";
 
 interface Props {
   formData: LoanFormData;
+  /** Ascend's limits, so the offer shown is the one Ascend approved. */
+  limits?: AscendLimits;
   phase: "amount" | "plan";
   initialWithdrawAmount?: number;
 }
 
-export function ApprovalView({ formData, phase, initialWithdrawAmount }: Props) {
+export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }: Props) {
   const router = useRouter();
   const applyHref = useApplyPath();
   const prefersReducedMotion = useReducedMotion();
   const isPlan = phase === "plan";
 
-  const { displayData, creditLimit } = approvalOfferDisplay(formData);
+  const { displayData, creditLimit } = approvalOfferDisplay(formData, limits);
   const maxPlanAmount = initialWithdrawAmount ?? displayData.amount;
   const [planAmount, setPlanAmount] = useState(maxPlanAmount);
   const persistTimer = useRef<number | null>(null);

@@ -8,7 +8,11 @@ import { AmountInput, Pill, Row, Rows } from "@/app/v2/ui/controls";
 import { ApprovedIllustration } from "@/app/v2/ui/illustrations";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
 import { useClientValue } from "@/app/v2/ui/use-client-value";
-import { approvalOfferDisplay, formatOfferAmount } from "@/lib/approval-display";
+import {
+  approvalOfferDisplay,
+  formatOfferAmount,
+  type AscendLimits,
+} from "@/lib/approval-display";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
 import { APPROVAL_PAGE_DISCLAIMER, type LoanFormData } from "@/lib/loan-form";
 import { MAX_OFFER_TENURE, OFFER_MONTHLY_RATE, calculateInstalment } from "@/lib/offer-plans";
@@ -25,10 +29,17 @@ import {
  * Persists the chosen amount exactly like production (`sessionStorage` +
  * `POST /api/apply/select-amount`) and hands off to the plan screen.
  */
-export function ApprovalScreen({ formData }: { formData: LoanFormData }) {
+export function ApprovalScreen({
+  formData,
+  limits,
+}: {
+  formData: LoanFormData;
+  /** Ascend's limits, so the offer shown is the one Ascend approved. */
+  limits?: AscendLimits;
+}) {
   const router = useRouter();
   const applyHref = useApplyPath();
-  const { withdrawToday, creditLimit } = approvalOfferDisplay(formData);
+  const { withdrawToday, creditLimit } = approvalOfferDisplay(formData, limits);
   const max = Math.max(withdrawToday, MIN_WITHDRAW_AMOUNT);
   const min = Math.min(MIN_WITHDRAW_AMOUNT, max);
 
