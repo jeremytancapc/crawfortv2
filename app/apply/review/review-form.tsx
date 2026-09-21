@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Step4_Identity,
   Step6_Contact,
   Step7_Additional,
   Step7_BankruptcyDeclaration,
@@ -12,6 +11,7 @@ import {
 } from "@/app/loan-application-form";
 import {
   ApplyProgressPanel,
+  ApplySidebarTagline,
   ApplySidebarWordmark,
   MobileGateHeader,
   MobileGateSheet,
@@ -20,6 +20,7 @@ import {
   resetApplySheetScroll,
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
+import { hasVisitedApplyStep } from "@/lib/apply-step-nav";
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import type { LoanFormData } from "@/lib/loan-form";
 import { trackDisplayStep } from "@/lib/analytics";
@@ -35,14 +36,9 @@ interface Props {
 // Internal step numbers (same as original form)
 // 4=Identity, 5=Contact, 6=Additional, 7=Bankruptcy (final step), 8=Review
 
-const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
-  4: {
-    title: "Confirm your identity",
-    subtitle: "We need this to verify your identity and eligibility.",
-  },
+const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
   5: {
     title: "Enter your mobile number",
-    subtitle: "We'll use it to stay in touch about your application.",
   },
   6: {
     title: "Confirm extra details",
@@ -50,11 +46,9 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle: string }> = {
   },
   7: {
     title: "Enter your mobile number",
-    subtitle: "We'll use it to stay in touch about your application.",
   },
   8: {
     title: "Confirm that your info is accurate",
-    subtitle: "This was pulled from MyInfo.",
   },
 };
 
@@ -70,13 +64,20 @@ export function ReviewForm({ initialData }: Props) {
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Singpass users skip identity (already filled); manual users start at 4.
-  const firstStep = initialData.authMethod === "singpass" ? 8 : 4;
-  const [history, setHistory] = useState<number[]>([firstStep]);
+  // Identity is collected via Singpass / session — never a review screen.
+  const [history, setHistory] = useState<number[]>([8]);
   const step = history[history.length - 1];
   const sheetScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    setHistory((h) => {
+      const next = h.filter((s) => s !== 4);
+      return next.length > 0 ? next : [8];
+    });
+  }, [step]);
 
   const updateField = useCallback(
     <K extends keyof LoanFormData>(key: K, value: LoanFormData[K]) => {
@@ -87,12 +88,6 @@ export function ReviewForm({ initialData }: Props) {
 
   const canProceed = useMemo(() => {
     switch (step) {
-      case 4:
-        return (
-          formData.idType !== "" &&
-          formData.fullName.trim().length > 1 &&
-          /^[STFGM]\d{7}[A-Z]$/i.test(formData.nric.trim())
-        );
       case 5:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
@@ -123,6 +118,7 @@ export function ReviewForm({ initialData }: Props) {
   }, [step, formData]);
 
   const navigateTo = useCallback((next: number) => {
+    if (next === 4) return;
     setHistory((h) => [...h, next]);
   }, []);
 
@@ -164,19 +160,25 @@ export function ReviewForm({ initialData }: Props) {
   }
 
   const handleNext = useCallback(() => {
-    if (step === 4) { navigateTo(8); scrollToTop(); return; }
     navigateTo(step + 1);
     scrollToTop();
   }, [step, navigateTo, scrollToTop]);
 
+  const leaveReview = useCallback(() => {
+    router.push(
+      applyHref(hasVisitedApplyStep("verify") ? "/apply/verify-income" : "/?gate=3"),
+    );
+  }, [applyHref, router]);
+
   const handleBack = useCallback(() => {
-    if (history.length > 1) {
-      setHistory((h) => h.slice(0, -1));
+    const previous = history.slice(0, -1).filter((s) => s !== 4);
+    if (previous.length > 0) {
+      setHistory(previous);
       scrollToTop();
       return;
     }
-    window.history.back();
-  }, [history, scrollToTop]);
+    leaveReview();
+  }, [history, leaveReview, scrollToTop]);
 
   // Step 8 (Review) "Yes, I confirm" → create partial lead then go to contact step.
   // The draft endpoint sets a draft_lead cookie server-side - no state update needed.
@@ -188,11 +190,9 @@ export function ReviewForm({ initialData }: Props) {
 
   // Progress: shared funnel scale (visit = 100%, never shown in-app).
   const progressStep =
-    step === 4
-      ? APPLY_PROGRESS.verifyOrIdentity
-      : step === 8 || step === 6
-        ? APPLY_PROGRESS.reviewInfo
-        : APPLY_PROGRESS.completeApp;
+    step === 8 || step === 6
+      ? APPLY_PROGRESS.reviewInfo
+      : APPLY_PROGRESS.completeApp;
   const stepMeta = REVIEW_STEP_META[step];
 
   const handlePrimary = () => {
@@ -241,9 +241,7 @@ export function ReviewForm({ initialData }: Props) {
           <div className="mb-16">
             <ApplySidebarWordmark />
           </div>
-          <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Get the funds you need, in 8 minutes
-          </p>
+          <ApplySidebarTagline />
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
             One simple application. Licensed and trusted by over 200,000
             Singaporeans since 2011.
@@ -260,13 +258,21 @@ export function ReviewForm({ initialData }: Props) {
               <MobileGateHeader progressStep={progressStep} />
               <MobileGateSheet scaleToFit={step !== 8}>
               {stepMeta && (
-                <div className="shrink-0 px-5 pb-6 pt-7">
+                <div
+                  className={`shrink-0 px-5 pb-6 pt-7${
+                    step === 8
+                      ? " apply-headline-to-wordmark lg:!pt-12 lg:!pb-4 xl:!pt-16"
+                      : ""
+                  }`}
+                >
                   <h1 className="ios-type-title">
                     {stepMeta.title}
                   </h1>
-                  <p className="ios-type-subtitle mt-1.5">
-                    {stepMeta.subtitle}
-                  </p>
+                  {stepMeta.subtitle ? (
+                    <p className="ios-type-subtitle mt-1.5">
+                      {stepMeta.subtitle}
+                    </p>
+                  ) : null}
                 </div>
               )}
 
@@ -276,9 +282,6 @@ export function ReviewForm({ initialData }: Props) {
                 className="flex-1 px-5 pb-8"
               >
                 <div className="animate-fade-up">
-                  {step === 4 && (
-                    <Step4_Identity formData={formData} updateField={updateField} />
-                  )}
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />

@@ -3,16 +3,14 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
+  ArrowRight,
   CheckCircle,
   ClockCountdown,
-  WhatsappLogo,
-  ArrowUpRight,
   Copy,
   Check,
 } from "@phosphor-icons/react";
 import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
-
-const MOBILE_APP_URL = "https://crawfort.com/mobileapp";
+import { AppStoreBadges } from "@/app/app-store-badges";
 
 const FULL_DAY_LABELS = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
@@ -55,154 +53,121 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
     }).catch(() => {});
   };
 
-  const { month, day, weekday, full } = getDateParts(booking.date);
+  const { weekday, full } = getDateParts(booking.date);
 
   return (
     <div className="animate-fade-up flex flex-col gap-3.5 text-left">
       {/* Appointment ticket ------------------------------------------------ */}
       <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)]">
-        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] bg-brand-teal/12 px-5 py-2.5">
-          <CheckCircle size={17} weight="fill" className="shrink-0 text-[oklch(0.55_0.13_178)]" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
-            Appointment confirmed
-          </span>
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-brand-teal/12 px-5 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <CheckCircle size={17} weight="fill" className="shrink-0 text-[oklch(0.55_0.13_178)]" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
+              Appointment confirmed
+            </span>
+          </div>
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="min-w-0 truncate text-[11px] font-bold tabular-nums tracking-tight text-[var(--text-secondary)]">
+              {booking.cfh5Id}
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyRef}
+              aria-label="Copy reference number"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-opacity duration-150 hover:opacity-60 active:scale-95"
+            >
+              {copied
+                ? <Check size={14} weight="bold" />
+                : <Copy size={14} weight="regular" />
+              }
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 px-5 py-5">
+        <div className="relative">
           <div
-            className="flex h-[62px] w-[58px] shrink-0 flex-col items-center justify-center rounded-[14px] text-white"
-            style={{ background: "var(--brand-blue-hex)" }}
-            aria-hidden="true"
+            aria-hidden
+            className="pointer-events-none absolute -right-5 -bottom-10 top-auto"
           >
-            <span className="text-[10px] font-bold uppercase tracking-[0.1em] opacity-70">
-              {month}
-            </span>
-            <span className="text-[26px] font-bold leading-none">{day}</span>
+            <svg viewBox="0 0 256 256" className="block h-[11rem] w-[11rem]">
+              <g className="deck-card-watermark-spin">
+                <path
+                  fill="color-mix(in srgb, var(--brand-blue-hex) 22%, white)"
+                  opacity="0.28"
+                  d="M240,128c0,10.44-7.51,18.27-14.14,25.18-3.77,3.94-7.67,8-9.14,11.57-1.36,3.27-1.44,8.69-1.52,13.94-.15,9.76-.31,20.82-8,28.51s-18.75,7.85-28.51,8c-5.25.08-10.67.16-13.94,1.52-3.57,1.47-7.63,5.37-11.57,9.14C146.27,232.49,138.44,240,128,240s-18.27-7.51-25.18-14.14c-3.94-3.77-8-7.67-11.57-9.14-3.27-1.36-8.69-1.44-13.94-1.52-9.76-.15-20.82-.31-28.51-8s-7.85-18.75-8-28.51c-.08-5.25-.16-10.67-1.52-13.94-1.47-3.57-5.37-7.63-9.14-11.57C23.51,146.27,16,138.44,16,128s7.51-18.27,14.14-25.18c3.77-3.94,7.67-8,9.14-11.57,1.36-3.27,1.44-8.69,1.52-13.94.15-9.76.31-20.82,8-28.51s18.75-7.85,28.51-8c5.25-.08,10.67-.16,13.94-1.52,3.57-1.47,7.63-5.37,11.57-9.14C109.73,23.51,117.56,16,128,16s18.27,7.51,25.18,14.14c3.94,3.77,8,7.67,11.57,9.14,3.27,1.36,8.69,1.44,13.94,1.52,9.76.15,20.82.31,28.51,8s7.85,18.75,8,28.51c.08,5.25.16,10.67,1.52,13.94,1.47,3.57,5.37,7.63,9.14,11.57C232.49,109.73,240,117.56,240,128Z"
+                />
+              </g>
+              <path
+                fill="var(--brand-teal-hex, #06dec0)"
+                opacity="0.14"
+                d="M173.66,109.66l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"
+              />
+            </svg>
           </div>
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+          <div className="px-5 pt-5 pb-3">
+            <p className="text-[16px] font-semibold text-[var(--text-secondary)]">
               {weekday}, {full}
             </p>
-            <p className="mt-0.5 text-[28px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
+            <p className="mt-0.5 text-[32px] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
               {formatDisplayTime(booking.time)}
             </p>
           </div>
-        </div>
-
-        <div className="flex flex-col gap-2.5 border-t border-[var(--border-subtle)] px-5 py-3">
-          <div className="flex items-start gap-2">
+          <p className="flex items-center gap-1.5 px-5 pb-4 text-[16px] leading-snug text-[var(--text-secondary)]">
             <ClockCountdown
-              size={16}
+              size={18}
               weight="fill"
-              className="mt-px shrink-0 text-brand-blue"
+              className="shrink-0 text-brand-blue"
             />
-            <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
-              Kindly arrive on time so we can serve you promptly.
-            </p>
-          </div>
-          <div className="flex items-start gap-2">
-            <WhatsappLogo
-              size={16}
-              weight="fill"
-              className="mt-px shrink-0"
-              style={{ color: "oklch(0.58 0.16 148)" }}
-            />
-            <p className="text-[13px] leading-[1.4] text-[var(--text-secondary)]">
-              We will send you the appointment details via WhatsApp soon.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-dashed border-white/25 bg-black px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">
-              Application reference
-            </p>
-            <p className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-white">
-              {booking.cfh5Id}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleCopyRef}
-            aria-label="Copy reference number"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-opacity duration-150 hover:opacity-60 active:scale-95"
-          >
-            {copied
-              ? <Check size={19} weight="bold" />
-              : <Copy size={19} weight="regular" />
-            }
-          </button>
-        </div>
-      </section>
-
-      {/* Crawfort app ------------------------------------------------------ */}
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/images/crawfort-app-logo.png"
-            alt="Crawfort app"
-            width={1000}
-            height={1000}
-            className="h-10 w-10 shrink-0"
+            Your slot will be reserved for 30 mins
+          </p>
+          <div
+            aria-hidden
+            className="mx-auto mt-3 mb-0 h-px w-[68%] bg-gradient-to-r from-transparent via-[var(--border-medium)] to-transparent"
           />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-blue">
-              Before your appointment
-            </p>
-            <p className="text-[16px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
-              Download the Crawfort app
+        </div>
+
+        <div className="px-5 py-5">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/images/crawfort-app-logo.png"
+              alt="Crawfort app"
+              width={1000}
+              height={1000}
+              className="h-12 w-12 shrink-0 lg:h-8 lg:w-8"
+            />
+            <p className="text-[18px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+              What to do next
             </p>
           </div>
+          <ol className="mt-4 flex flex-col gap-3">
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-[13px] font-bold text-brand-blue">
+                1
+              </span>
+              <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
+                Setup the Crawfort App from App store
+              </p>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-[13px] font-bold text-brand-blue">
+                2
+              </span>
+              <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
+                Sign in the app using Singpass to manage your queue, loan details and repayment
+              </p>
+            </li>
+          </ol>
         </div>
-        <p className="mt-3 text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-          Set it up before you come in so we can serve you faster on the day.
-          You&apos;ll keep using it after your loan starts.
-        </p>
-        <div className="mt-4 flex items-center gap-2">
-          <a
-            href={MOBILE_APP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
-          >
-            {/* Official Apple badge — do not restyle the artwork. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/download-on-app-store.svg"
-              alt="Download on the App Store"
-              width={120}
-              height={40}
-              className="h-10 w-auto"
-            />
-          </a>
-          <a
-            href={MOBILE_APP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="-ml-1 transition-opacity duration-150 hover:opacity-80 active:scale-[0.98]"
-          >
-            {/* Official Google badge — extra PNG padding, sized to match Apple. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/get-it-on-google-play.png"
-              alt="Get it on Google Play"
-              width={155}
-              height={58}
-              className="h-[58px] w-auto"
-            />
-          </a>
+
+        <div className="flex items-center gap-2 border-y border-dashed border-white/25 bg-black px-5 py-2.5">
+          <ArrowRight size={17} weight="bold" className="shrink-0 text-white" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+            Download the App
+          </p>
         </div>
-        <a
-          href={MOBILE_APP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ios-type-cta mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-full px-4 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-          style={{ background: "var(--brand-blue-hex)" }}
-        >
-          Get the app
-          <ArrowUpRight size={17} weight="bold" />
-        </a>
+        <div className="bg-[var(--surface-elevated)] px-5 py-2">
+          <AppStoreBadges />
+        </div>
       </section>
     </div>
   );

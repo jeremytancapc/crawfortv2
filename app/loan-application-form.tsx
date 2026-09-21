@@ -785,11 +785,11 @@ export function Step3_SingpassGate({
           <CardRow key={text}>
             <span className="flex items-center gap-3">
               <CheckCircle
-                size={22}
+                size={24}
                 weight="fill"
                 className="shrink-0 text-[var(--accent)]"
               />
-              <span className="text-[15px] leading-snug text-[var(--text-primary)]">
+              <span className="text-[17px] leading-snug text-[var(--text-primary)]">
                 {text}
               </span>
             </span>
@@ -2336,7 +2336,7 @@ export function Step8_Review({
         {noaRecords.length > 0 && (
           <section>
             <SectionLabel>Notice of Assessment</SectionLabel>
-            <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
+            <p className="mb-2 px-1 text-[15px] text-[var(--text-secondary)]">
               {noaRecords.length} year{noaRecords.length === 1 ? "" : "s"} retrieved via Singpass.
             </p>
             <div className="flex flex-col gap-3">
@@ -2395,7 +2395,7 @@ export function Step8_Review({
         {cpfRecords.length > 0 && (
           <section>
             <SectionLabel>CPF contribution history</SectionLabel>
-            <p className="mb-2 px-1 text-[13px] text-[var(--text-secondary)]">
+            <p className="mb-2 px-1 text-[15px] text-[var(--text-secondary)]">
               {cpfRecords.length} month{cpfRecords.length === 1 ? "" : "s"} retrieved via Singpass.
             </p>
             <Card>

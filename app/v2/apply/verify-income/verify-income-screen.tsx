@@ -66,7 +66,7 @@ export function VerifyIncomeScreen({
 
   const goBack = () => {
     setResumeGateStep(3);
-    router.push(applyHref("/"));
+    router.push(applyHref("/?gate=3"));
   };
 
   // Nothing read means no figures to show and nothing to submit - the ask

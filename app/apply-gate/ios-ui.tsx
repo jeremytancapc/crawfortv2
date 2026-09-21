@@ -48,6 +48,17 @@ export function ApplySidebarWordmark() {
   );
 }
 
+/** Forced two-line break so "need, in 8 minutes" never orphans as just "minutes". */
+export function ApplySidebarTagline() {
+  return (
+    <p className="max-w-[420px] text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-white">
+      Get the funds you
+      <br />
+      need, in 8 minutes
+    </p>
+  );
+}
+
 /**
  * Full-bleed brand-blue bar with a centered wordmark. Mobile apply chrome only.
  */
@@ -105,27 +116,43 @@ export function resetApplySheetScroll(scroller?: HTMLElement | null) {
 
 const ApplyFooterSlotContext = createContext<HTMLElement | null>(null);
 
-const APPLY_FIT_MAX_SCALE = 1.85;
+const APPLY_FIT_MAX_SCALE = 1;
 const APPLY_FIT_MIN_SCALE = 0.62;
+/** Below this on a phone, scroll instead of shrinking further - width
+ *  shrinks with height on a single uniform transform, so a squarish/short
+ *  phone must not chase "everything above the fold" all the way down to
+ *  the desktop's 0.62 floor the way a tall rail column can afford to. */
+const APPLY_FIT_PHONE_MIN_SCALE = 0.9;
 /** Keep the last row of a card off the clip edge after subpixel rounding. */
 const APPLY_FIT_SLACK = 16;
+/** Width ratio at or below this is a full-bleed phone column. Extra height
+ *  must grow cards (leftover), not zoom the whole step. */
+const APPLY_FIT_PHONE_WIDTH = 1.02;
 
 /**
- * Scales the designed apply column to the pane it sits in. Short steps grow
- * so the right-hand desktop column fills instead of leaving a dead band.
- * Tall steps shrink so every field stays above the action bar. Only when
- * that would go below APPLY_FIT_MIN_SCALE does the pane scroll. The action
- * bar is portaled out so it is not scaled.
+ * Scales the designed apply column to the pane it sits in. The column never
+ * grows past 1× — leftover height is handed to cards instead of zooming type
+ * past the sidebar. Tall steps shrink so every field stays above the action
+ * bar. Only when that would go below APPLY_FIT_MIN_SCALE does the pane
+ * scroll. The action bar is portaled out so it is not scaled.
  */
 function ApplyPaneFit({
   children,
   maxWidth,
   scaleToFit = true,
+  maxScale = APPLY_FIT_MAX_SCALE,
+  lockAfterFit = true,
 }: {
   children: ReactNode;
   maxWidth: number;
   /** When false the column stays 1×, uses the pane width, and scrolls. */
   scaleToFit?: boolean;
+  /** Cap how far a short step grows. Defaults to 1× so desktop type stays
+   *  aligned with the sidebar instead of filling the pane by zooming. */
+  maxScale?: number;
+  /** After the first layout, ignore content mutations so swiping cards
+   *  or picking a date cannot rescale the column. */
+  lockAfterFit?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -138,33 +165,95 @@ function ApplyPaneFit({
     if (!host || !inner) return;
 
     let frame = 0;
+    let settleTimer = 0;
+    let growthTimer = 0;
+    let hasFit = false;
+    let lockedW = 0;
+    let lockedH = 0;
+    // Content height the current lock was fitted against, unscaled (i.e. at
+    // designW). A locked deck of swiped cards can still land on one taller
+    // than the first card that established the lock - a 12-month payment
+    // schedule next to a two-line key term - and the sizer's own overflow is
+    // hidden, so a card that outgrows this just gets clipped behind the
+    // footer instead of scrolling into view. Growing the lock to cover it is
+    // not the resize-on-swipe bug the lock exists to prevent: that was the
+    // pane changing size for cards it already had room for. This is the
+    // pane not yet knowing about a card it never measured.
+    let lockedContentH = 0;
+    let forceRemeasure = false;
     const measure = () => {
       const availW = host.clientWidth;
       const availH = host.clientHeight;
       if (availW < 8 || availH < 8) return;
+      if (
+        !forceRemeasure &&
+        lockAfterFit &&
+        hasFit &&
+        Math.abs(availW - lockedW) < 8 &&
+        Math.abs(availH - lockedH) < 8
+      ) {
+        return;
+      }
+      forceRemeasure = false;
 
-      const designW = Math.min(maxWidth, availW);
+      // maxWidth is a deliberate narrow reading column on the desktop rail
+      // (there's a whole marketing sidebar to fill the rest of the screen).
+      // Below the rail breakpoint there is no sidebar - the column IS the
+      // screen - so a wide/squarish phone must not be capped down to that
+      // same 560px design and then left to fill the extra width by scaling
+      // alone. A tall step still needs to shrink to fit the height, and a
+      // uniform scale shrinks width right along with it, so a capped design
+      // both loses text size AND leaves dead space on either side. Let the
+      // design use the full pane width on phones/tablets; only the rail
+      // keeps the intentionally narrow column.
+      const isDesktopRail = window.matchMedia("(min-width: 1024px)").matches;
+      const effectiveMaxWidth = isDesktopRail ? maxWidth : Math.max(maxWidth, availW);
+      const designW = Math.min(effectiveMaxWidth, availW);
+      const prevLeftover = inner.style.getPropertyValue("--apply-fit-leftover") || "0px";
+      const prevTransform = inner.style.transform;
       inner.style.setProperty("--apply-fit-leftover", "0px");
       inner.style.width = `${designW}px`;
+      inner.style.maxWidth = `${designW}px`;
       inner.style.transform = "none";
       void inner.offsetHeight;
 
-      const contentW = Math.max(inner.scrollWidth, inner.offsetWidth);
+      // Designed column width only. A terms-card swipe translates the
+      // outgoing face past the edge; scrollWidth then reads ~2× wide,
+      // the scale floor kicks in, and leftover stays 0 until remount.
+      const contentW = designW;
       const contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
-      if (contentW < 8 || contentH < 8) {
-        inner.style.transform = "";
+      if (contentH < 8) {
+        inner.style.setProperty("--apply-fit-leftover", prevLeftover);
+        inner.style.transform = prevTransform;
         return;
       }
 
       const fitH = Math.max(8, availH - APPLY_FIT_SLACK);
-      const raw = Math.min(availW / contentW, fitH / contentH);
-      const overflowing = raw < APPLY_FIT_MIN_SCALE;
+      const widthScale = availW / contentW;
+      const raw = Math.min(widthScale, fitH / contentH);
+      // A short/squarish phone can be short enough that fitting the full
+      // height would shrink well past what the desktop floor allows (0.62)
+      // - readable on a tall rail, but on a phone that also drags width down
+      // with it (one transform, both axes), so "shrink to avoid scrolling"
+      // stops being worth it far sooner. Once a phone would need to shrink
+      // more than ~10%, scroll the rest instead of shrinking text and the
+      // gauge down toward two-thirds size just to keep it above the fold.
+      const minScale = isDesktopRail ? APPLY_FIT_MIN_SCALE : APPLY_FIT_PHONE_MIN_SCALE;
+      const overflowing = raw < minScale;
+      // Phone: the column already spans the pane. Scaling with leftover
+      // height blows type and gauges up. Tablet/desktop can still grow
+      // toward the designed max because widthScale is above 1.
+      const cap = widthScale <= APPLY_FIT_PHONE_WIDTH ? Math.min(maxScale, 1) : maxScale;
       const scale = overflowing
-        ? APPLY_FIT_MIN_SCALE
-        : Math.min(Math.max(raw, APPLY_FIT_MIN_SCALE), APPLY_FIT_MAX_SCALE);
+        ? minScale
+        : Math.min(Math.max(raw, minScale), cap);
       const leftover = overflowing ? 0 : Math.max(0, fitH / scale - contentH);
       inner.style.setProperty("--apply-fit-leftover", `${leftover}px`);
       inner.style.transform = `scale(${scale})`;
+      hasFit = true;
+      lockedW = availW;
+      lockedH = availH;
+      lockedContentH = contentH;
 
       setFit((prev) => {
         if (
@@ -189,24 +278,106 @@ function ApplyPaneFit({
       frame = requestAnimationFrame(measure);
     };
 
+    const scheduleSettled = () => {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(measure, 400);
+    };
+
+    // Same 400ms settle as scheduleSettled - rides out a swipe's exit/enter
+    // DOM churn instead of reading a mid-transition height - but only checks
+    // whether the now-settled card needs more room than the lock already
+    // grants. Width and transform are already pinned to the locked design,
+    // so scrollHeight here is directly comparable to lockedContentH with no
+    // reset-and-remeasure dance.
+    const scheduleGrowthCheck = () => {
+      window.clearTimeout(growthTimer);
+      growthTimer = window.setTimeout(() => {
+        if (inner.scrollHeight > lockedContentH + 4) {
+          forceRemeasure = true;
+          measure();
+        }
+      }, 400);
+    };
+
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
     const sheet = host.closest(".ios-apply-sheet");
     if (sheet) ro.observe(sheet);
-    const mo = new MutationObserver(schedule);
+    const mo = new MutationObserver(() => {
+      if (lockAfterFit && hasFit) {
+        scheduleGrowthCheck();
+        return;
+      }
+      scheduleSettled();
+    });
     mo.observe(inner, { childList: true, subtree: true });
     schedule();
     return () => {
       cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(growthTimer);
       ro.disconnect();
       mo.disconnect();
     };
-  }, [maxWidth, scaleToFit]);
+  }, [maxWidth, maxScale, scaleToFit, lockAfterFit]);
+
+  // Choose-plan (and other wide steps) skip scale, so leftover used to stay
+  // 0 and the cards sat in a short island. Measure the unused pane once and
+  // hand it to the same CSS var the cards already read.
+  useLayoutEffect(() => {
+    if (scaleToFit) return;
+    const host = hostRef.current;
+    const col = innerRef.current;
+    if (!host || !col) return;
+
+    let hasFit = false;
+    let lockedW = 0;
+    let lockedH = 0;
+    const measure = () => {
+      const availW = host.clientWidth;
+      const availH = host.clientHeight;
+      if (availW < 8 || availH < 8) return;
+      if (
+        lockAfterFit &&
+        hasFit &&
+        Math.abs(availW - lockedW) < 8 &&
+        Math.abs(availH - lockedH) < 8
+      ) {
+        return;
+      }
+      col.style.setProperty("--apply-fit-leftover", "0px");
+      void col.offsetHeight;
+      const contentH = Math.max(col.scrollHeight, col.offsetHeight);
+      if (contentH < 8) return;
+      const leftover = Math.max(0, availH - APPLY_FIT_SLACK - contentH);
+      col.style.setProperty("--apply-fit-leftover", `${leftover}px`);
+      hasFit = true;
+      lockedW = availW;
+      lockedH = availH;
+    };
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(host);
+    const sheet = host.closest(".ios-apply-sheet");
+    if (sheet) ro.observe(sheet);
+    const mo = new MutationObserver(() => {
+      if (lockAfterFit && hasFit) return;
+      measure();
+    });
+    mo.observe(col, { childList: true, subtree: true });
+    measure();
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [scaleToFit, lockAfterFit]);
 
   if (!scaleToFit) {
     return (
-      <div className="apply-pane-fit apply-pane-fit--natural">
-        <div className="apply-pane-fit-natural-col">{children}</div>
+      <div ref={hostRef} className="apply-pane-fit apply-pane-fit--natural">
+        <div ref={innerRef} className="apply-pane-fit-natural-col">
+          {children}
+        </div>
       </div>
     );
   }
@@ -252,12 +423,16 @@ export function MobileGateSheet({
   children,
   fitMaxWidth = 560,
   scaleToFit = true,
+  fitMaxScale,
+  lockAfterFit = true,
 }: {
   children: ReactNode;
   /** Designed column width the pane fitter scales from. */
   fitMaxWidth?: number;
   /** Set false to keep native size and scroll instead of shrinking to the pane. */
   scaleToFit?: boolean;
+  fitMaxScale?: number;
+  lockAfterFit?: boolean;
 }) {
   const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
 
@@ -265,7 +440,12 @@ export function MobileGateSheet({
     <ApplyFooterSlotContext.Provider value={footerSlot}>
       <div className="flex min-h-0 flex-1 flex-col bg-[var(--brand-blue-hex)] lg:bg-transparent">
         <div className="ios-apply-sheet flex min-h-0 flex-1 flex-col bg-[var(--surface-primary)]">
-          <ApplyPaneFit maxWidth={fitMaxWidth} scaleToFit={scaleToFit}>
+          <ApplyPaneFit
+            maxWidth={fitMaxWidth}
+            scaleToFit={scaleToFit}
+            maxScale={fitMaxScale}
+            lockAfterFit={lockAfterFit}
+          >
             {children}
           </ApplyPaneFit>
           <div ref={setFooterSlot} className="ios-apply-footer-slot shrink-0" />
@@ -312,6 +492,8 @@ export function IosLegalFooter() {
 export function ApplyIosShell({
   progressStep,
   wideContent = false,
+  fitMaxScale,
+  lockAfterFit = true,
   children,
 }: {
   progressStep?: number;
@@ -320,6 +502,9 @@ export function ApplyIosShell({
    *  a step whose whole job is comparing three cards side by side has nothing
    *  to gain from leaving two thirds of a desktop empty. */
   wideContent?: boolean;
+  /** Cap pane-fit growth. Book uses 1 so the column does not inflate. */
+  fitMaxScale?: number;
+  lockAfterFit?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -329,9 +514,7 @@ export function ApplyIosShell({
           <div className="mb-16">
             <ApplySidebarWordmark />
           </div>
-          <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Get the funds you need, in 8 minutes
-          </p>
+          <ApplySidebarTagline />
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
             One simple application. Licensed and trusted by over 200,000
             Singaporeans since 2011.
@@ -355,6 +538,8 @@ export function ApplyIosShell({
               <MobileGateSheet
                 fitMaxWidth={wideContent ? 1040 : 560}
                 scaleToFit={!wideContent}
+                fitMaxScale={fitMaxScale}
+                lockAfterFit={lockAfterFit}
               >
                 {children}
               </MobileGateSheet>
@@ -839,7 +1024,7 @@ export function CardRow({
 /** Small caption that sits above a card, iOS grouped-table style. */
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="ios-section-label mb-2 px-1 text-[13px] font-semibold leading-tight text-[var(--text-secondary)]">
+    <p className="ios-section-label mb-2 px-1 text-[15px] font-semibold leading-tight text-[var(--text-secondary)]">
       {children}
     </p>
   );

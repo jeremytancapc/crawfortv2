@@ -73,7 +73,7 @@ export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }:
       wideContent={isPlan}
     >
       <motion.div
-        className="min-w-0 shrink-0 px-5 pb-6 pt-7"
+        className="apply-headline-to-wordmark min-w-0 shrink-0 px-5 pb-6 pt-7 lg:!pt-12 lg:!pb-4 xl:!pt-16"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
@@ -103,7 +103,7 @@ export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }:
           />
         ) : (
           <p className="ios-type-subtitle mt-1.5">
-            Choose the loan amount that works best for you.
+            Adjust the loan amount to drawdown
           </p>
         )}
       </motion.div>

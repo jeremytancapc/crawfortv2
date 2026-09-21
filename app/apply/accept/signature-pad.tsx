@@ -221,104 +221,74 @@ export function SignaturePad({
 
   const isSigned = phase === "signed";
   const isSigning = phase === "signing";
+  const BannerIcon = isSigned ? SealCheck : PenNib;
+  const needsDraw = invalid && !isSigned && isEmpty;
+  const needsConfirm = invalid && !isSigned && !isEmpty;
 
   return (
     <div className="flex flex-col gap-3">
-      {/* A plain caption reads as decoration this late in the flow, when it's
-          actually the one remaining blocker before the offer is accepted -
-          so it gets the same "can't miss it" callout treatment as a required
-          form field: a filled panel, an icon badge, and (while still unsigned)
-          a soft pulse to keep drawing the eye back to it. */}
       <div
-        className="flex items-center gap-3 rounded-[var(--radius-md)] px-3.5 py-3 transition-colors duration-300"
-        style={{
-          background: isSigned
-            ? "oklch(0.95 0.045 152)"
-            : invalid
-              ? "var(--ios-danger-soft)"
-              : "oklch(0.95 0.03 258)",
-          boxShadow: `inset 0 0 0 1px ${
-            isSigned
-              ? "oklch(0.7 0.12 152 / 0.35)"
-              : invalid
-                ? "var(--ios-danger)"
-                : "oklch(0.55 0.16 258 / 0.28)"
-          }`,
-        }}
+        className="accept-terms-card flex w-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white"
+        style={{ boxShadow: "0 18px 40px oklch(0.24 0.02 80 / 0.10)" }}
       >
-        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
-          {!isSigned && (
-            <motion.span
-              aria-hidden="true"
-              className="absolute inset-0 rounded-full"
-              style={{ background: "var(--brand-blue-hex, #0033AA)" }}
-              animate={
-                prefersReducedMotion
-                  ? { opacity: 0.25 }
-                  : { opacity: [0.25, 0, 0.25], scale: [1, 1.25, 1.25] }
-              }
-              transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-            />
-          )}
-          <span
-            className="relative flex h-7 w-7 items-center justify-center rounded-full"
-            style={{ background: isSigned ? "#16a34a" : "var(--brand-blue-hex, #0033AA)" }}
-          >
-            {isSigned ? (
-              <SealCheck size={13} weight="fill" style={{ color: "#ffffff" }} />
-            ) : (
-              <PenNib size={13} weight="bold" style={{ color: "#ffffff" }} />
-            )}
-          </span>
-        </span>
-        <div className="flex flex-col items-start gap-0.5 text-left">
-          <span
-            className="text-[14px] font-bold leading-tight tracking-[0.02em]"
-            style={{ color: invalid && !isSigned ? "var(--ios-danger)" : "var(--text-primary)" }}
+        <div className="deck-card-banner relative isolate h-12 overflow-hidden">
+          <BannerIcon
+            aria-hidden
+            weight="fill"
+            size={104}
+            className="deck-card-watermark pointer-events-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2 px-6 pb-2 pt-3">
+          <h2
+            className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]"
+            style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-primary)" }}
           >
             {isSigned ? "Signature captured" : "Your signature is required"}
-          </span>
-          <span
-            className="text-[12.5px] leading-snug font-medium"
-            style={{ color: invalid && !isSigned ? "var(--ios-danger)" : "var(--text-secondary)" }}
+          </h2>
+          <p
+            className={`text-[16px] font-medium leading-snug${isSigned ? " whitespace-nowrap" : ""}`}
+            style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-secondary)" }}
           >
             {isSigned
-              ? "You're all set - re-sign below if you need to make changes."
+              ? "Re-sign below to change it."
               : "Draw your signature below to accept this offer."}
-          </span>
+          </p>
         </div>
-      </div>
 
-      <motion.div
+      <div
         data-signature-surface=""
-        className="relative w-full overflow-hidden rounded-[var(--radius-lg)]"
         style={{
-          background: "var(--surface-elevated)",
           opacity: disabled ? 0.45 : 1,
           pointerEvents: disabled ? "none" : "auto",
         }}
-        animate={
-          invalid && !isSigned
-            ? {
-                boxShadow: [
-                  "0 0 0 2px var(--ios-danger)",
-                  "0 0 0 3px color-mix(in srgb, var(--ios-danger) 22%, transparent), 0 0 24px color-mix(in srgb, var(--ios-danger) 35%, transparent)",
-                  "0 0 0 2px var(--ios-danger)",
-                ],
-              }
-            : isSigning && !prefersReducedMotion
+      >
+        <motion.div
+          className="relative mx-4 overflow-hidden rounded-[var(--radius-md)]"
+          style={{ background: "var(--surface-secondary)" }}
+          animate={
+            needsDraw
               ? {
                   boxShadow: [
-                    "0 0 0 1px var(--border-subtle)",
-                    "0 0 0 2px #16a34a, 0 0 24px oklch(0.7 0.17 145 / 0.35)",
-                    "0 0 0 1.5px #16a34a",
+                    "inset 0 0 0 2px var(--ios-danger)",
+                    "inset 0 0 0 3px color-mix(in srgb, var(--ios-danger) 22%, transparent)",
+                    "inset 0 0 0 2px var(--ios-danger)",
                   ],
                 }
-              : { boxShadow: isSigned ? "0 0 0 1.5px #16a34a" : "0 0 0 1px var(--border-subtle)" }
-        }
-        transition={{ duration: SIGNING_CEREMONY_MS / 1000, ease: "easeOut" }}
-      >
-        <div className="relative px-4 pt-4 pb-3.5">
+              : isSigning && !prefersReducedMotion
+                ? {
+                    boxShadow: [
+                      "none",
+                      "inset 0 0 0 2px #16a34a",
+                      "inset 0 0 0 1.5px #16a34a",
+                    ],
+                  }
+                : { boxShadow: isSigned ? "inset 0 0 0 1.5px #16a34a" : "none" }
+          }
+          transition={{ duration: SIGNING_CEREMONY_MS / 1000, ease: "easeOut" }}
+        >
+        <div className="relative px-3 pt-3 pb-3">
           {/* Signature baseline + placeholder hint, visible while empty */}
           {isEmpty && phase === "input" && (
             <div
@@ -334,7 +304,7 @@ export function SignaturePad({
           <canvas
             ref={canvasRef}
             className="block w-full touch-none"
-            style={{ height: 148, cursor: disabled || isSigned ? "default" : "crosshair" }}
+            style={{ height: 176, cursor: disabled || isSigned ? "default" : "crosshair" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -426,11 +396,15 @@ export function SignaturePad({
             )}
           </AnimatePresence>
         </div>
+        </motion.div>
 
-        {/* Footer: controls or signed confirmation */}
+        {/* Footer: controls or signed confirmation. A gap plus its own
+            hairline top border keep this read as the card's action bar,
+            not a continuation of the shaded drawing surface right above it -
+            same grey with no seam made the two look like one merged block. */}
         <div
-          className="flex items-center justify-between gap-3 px-4 py-2.5"
-          style={{ background: "var(--surface-secondary)" }}
+          className="mt-3 flex items-center justify-between gap-3 px-4 py-2.5"
+          style={{ borderTop: "1px solid var(--separator)" }}
         >
           {isSigned ? (
             <>
@@ -466,6 +440,7 @@ export function SignaturePad({
                 style={{
                   background: "var(--brand-blue-hex)",
                   color: "#ffffff",
+                  boxShadow: needsConfirm ? "0 0 0 2px var(--ios-danger)" : undefined,
                 }}
               >
                 {isSigning ? "Signing…" : "Confirm signature"}
@@ -473,14 +448,22 @@ export function SignaturePad({
             </>
           )}
         </div>
-      </motion.div>
-      {invalid && !isSigned ? (
+      </div>
+        <div
+          aria-hidden
+          className="shrink-0"
+          style={{ height: "var(--apply-fit-leftover, 0px)" }}
+        />
+      </div>
+      {needsDraw || needsConfirm ? (
         <p
           id="accept-signature-hint"
           className="px-1 text-[13px] font-medium leading-snug text-[#D70015]"
           role="alert"
         >
-          Sign above to continue.
+          {needsConfirm
+            ? "Confirm your signature to continue."
+            : "Sign above to continue."}
         </p>
       ) : null}
     </div>

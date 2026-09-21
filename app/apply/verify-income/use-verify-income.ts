@@ -133,6 +133,17 @@ export async function submitIncome(
   }
 }
 
+/**
+ * Hands off to Singpass; the callback lands on the review step.
+ *
+ * Used by the existing-customer screen at the end of the staging bad-case
+ * chain. Kept as its own export rather than folded into the hook because that
+ * screen is outside the funnel and holds none of its state.
+ */
+export function continueToReview() {
+  window.location.assign("/api/auth");
+}
+
 const RESULTS_PATH = "/apply/verify-income?view=results";
 
 function isResultsUrl(url = window.location.href): boolean {

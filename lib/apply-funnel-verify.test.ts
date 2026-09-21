@@ -131,3 +131,37 @@ describe("a draft lead is not a submission", () => {
     ).toBeNull();
   });
 });
+
+describe("the staging bad-case screens", () => {
+  // Written while the funnel lock was a no-op, so re-enabling it made all
+  // three unreachable. They render nothing about the applicant and are dead
+  // ends by design, so the lock has nothing to protect and lets them be.
+  const visitor = (pathname: string): ApplyFunnelContext => ({
+    pathname,
+    session: null,
+    hasApplyGate: false,
+    hasReviewGate: false,
+    hasIncomeGate: false,
+    approvalOffer: null,
+    hasBookingConfirm: false,
+    queryLeadId: null,
+  });
+
+  it.each([
+    "/apply/pending-review",
+    "/apply/rejected",
+    "/apply/existing-customer",
+  ])("lets a visitor reach %s", (path) => {
+    expect(getFunnelRedirectUrl(visitor(path))).toBeNull();
+  });
+
+  it("keeps the /v2 applicant inside /v2", () => {
+    expect(getFunnelRedirectUrl(visitor("/v2/apply/rejected"))).toBeNull();
+  });
+
+  it("still guards the real funnel pages", () => {
+    // The allowance is for these three screens, not a hole in the lock.
+    expect(getFunnelRedirectUrl(visitor("/apply/approval"))).not.toBeNull();
+    expect(getFunnelRedirectUrl(visitor("/apply/review"))).not.toBeNull();
+  });
+});

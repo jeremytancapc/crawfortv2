@@ -198,6 +198,13 @@ function pathMatchesStage(path: string, stage: ApplyFunnelStage): boolean {
  * If the user is on the wrong page for their cookie state, return the URL they should be on.
  * Otherwise return null (allow request).
  */
+/** Static staging screens, outside the funnel and holding none of its state. */
+const BAD_CASE_PATHS = [
+  "/apply/pending-review",
+  "/apply/rejected",
+  "/apply/existing-customer",
+] as const;
+
 export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
   const variant = variantFromPathname(ctx.pathname);
   const path = normalizePath(ctx.pathname);
@@ -223,6 +230,15 @@ export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
     stage === "book" &&
     (path.startsWith("/apply/approval") || path.startsWith("/apply/choose-plan"))
   ) {
+    return null;
+  }
+
+  // The staging bad-case screens - pending-review, rejected,
+  // existing-customer. They render nothing about the applicant, they are dead
+  // ends by design, and they were written while this lock was a no-op. There
+  // is nothing here to protect, and redirecting them away would make the
+  // designs unreachable.
+  if (BAD_CASE_PATHS.some((p) => path.startsWith(p))) {
     return null;
   }
 

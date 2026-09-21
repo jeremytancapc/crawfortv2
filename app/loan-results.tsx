@@ -389,6 +389,7 @@ function OfferHeader({
             </dl>
           </div>
         )}
+        <div aria-hidden className="apply-fit-leftover-spacer" />
       </div>
     </RevealOnScroll>
   );
@@ -518,22 +519,31 @@ const CTA_SHADOW =
    one in the phone accordion (~220px), a desktop third (~165px) or a collapsed
    spine. Caps are set for the open card, so every step tops out before the
    card stops growing; the floors keep the price row inside the panel while a
-   card is mid-collapse. */
+   card is mid-collapse.
+
+   Every cqi value is also clamped through a dvh ceiling. cqi alone assumes a
+   wide card means a tall phone - true on a normal aspect ratio, false on a
+   short/squarish one, where the open accordion card is both the widest thing
+   on the page AND fighting the least vertical room. Each dvh figure is set so
+   it lands exactly on the existing cqi ceiling at a 650px-tall viewport - a
+   normal phone (700px+ of usable height) never reaches it and renders exactly
+   as before, while a short/squarish one clamps down before the four feature
+   rows alone can out-ask the whole viewport for height. */
 const TYPE = {
-  planName: "text-[clamp(0.6rem,10cqi,1.125rem)]",
+  planName: "text-[clamp(0.6rem,min(10cqi,2.8dvh),1.125rem)]",
   // The monthly figure is the one thing on the card worth reading from across
   // the room, so it is allowed to run further than any other step before it
   // tops out.
-  price: "text-[clamp(0.9375rem,17cqi,2.25rem)]",
-  priceUnit: "text-[clamp(0.5rem,7.8cqi,0.875rem)]",
+  price: "text-[clamp(0.9375rem,min(17cqi,5.6dvh),2.25rem)]",
+  priceUnit: "text-[clamp(0.5rem,min(7.8cqi,2.2dvh),0.875rem)]",
   // Steps down harder than the rest: the CTA is the one line on the card that
   // may not wrap, and "Pick this plan" plus its arrow has to clear the
   // button's border and inset on a card sitting at a third of the row.
-  cta: "text-[clamp(0.5rem,7cqi,0.9375rem)]",
-  body: "text-[clamp(0.625rem,9cqi,0.9375rem)]",
-  label: "text-[clamp(0.5rem,7cqi,0.75rem)]",
-  pill: "text-[clamp(0.4375rem,6.5cqi,0.6875rem)]",
-  icon: "h-[clamp(0.625rem,9.5cqi,1.125rem)] w-[clamp(0.625rem,9.5cqi,1.125rem)]",
+  cta: "text-[clamp(0.5rem,min(7cqi,2.3dvh),0.9375rem)]",
+  body: "text-[clamp(0.625rem,min(9cqi,2.3dvh),0.9375rem)]",
+  label: "text-[clamp(0.5rem,min(7cqi,1.9dvh),0.75rem)]",
+  pill: "text-[clamp(0.4375rem,min(6.5cqi,1.7dvh),0.6875rem)]",
+  icon: "h-[clamp(0.625rem,min(9.5cqi,2.8dvh),1.125rem)] w-[clamp(0.625rem,min(9.5cqi,2.8dvh),1.125rem)]",
 } as const;
 
 /** Matches formatCurrency's output, as the digit-rolling price has to build the
@@ -548,14 +558,19 @@ const PRICE_FORMAT = {
 /* Slots sized for two lines of TYPE.body, so a pitch or bullet that wraps on a
    narrow card can't knock the three cards out of step. Written out in full
    rather than composed, so Tailwind can still see the class names. */
-const TWO_LINE_HEIGHT = "h-[clamp(1.5625rem,22.5cqi,2.1875rem)]";
+const TWO_LINE_HEIGHT = "h-[clamp(1.5625rem,min(22.5cqi,5.4dvh),2.1875rem)]";
 /* Two lines of TYPE.body plus a little air, so a bullet that wraps on one
    card still leaves a gap before the next one and every card's row N stays on
    the same line. Four rows: the pitch (now a "special" starred perk) plus
    tenure and the two selling points. Kept only just tall enough - rows with
    room to spare left the single-line bullets floating in the middle of their
-   own row, which is most of what made the list read as padding. */
-const TWO_LINE_ROWS = "grid-rows-[repeat(4,clamp(2.125rem,27cqi,2.75rem))]";
+   own row, which is most of what made the list read as padding.
+
+   The dvh half of this min() is what actually matters on a short screen:
+   four rows at the old 27cqi-only clamp could each reach 2.75rem before
+   anything checked whether the viewport had 11rem to spare for just the
+   feature list, before the header, CTA, and the other two cards' padding. */
+const TWO_LINE_ROWS = "grid-rows-[repeat(4,clamp(2.125rem,min(27cqi,6.8dvh),2.75rem))]";
 
 /** Plan identity glyph. `custom` is covered for exhaustiveness only - custom
  *  offers render through CustomOfferCard, never through PlanCard. */
@@ -1444,7 +1459,6 @@ function PlanPicker({
     el.classList.remove("is-zooming");
     void el.offsetWidth;
     el.classList.add("is-zooming");
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [needsInput, attentionNonce]);
 
   // Which card stands forward in the row. Only the customer's own pick claims
@@ -1504,7 +1518,7 @@ function PlanPicker({
       {needsInput ? (
         <p
           id="plan-lane-hint"
-          className="px-1 text-[13px] font-medium leading-snug text-[#D70015]"
+          className="-mt-2 px-1 text-center text-[13px] font-medium leading-snug text-[#D70015]"
           role="alert"
         >
           Choose a repayment plan to continue.
@@ -1528,6 +1542,12 @@ function PlanPicker({
         onTenureChange={onCustomTenureChange}
       />
       </RevealOnScroll>
+      {/* Adds height only when there is real, already-measured room to spare
+          (see ApplyPaneFit's natural-layout leftover pass). Never a floor -
+          a hard min-height here previously forced the cards to overflow past
+          this column on short screens and land on top of the disclaimer
+          below. */}
+      <div aria-hidden className="apply-fit-leftover-spacer" />
     </div>
   );
 }
@@ -2137,7 +2157,7 @@ export function LoanResults({
 
   return (
     <>
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pb-8">
+      <div className={`min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 ${isPlanPhase ? "pb-4" : "pb-8"}`}>
       <div className="relative z-[1] flex min-w-0 flex-col gap-5">
 
         {/* Expiry notice only. The confirmed-offer heading lives in the page

@@ -1,7 +1,7 @@
 import type { Viewport } from "next";
 
 import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
-import { ApplyProgressPanel, ApplySidebarWordmark } from "@/app/apply-gate/ios-ui";
+import { ApplyProgressPanel, ApplySidebarTagline, ApplySidebarWordmark } from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 
@@ -36,9 +36,7 @@ export default async function VerifyIncomePage({
             <ApplySidebarWordmark />
           </div>
 
-          <p className="max-w-[420px] text-[44px] font-bold leading-[1.08] tracking-[-0.024em] text-white">
-            Get the funds you need, in 8 minutes
-          </p>
+          <ApplySidebarTagline />
 
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
             One simple application. Licensed and trusted by over 200,000

@@ -59,9 +59,14 @@ export function LoanGateForm({
   const step = history[history.length - 1];
 
   // A plain visit to `/` (including the wordmark) always opens the amount
-  // step. Only an explicit one-shot resume — set right before an in-app
-  // back from a later gate page — reopens income or Singpass.
+  // step. Back from a later page uses `?gate=` so we reopen income or
+  // Singpass instead of remounting on step 1.
   useLayoutEffect(() => {
+    const gate = Number(new URLSearchParams(window.location.search).get("gate"));
+    if (gate === 1 || gate === 2 || gate === 3) {
+      setHistory([gate]);
+      return;
+    }
     const resumed = readGateResumeStep();
     if (resumed != null) setHistory([resumed]);
   }, []);

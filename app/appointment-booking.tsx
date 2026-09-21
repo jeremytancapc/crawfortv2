@@ -57,9 +57,13 @@ interface AppointmentBookingProps {
   /** When set, successful booking redirects instead of showing inline confirmation. */
   onBookedRedirect?: boolean;
   thingsToBring?: string[];
-  /** Hides the icon/heading/subtitle on mobile - use when the parent page
-   * renders the equivalent heading in a full-bleed blue hero band instead. */
+  /** Skip the in-component title/back row when the parent page already
+   * renders that heading. */
   hideHeaderOnMobile?: boolean;
+  /** Hide the in-flow Secure my slot button. Pair with `ctaHost` to render
+   * it in the sticky footer instead. */
+  hideInlineCta?: boolean;
+  ctaHost?: Element | null;
 }
 
 const WHAT_TO_BRING = {
@@ -122,11 +126,22 @@ function WhatToBring({ idType }: { idType: string }) {
   );
 }
 
-export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedirect = false, thingsToBring = [], hideHeaderOnMobile = false }: AppointmentBookingProps) {
+export function AppointmentBooking({
+  formData,
+  onBack,
+  onConfirm,
+  onBookedRedirect = false,
+  thingsToBring = [],
+  hideHeaderOnMobile = false,
+  hideInlineCta = false,
+  ctaHost = null,
+}: AppointmentBookingProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [slotNeed, setSlotNeed] = useState<"date" | "time" | null>(null);
+  const [slotNeedNonce, setSlotNeedNonce] = useState(0);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
   const [locationTooltip, setLocationTooltip] = useState(false);
@@ -238,7 +253,41 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
     return new Date(y, mo - 1, d);
   }, [selectedDate]);
 
-  const canConfirm = selectedDate !== null && selectedTime !== null;
+  useEffect(() => {
+    if (!slotNeed) return;
+    const el = slotNeed === "date" ? dateTriggerRef.current : timeTriggerRef.current;
+    if (!el) return;
+    el.classList.remove("is-zooming");
+    void el.offsetWidth;
+    el.classList.add("is-zooming");
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [slotNeed, slotNeedNonce]);
+
+  const submitBooking = useCallback(async () => {
+    if (isBooking) return;
+    if (!selectedDate) {
+      setSlotNeed("date");
+      setSlotNeedNonce((n) => n + 1);
+      return;
+    }
+    if (!selectedTime) {
+      setSlotNeed("time");
+      setSlotNeedNonce((n) => n + 1);
+      return;
+    }
+    setIsBooking(true);
+    try {
+      trackEvent("step_11_appointment_booked");
+      if (onConfirm) {
+        await onConfirm(selectedDate, selectedTime);
+        if (onBookedRedirect) return;
+      }
+      setConfirmed(true);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    } finally {
+      setIsBooking(false);
+    }
+  }, [isBooking, onBookedRedirect, onConfirm, selectedDate, selectedTime]);
 
   if (confirmed && selectedDateObj && selectedTime) {
     const idKey = formData.idType === "foreigner" ? "foreigner" : "sg_pr";
@@ -380,10 +429,11 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
   }
 
   return (
-    <div className="animate-fade-up flex flex-col gap-8">
+    <div className="animate-fade-up flex flex-col gap-5 sm:gap-8 lg:gap-8">
       {/* ── Header ─────────────────────────────────────────────── */}
+      {!hideHeaderOnMobile && (
       <div
-        className={hideHeaderOnMobile ? "relative hidden flex-col gap-2 lg:flex" : "relative flex flex-col gap-2"}
+        className="relative flex flex-col gap-2"
         style={{
           opacity: 0,
           animation: "fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0ms both",
@@ -394,16 +444,12 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             type="button"
             onClick={onBack}
             aria-label="Go back"
-            className={
-              hideHeaderOnMobile
-                ? "absolute right-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95] lg:flex"
-                : "absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95]"
-            }
+            className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95]"
           >
             <ArrowLeft size={14} weight="bold" />
           </button>
         )}
-        <div className={hideHeaderOnMobile ? "hidden flex-col gap-2 lg:flex" : "flex flex-col gap-2"}>
+        <div className="flex flex-col gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-brand-blue/[0.06]">
             <CalendarBlank size={18} weight="duotone" className="text-brand-blue" />
           </div>
@@ -415,6 +461,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           </p>
         </div>
       </div>
+      )}
 
       {/* ── Relationship Manager image ───────────────────────── */}
       <div
@@ -423,7 +470,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
           animation: "fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 40ms both",
         }}
       >
-        <div className="relative h-44 w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] sm:h-52">
+        <div className="apply-book-hero relative h-28 w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] lg:h-52">
           <img
             src="/images/rm-image.webp"
             alt="Your Relationship Manager"
@@ -442,9 +489,9 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
         }}
       >
         {/* Location blurb */}
-        <div className="mb-4 -mt-4">
+        <div className="mb-4 lg:mb-8">
           <span className="inline-flex items-center gap-1.5">
-            <p className="text-base font-bold text-[var(--text-primary)]">Location</p>
+            <p className="text-lg font-bold text-[var(--text-primary)]">Location</p>
             {/* Tooltip trigger */}
             <span className="relative inline-flex">
               <button
@@ -465,27 +512,23 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
               )}
             </span>
           </span>
-          <div className="mt-0.5 flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+          <div className="mt-2 flex flex-col gap-1.5 text-lg font-medium leading-snug text-[var(--text-primary)]">
             <p>1 North Bridge Road, #01-35</p>
             <p>High Street Centre, Singapore 179094</p>
-            <ul className="mt-1.5 flex flex-col gap-1.5 font-normal text-[var(--text-secondary)]">
+            <ul className="mt-1.5 flex flex-col gap-2 text-base font-normal leading-snug text-[var(--text-secondary)]">
               <li className="flex items-start gap-1.5">
-                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>City Hall MRT (6 mins walk)</span>
+                <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>Near City Hall and Clarke Quay MRT</span>
               </li>
               <li className="flex items-start gap-1.5">
-                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Clarke Quay MRT (7 mins walk)</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Parking available on site</span>
+                <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>Carpark available</span>
               </li>
             </ul>
           </div>
         </div>
 
-        <p className="mb-3 text-base font-bold text-[var(--text-primary)]">Select a date &amp; time</p>
+        <p className="mb-3 text-lg font-bold text-[var(--text-primary)] lg:mb-4">Select a date &amp; time</p>
 
         <div className="flex flex-col gap-3">
 
@@ -495,11 +538,13 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
               ref={dateTriggerRef}
               type="button"
               onClick={() => { calendarOpen ? setCalendarOpen(false) : openCalendarPopup(); }}
-              className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-3 text-left text-sm transition-colors duration-150"
+              className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border bg-[var(--surface-elevated)] px-4 py-3 text-left text-base transition-colors duration-150${
+                slotNeed === "date" ? " ios-field-needs-input booking-field--invalid" : " border-[var(--border-subtle)]"
+              }`}
             >
               <CalendarBlank size={18} weight="duotone" className="shrink-0 text-brand-blue" />
               <span
-                className="flex-1 text-sm"
+                className="flex-1 text-base"
                 style={{
                   color: "var(--text-primary)",
                   fontWeight: selectedDate ? 500 : 400,
@@ -517,6 +562,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                     e.stopPropagation();
                     setSelectedDate(null);
                     setSelectedTime(null);
+                    setSlotNeed(null);
                     setCalendarOpen(false);
                     setTimeDropdownOpen(false);
                   }}
@@ -596,7 +642,10 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                   </div>
 
                   {/* Day grid */}
-                  <div className="grid grid-cols-7 p-2 gap-1.5">
+                  <div
+                    className="grid grid-cols-7 p-2 gap-1.5"
+                    style={{ background: "var(--surface-sunken)" }}
+                  >
                     {(() => {
                       const year = calendarMonth.getFullYear();
                       const month = calendarMonth.getMonth();
@@ -618,7 +667,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                         const disabled = !inWindow || isHolidayOrSunday;
                         const isSelected = selectedDate === iso;
                         const isToday = iso === todayIso;
-                        const showRedDot = isHolidayOrSunday && inWindow && !isSelected;
+                        const showRedDot = isHolidayOrSunday && !isSelected;
 
                         cells.push(
                           <button
@@ -628,34 +677,38 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                             onClick={() => {
                               setSelectedDate(iso);
                               setSelectedTime(null);
+                              setSlotNeed(null);
                               setCalendarOpen(false);
                             }}
-                            className={`relative flex aspect-square items-center justify-center rounded-[var(--radius-sm)] text-sm font-medium transition-all duration-150 active:scale-[0.93] ${
+                            className={`relative flex aspect-square items-center justify-center rounded-[var(--radius-sm)] text-sm transition-all duration-150 active:scale-[0.93] ${
                               disabled
                                 ? "cursor-not-allowed"
                                 : isSelected
                                   ? "cursor-pointer"
-                                  : "cursor-pointer hover:border-[var(--border-medium)] hover:bg-[var(--surface-secondary)]"
+                                  : "cursor-pointer hover:brightness-[0.97]"
                             }`}
                             style={{
                               background: isSelected
                                 ? "var(--brand-blue-hex)"
                                 : disabled
-                                  ? "var(--surface-secondary)"
+                                  ? "transparent"
                                   : "var(--surface-elevated)",
                               border: isSelected
                                 ? "1px solid var(--brand-blue-hex)"
                                 : disabled
                                   ? "1px solid transparent"
-                                  : "1px solid var(--border-subtle)",
+                                  : "1px solid var(--border-medium)",
                               color: isSelected
                                 ? "#fff"
                                 : disabled
-                                  ? "var(--text-tertiary)"
+                                  ? "#c7c7cc"
                                   : "var(--text-primary)",
-                              opacity: disabled && !inWindow ? 0.45 : disabled ? 0.6 : 1,
+                              boxShadow:
+                                !disabled && !isSelected
+                                  ? "0 1px 0 rgba(0,0,0,0.06)"
+                                  : undefined,
                               pointerEvents: disabled ? "none" : "auto",
-                              fontWeight: isToday ? 800 : 500,
+                              fontWeight: isToday ? 800 : disabled ? 500 : 650,
                             }}
                           >
                             {day}
@@ -668,7 +721,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                             {showRedDot && (
                               <span
                                 className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
-                                style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px var(--surface-secondary)" }}
+                                style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px var(--surface-sunken)" }}
                               />
                             )}
                           </button>
@@ -696,18 +749,22 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
             )}
           </div>
 
-          {/* ── Time trigger + dropdown ──────────────────────────── */}
-          {selectedDate && (
-            <div className="relative">
+          {/* Always mounted so picking a date does not change column height. */}
+          <div className="relative">
               <button
                 ref={timeTriggerRef}
                 type="button"
+                disabled={!selectedDate}
                 onClick={() => { timeDropdownOpen ? setTimeDropdownOpen(false) : openTimePopup(); }}
-                className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-3 text-left text-sm transition-colors duration-150"
+                className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border bg-[var(--surface-elevated)] px-4 py-3 text-left text-base transition-colors duration-150${
+                  !selectedDate
+                    ? " cursor-not-allowed border-[var(--border-subtle)] opacity-40"
+                    : slotNeed === "time" ? " ios-field-needs-input booking-field--invalid" : " border-[var(--border-subtle)]"
+                }`}
               >
                 <CalendarBlank size={18} weight="duotone" className="shrink-0 text-brand-blue" />
                 <span
-                  className="flex-1 text-sm"
+                  className="flex-1 text-base"
                   style={{
                   color: "var(--text-primary)",
                   fontWeight: selectedTime ? 500 : 400,
@@ -751,8 +808,10 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                       }}
                     >
                     {(() => {
-                      const bookedIdx = fullyBookedIndex(selectedDate);
-                      const limitedSet = limitedSlotIndices(selectedDate, bookedIdx);
+                      const bookedIdx = selectedDate ? fullyBookedIndex(selectedDate) : -1;
+                      const limitedSet = selectedDate
+                        ? limitedSlotIndices(selectedDate, bookedIdx)
+                        : new Set<number>();
                       return TIME_SLOTS.map((slot, i) => {
                         const pastDisabled = isSlotDisabled(slot);
                         const isFullyBooked = !pastDisabled && i === bookedIdx;
@@ -767,6 +826,7 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                             disabled={disabled}
                             onClick={() => {
                               setSelectedTime(slot);
+                              setSlotNeed(null);
                               setTimeDropdownOpen(false);
                               setTimeout(() => {
                                 const el = confirmBtnRef.current;
@@ -881,15 +941,6 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
                 document.body
               )}
             </div>
-          )}
-
-          {/* Hours hint - changes once a date is chosen */}
-          <p className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-tertiary)]">
-            <Clock size={12} className="shrink-0" />
-            {selectedDate
-              ? "Appointment slots open from 10:30am - 7pm"
-              : "Open Mondays - Saturdays"}
-          </p>
 
         </div>
       </div>
@@ -989,6 +1040,33 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
       </div>
 
       {/* ── Confirm button ─────────────────────────────────────── */}
+      {(() => {
+        const label = isBooking ? "Confirming…" : "Secure my slot";
+        const footerButton = (
+          <button
+            type="button"
+            onClick={() => { void submitBooking(); }}
+            disabled={isBooking}
+            className="ios-type-cta flex h-[52px] w-full items-center justify-center rounded-[20px] bg-[var(--accent)] text-white transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-30"
+          >
+            {label}
+          </button>
+        );
+        if (hideInlineCta) {
+          return (
+            <>
+              {slotNeed && !isBooking ? (
+                <p className="text-center text-xs font-medium text-[#D70015]">
+                  {slotNeed === "date"
+                    ? "Select a date to continue"
+                    : "Select a time to continue"}
+                </p>
+              ) : null}
+              {ctaHost ? createPortal(footerButton, ctaHost) : null}
+            </>
+          );
+        }
+        return (
       <div
         ref={confirmBtnRef}
         style={{
@@ -998,23 +1076,9 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
       >
         <button
           type="button"
-          onClick={async () => {
-            if (!selectedDate || !selectedTime || isBooking) return;
-            setIsBooking(true);
-            try {
-              trackEvent("step_11_appointment_booked");
-              if (onConfirm) {
-                await onConfirm(selectedDate, selectedTime);
-                if (onBookedRedirect) return;
-              }
-              setConfirmed(true);
-              window.scrollTo({ top: 0, behavior: "instant" });
-            } finally {
-              setIsBooking(false);
-            }
-          }}
-          disabled={!canConfirm || isBooking}
-          className="ios-type-cta flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+          onClick={() => { void submitBooking(); }}
+          disabled={isBooking}
+          className="ios-type-cta flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none sm:h-14"
         >
           {isBooking ? (
             <>
@@ -1025,18 +1089,19 @@ export function AppointmentBooking({ formData, onBack, onConfirm, onBookedRedire
               Confirming...
             </>
           ) : (
-            "Book Appointment"
+            "Secure my slot"
           )}
         </button>
-        <div className="pb-6" />
-        {!canConfirm && !isBooking && (
-          <p className="mt-2 text-center text-xs text-[var(--text-tertiary)]">
-            {!selectedDate
+        {slotNeed && !isBooking && (
+          <p className="mt-2 text-center text-xs font-medium text-[#D70015]">
+            {slotNeed === "date"
               ? "Select a date to continue"
               : "Select a time to continue"}
           </p>
         )}
       </div>
+        );
+      })()}
     </div>
   );
 }

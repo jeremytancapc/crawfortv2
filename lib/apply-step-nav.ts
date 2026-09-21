@@ -37,7 +37,31 @@ export const APPLY_STEP_PATH: Record<ApplyStepId, string> = {
 export const APPLY_STEP_HREF = APPLY_STEP_PATH;
 
 export function applyStepHref(id: ApplyStepId, variant: ApplyVariant = "default"): string {
-  return applyPath(variant, APPLY_STEP_PATH[id]);
+  let path = APPLY_STEP_PATH[id];
+  const gate = gateStepForId(id);
+  // Amount, income, and Singpass share `/`. Without an explicit gate step,
+  // a back-navigation remounts the home page on step 1.
+  if (gate != null && gate > 1) {
+    path = `${path}${path.includes("?") ? "&" : "?"}gate=${gate}`;
+  }
+  if (id === "accept" || id === "choosePlan") {
+    const amount = readClientWithdrawAmount();
+    if (amount != null) {
+      path = `${path}${path.includes("?") ? "&" : "?"}amount=${amount}`;
+    }
+  }
+  return applyPath(variant, path);
+}
+
+function readClientWithdrawAmount(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const amount = Number(sessionStorage.getItem("crawfort-withdraw-amount"));
+    if (!Number.isFinite(amount) || amount < 500) return null;
+    return Math.round(amount);
+  } catch {
+    return null;
+  }
 }
 
 const GATE_STEP_KEY = "crawfort-apply-gate-step";
@@ -64,6 +88,13 @@ export function neighborApplySteps(id: ApplyStepId): {
   prev: ApplyStepId | null;
   next: ApplyStepId | null;
 } {
+  if (id === "booked") {
+    // Booking clears the apply session cookies (see /api/apply/book) so the
+    // trail behind this step no longer resolves to a real page - `/apply/book`
+    // would just bounce further back to `/`. Nothing to go back to, so don't
+    // offer a back arrow that dead-ends at the home page.
+    return { prev: null, next: null };
+  }
   if (id === "pending") {
     return { prev: "review", next: "approval" };
   }
@@ -81,7 +112,10 @@ export function neighborApplySteps(id: ApplyStepId): {
       : hasVisitedApplyStep("pending")
         ? "pending"
         : "approval";
-    return { prev: "singpass", next };
+    return {
+      prev: hasVisitedApplyStep("verify") ? "verify" : "singpass",
+      next,
+    };
   }
   const order = applyStepOrder();
   const index = order.indexOf(id);

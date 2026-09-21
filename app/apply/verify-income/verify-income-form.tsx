@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
@@ -14,6 +15,7 @@ import {
   StickyFooter,
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
+import { useApplyPath } from "@/app/use-apply-path";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
@@ -43,6 +45,8 @@ export function VerifyIncomeForm({
     averageIncome,
     submitIncome,
   } = useVerifyIncome(initialShowResults);
+  const router = useRouter();
+  const applyHref = useApplyPath();
   const [isDragOver, setIsDragOver] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -262,6 +266,11 @@ export function VerifyIncomeForm({
       ) : null}
       <StickyFooter nav={stepNav}>
         {showResults ? (
+          // Submits for real rather than walking main's staging demo chain
+          // (pending-review → rejected → existing-customer). Those screens are
+          // adopted as designed and reached from the outcomes that mean them;
+          // routing the CTA there unconditionally would replace the call that
+          // sends m1/m2/m3 to /openApi/income/credit.
           canSubmit ? (
             <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
               {isSubmitting ? "Submitting\u2026" : "Submit income"}

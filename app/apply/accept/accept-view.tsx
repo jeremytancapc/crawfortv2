@@ -1,25 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import type { Transition } from "motion/react";
 import {
   ArrowRight,
-  Buildings,
   CaretDown,
-  Clock,
+  Money,
   SealCheck,
-  ShieldCheck,
 } from "@phosphor-icons/react";
 
 import { ApplyIosShell, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, applyProgressAlong } from "@/lib/apply-progress";
 import { AnimatedIconBadge } from "@/app/animated-icon-badge";
+import { CircleLoader } from "@/components/ui/circle-loader";
 import { SignaturePad } from "./signature-pad";
 import { TermsDeck, type TermsDeckHandle } from "./terms-deck";
-import { FINE_PRINT_ITEMS } from "./accept-content";
+import { FINE_PRINT_ITEMS, SCHEDULE_CTA_LABEL } from "./accept-content";
 import { useApplyPath } from "@/app/use-apply-path";
 import {
   CARD_SHADOW,
@@ -130,6 +130,9 @@ function PlanSummaryCard({
           >
             {!collapsible && (
               <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+                <p className="absolute bottom-3 left-5 z-10 text-[13.5px] font-semibold tabular-nums leading-none text-white/70">
+                  Ref ID: {referenceId}
+                </p>
                 <div
                   aria-hidden
                   className="deck-card-watermark deck-card-watermark--approved pointer-events-none"
@@ -164,22 +167,17 @@ function PlanSummaryCard({
               }
             >
               {!collapsible ? (
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
-                      Approved Loan Amount
-                    </h2>
-                    <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
-                      {formatCurrency(plan.amount)}
-                    </p>
-                  </div>
-                  <p className="mt-0.5 shrink-0 text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
-                    {referenceId}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
+                    Approved Loan Amount
+                  </h2>
+                  <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
+                    {formatCurrency(plan.amount)}
                   </p>
                 </div>
               ) : (
-                <p className="self-end text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
-                  {referenceId}
+                <p className="text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
+                  Ref ID: {referenceId}
                 </p>
               )}
 
@@ -314,16 +312,17 @@ function TermsFootnoteCard() {
 }
 
 // ── Appointment reminder modal ────────────────────────────────────────────────
-// Shown once, right before leaving for the booking step, so the customer
-// isn't surprised by an in-person requirement after they've already
-// committed to signing. Kept short and single-purpose - one fact (how long
-// it takes), one reason (why it's required by law), one way out (acknowledge
-// and continue) - rather than restating everything already covered in the deck.
+// Shown once, right before leaving for the booking step: funds are ready,
+// collection is by appointment only.
 
 function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void }) {
-  // Lock page scroll while the modal is up so the blurred backdrop doesn't
-  // shift under the customer's thumb.
+  const [mounted, setMounted] = useState(false);
+  const [phase, setPhase] = useState<"submitting" | "ready">("submitting");
+
+  // Portal to body so the overlay covers the sidebar, header, and footer —
+  // `fixed` inside the scaled apply pane only paints that column.
   useEffect(() => {
+    setMounted(true);
     const { overflow } = document.body.style;
     document.body.style.overflow = "hidden";
     return () => {
@@ -331,13 +330,24 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
     };
   }, []);
 
-  return (
+  useEffect(() => {
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeout = window.setTimeout(() => setPhase("ready"), reduced ? 600 : 2800);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="theme-ios fixed inset-0 z-[200] flex items-center justify-center p-5"
       role="dialog"
       aria-modal="true"
       aria-labelledby="appointment-reminder-title"
       aria-describedby="appointment-reminder-description"
+      aria-busy={phase === "submitting"}
     >
       <motion.div
         className="absolute inset-0 bg-black/40 backdrop-blur-md"
@@ -347,69 +357,82 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="relative w-full max-w-[360px] rounded-[20px] bg-[var(--surface-elevated)] px-6 pb-7 pt-8 shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+        className="relative w-full max-w-[440px] rounded-[20px] bg-[var(--surface-elevated)] px-6 pb-7 pt-8 shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.97 }}
         transition={{ type: "spring", stiffness: 340, damping: 28 }}
       >
-        <div className="flex flex-col items-center text-center">
-          <AnimatedIconBadge
-            background="oklch(0.32 0.14 260 / 0.12)"
-            ringColor="var(--brand-blue-hex, #0033AA)"
-          >
-            <Buildings size={26} weight="fill" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
-          </AnimatedIconBadge>
-          <h2 id="appointment-reminder-title" className="mt-5 flex flex-col items-center gap-0.5">
-            <span
-              className="text-[20px] font-bold leading-tight tracking-[-0.02em]"
-              style={{ color: "var(--text-primary)" }}
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "submitting" ? (
+            <motion.div
+              key="submitting"
+              className="flex flex-col items-center text-center"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              Next step
-            </span>
-            <span
-              className="text-[14.5px] font-semibold leading-snug"
-              style={{ color: "var(--text-secondary)" }}
+              <CircleLoader size={56} />
+              <h2
+                id="appointment-reminder-title"
+                className="mt-5 text-[clamp(16px,4.8vw,20px)] font-bold leading-snug tracking-[-0.03em]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Reserving your funds...
+              </h2>
+              <p
+                id="appointment-reminder-description"
+                className="mt-2 text-[14.5px] font-medium leading-snug"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                This usually takes a few seconds.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="ready"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              Book your appointment
-            </span>
-          </h2>
-          <div
-            className="mt-3 flex items-center gap-1.5 rounded-full px-3 py-1"
-            style={{ background: "oklch(0.95 0.03 258)" }}
-          >
-            <Clock size={13} weight="bold" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
-            <span
-              className="text-[12.5px] font-bold"
-              style={{ color: "var(--brand-blue-hex, #0033AA)" }}
-            >
-              Takes around 30 minutes
-            </span>
-          </div>
-          {/* Split into short, scannable statements rather than one dense
-              paragraph - each line is a single fact the customer can absorb
-              at a glance. */}
-          <div id="appointment-reminder-description" className="mt-3 flex flex-col gap-1.5">
-            <p className="text-[14px] leading-snug" style={{ color: "var(--text-secondary)" }}>
-              You&apos;ll collect your funds physically at our office.
-            </p>
-            <p className="text-[14px] leading-snug" style={{ color: "var(--text-secondary)" }}>
-              This is required by Know-Your-Customer (KYC) and Anti-Money
-              Laundering (AML) regulations.
-            </p>
-          </div>
-        </div>
+              <div className="flex flex-col items-center text-center">
+                <AnimatedIconBadge
+                  background="oklch(0.32 0.14 260 / 0.12)"
+                  ringColor="var(--brand-blue-hex, #0033AA)"
+                >
+                  <Money size={26} weight="fill" style={{ color: "var(--brand-blue-hex, #0033AA)" }} />
+                </AnimatedIconBadge>
+                <h2
+                  id="appointment-reminder-title"
+                  className="mt-5 whitespace-nowrap text-[clamp(16px,4.8vw,20px)] font-bold leading-none tracking-[-0.03em]"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Your funds are ready for collection!
+                </h2>
+                <p
+                  id="appointment-reminder-description"
+                  className="mt-2 text-[14.5px] font-medium leading-snug"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Fund collection is by appointment only.
+                </p>
+              </div>
 
-        <button
-          type="button"
-          onClick={onAcknowledge}
-          className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-        >
-          <ShieldCheck size={16} weight="bold" />
-          I understand
-        </button>
+              <button
+                type="button"
+                onClick={onAcknowledge}
+                className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-brand-blue px-3 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+              >
+                Final Step: Book Appointment
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -471,6 +494,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [showAppointmentReminder, setShowAppointmentReminder] = useState(false);
   const [deckCtaLabel, setDeckCtaLabel] = useState<string | null>(null);
+  const [activeDeckCardId, setActiveDeckCardId] = useState<string | null>(null);
   const [signatureNeedsInput, setSignatureNeedsInput] = useState(false);
   const [signatureAttentionNonce, setSignatureAttentionNonce] = useState(0);
 
@@ -559,7 +583,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
             Confirm loan terms
           </h1>
           <p className="ios-type-subtitle mt-1">
-            Review your terms below.
+            Breakdown of the loan package selected
           </p>
         </div>
       )}
@@ -567,14 +591,14 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       <div
         className={
           hasStartedTerms
-            ? "flex flex-1 flex-col gap-5 px-5 pb-8"
+            ? "flex flex-1 flex-col gap-3 px-5 pb-3"
             : "accept-intro-fit flex flex-1 flex-col gap-3 px-5"
         }
       >
         <div
           className={
             hasStartedTerms
-              ? "sticky top-0 z-10 -mx-5 bg-[var(--surface-primary)] px-5 pb-1 pt-4"
+              ? "sticky top-0 z-10 -mx-5 bg-[var(--surface-primary)] px-5 pb-1 pt-2"
               : undefined
           }
         >
@@ -606,9 +630,12 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                   onComplete={() => setHasConfirmedTerms(true)}
                   onConfirmedCountChange={handleTermsProgress}
                   onActiveCtaChange={setDeckCtaLabel}
+                  onActiveCardIdChange={setActiveDeckCardId}
                 />
               </div>
-              {!hasConfirmedTerms && <TermsFootnoteCard />}
+              {!hasConfirmedTerms && activeDeckCardId === "paymentSchedule" ? (
+                <TermsFootnoteCard />
+              ) : null}
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -620,7 +647,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
           {hasConfirmedTerms && (
             <motion.div
               key="signature"
-              className="flex flex-col gap-5"
+              className="flex flex-col gap-3"
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -660,7 +687,16 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
             Next: Terms &amp; Conditions
           </AcceptFooterCta>
         ) : deckCtaLabel ? (
-          <AcceptFooterCta onClick={handleDeckCta}>{deckCtaLabel}</AcceptFooterCta>
+          <AcceptFooterCta
+            onClick={handleDeckCta}
+            stacked={
+              deckCtaLabel === SCHEDULE_CTA_LABEL
+                ? { rest: "Funds Disbursement Method" }
+                : undefined
+            }
+          >
+            {deckCtaLabel}
+          </AcceptFooterCta>
         ) : null}
       </StickyFooter>
 
