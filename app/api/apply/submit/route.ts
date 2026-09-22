@@ -61,6 +61,7 @@ import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-inf
 import { deriveBorrowerFields } from "@/lib/ascend/borrower-derive";
 import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { myinfoPersonData } from "@/lib/myinfo";
+import { toSgE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -201,9 +202,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 3. Run credit scoring ─────────────────────────────────────────────────
-  const e164Phone = formData.mobile
-    ? (formData.mobile.startsWith("+") ? formData.mobile : `+65${formData.mobile}`)
-    : "";
+  const e164Phone = toSgE164(formData.mobile);
 
   // Always run credit scoring.
   const assessment = assessCredit({

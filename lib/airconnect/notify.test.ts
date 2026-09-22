@@ -48,7 +48,7 @@ describe("pushNewLeadToAirConnect", () => {
 
     const body = JSON.parse(init.body);
     expect(body).toEqual({
-      app: "dashboard",
+      app: "cfh5",
       customerName: "Tan Ah Kow",
       phoneNumber: "+6591234567",
     });
@@ -115,7 +115,7 @@ describe("pushAppointmentToAirConnect", () => {
 
     const body = JSON.parse(init.body);
     expect(body).toEqual({
-      app: "dashboard",
+      app: "cfh5",
       customerName: "Tan Ah Kow",
       phoneNumber: "+6591234567",
       appointmentDate: "2026-09-25",

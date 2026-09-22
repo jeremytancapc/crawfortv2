@@ -12,9 +12,10 @@
  * Both take the same auth (x-api-key: AIRCONNECT_API_KEY) and the same
  * shape of body: no cfh5Id/leadId/loanAmount - those were this app's own
  * invention before the contract was confirmed and AirConnect's endpoints
- * don't take them. `app` exists purely so AirConnect can tell requests from
- * different client apps apart in their own logs; it is not "ascend" because
- * these endpoints, despite the name, live under AirConnect's own pipeline.
+ * don't take them. `app` is "cfh5" (see APP_NAME below) - it both traces
+ * these requests separately in AirConnect's own logs and lets their side
+ * skip a redundant, occasionally-wrong reloan re-check for a caller that
+ * already ran the real Ascend credit decision.
  *
  * No-op if unconfigured (missing URL or key), and never throws: a flaky or
  * not-yet-configured AirConnect must not fail an applicant's submit or
@@ -23,8 +24,22 @@
 
 import { logExternalApi } from "@/lib/external-api-logger";
 
-/** Distinct from "ascend" so AirConnect can trace these requests separately - see contract note above. */
-const APP_NAME = "dashboard";
+/**
+ * NOT "dashboard" - that value is shared by ~2,500+ other, unrelated calls
+ * into AirConnect (confirmed via their manual_verification_log), so it can't
+ * be used as a reliable "this caller already ran a real Ascend credit
+ * decision" signal. "cfh5" is this app's own reference-ID prefix
+ * (see cfh5ApplicationRef in the book routes) and already has a handful of
+ * precedented calls under it - genuinely distinct to this app.
+ *
+ * This value is also what lets AirConnect's eligibility check skip its own
+ * (separate, admin-API-based) reloan lookup for our submissions, since we've
+ * already gone through Ascend's real lending decision by the time we call
+ * either endpoint - see the isTrustedAscendVerifiedApp allowlist in
+ * t3gallery's ascendLeadProcessing.ts. Changing this value here without
+ * updating that allowlist silently turns the bypass back off.
+ */
+const APP_NAME = "cfh5";
 
 async function postToAirConnect(input: {
   url: string;

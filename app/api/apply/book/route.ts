@@ -22,6 +22,7 @@ import { bookingConfirmCookieValue } from "@/lib/booking-confirmation";
 import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
 import { insertAppointment } from "@/lib/db/appointments";
 import { pushAppointmentToAirConnect } from "@/lib/airconnect/notify";
+import { toSgE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -120,7 +121,9 @@ export async function POST(request: NextRequest) {
     {
       applicantId: leadId,
       customerName: lead?.full_name ?? "",
-      phoneNumber: lead?.mobile ?? "",
+      // Same format as the lead push at submit (lib/phone.ts) - AirConnect
+      // matches the two calls by phone number, so they must agree.
+      phoneNumber: toSgE164(lead?.mobile),
       appointmentDate: date,
       timeSlot: time,
       ...(idNumber ? { idNumber } : {}),
