@@ -64,6 +64,8 @@ export type Applicant = {
   ascend_user_id: string | null;
   ascend_new_customer: boolean | null;
   ascend_has_myinfo: boolean | null;
+
+  airconnect_lead_pushed_at: string | null;
 };
 
 /** Everything an applicant row can be created with. */
@@ -189,18 +191,6 @@ export async function setDeclineReason(id: string, reason: string): Promise<void
   await sql`update applicants set decline_reason = ${reason} where id = ${id}`;
 }
 
-export async function setEligibility(
-  id: string,
-  input: { status: string | null; notes: string | null; reloanReason: string | null },
-): Promise<void> {
-  await sql`
-    update applicants set
-      eligibility_status = ${input.status},
-      eligibility_notes = ${input.notes},
-      eligibility_reloan_reason = ${input.reloanReason}
-    where id = ${id}`;
-}
-
 /**
  * Records the plan the applicant chose.
  *
@@ -235,6 +225,10 @@ export async function setSelectedPlan(
  * Number.MAX_SAFE_INTEGER, so anything that treats one as a number corrupts
  * it silently.
  */
+export async function markAirConnectLeadPushed(id: string): Promise<void> {
+  await sql`update applicants set airconnect_lead_pushed_at = now() where id = ${id}`;
+}
+
 export async function setAscendIdentity(
   id: string,
   input: { ascendUserId: string; newCustomer: boolean; hasMyinfo: boolean },

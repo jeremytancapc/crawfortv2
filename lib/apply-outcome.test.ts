@@ -151,21 +151,8 @@ describe("decideIdentityOutcome", () => {
 });
 
 describe("decideSubmission", () => {
-  const ELIGIBLE = { status: "ELIGIBLE", notes: null, reloanReason: null };
-
-  it("declines on AirConnect ineligibility without consulting Ascend", () => {
-    const decision = decideSubmission({
-      eligibility: { status: "NOT_ELIGIBLE", notes: "Blacklisted", reloanReason: null },
-      ascend: null,
-    });
-
-    // Eligibility is settled before any credit decision, so a blacklisted
-    // applicant never costs a credit pull.
-    expect(decision).toMatchObject({ kind: "declined", destination: "/apply/pending" });
-  });
-
   it("offers Ascend's A-Card Limit, not the local engine's number", () => {
-    const decision = decideSubmission({ eligibility: ELIGIBLE, ascend: PASSED });
+    const decision = decideSubmission({ ascend: PASSED });
 
     expect(decision).toMatchObject({ kind: "approved", aCardLimit: 8000 });
   });
@@ -175,7 +162,6 @@ describe("decideSubmission", () => {
     // with a $500 floor, so the Singpass path could not decline anyone. With
     // Ascend authoritative that clamp would override a genuine REJECT.
     const decision = decideSubmission({
-      eligibility: ELIGIBLE,
       ascend: { ...PASSED, risk: { riskStatus: "REJECT", riskMsg: "Too much outstanding" }, creditScore: {} },
     });
 
@@ -185,7 +171,7 @@ describe("decideSubmission", () => {
   it("shows a failure state when Ascend gave no answer, never an offer", () => {
     // ADR-0001: the other external calls never block, but this one must.
     // Without Ascend there is no amount to show.
-    const decision = decideSubmission({ eligibility: ELIGIBLE, ascend: null });
+    const decision = decideSubmission({ ascend: null });
 
     expect(decision.kind).toBe("unavailable");
     expect(decision).not.toHaveProperty("aCardLimit");

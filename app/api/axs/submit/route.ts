@@ -5,22 +5,21 @@
  * 1. Validates AXS partner API key
  * 2. Creates a lead (auth_method: "axs")
  * 3. Saves MyInfo profile
- * 4. Runs AirConnect eligibility check
- * 5. Runs credit scoring
- * 6. If approved → generates a signed booking token/URL
- * 7. Returns status + approved amount + booking URL to AXS
+ * 4. Runs credit scoring
+ * 5. If approved → generates a signed booking token/URL
+ * 6. Returns status + approved amount + booking URL to AXS
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import {
   insertApplicant,
+  markAirConnectLeadPushed,
   setApplicantStatus,
   setDesiredAmount,
-  setEligibility,
 } from "@/lib/db/applicants";
 import { upsertCreditAssessment } from "@/lib/db/credit-assessments";
 import { upsertMyinfoProfile } from "@/lib/db/myinfo-profiles";
-import { checkLeadEligibility } from "@/lib/eligibility-check";
+import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
 import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
 import { createAxsToken } from "@/lib/axs-token";
@@ -217,71 +216,7 @@ export async function POST(request: NextRequest) {
     processedPayload: { cpfContributions, noaHistory },
   });
 
-  // 5. Eligibility check
-  const eligibility = await checkLeadEligibility({
-    phoneNumber: mobile,
-    idNumber: nric,
-    leadId,
-  });
-
-  await setEligibility(leadId, {
-    status: eligibility.status,
-    notes: eligibility.notes,
-    reloanReason: eligibility.reloanReason,
-  });
-
-  if (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN") {
-    console.info(`${LOG} rejected by eligibility`, { leadId, status: eligibility.status });
-    await setApplicantStatus(leadId, "rejected");
-
-    // Still run credit scoring for analytics
-    const assessment = assessCredit({
-      dob,
-      idType,
-      cpfContributions,
-      noaHistory,
-      selfDeclaredMonthlyIncome: 0,
-      requestedLoanAmount,
-      moneylenderNoLoans: true,
-      moneylenderLoanAmount: "",
-      moneylenderPaymentHistory: "",
-      authMethod: "singpass",
-    });
-
-    const creditRejectionReason = eligibility.status === "RELOAN" ? "airconnect_reloan" : "airconnect_not_eligible";
-
-    await upsertCreditAssessment(leadId, {
-      incomeSource: assessment.incomeSource,
-      verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-      underwrittenCap: assessment.maxEligibleLoan,
-      engineOfferAmount: 0,
-      isEligible: false,
-      creditRejectionReason,
-      ageAtApplication: assessment.age || null,
-      existingLoans: 0,
-      explanation: `AirConnect: ${eligibility.notes} | Income: ${assessment.explanation}`,
-      rawAssessment: { eligibility: eligibility.raw, assessment } as unknown as Record<string, unknown>,
-    });
-
-    // Still generate booking URL - rejected customers can still book
-    const token = createAxsToken({ leadId, axsRef, approvedAmount: requestedLoanAmount, tenure: requestedTenure });
-    const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL ?? "https://apply.crawfort.com";
-    const bookingUrl = `${baseUrl}/axs/book?token=${token}`;
-
-    return NextResponse.json({
-      status: "pending",
-      decision: "rejected",
-      reason: creditRejectionReason,
-      notes: eligibility.notes,
-      verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-      maxEligibleLoan: assessment.maxEligibleLoan,
-      leadId,
-      axsRef,
-      bookingUrl,
-    });
-  }
-
-  // 6. Credit scoring
+  // 5. Credit scoring
   const assessment = assessCredit({
     dob,
     idType,
@@ -315,6 +250,19 @@ export async function POST(request: NextRequest) {
   const approvedAmount = assessment.approvedLoanAmount;
   await setDesiredAmount(leadId, approvedAmount);
   await setApplicantStatus(leadId, assessment.isEligible ? "approved" : "rejected");
+
+  // AirConnect needs to know about this lead now - the AXS path has no
+  // Ascend order to key off of, so the engine's decision above is this
+  // channel's "opening". Every insertApplicant() above is a fresh row (no
+  // resubmit path exists for AXS), so there is nothing to guard against a
+  // duplicate push here.
+  const pushed = await pushNewLeadToAirConnect({
+    applicantId: leadId,
+    customerName: fullName,
+    phoneNumber: mobile,
+    idNumber: nric,
+  });
+  if (pushed) await markAirConnectLeadPushed(leadId);
 
   // Always generate a booking token - all customers can book regardless of decision
   const token = createAxsToken({

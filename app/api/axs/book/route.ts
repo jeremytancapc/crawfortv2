@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
 import { insertAppointment } from "@/lib/db/appointments";
 import { verifyAxsToken } from "@/lib/axs-token";
-import { logExternalApi } from "@/lib/external-api-logger";
+import { pushAppointmentToAirConnect } from "@/lib/airconnect/notify";
 
 export const runtime = "nodejs";
 
@@ -21,83 +21,6 @@ type Body = { date: string; time: string; token: string };
 
 function cfh5ApplicationRef(leadId: string): string {
   return `CFH5-${leadId.replace(/-/g, "").slice(-8).toUpperCase()}`;
-}
-
-async function notifyAirConnect(payload: {
-  customerName: string;
-  phoneNumber: string;
-  appointmentDate: string;
-  timeSlot: string;
-  leadId: string;
-  loanAmount: number;
-  idNumber?: string;
-  axsRef?: string;
-}) {
-  const apiKey = process.env.AIRCONNECT_API_KEY;
-  const url = process.env.AIRCONNECT_APPOINTMENTS_URL;
-
-  if (!apiKey || !url) {
-    console.warn(`${LOG} AirConnect env not configured - skipping notification`);
-    return;
-  }
-
-  const cfh5Id = cfh5ApplicationRef(payload.leadId);
-
-  try {
-    const bookingUrl = new URL(url);
-    bookingUrl.searchParams.set("cfh5Id", cfh5Id);
-    bookingUrl.searchParams.set("loanAmount", String(payload.loanAmount));
-    bookingUrl.searchParams.set("leadId", payload.leadId);
-
-    const headers: Record<string, string> = {
-      apikey: apiKey,
-      "Content-Type": "application/json",
-    };
-
-    const requestBody = {
-      app: "dashboard",
-      customerName: payload.customerName,
-      phoneNumber: payload.phoneNumber,
-      appointmentDate: payload.appointmentDate,
-      timeSlot: payload.timeSlot,
-      cfh5Id,
-      leadId: payload.leadId,
-      loanAmount: payload.loanAmount,
-      source: "axs",
-      ...(payload.idNumber ? { idNumber: payload.idNumber } : {}),
-      ...(payload.axsRef ? { axsRef: payload.axsRef } : {}),
-    };
-
-    const started = Date.now();
-    const res = await fetch(bookingUrl.toString(), {
-      method: "POST",
-      headers,
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    const ms = Date.now() - started;
-    const responseBody = !res.ok ? await res.text() : undefined;
-
-    logExternalApi({
-      tag: LOG,
-      url: bookingUrl.toString(),
-      method: "POST",
-      headers,
-      body: requestBody,
-      status: res.status,
-      ok: res.ok,
-      ms,
-      responseBody,
-      leadId: payload.leadId,
-    });
-
-    if (!res.ok) {
-      console.error(`${LOG} AirConnect notification failed`, { status: res.status, ms });
-    }
-  } catch (err) {
-    console.error(`${LOG} AirConnect notification error`, err);
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -145,16 +68,17 @@ export async function POST(request: NextRequest) {
   console.info(`${LOG} appointment saved`, { appointmentId: appointment.id, cfh5Id, date, time });
 
   // Notify AirConnect
-  await notifyAirConnect({
-    customerName: lead.full_name ?? "",
-    phoneNumber: lead.mobile ?? "",
-    appointmentDate: date,
-    timeSlot: time,
-    leadId,
-    loanAmount: approvedAmount,
-    idNumber: lead.nric ?? undefined,
-    axsRef,
-  });
+  await pushAppointmentToAirConnect(
+    {
+      applicantId: leadId,
+      customerName: lead.full_name ?? "",
+      phoneNumber: lead.mobile ?? "",
+      appointmentDate: date,
+      timeSlot: time,
+      idNumber: lead.nric ?? undefined,
+    },
+    LOG,
+  );
 
   return NextResponse.json({
     ok: true,

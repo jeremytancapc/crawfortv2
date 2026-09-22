@@ -21,7 +21,7 @@ import {
 import { bookingConfirmCookieValue } from "@/lib/booking-confirmation";
 import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
 import { insertAppointment } from "@/lib/db/appointments";
-import { logExternalApi } from "@/lib/external-api-logger";
+import { pushAppointmentToAirConnect } from "@/lib/airconnect/notify";
 
 export const runtime = "nodejs";
 
@@ -34,89 +34,6 @@ function cfh5ApplicationRef(leadId: string): string {
   return `CFH5-${leadId.slice(-8).toUpperCase()}`;
 }
 
-/** Outbound AirConnect call - must be awaited before returning the HTTP response.
- * If left fire-and-forget, serverless often freezes right after `return res` and the
- * fetch never completes, so upstream never sees the request and you won't get OK/error logs. */
-async function notifyAirConnect(payload: {
-  customerName: string;
-  phoneNumber: string;
-  appointmentDate: string;
-  timeSlot: string;
-  leadId: string;
-  loanAmount: number;
-  idNumber?: string;
-}) {
-  const apiKey = process.env.AIRCONNECT_API_KEY;
-  const url = process.env.AIRCONNECT_APPOINTMENTS_URL;
-
-  if (!apiKey || !url) {
-    console.warn(`${LOG} AirConnect env not configured - skipping notification`, {
-      hasApiKey: Boolean(apiKey),
-      hasUrl: Boolean(url),
-    });
-    return;
-  }
-
-  const cfh5Id = cfh5ApplicationRef(payload.leadId);
-
-  try {
-    const bookingUrl = new URL(url);
-    bookingUrl.searchParams.set("cfh5Id", cfh5Id);
-    bookingUrl.searchParams.set("loanAmount", String(payload.loanAmount));
-    bookingUrl.searchParams.set("leadId", payload.leadId);
-
-    const headers: Record<string, string> = {
-      apikey: apiKey,
-      "Content-Type": "application/json",
-    };
-
-    const requestBody = {
-      app: "dashboard",
-      customerName: payload.customerName,
-      phoneNumber: payload.phoneNumber,
-      appointmentDate: payload.appointmentDate,
-      timeSlot: payload.timeSlot,
-      cfh5Id,
-      leadId: payload.leadId,
-      loanAmount: payload.loanAmount,
-      ...(payload.idNumber ? { idNumber: payload.idNumber } : {}),
-    };
-
-    const started = Date.now();
-    const res = await fetch(bookingUrl.toString(), {
-      method: "POST",
-      headers,
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    const ms = Date.now() - started;
-    const responseBody = !res.ok ? await res.text() : undefined;
-
-    logExternalApi({
-      tag: LOG,
-      url: bookingUrl.toString(),
-      method: "POST",
-      headers,
-      body: requestBody,
-      status: res.status,
-      ok: res.ok,
-      ms,
-      responseBody,
-      leadId: payload.leadId,
-    });
-
-    if (!res.ok) {
-      console.error(`${LOG} AirConnect notification failed`, {
-        status: res.status,
-        ms,
-        body: responseBody?.slice(0, 500),
-      });
-    }
-  } catch (err) {
-    console.error(`${LOG} AirConnect notification error`, err);
-  }
-}
 
 export async function POST(request: NextRequest) {
   const rawSession = request.cookies.get(SESSION_COOKIE)?.value ?? "";
@@ -199,15 +116,17 @@ export async function POST(request: NextRequest) {
 
   // Notify AirConnect - await so serverless completes the outbound fetch before freeze.
   // Booking still succeeds in DB even if AirConnect fails (errors logged above).
-  await notifyAirConnect({
-    customerName: lead?.full_name ?? "",
-    phoneNumber: lead?.mobile ?? "",
-    appointmentDate: date,
-    timeSlot: time,
-    leadId,
-    loanAmount,
-    ...(idNumber ? { idNumber } : {}),
-  });
+  await pushAppointmentToAirConnect(
+    {
+      applicantId: leadId,
+      customerName: lead?.full_name ?? "",
+      phoneNumber: lead?.mobile ?? "",
+      appointmentDate: date,
+      timeSlot: time,
+      ...(idNumber ? { idNumber } : {}),
+    },
+    LOG,
+  );
 
   const res = NextResponse.json({
     ok: true,

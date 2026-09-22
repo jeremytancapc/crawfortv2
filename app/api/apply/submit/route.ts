@@ -32,9 +32,10 @@ import type { LoanFormData } from "@/lib/loan-form";
 import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
 import {
+  getApplicant,
   insertApplicant,
+  markAirConnectLeadPushed,
   setAscendIdentity,
-  setEligibility,
   setApplicantStatus,
   updateApplicantDetails,
   type NewApplicant,
@@ -50,7 +51,7 @@ import {
   processedPayloadFromRetrieval,
   upsertMyinfoProfileForApplicant,
 } from "@/lib/myinfo-profile";
-import { checkLeadEligibility } from "@/lib/eligibility-check";
+import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
 import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
 import { DuplicateAscendOrderError, recordAscendOrder } from "@/lib/db/ascend-orders";
@@ -200,23 +201,11 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 3. Run credit scoring ─────────────────────────────────────────────────
-  // First, check eligibility against Crawford/AirConnect systems
   const e164Phone = formData.mobile
     ? (formData.mobile.startsWith("+") ? formData.mobile : `+65${formData.mobile}`)
     : "";
-  const eligibility = await checkLeadEligibility({
-    phoneNumber: e164Phone,
-    idNumber: formData.authMethod === "singpass" && formData.nric ? formData.nric : undefined,
-    leadId,
-  });
 
-  await setEligibility(leadId, {
-    status: eligibility.status,
-    notes: eligibility.notes,
-    reloanReason: eligibility.reloanReason,
-  });
-
-  // Always run credit scoring (for analytics even if rejected)
+  // Always run credit scoring.
   const assessment = assessCredit({
     dob: formData.dob,
     idType: formData.idType,
@@ -229,51 +218,6 @@ export async function POST(request: NextRequest) {
     moneylenderPaymentHistory: formData.moneylenderPaymentHistory,
     authMethod: formData.authMethod,
   });
-
-  // Eligibility now applies to every applicant. It used to be skipped for the
-  // Singpass path because that identity was simulated - there was no real
-  // Singpass or AirConnect behind it, so a rejection would have been noise.
-  // The identity is real now, and so is the rejection.
-  if (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN") {
-    const rejectionReason = eligibility.status === "RELOAN"
-      ? "airconnect_reloan"
-      : "airconnect_not_eligible";
-
-    // Still scored, so the engine's numbers exist for analytics even though
-    // this applicant never reaches a credit decision.
-    await upsertCreditAssessment(leadId, {
-      incomeSource: assessment.incomeSource,
-      verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-      underwrittenCap: assessment.maxEligibleLoan,
-      engineOfferAmount: 0,
-      isEligible: false,
-      creditRejectionReason: rejectionReason,
-      ageAtApplication: assessment.age || null,
-      existingLoans: assessment.existingLoans,
-      moneylenderLoanAmount: assessment.existingLoans > 0 ? assessment.existingLoans : null,
-      moneylenderPaymentHistory: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
-      explanation: `AirConnect: ${eligibility.notes}${eligibility.reloanReason ? ` (reloan: ${eligibility.reloanReason})` : ""} | Income: ${assessment.explanation}`,
-      rawAssessment: { eligibility: eligibility.raw, assessment } as unknown as Record<string, unknown>,
-    });
-
-    await setApplicantStatus(leadId, "rejected");
-
-    const rejectRes = NextResponse.json({
-      leadId,
-      approvedLoanAmount: 0,
-      verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-      incomeSource: assessment.incomeSource,
-      isEligible: false,
-      maxEligibleLoan: 0,
-      explanation: `We're unable to process your application at this time.`,
-      eligibilityStatus: eligibility.status,
-      eligibilityNotes: eligibility.notes,
-      reloanReason: eligibility.reloanReason,
-    });
-    rejectRes.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
-    applyClearApplyCookiesOnResponse(rejectRes);
-    return rejectRes;
-  }
 
   // The guaranteed-approval clamp that used to sit here is gone. It forced
   // every Singpass applicant to approval with a $500 floor, so the Singpass
@@ -404,7 +348,19 @@ export async function POST(request: NextRequest) {
     borrowerMyInfo,
   });
 
-  const decision = decideSubmission({ eligibility, ascend: ascendResult });
+  const decision = decideSubmission({ ascend: ascendResult });
+
+  // AirConnect needs to know about this lead once Ascend opens an order for
+  // them - don't wait for a booking that may never happen.
+  const pushLeadToAirConnectOnce = async () => {
+    const pushed = await pushNewLeadToAirConnect({
+      applicantId: leadId,
+      customerName: formData.fullName,
+      phoneNumber: e164Phone,
+      idNumber: formData.authMethod === "singpass" && formData.nric ? formData.nric : undefined,
+    });
+    if (pushed) await markAirConnectLeadPushed(leadId);
+  };
 
   if (ascendResult && isDatabaseConfigured()) {
     try {
@@ -416,10 +372,18 @@ export async function POST(request: NextRequest) {
         hasMyinfo: true,
       });
       await recordAscendOrder(leadId, ascendResult);
+      await pushLeadToAirConnectOnce();
     } catch (err) {
       if (err instanceof DuplicateAscendOrderError) {
         // Already decided. Keep the first Order rather than buying a second.
         console.warn("[apply/submit] order already exists, keeping the first", leadId);
+
+        // A resubmit lands here. Only push if the earlier attempt never did -
+        // this must never send AirConnect the same lead twice.
+        const existingApplicant = await getApplicant(leadId);
+        if (existingApplicant && !existingApplicant.airconnect_lead_pushed_at) {
+          await pushLeadToAirConnectOnce();
+        }
       } else {
         console.error("[apply/submit] could not record Ascend order", err);
       }
@@ -448,9 +412,6 @@ export async function POST(request: NextRequest) {
     maximumLoanQuantum: decision.kind === "approved" ? decision.maximumLoanQuantum : null,
     maxEligibleLoan: finalAssessment.maxEligibleLoan,
     explanation: finalAssessment.explanation,
-    eligibilityStatus: eligibility.status,
-    eligibilityNotes: eligibility.notes,
-    reloanReason: eligibility.reloanReason,
   });
 
   // Clear draft_lead + MyInfo blobs - no longer needed after full submit.

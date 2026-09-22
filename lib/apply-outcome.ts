@@ -166,13 +166,6 @@ export function decideIdentityOutcome(user: AscendUser): IdentityOutcome {
   };
 }
 
-/** What AirConnect's eligibility check returned, narrowed to what decides. */
-export type EligibilityResult = {
-  status: string;
-  notes?: string | null;
-  reloanReason?: string | null;
-};
-
 export type SubmissionDecision =
   | ApplyOutcome
   | {
@@ -182,34 +175,22 @@ export type SubmissionDecision =
     };
 
 /**
- * The whole submit-time decision, in the order the rules apply.
- *
- * Eligibility first, then Ascend. That order is not cosmetic: eligibility is
- * decided before any credit decision, so an applicant AirConnect has already
- * ruled out never costs a credit pull.
+ * The whole submit-time decision.
  *
  * The local income engine is deliberately not an input. It still runs at
  * submit and its Underwritten Cap is still persisted, but since ADR-0001 it
  * decides nothing - and a number that decides nothing has no business in the
- * function that decides.
+ * function that decides. Reloan Customers are filtered out earlier, by
+ * Ascend's own identity check (lib/ascend/identity.ts) - not by this
+ * function, and not by AirConnect.
  */
 export function decideSubmission(input: {
-  eligibility: EligibilityResult;
   ascend: AscendCreditResult | null;
 }): SubmissionDecision {
-  const { eligibility, ascend } = input;
-
-  if (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN") {
-    return {
-      kind: "declined",
-      destination: "/apply/pending",
-      reason: eligibility.notes ?? null,
-    };
-  }
+  const { ascend } = input;
 
   // No answer from Ascend is not an approval. Every other external call here
-  // is written never to block - a failed eligibility check returns PENDING
-  // and the applicant continues - but this one cannot: without Ascend there
+  // is written never to block, but this one cannot: without Ascend there
   // is no amount to show, so the applicant sees a failure state (ADR-0001).
   if (!ascend) {
     return {
