@@ -25,6 +25,18 @@ export type AscendLimits = {
  * amount stored on their assessment stands in. What never stands in is a
  * multiple of income, because that is the number this function existed to
  * stop inventing.
+ *
+ * `creditLimit` and `withdrawToday` used to always be the same figure - noted
+ * here as something a future revolving product would make genuinely differ.
+ * That product is the gauge's "Unlocks later" reserve: `creditLimit` is now
+ * the structural ceiling Ascend's own numbers imply (double the approved
+ * amount, never past MLCB), and `withdrawToday` stays what can actually be
+ * drawn now. Across every real order seen so far MLCB sits 5-50x the A-Card
+ * Limit, so the reserve is usually the full double - but when MLCB is the
+ * tighter number, the reserve shrinks with it, and when MLCB has already
+ * capped the approved amount itself, `creditLimit` collapses back to
+ * `withdrawToday` and the gauge shows no reserve at all - never a locked zone
+ * with nothing behind it.
  */
 export function approvalOfferDisplay(formData: LoanFormData, limits?: AscendLimits) {
   const stored = Number(formData.approvedLoanAmount) || 0;
@@ -33,13 +45,15 @@ export function approvalOfferDisplay(formData: LoanFormData, limits?: AscendLimi
   const ceiling = limits?.maximumLoanQuantum ?? null;
   const offer = ceiling !== null && ceiling > 0 ? Math.min(approved, ceiling) : approved;
 
+  // No Ascend order behind this applicant (pre-Ascend fallback): there is
+  // nothing to derive a reserve from, so none is shown.
+  const reserve = limits
+    ? (ceiling !== null && ceiling > 0 ? Math.min(approved * 2, ceiling) : approved * 2)
+    : offer;
+
   return {
-    // Both are the same figure today: Ascend returns one limit, and what can
-    // be withdrawn is what was approved. They stay separate because the
-    // screens speak of them separately, and a future revolving product would
-    // make them genuinely differ.
     displayData: { ...formData, amount: offer },
-    creditLimit: offer,
+    creditLimit: reserve,
     withdrawToday: offer,
   };
 }
