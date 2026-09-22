@@ -116,9 +116,6 @@ function clampInt(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
-/** First labeled stick - a round thousand so the left end reads as a floor,
- *  not as zero. */
-const FLOOR_MARK = 1000;
 /** Landmark ticks stay inside the same ring as the minors - a hair longer,
  *  never an antenna past the rim. */
 const MAJOR_INNER_R = INNER_R - 3;
@@ -140,10 +137,10 @@ interface ScaleMark {
   isApproved: boolean;
 }
 
-function buildScaleMarks(maxToday: number, limit: number): ScaleMark[] {
+function buildScaleMarks(maxToday: number, limit: number, floor: number): ScaleMark[] {
   const safeLimit = limit > 0 ? limit : 1;
   const candidates = [
-    { amount: FLOOR_MARK, isApproved: false, pinT: 0 },
+    { amount: floor, isApproved: false, pinT: 0 },
     { amount: maxToday / 2, isApproved: false },
     { amount: maxToday, isApproved: true },
     { amount: safeLimit * 0.75, isApproved: false },
@@ -398,7 +395,7 @@ export function CreditGauge({
   // Handle rides the crest of the fill, then parks on the chosen amount. It is
   // the main signal that the dial can be dragged at all.
   const knob = polar(KNOB_R, angleAt(Math.min(1, knobAmount / safeLimit)));
-  const scaleMarks = buildScaleMarks(maxToday, safeLimit);
+  const scaleMarks = buildScaleMarks(maxToday, safeLimit, min);
 
   const isDraggingRef = useRef(false);
   const pendingAmountRef = useRef<number | null>(null);
@@ -626,7 +623,7 @@ export function CreditGauge({
       ) : null}
 
       <p className="sr-only">
-        Scale from {formatMarkAmount(FLOOR_MARK)} up to {formatMarkAmount(safeLimit)},
+        Scale from {formatMarkAmount(min)} up to {formatMarkAmount(safeLimit)},
         with {formatMarkAmount(maxToday)} approved today.
       </p>
 
