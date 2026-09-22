@@ -1,5 +1,4 @@
 import { leadIdFromQuery, loadPendingDisplay } from "@/lib/load-lead-display";
-import { reloanStoreLinks } from "@/lib/reloan-display";
 
 import { ReloanView } from "./reloan-view";
 
@@ -22,12 +21,5 @@ export default async function ReloanPage({ searchParams }: PageProps) {
   const leadId = leadIdFromQuery(sp.leadId);
   const lead = leadId ? await loadPendingDisplay(leadId) : null;
 
-  return (
-    <ReloanView
-      reloan={{
-        fullName: lead?.fullName ?? null,
-        ...reloanStoreLinks(),
-      }}
-    />
-  );
+  return <ReloanView reloan={{ fullName: lead?.fullName ?? null }} />;
 }
