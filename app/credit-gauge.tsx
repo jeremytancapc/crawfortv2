@@ -116,6 +116,27 @@ function clampInt(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
+/**
+ * Amount to arc fraction, floor-relative.
+ *
+ * Every position on the arc used to be `amount / limit` - t=0 meant $0, even
+ * though nothing below `min` (the withdrawal floor) is ever selectable. That
+ * left a sliver of arc, and a handful of "lit" ticks, sitting between the
+ * true start of the dial and the knob's resting place at the minimum - ticks
+ * that looked draggable and were not. t=0 is `floor` now, matching where its
+ * own label is pinned, so the minimum truly has nothing left to give.
+ */
+function amountToT(amount: number, floor: number, limit: number): number {
+  const span = limit - floor;
+  if (span <= 0) return 0;
+  return Math.min(1, Math.max(0, (amount - floor) / span));
+}
+
+/** Arc fraction to amount - the inverse of `amountToT`. */
+function tToAmount(t: number, floor: number, limit: number): number {
+  return floor + t * (limit - floor);
+}
+
 /** Landmark ticks stay inside the same ring as the minors - a hair longer,
  *  never an antenna past the rim. */
 const MAJOR_INNER_R = INNER_R - 3;
@@ -153,7 +174,7 @@ function buildScaleMarks(maxToday: number, limit: number, floor: number): ScaleM
     const t =
       candidate.pinT != null
         ? candidate.pinT
-        : Math.min(1, Math.max(0, candidate.amount / safeLimit));
+        : amountToT(candidate.amount, floor, safeLimit);
     const last = marks[marks.length - 1];
     if (last && t - last.t < MARK_MERGE_T) {
       if (candidate.isApproved || candidate.amount === safeLimit) {
@@ -293,14 +314,18 @@ export function CreditGauge({
 
   const safeLimit = limit > 0 ? limit : 1;
   const availableCount = clampInt(
-    Math.round((maxToday / safeLimit) * TICK_COUNT),
+    Math.round(amountToT(maxToday, min, safeLimit) * TICK_COUNT),
     0,
     TICK_COUNT,
   );
   const liveLitCount =
-    value <= 0
+    value <= min
       ? 0
-      : clampInt(Math.round((value / safeLimit) * TICK_COUNT), 1, availableCount || TICK_COUNT);
+      : clampInt(
+          Math.round(amountToT(value, min, safeLimit) * TICK_COUNT),
+          1,
+          availableCount || TICK_COUNT,
+        );
 
   // Prefers-reduced-motion is unknown during SSR, so never branch on it
   // during render - only after mount, or the input's disabled/readOnly
@@ -321,7 +346,7 @@ export function CreditGauge({
   useEffect(() => {
     if (!canPlay || !isIntro || prefersReducedMotion || disabled) return;
 
-    const peakAmount = Math.min(maxToday, safeLimit / 2);
+    const peakAmount = Math.min(maxToday, tToAmount(0.5, min, safeLimit));
     const restAmount = clampInt(Math.round(maxToday / 2 / step) * step, min, maxToday);
     const hasOvershoot = peakAmount - restAmount > step;
 
@@ -380,9 +405,13 @@ export function CreditGauge({
   }, [canPlay, isIntro, prefersReducedMotion, disabled, maxToday, min, step, safeLimit]);
 
   const fillCount =
-    displayAmount <= 0
+    displayAmount <= min
       ? 0
-      : clampInt(Math.round((displayAmount / safeLimit) * TICK_COUNT), 1, availableCount || TICK_COUNT);
+      : clampInt(
+          Math.round(amountToT(displayAmount, min, safeLimit) * TICK_COUNT),
+          1,
+          availableCount || TICK_COUNT,
+        );
   const litCount = isIntro ? fillCount : liveLitCount;
   // During the rise, ticks ahead of the wave stay grey so the blue reads as
   // liquid moving into an empty tank. From the crest down, the rest of the
@@ -394,7 +423,7 @@ export function CreditGauge({
 
   // Handle rides the crest of the fill, then parks on the chosen amount. It is
   // the main signal that the dial can be dragged at all.
-  const knob = polar(KNOB_R, angleAt(Math.min(1, knobAmount / safeLimit)));
+  const knob = polar(KNOB_R, angleAt(amountToT(knobAmount, min, safeLimit)));
   const scaleMarks = buildScaleMarks(maxToday, safeLimit, min);
 
   const isDraggingRef = useRef(false);
@@ -405,7 +434,7 @@ export function CreditGauge({
     const svg = svgRef.current;
     if (!svg) return;
     e.preventDefault();
-    const raw = pointerToFraction(svg, e.clientX, e.clientY) * safeLimit;
+    const raw = tToAmount(pointerToFraction(svg, e.clientX, e.clientY), min, safeLimit);
     const next = Math.min(maxToday, Math.max(min, raw));
     setDragAmount(next);
     pendingAmountRef.current = next;
