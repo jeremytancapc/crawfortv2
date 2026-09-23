@@ -95,13 +95,19 @@ export function neighborApplySteps(id: ApplyStepId): {
     // offer a back arrow that dead-ends at the home page.
     return { prev: null, next: null };
   }
+  // pending and verify are both reached only after submit - the funnel's
+  // one-way gate (lib/apply-funnel.ts) never lets either navigate back to
+  // review from here, so offering that arrow was a dead button: clicking it
+  // sent the browser to /apply/review, the server guard caught it there and
+  // bounced it straight back, and nothing the applicant saw explained why.
+  // No prev at all, same as "booked" below - there is nothing to go back to.
   if (id === "pending") {
-    return { prev: "review", next: "approval" };
+    return { prev: null, next: "approval" };
   }
   // Reached from submit when Ascend says PENDING, and rejoining the funnel at
   // approval once the payslip figures have been submitted and re-scored.
   if (id === "verify") {
-    return { prev: "review", next: "approval" };
+    return { prev: null, next: "approval" };
   }
   if (id === "customReceived") {
     return { prev: "choosePlan", next: "accept" };

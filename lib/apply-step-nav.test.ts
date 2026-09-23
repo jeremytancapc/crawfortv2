@@ -16,9 +16,17 @@ describe("applyStepOrder", () => {
 });
 
 describe("neighborApplySteps", () => {
-  it("treats verify-income as a branch off review, like pending", () => {
-    // Reached from submit when Ascend says PENDING, and rejoining the funnel
-    // at approval once the payslip figures have been re-scored.
-    expect(neighborApplySteps("verify")).toEqual({ prev: "review", next: "approval" });
+  it("gives verify-income nothing to go back to", () => {
+    // Reached only after submit. The funnel's one-way gate never lets this
+    // step navigate back to review, so a "prev: review" here was a dead
+    // button - clicking it sent the browser to /apply/review, the server
+    // guard caught it there and bounced it straight back, unexplained.
+    expect(neighborApplySteps("verify")).toEqual({ prev: null, next: "approval" });
+  });
+
+  it("gives pending the same - nothing to go back to either", () => {
+    // Same gate, same reasoning: pending is also only ever reached post-
+    // submit, so it gets the same treatment as verify-income above.
+    expect(neighborApplySteps("pending")).toEqual({ prev: null, next: "approval" });
   });
 });
