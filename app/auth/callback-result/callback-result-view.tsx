@@ -30,13 +30,33 @@ export default function CallbackResultView({
     return nested && typeof nested === "object" ? (nested as Record<string, unknown>) : obj;
   }, []);
 
+  /**
+   * How Singpass actually marks "this person genuinely has none of this" -
+   * not an absent key. Confirmed against 15+ real captures in this project's
+   * own myinfo_retrievals for cpfcontributions: `source` and `classification`
+   * never vary, only `lastupdated`. Deleting the field outright (the earlier
+   * version of this button) sent Ascend a payload no real applicant's ever
+   * has - the key present-but-unavailable, and absent, are different wire
+   * shapes. noahistory is assumed to follow the same MyInfo convention -
+   * every real capture on hand happens to have NOA on file, so this half is
+   * inferred, not independently observed the way CPF's is.
+   */
+  function unavailableField() {
+    return {
+      source: "1",
+      lastupdated: new Date().toISOString().slice(0, 10),
+      unavailable: true,
+      classification: "C",
+    };
+  }
+
   const stripField = useCallback(
     (field: string) => {
       setError(null);
       setSaveNotice(null);
       try {
         const parsed = JSON.parse(rawJson) as Record<string, unknown>;
-        delete personLevel(parsed)[field];
+        personLevel(parsed)[field] = unavailableField();
         setRawJson(JSON.stringify(parsed, null, 2));
       } catch {
         setError("Invalid JSON - fix that before stripping a field.");
@@ -136,8 +156,9 @@ export default function CallbackResultView({
             <p className="mt-2 text-[11px] text-emerald-800">
               Edit the JSON below, then <b>Save to this capture</b> - any application still
               open on this same retrieval will send the edited MyInfo to Ascend at submit.
-              The strip buttons below the textarea remove a field for you, so a typo can&apos;t
-              break the JSON.
+              The buttons below the textarea mark CPF or NOA <b>unavailable</b>, the same shape
+              Singpass itself uses for a real person with none on file - not a deleted key, which
+              is a different payload Ascend would never actually see.
             </p>
           </div>
         )}
