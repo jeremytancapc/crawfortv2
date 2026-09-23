@@ -43,11 +43,14 @@ export default async function ReviewPage() {
  * retrieval - without it a tester has no way to find their own rid, since
  * singpassRawKey only ever travels inside the signed session cookie.
  *
- * Same gate as the inspector it links to (MYINFO_CAPTURE_ENABLED): off by
- * default, so a real applicant's review page is never touched by this.
+ * Gated by MYINFO_EDITOR_ENABLED, not MYINFO_CAPTURE_ENABLED - that flag
+ * also diverts the real Singpass callback to the inspector, which stops
+ * a tester from ever reaching this page with a rid to edit. This flag has
+ * no effect on the callback: Singpass continues into the funnel as normal,
+ * so a real applicant's review page is never touched by this either way.
  */
 function MyinfoEditorLink({ rid }: { rid?: string }) {
-  if (process.env.MYINFO_CAPTURE_ENABLED !== "true" || !rid) return null;
+  if (process.env.MYINFO_EDITOR_ENABLED !== "true" || !rid) return null;
 
   return (
     <a

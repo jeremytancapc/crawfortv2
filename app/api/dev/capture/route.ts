@@ -20,9 +20,20 @@
  * reads myinfo_retrievals by this same id, so overwriting the row in place
  * reaches a live, in-progress application without it needing a new key.
  *
- * OFF unless MYINFO_CAPTURE_ENABLED=true. This returns unminimised personal
- * data - full NRIC, address, CPF and NOA history - to whoever holds the link,
- * so it must be switched on deliberately and switched off after.
+ * Gated by either MYINFO_CAPTURE_ENABLED or MYINFO_EDITOR_ENABLED - two
+ * different flags on purpose. MYINFO_CAPTURE_ENABLED also makes the real
+ * Singpass callback (/api/auth/callback) divert every login on this
+ * deployment to the inspector instead of continuing into the funnel - the
+ * right switch for "show me exactly what Singpass sent," the wrong one for
+ * editing, since it stops a tester from ever reaching Review to use the
+ * edit. MYINFO_EDITOR_ENABLED unlocks this endpoint alone, with no effect
+ * on the callback, so a tester can go through Singpass normally, edit their
+ * own capture from the Review page, and continue - see the "Edit MyInfo"
+ * link there.
+ *
+ * Either way this returns unminimised personal data - full NRIC, address,
+ * CPF and NOA history - to whoever holds the link, so it must be switched
+ * on deliberately and switched off after.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -33,7 +44,9 @@ import { isDatabaseConfigured } from "@/lib/db/sql";
 export const runtime = "nodejs";
 
 function enabled(): boolean {
-  return process.env.MYINFO_CAPTURE_ENABLED === "true";
+  return (
+    process.env.MYINFO_CAPTURE_ENABLED === "true" || process.env.MYINFO_EDITOR_ENABLED === "true"
+  );
 }
 
 function disabledResponse() {
@@ -41,8 +54,10 @@ function disabledResponse() {
     {
       code: 403,
       message:
-        "MyInfo capture is off. Set MYINFO_CAPTURE_ENABLED=true to switch it on, " +
-        "and unset it once you are done - this endpoint returns unminimised personal data.",
+        "MyInfo capture is off. Set MYINFO_EDITOR_ENABLED=true to edit a capture without " +
+        "affecting real Singpass logins (or MYINFO_CAPTURE_ENABLED=true, which also diverts " +
+        "every login on this deployment to the inspector) - and unset it once done, since this " +
+        "endpoint returns unminimised personal data.",
     },
     { status: 403 },
   );
