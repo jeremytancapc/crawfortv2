@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { File, X } from "@phosphor-icons/react";
 
 import {
   ACCEPTED_TYPES,
+  INCOME_SUBMIT_STATUSES,
   PROCESSING_STATUSES,
   useVerifyIncome,
+  type SubmitIncomeResult,
 } from "@/app/apply/verify-income/use-verify-income";
-import { useApplyPath } from "@/app/use-apply-path";
+import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { Pill, Row, Rows } from "@/app/v2/ui/controls";
 import { UploadIllustration } from "@/app/v2/ui/illustrations";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
-import { markApplyStepVisited, setResumeGateStep } from "@/lib/apply-step-nav";
+import { markApplyStepVisited } from "@/lib/apply-step-nav";
 import { formatCurrency } from "@/lib/loan-form";
 
 export function VerifyIncomeScreen({
@@ -21,13 +22,12 @@ export function VerifyIncomeScreen({
 }: {
   initialShowResults?: boolean;
 }) {
-  const router = useRouter();
-  const applyHref = useApplyPath();
   const {
     files,
     addFiles,
     removeFile,
     isProcessing,
+    isReading,
     startProcessing,
     finishProcessing,
     showResults,
@@ -40,34 +40,45 @@ export function VerifyIncomeScreen({
   } = useVerifyIncome(initialShowResults);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitTask, setSubmitTask] = useState<{ waitUntil: Promise<unknown>; key: number } | null>(
+    null,
+  );
+  const submitResultRef = useRef<SubmitIncomeResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const isSubmitting = submitTask !== null;
 
-  // Stays on this page when submission fails. The applicant has just uploaded
-  // documents; moving them on silently would look like the upload was lost.
-  async function handleSubmitIncome() {
-    setIsSubmitting(true);
+  // Held on the full loading screen until the next page takes over - the
+  // upload and Ascend's re-score took 18 seconds on staging, with a button
+  // label as the only sign anything was happening.
+  function handleSubmitIncome() {
+    if (submitTask) return;
     setSubmitError(null);
-    const result = await submitIncome(incomeMonths, files);
-    if (result.ok) {
+    submitResultRef.current = null;
+    const task = submitIncome(incomeMonths, files).then((result) => {
+      submitResultRef.current = result;
+    });
+    setSubmitTask({ waitUntil: task, key: Date.now() });
+  }
+
+  function handleSubmitSettled() {
+    const result = submitResultRef.current;
+    if (result?.ok) {
       window.location.assign(result.nextPath);
       return;
     }
-    // Say what went wrong. Clicking Submit and seeing nothing at all is the
-    // worst outcome here: the applicant cannot tell whether it worked, and
-    // has no reason to try again.
-    setSubmitError(result.message);
-    setIsSubmitting(false);
+    // Stays on this page when submission fails, and says so - the applicant
+    // has just uploaded documents and would otherwise think them lost.
+    setSubmitTask(null);
+    setSubmitError(
+      result && !result.ok
+        ? result.message
+        : "We could not submit your income just now. Please try again in a moment.",
+    );
   }
 
   useEffect(() => {
     markApplyStepVisited("verify");
   }, []);
-
-  const goBack = () => {
-    setResumeGateStep(3);
-    router.push(applyHref("/?gate=3"));
-  };
 
   // Nothing read means no figures to show and nothing to submit - the ask
   // names the payslip that would finish the application, so it goes where the
@@ -76,7 +87,7 @@ export function VerifyIncomeScreen({
   if (showResults && !canSubmit) {
     return (
       <V2Screen key="results-incomplete">
-        <V2Header onBack={goBack} progress={{ stage: "verify", fraction: 0.9 }} />
+        <V2Header onBack={() => window.history.back()} progress={{ stage: "verify", fraction: 0.9 }} />
         <V2Body justify="center">
           <V2Title title="We need a bit more" subtitle="Here is what is still missing." />
           <p className="v2-note v2-enter mt-4" style={{ ["--i" as string]: 1 }}>
@@ -93,7 +104,15 @@ export function VerifyIncomeScreen({
   if (showResults) {
     return (
       <V2Screen key="results">
-        <V2Header onBack={goBack} progress={{ stage: "verify", fraction: 0.9 }} />
+        {submitTask ? (
+          <LoanLoadingScreen
+            key={submitTask.key}
+            waitUntil={submitTask.waitUntil}
+            messages={INCOME_SUBMIT_STATUSES}
+            onComplete={handleSubmitSettled}
+          />
+        ) : null}
+        <V2Header onBack={() => window.history.back()} progress={{ stage: "verify", fraction: 0.9 }} />
         <V2Body justify="center">
           <V2Title
             title="Your income, confirmed"
@@ -115,7 +134,7 @@ export function VerifyIncomeScreen({
         </V2Body>
         <V2Footer
           note={
-            submitError ?? "Next, Singpass fills in your personal details."
+            submitError ?? "Next, we check your income and show you the result."
           }
         >
           <Pill onClick={handleSubmitIncome} disabled={isSubmitting}>
@@ -128,7 +147,7 @@ export function VerifyIncomeScreen({
 
   return (
     <V2Screen key="upload">
-      <V2Header onBack={goBack} progress={{ stage: "verify", fraction: 0.4 }} />
+      <V2Header progress={{ stage: "verify", fraction: 0.4 }} />
       <V2Body justify="between">
         <V2Title
           title="Upload your last 3 payslips"
@@ -215,30 +234,40 @@ export function VerifyIncomeScreen({
           {isProcessing ? "Reading documents" : "Upload documents"}
         </Pill>
       </V2Footer>
-      {isProcessing ? <ProcessingOverlay onComplete={finishProcessing} /> : null}
+      {isProcessing ? <ProcessingOverlay reading={isReading} onComplete={finishProcessing} /> : null}
     </V2Screen>
   );
 }
 
-/** Same three-second simulated pass as production, rendered as a quiet sheet. */
-function ProcessingOverlay({ onComplete }: { onComplete: () => void }) {
+/** Long enough that a fast read doesn't flash the sheet up and away. */
+const PROCESSING_MIN_MS = 1500;
+
+/**
+ * Held until the documents have actually been read. It used to close on a
+ * three-second timer, leaving an empty "we need a bit more" results screen
+ * up whenever the read ran longer.
+ */
+function ProcessingOverlay({ reading, onComplete }: { reading: boolean; onComplete: () => void }) {
   const [statusIndex, setStatusIndex] = useState(0);
+  const [minShown, setMinShown] = useState(false);
   const finishedRef = useRef(false);
 
   useEffect(() => {
     const cycle = window.setInterval(() => {
       setStatusIndex((index) => Math.min(index + 1, PROCESSING_STATUSES.length - 1));
     }, 1000);
-    const close = window.setTimeout(() => {
-      if (finishedRef.current) return;
-      finishedRef.current = true;
-      onComplete();
-    }, 3000);
+    const minimum = window.setTimeout(() => setMinShown(true), PROCESSING_MIN_MS);
     return () => {
       window.clearInterval(cycle);
-      window.clearTimeout(close);
+      window.clearTimeout(minimum);
     };
-  }, [onComplete]);
+  }, []);
+
+  useEffect(() => {
+    if (!minShown || reading || finishedRef.current) return;
+    finishedRef.current = true;
+    onComplete();
+  }, [minShown, reading, onComplete]);
 
   return (
     <div

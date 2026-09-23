@@ -61,6 +61,7 @@ export function ReviewForm({ initialData }: Props) {
     key: number;
   } | null>(null);
   const submitNavRef = useRef<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -142,6 +143,7 @@ export function ReviewForm({ initialData }: Props) {
 
   async function submitApplication() {
     if (submitOverlay) return;
+    setSubmitError(null);
     submitNavRef.current = null;
     const task = (async () => {
       const result = await submitReview(formData);
@@ -229,9 +231,20 @@ export function ReviewForm({ initialData }: Props) {
           onComplete={() => {
             const path = submitNavRef.current;
             if (path) {
-              router.push(applyHref(path));
+              // The overlay stays up until this page is gone. Clearing it the
+              // moment navigation began put the finished review form back on
+              // screen - clickable, "Submit Application" live again - for the
+              // second the next page took to load.
+              window.location.assign(applyHref(path));
+              return;
             }
+            // No destination means the submit failed. Say so: dropping the
+            // overlay alone left the applicant back on the form with no idea
+            // whether anything had happened.
             setSubmitOverlay(null);
+            setSubmitError(
+              "We could not submit your application just now. Please try again in a moment.",
+            );
           }}
         />
       ) : null}
@@ -315,6 +328,14 @@ export function ReviewForm({ initialData }: Props) {
                 </div>
               </div>
 
+              {submitError && step === 5 ? (
+                <p
+                  role="alert"
+                  className="ios-apply-gutter pb-1 text-[13px] font-semibold leading-snug text-[var(--danger,#a92d3a)]"
+                >
+                  {submitError}
+                </p>
+              ) : null}
               <StickyFooter nav={stepNav}>
                 <PrimaryButton
                   onClick={handlePrimary}

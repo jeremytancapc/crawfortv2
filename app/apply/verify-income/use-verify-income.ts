@@ -15,6 +15,14 @@ export const PROCESSING_STATUSES = [
   "Almost done…",
 ];
 
+/** Shown while the documents go to Ascend and it re-scores the application. */
+export const INCOME_SUBMIT_STATUSES = [
+  "Sending your documents…",
+  "Checking your income…",
+  "Reviewing your application…",
+  "Almost there…",
+] as const;
+
 export type SelectedFile = {
   id: string;
   name: string;
@@ -159,6 +167,8 @@ export function useVerifyIncome(initialShowResults = false) {
   const applyHref = useApplyPath();
   const [files, setFiles] = useState<SelectedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  /** True while the documents are actually being read - the sheet waits on it. */
+  const [isReading, setIsReading] = useState(false);
   const [showResults, setShowResults] = useState(initialShowResults);
 
   // Empty until the documents have actually been read. Nothing is seeded:
@@ -189,11 +199,14 @@ export function useVerifyIncome(initialShowResults = false) {
 
   const startProcessing = useCallback(() => {
     setIsProcessing(true);
+    setIsReading(true);
     setExtractionAsk(null);
 
-    // Reading runs while the processing sheet is up. The sheet closes on its
-    // own timer, so a slower read lands afterwards and the figures update in
-    // place rather than holding the applicant on a spinner.
+    // Reading runs while the processing sheet is up, and the sheet stays up
+    // until it has finished. It used to close on its own 3-second timer: a
+    // slower read left the results view up with nothing in it, reading "We
+    // need a bit more" with an Add documents button, until the figures
+    // landed and replaced it - a failure the applicant never actually had.
     void (async () => {
       try {
         const body = new FormData();
@@ -220,6 +233,8 @@ export function useVerifyIncome(initialShowResults = false) {
         setExtractionAsk(
           "We could not read those documents just now. Please try uploading them again.",
         );
+      } finally {
+        setIsReading(false);
       }
     })();
   }, [files]);
@@ -248,6 +263,7 @@ export function useVerifyIncome(initialShowResults = false) {
     addFiles,
     removeFile,
     isProcessing,
+    isReading,
     startProcessing,
     finishProcessing,
     showResults,

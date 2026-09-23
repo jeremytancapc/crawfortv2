@@ -16,13 +16,16 @@ import {
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
+import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import {
   ACCEPTED_TYPES,
+  INCOME_SUBMIT_STATUSES,
   PROCESSING_STATUSES,
   useVerifyIncome,
+  type SubmitIncomeResult,
 } from "@/app/apply/verify-income/use-verify-income";
 
 export function VerifyIncomeForm({
@@ -35,6 +38,7 @@ export function VerifyIncomeForm({
     addFiles,
     removeFile,
     isProcessing,
+    isReading,
     startProcessing: handleUpload,
     finishProcessing: handleProcessingDone,
     showResults,
@@ -49,24 +53,42 @@ export function VerifyIncomeForm({
   const applyHref = useApplyPath();
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitTask, setSubmitTask] = useState<{ waitUntil: Promise<unknown>; key: number } | null>(
+    null,
+  );
+  const submitResultRef = useRef<SubmitIncomeResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const isSubmitting = submitTask !== null;
 
-  // Stays on this page when submission fails. The applicant has just uploaded
-  // documents; moving them on silently would look like the upload was lost.
-  async function handleSubmitIncome() {
-    setIsSubmitting(true);
+  // Uploading three documents and Ascend re-scoring took 18 seconds on
+  // staging (2026-09-23), with "Submitting…" on the button as the only sign
+  // anything was happening. The full loading screen holds until the next page
+  // takes over, the same as submitting the application does.
+  function handleSubmitIncome() {
+    if (submitTask) return;
     setSubmitError(null);
-    const result = await submitIncome(incomeMonths, files);
-    if (result.ok) {
+    submitResultRef.current = null;
+    const task = submitIncome(incomeMonths, files).then((result) => {
+      submitResultRef.current = result;
+    });
+    setSubmitTask({ waitUntil: task, key: Date.now() });
+  }
+
+  function handleSubmitSettled() {
+    const result = submitResultRef.current;
+    if (result?.ok) {
       window.location.assign(result.nextPath);
       return;
     }
-    // Say what went wrong. Clicking Submit and seeing nothing at all is the
-    // worst outcome here: the applicant cannot tell whether it worked, and
-    // has no reason to try again.
-    setSubmitError(result.message);
-    setIsSubmitting(false);
+    // Stays on this page when submission fails. The applicant has just
+    // uploaded documents; moving them on silently would look like the upload
+    // was lost - and seeing nothing at all, they have no reason to try again.
+    setSubmitTask(null);
+    setSubmitError(
+      result && !result.ok
+        ? result.message
+        : "We could not submit your income just now. Please try again in a moment.",
+    );
   }
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -288,8 +310,17 @@ export function VerifyIncomeForm({
       </StickyFooter>
 
       {isProcessing && (
-        <ProcessingDocumentsModal onComplete={handleProcessingDone} />
+        <ProcessingDocumentsModal reading={isReading} onComplete={handleProcessingDone} />
       )}
+
+      {submitTask ? (
+        <LoanLoadingScreen
+          key={submitTask.key}
+          waitUntil={submitTask.waitUntil}
+          messages={INCOME_SUBMIT_STATUSES}
+          onComplete={handleSubmitSettled}
+        />
+      ) : null}
       </MobileGateSheet>
     </div>
   );
@@ -356,9 +387,20 @@ function IncomeDocsHint() {
   );
 }
 
-function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
+/** Long enough that a fast read doesn't flash the sheet up and away. */
+const PROCESSING_MIN_MS = 1500;
+
+function ProcessingDocumentsModal({
+  reading,
+  onComplete,
+}: {
+  /** The documents are still being read - the sheet stays until they're done. */
+  reading: boolean;
+  onComplete: () => void;
+}) {
   const [statusIndex, setStatusIndex] = useState(0);
   const [domReady, setDomReady] = useState(false);
+  const [minShown, setMinShown] = useState(false);
   const finishedRef = useRef(false);
 
   useEffect(() => {
@@ -380,16 +422,19 @@ function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
         Math.min(index + 1, PROCESSING_STATUSES.length - 1),
       );
     }, 1000);
-    const close = window.setTimeout(() => {
-      if (finishedRef.current) return;
-      finishedRef.current = true;
-      onComplete();
-    }, 3000);
+    const minimum = window.setTimeout(() => setMinShown(true), PROCESSING_MIN_MS);
     return () => {
       window.clearInterval(cycle);
-      window.clearTimeout(close);
+      window.clearTimeout(minimum);
     };
-  }, [onComplete]);
+  }, []);
+
+  // Closes when the reading is actually done, not on a timer.
+  useEffect(() => {
+    if (!minShown || reading || finishedRef.current) return;
+    finishedRef.current = true;
+    onComplete();
+  }, [minShown, reading, onComplete]);
 
   if (!domReady) return null;
 

@@ -71,6 +71,7 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
     key: number;
   } | null>(null);
   const submitNavRef = useRef<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     markApplyStepVisited("review");
@@ -128,6 +129,7 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
       setTouched(true);
       return;
     }
+    setSubmitError(null);
     submitNavRef.current = null;
     const task = (async () => {
       const result = await submitReview(formData);
@@ -143,8 +145,14 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
       waitUntil={submitOverlay.waitUntil}
       onComplete={() => {
         const path = submitNavRef.current;
-        if (path) router.push(applyHref(path));
+        if (path) {
+          // Held until this page is gone - clearing it as navigation began
+          // put the finished form back on screen while the next page loaded.
+          window.location.assign(applyHref(path));
+          return;
+        }
         setSubmitOverlay(null);
+        setSubmitError("We could not submit your application just now. Please try again in a moment.");
       }}
     />
   ) : null;
@@ -189,6 +197,11 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
               onChange={(event) => updateField("email", event.target.value)}
             />
           </div>
+          {submitError ? (
+            <p role="alert" className="text-[15px] font-semibold" style={{ color: "var(--v2-danger)" }}>
+              {submitError}
+            </p>
+          ) : null}
         </V2Body>
         <V2Footer
           note={
