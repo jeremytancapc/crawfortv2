@@ -13,7 +13,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { decideAfterIncome } from "@/lib/apply-outcome";
-import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
+import {
+  POST_SUBMIT_COOKIE_MAX_AGE_SEC,
+  SESSION_COOKIE,
+  decodeSession,
+  encodeSession,
+  reviewGateCookieValue,
+  sessionCookieValue,
+} from "@/lib/apply-session";
+import {
+  approvalOfferCookieValue,
+  storedApprovalOfferFromForm,
+} from "@/lib/approval-offer";
 import { ascendSubmitIncome, AscendError } from "@/lib/ascend/client";
 import { ascendConfig } from "@/lib/ascend/config";
 import { getAscendOrder, updateAscendOrderDecision } from "@/lib/db/ascend-orders";
@@ -119,6 +130,30 @@ export async function POST(request: NextRequest) {
     // The income step is behind them either way now - approved, declined, or
     // waiting on a human. Leaving the gate set would pull them back to it.
     res.cookies.set(clearIncomeGateCookie());
+
+    // Without this, an applicant Ascend just approved had nothing marking
+    // them as ever having submitted - income_gate just cleared, and neither
+    // review_gate nor the approval offer had ever been set here (only
+    // /apply/submit's own approved branch sets them). The funnel guard reads
+    // that as "never submitted, still eligible for review" and sent a freshly
+    // approved applicant straight back to /apply/review instead of their
+    // offer. Mirrors /apply/submit's own approved branch, using Ascend's own
+    // aCardLimit rather than a locally recomputed figure - there is none here.
+    if (outcome.kind === "approved") {
+      const updatedSession = { ...session, leadId: applicantId };
+      res.cookies.set({ ...sessionCookieValue(updatedSession), value: encodeSession(updatedSession) });
+      res.cookies.set(reviewGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
+      res.cookies.set(
+        approvalOfferCookieValue(
+          storedApprovalOfferFromForm(applicantId, session, {
+            approvedLoanAmount: outcome.aCardLimit,
+            verifiedMonthlyIncome: Number(session.verifiedMonthlyIncome) || 0,
+            incomeSource: session.incomeSource || "",
+          }),
+        ),
+      );
+    }
+
     return res;
   } catch (err) {
     if (err instanceof AscendError) {
