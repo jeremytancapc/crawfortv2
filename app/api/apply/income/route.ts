@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       // should treat them as credible income rather than self-declared.
       incomeFile: true,
       files,
-    });
+    }, { applicantId });
 
     // income/credit answers immediately and Ascend settles afterwards, so ask
     // again before deciding where the applicant goes. A failed re-ask keeps
