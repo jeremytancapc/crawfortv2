@@ -414,7 +414,10 @@ export async function POST(request: NextRequest) {
 
   const res = NextResponse.json({
     leadId,
-    approvedLoanAmount: finalAssessment.approvedLoanAmount,
+    // Ascend's amount, not the engine's: a rejected applicant's response
+    // used to carry the engine's offer here, which nothing routes on today
+    // but anything reading it later would take as an approval.
+    approvedLoanAmount: decision.kind === "approved" ? decision.aCardLimit : 0,
     verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
     incomeSource: finalAssessment.incomeSource,
     // Ascend decides where the applicant goes. `isEligible` stays for the
@@ -424,8 +427,6 @@ export async function POST(request: NextRequest) {
     isEligible: decision.kind === "approved",
     aCardLimit: decision.kind === "approved" ? decision.aCardLimit : null,
     maximumLoanQuantum: decision.kind === "approved" ? decision.maximumLoanQuantum : null,
-    maxEligibleLoan: finalAssessment.maxEligibleLoan,
-    explanation: finalAssessment.explanation,
   });
 
   // Clear draft_lead + MyInfo blobs - no longer needed after full submit.
