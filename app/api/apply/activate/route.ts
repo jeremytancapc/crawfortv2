@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  clearIncomeGateCookie,
   decodeSession,
   encodeSession,
   sessionCookieValue,
   gateCookieValue,
+  REVIEW_GATE_COOKIE,
   SESSION_COOKIE,
   GATE_COOKIE,
 } from "@/lib/apply-session";
+import { clearApprovalOfferCookie } from "@/lib/approval-offer";
+import { clearBookingConfirmCookie } from "@/lib/booking-confirmation";
+import { clearPlanAdditionalRequestsCookie } from "@/lib/plan-additional-requests";
 import {
   APPLY_TRACE_ID_KEY,
   byteLength,
@@ -15,7 +20,7 @@ import {
   newApplyTraceId,
 } from "@/lib/apply-flow-log";
 import type { LoanFormData } from "@/lib/loan-form";
-import { insertApplicant } from "@/lib/db/applicants";
+import { getApplicant, insertApplicant } from "@/lib/db/applicants";
 import { processedPayloadFromRetrieval } from "@/lib/myinfo-profile";
 import type { IdType } from "@/lib/db/types";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
@@ -87,7 +92,9 @@ export async function GET(request: NextRequest) {
     typeof merged.tenure === "number" && merged.tenure > 0;
   // Don't create a second draft if the browser already has one from this journey.
   const existingDraftLeadId = request.cookies.get(DRAFT_LEAD_COOKIE)?.value ?? "";
-  const alreadyHasDraft = looksLikeLeadUuid(existingDraftLeadId);
+  const alreadyHasDraft =
+    looksLikeLeadUuid(existingDraftLeadId) &&
+    (await isReusableDraft(existingDraftLeadId, merged.nric));
 
   let newDraftLeadId: string | null = null;
   if (hasLoanDetails && !alreadyHasDraft) {
@@ -176,6 +183,17 @@ export async function GET(request: NextRequest) {
   const reviewUrl = new URL(reviewPath, request.nextUrl.origin);
   const res = NextResponse.redirect(reviewUrl, { status: 302 });
 
+  // A Singpass login starts an application, so nothing a previous one left
+  // behind in this browser may carry over. These are the cookies the funnel
+  // guard reads as "already submitted / approved / asked for income" - left
+  // in place, an earlier applicant's approval_offer would still read as
+  // approved for whoever logs in next, and send them to someone else's offer.
+  res.cookies.set(clearApprovalOfferCookie());
+  res.cookies.set(clearIncomeGateCookie());
+  res.cookies.set({ name: REVIEW_GATE_COOKIE, value: "", maxAge: 0, path: "/" });
+  res.cookies.set(clearBookingConfirmCookie());
+  res.cookies.set(clearPlanAdditionalRequestsCookie());
+
   const sc = sessionCookieValue(slimSession);
   res.cookies.set({ ...sc, value: encoded });
   res.cookies.set(gateCookieValue());
@@ -189,7 +207,34 @@ export async function GET(request: NextRequest) {
     res.cookies.set(draftLeadCookieValue(newDraftLeadId));
   } else if (draftLeadId && alreadyHasDraft) {
     res.cookies.set(draftLeadCookieValue(draftLeadId));
+  } else if (looksLikeLeadUuid(existingDraftLeadId)) {
+    // Not reusable and nothing new replaced it - left behind, submit would
+    // read it first and write this applicant over someone else's row.
+    res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
   }
 
   return res;
+}
+
+/**
+ * Whether a draft lead already in this browser belongs to this login.
+ *
+ * The draft cookie exists so one journey doesn't create two applicant rows.
+ * But nothing tied it to the person: a draft left by an earlier applicant -
+ * a reloan, an abandoned tab, a tester switching personas - was picked up by
+ * whoever logged in next, and their details written over that applicant's
+ * row, Ascend order and all. Reused now only while it is still the same
+ * person's unfinished application.
+ */
+async function isReusableDraft(draftLeadId: string, nric: string | undefined): Promise<boolean> {
+  const incoming = nric?.trim().toUpperCase();
+  if (!incoming) return false;
+  try {
+    const draft = await getApplicant(draftLeadId);
+    return draft?.status === "in_progress" && draft.nric?.trim().toUpperCase() === incoming;
+  } catch {
+    // Unreadable means unverifiable - a fresh draft costs one row, a wrong
+    // one costs someone else's application.
+    return false;
+  }
 }
