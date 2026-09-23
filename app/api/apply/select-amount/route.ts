@@ -13,6 +13,7 @@ import {
   decodeApprovalOffer,
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
+import { MIN_WITHDRAW_AMOUNT } from "@/lib/withdraw-amount";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No active application found" }, { status: 400 });
     }
 
-    if (typeof amount !== "number" || amount < 500) {
-      return NextResponse.json({ error: "amount must be at least 500" }, { status: 400 });
+    // The same floor the dial and plan screens use: the minimum, or the whole
+    // approval when that's smaller. It was a separate hard-coded 500 here, so
+    // a $400 approval - which can only choose $400 - was refused on save, and
+    // the page ignores this call's errors, so nobody saw it happen.
+    const offerRaw = request.cookies.get(APPROVAL_OFFER_COOKIE)?.value;
+    const approved = (offerRaw ? decodeApprovalOffer(offerRaw) : null)?.approvedLoanAmount ?? 0;
+    const floor = approved > 0 ? Math.min(MIN_WITHDRAW_AMOUNT, approved) : MIN_WITHDRAW_AMOUNT;
+
+    if (typeof amount !== "number" || amount < floor) {
+      return NextResponse.json({ error: `amount must be at least ${floor}` }, { status: 400 });
     }
 
     await setDesiredAmount(leadId, amount);
