@@ -71,6 +71,34 @@ export function getAscendOrder(applicantId: string): Promise<AscendOrder | null>
 }
 
 /**
+ * A stored order read back as the decision Ascend gave - the inverse of
+ * recordAscendOrder, so an application that already has an order can be
+ * decided from it rather than by buying a second credit pull.
+ *
+ * `userId` is not kept on the order (it lives on the applicant) and nothing
+ * that decides a destination reads it. A missing risk_status reads as
+ * PENDING: unknown is not approved.
+ */
+export function orderAsCreditResult(order: AscendOrder): AscendCreditResult {
+  const amount = (value: string | null) => (value === null ? undefined : Number(value));
+  return {
+    orderId: order.order_id,
+    userId: "",
+    newCustomer: order.new_customer ?? true,
+    risk: {
+      riskStatus:
+        order.risk_status === "passed" ? "PASS" : order.risk_status === "rejected" ? "REJECT" : "PENDING",
+    },
+    creditScore: {
+      creditLimit: amount(order.a_card_limit),
+      mlcbMaxLoanAmount: amount(order.maximum_loan_quantum),
+      creditLevel: order.credit_level ?? undefined,
+      creditScore: amount(order.credit_score),
+    },
+  };
+}
+
+/**
  * Overwrites an order's decision after Ascend has re-scored it.
  *
  * Submitting income turns a PENDING order into a PASS or a REJECT, and the

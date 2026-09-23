@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { decideAfterIncome,
   decideApplyOutcome, decideIdentityOutcome, decideSubmission } from "./apply-outcome";
 import type { AscendCreditResult } from "./ascend/client";
+import { orderAsCreditResult } from "./db/ascend-orders";
+import type { AscendOrder } from "./db/types";
 
 /** A PASS exactly as /openApi/apply/credit returned one on 2026-09-16. */
 const PASSED: AscendCreditResult = {
@@ -230,5 +232,55 @@ describe("decideAfterIncome", () => {
     });
 
     expect(outcome).toMatchObject({ kind: "declined", destination: "/apply/rejected" });
+  });
+});
+
+describe("deciding from a stored order", () => {
+  // The guard before apply/credit: a resubmit is decided from the order on
+  // file instead of a second credit pull, so it must land exactly where the
+  // original answer did. Amounts are Christopher's two real applications on
+  // staging, 2026-09-23 - rejected at 05:32, passed at $400 at 05:36.
+  const stored = (over: Partial<AscendOrder>): AscendOrder => ({
+    id: "row",
+    created_at: "2026-09-23T05:32:30Z",
+    updated_at: "2026-09-23T05:32:30Z",
+    applicant_id: "b3b88154-ae8b-436c-9e70-1531b0578e43",
+    order_id: "1552311700000000000",
+    risk_status: "rejected",
+    a_card_limit: null,
+    maximum_loan_quantum: null,
+    new_customer: true,
+    credit_level: null,
+    credit_score: null,
+    ...over,
+  });
+
+  it("keeps a rejected applicant on the rejected page", () => {
+    expect(decideSubmission({ ascend: orderAsCreditResult(stored({})) })).toMatchObject({
+      kind: "declined",
+      destination: "/apply/rejected",
+    });
+  });
+
+  it("keeps an approved applicant on the offer Ascend actually made", () => {
+    const decision = decideSubmission({
+      ascend: orderAsCreditResult(
+        stored({ risk_status: "passed", a_card_limit: "400.00", maximum_loan_quantum: "21760.00" }),
+      ),
+    });
+
+    expect(decision).toMatchObject({ kind: "approved", aCardLimit: 400, maximumLoanQuantum: 21760 });
+  });
+
+  it("sends a still-pending order back to the income step", () => {
+    const decision = decideSubmission({ ascend: orderAsCreditResult(stored({ risk_status: "pending" })) });
+
+    expect(decision).toMatchObject({ kind: "needs_income", destination: "/apply/verify-income" });
+  });
+
+  it("never reads an order with no recorded status as approved", () => {
+    const decision = decideSubmission({ ascend: orderAsCreditResult(stored({ risk_status: null })) });
+
+    expect(decision.kind).not.toBe("approved");
   });
 });

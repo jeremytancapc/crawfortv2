@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   approvalOfferCookieValue,
+  clearApprovalOfferCookie,
   storedApprovalOfferFromForm,
 } from "@/lib/approval-offer";
 import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
@@ -25,6 +26,7 @@ import {
   reviewGateCookieValue,
   incomeGateCookieValue,
   clearIncomeGateCookie,
+  REVIEW_GATE_COOKIE,
   SESSION_COOKIE,
 } from "@/lib/apply-session";
 import { initialLoanFormData } from "@/lib/loan-form";
@@ -54,7 +56,12 @@ import {
 import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
 import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
-import { DuplicateAscendOrderError, recordAscendOrder } from "@/lib/db/ascend-orders";
+import {
+  DuplicateAscendOrderError,
+  getAscendOrder,
+  orderAsCreditResult,
+  recordAscendOrder,
+} from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { resolveAscendIdentity } from "@/lib/ascend/identity";
 import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-info";
@@ -334,18 +341,27 @@ export async function POST(request: NextRequest) {
     console.error("[apply/submit] could not build borrowerMyInfo", err);
   }
 
-  const ascendResult = await requestAscendDecision({
-    desiredAmount: formData.amount,
-    singpassRawKey: formData.singpassRawKey,
-    // Once Ascend holds this person's MyInfo, the userId alone is accepted and
-    // the whole payload no longer has to travel.
-    ascendUserId:
-      identity?.kind === "continue" && identity.creditCallUses === "userId"
-        ? identity.userId
-        : null,
-    applicantId: leadId,
-    borrowerMyInfo,
-  });
+  // One order per application, decided once (ADR-0001). A resubmit - a
+  // double tap, a retry, a second tab - used to call apply/credit again and
+  // only find the first order when saving the second failed as a duplicate:
+  // the credit pull already bought, and the applicant sent wherever the
+  // *new* answer pointed rather than the one on record.
+  const existingOrder = isDatabaseConfigured() ? await getAscendOrder(leadId) : null;
+
+  const ascendResult = existingOrder
+    ? orderAsCreditResult(existingOrder)
+    : await requestAscendDecision({
+        desiredAmount: formData.amount,
+        singpassRawKey: formData.singpassRawKey,
+        // Once Ascend holds this person's MyInfo, the userId alone is accepted and
+        // the whole payload no longer has to travel.
+        ascendUserId:
+          identity?.kind === "continue" && identity.creditCallUses === "userId"
+            ? identity.userId
+            : null,
+        applicantId: leadId,
+        borrowerMyInfo,
+      });
 
   const decision = decideSubmission({ ascend: ascendResult });
 
@@ -361,7 +377,19 @@ export async function POST(request: NextRequest) {
     if (pushed) await markAirConnectLeadPushed(leadId);
   };
 
-  if (ascendResult && isDatabaseConfigured()) {
+  // A resubmit must never send AirConnect the same lead twice - only push if
+  // the earlier attempt never did.
+  const pushIfNeverPushed = async () => {
+    const existingApplicant = await getApplicant(leadId);
+    if (existingApplicant && !existingApplicant.airconnect_lead_pushed_at) {
+      await pushLeadToAirConnectOnce();
+    }
+  };
+
+  if (existingOrder) {
+    // Nothing new to record - this is the order already on file.
+    await pushIfNeverPushed();
+  } else if (ascendResult && isDatabaseConfigured()) {
     try {
       // Ascend's own user id, needed before any document can be uploaded
       // against this applicant - files hang off its user, not our id.
@@ -374,28 +402,15 @@ export async function POST(request: NextRequest) {
       await pushLeadToAirConnectOnce();
     } catch (err) {
       if (err instanceof DuplicateAscendOrderError) {
-        // Already decided. Keep the first Order rather than buying a second.
+        // Two submits raced past the guard above. The first one's order
+        // stands; this answer is already spent.
         console.warn("[apply/submit] order already exists, keeping the first", leadId);
-
-        // A resubmit lands here. Only push if the earlier attempt never did -
-        // this must never send AirConnect the same lead twice.
-        const existingApplicant = await getApplicant(leadId);
-        if (existingApplicant && !existingApplicant.airconnect_lead_pushed_at) {
-          await pushLeadToAirConnectOnce();
-        }
+        await pushIfNeverPushed();
       } else {
         console.error("[apply/submit] could not record Ascend order", err);
       }
     }
   }
-
-  // ── 5. Update session with approval result (slim cookie - no CPF/NOA blobs) ─
-  const updatedSession = buildPostSubmitSession(sessionData, leadId, {
-    approvedLoanAmount: finalAssessment.approvedLoanAmount,
-    verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
-    incomeSource: finalAssessment.incomeSource,
-  });
-  const encoded = encodeSession(updatedSession);
 
   const res = NextResponse.json({
     leadId,
@@ -417,23 +432,32 @@ export async function POST(request: NextRequest) {
   res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
   res.cookies.set(clearMyinfoCookie());
 
-  // Ascend asked for income, so the income step is now where this applicant
-  // belongs and the funnel lock has to know it. Without this they would be
-  // sent to the pending page - away from the one screen that can move them on.
-  if (decision.kind === "needs_income") {
-    res.cookies.set(incomeGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
-  } else {
-    res.cookies.set(clearIncomeGateCookie());
-  }
+  // ── 5. Cookies follow Ascend's decision, never the local engine's ─────────
+  //
+  // These used to be granted when the local engine said eligible - and it
+  // says eligible far more often than Ascend does. Every applicant on
+  // staging on 2026-09-23 was locally eligible, including the two Ascend
+  // rejected, so both left with an approval_offer cookie saying they had
+  // been offered $1,000 and $5,000. The funnel guard reads that cookie as
+  // "approved", and on the next refresh sent a rejected applicant to choose
+  // a loan plan (ADR-0001: the engine no longer decides anything).
+  const sessionAfter = (approvedLoanAmount: number) => {
+    const next = buildPostSubmitSession(sessionData, leadId, {
+      approvedLoanAmount,
+      verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+      incomeSource: finalAssessment.incomeSource,
+    });
+    return { ...sessionCookieValue(next), value: encodeSession(next) };
+  };
 
-  if (finalAssessment.isEligible && finalAssessment.approvedLoanAmount > 0) {
-    const sc = sessionCookieValue(updatedSession);
-    res.cookies.set({ ...sc, value: encoded });
+  if (decision.kind === "approved") {
+    res.cookies.set(sessionAfter(decision.aCardLimit));
+    res.cookies.set(clearIncomeGateCookie());
     res.cookies.set(reviewGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
     res.cookies.set(
       approvalOfferCookieValue(
         storedApprovalOfferFromForm(leadId, formData, {
-          approvedLoanAmount: finalAssessment.approvedLoanAmount,
+          approvedLoanAmount: decision.aCardLimit,
           verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
           incomeSource: finalAssessment.incomeSource,
         }),
@@ -442,6 +466,23 @@ export async function POST(request: NextRequest) {
     return res;
   }
 
+  if (decision.kind === "needs_income") {
+    // The session has to survive this one: the upload and income steps both
+    // find the application through the session's leadId. It used to survive
+    // only when the local engine also said eligible - a locally ineligible
+    // applicant Ascend asked for payslips had their session cleared below,
+    // and every upload after that answered "No application in progress".
+    res.cookies.set(sessionAfter(0));
+    res.cookies.set(incomeGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
+    res.cookies.set(clearApprovalOfferCookie());
+    res.cookies.set({ name: REVIEW_GATE_COOKIE, value: "", maxAge: 0, path: "/" });
+    return res;
+  }
+
+  // Declined, unresolved, or Ascend unreachable. Nothing left to continue,
+  // and nothing may say otherwise. The destination carries ?leadId=, so the
+  // page they land on does not need the session to find them.
+  res.cookies.set(clearIncomeGateCookie());
   applyClearApplyCookiesOnResponse(res);
   return res;
 }
