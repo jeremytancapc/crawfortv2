@@ -54,7 +54,7 @@ describe("decideApplyOutcome", () => {
     expect(outcome).not.toHaveProperty("aCardLimit");
   });
 
-  it("sends a rejected applicant to the credit review queue, never to an offer", () => {
+  it("sends a rejected applicant to the rejected page, never to an offer", () => {
     const outcome = decideApplyOutcome({
       ...PASSED,
       risk: { riskStatus: "REJECT", riskMsg: "Outstanding balance exceeds limit" },
@@ -62,16 +62,19 @@ describe("decideApplyOutcome", () => {
     });
 
     expect(outcome.kind).toBe("declined");
-    expect(outcome.destination).toBe("/apply/pending");
+    expect(outcome.destination).toBe("/apply/rejected");
     expect(outcome).toMatchObject({ reason: "Outstanding balance exceeds limit" });
   });
 
-  it("declines rather than approves when Ascend passes but names no limit", () => {
+  it("holds in review rather than approving when Ascend passes but names no limit", () => {
     // Defensive: a PASS with an empty creditScore has no A-Card Limit, and
     // falling back to 0 would render an offer of $0 as though it were real.
+    // Not a rejection either - Ascend never said REJECT, so "Application
+    // Rejected" would be telling this applicant something false.
     const outcome = decideApplyOutcome({ ...PASSED, creditScore: {} });
 
-    expect(outcome.kind).toBe("declined");
+    expect(outcome.kind).toBe("unresolved");
+    expect(outcome.destination).toBe("/apply/pending");
   });
 });
 
@@ -165,7 +168,7 @@ describe("decideSubmission", () => {
       ascend: { ...PASSED, risk: { riskStatus: "REJECT", riskMsg: "Too much outstanding" }, creditScore: {} },
     });
 
-    expect(decision).toMatchObject({ kind: "declined", destination: "/apply/pending" });
+    expect(decision).toMatchObject({ kind: "declined", destination: "/apply/rejected" });
   });
 
   it("shows a failure state when Ascend gave no answer, never an offer", () => {
@@ -226,6 +229,6 @@ describe("decideAfterIncome", () => {
       risk: { riskStatus: "REJECT" as const, riskMsg: "Income below threshold" },
     });
 
-    expect(outcome).toMatchObject({ kind: "declined", destination: "/apply/pending" });
+    expect(outcome).toMatchObject({ kind: "declined", destination: "/apply/rejected" });
   });
 });

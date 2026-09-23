@@ -16,7 +16,7 @@ import type { AscendCreditResult, AscendUser } from "./ascend/client";
 
 /** Where an applicant goes once their income has been submitted and re-scored. */
 export type AfterIncomeOutcome =
-  | Extract<ApplyOutcome, { kind: "approved" } | { kind: "declined" }>
+  | Extract<ApplyOutcome, { kind: "approved" } | { kind: "declined" } | { kind: "unresolved" }>
   | {
       kind: "in_review";
       /** The credit review queue, not a dead end. */
@@ -41,7 +41,17 @@ export type ApplyOutcome =
     }
   | {
       kind: "declined";
-      /** The credit review queue, not a dead end. */
+      /** Ascend rejected outright - a real decision, not a dead end left
+       *  unexplained. */
+      destination: "/apply/rejected";
+      reason: string | null;
+    }
+  | {
+      kind: "unresolved";
+      /** A PASS that named no limit is not a rejection - Ascend approved in
+       *  principle but gave nothing to offer. The credit review queue, not
+       *  a dead end, and not "Application Rejected" for someone Ascend
+       *  never actually declined. */
       destination: "/apply/pending";
       reason: string | null;
     };
@@ -55,13 +65,22 @@ export function decideApplyOutcome(result: AscendCreditResult): ApplyOutcome {
     };
   }
 
+  if (result.risk.riskStatus === "REJECT") {
+    return {
+      kind: "declined",
+      destination: "/apply/rejected",
+      reason: result.risk.riskMsg ?? null,
+    };
+  }
+
   const aCardLimit = result.creditScore.creditLimit;
 
   // A PASS that names no limit is not an offer. Falling back to zero would
-  // render "$0" to an applicant as though Ascend had decided it.
-  if (result.risk.riskStatus === "REJECT" || !aCardLimit || aCardLimit <= 0) {
+  // render "$0" to an applicant as though Ascend had decided it - and it is
+  // not a rejection either, since Ascend never said REJECT.
+  if (!aCardLimit || aCardLimit <= 0) {
     return {
-      kind: "declined",
+      kind: "unresolved",
       destination: "/apply/pending",
       reason: result.risk.riskMsg ?? null,
     };

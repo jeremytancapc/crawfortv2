@@ -8,7 +8,7 @@ import { BadCaseNav } from "@/app/apply/bad-case-nav";
 import { useApplyPath } from "@/app/use-apply-path";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 
-export function RejectedView() {
+export function RejectedView({ isRealApplicant = false }: { isRealApplicant?: boolean }) {
   const applyHref = useApplyPath();
 
   return (
@@ -63,7 +63,11 @@ export function RejectedView() {
         </p>
       </div>
 
-      <BadCaseNav back="/apply/pending-review" next="/apply/existing-customer" />
+      {/* A real decline has nothing to "continue" to - the demo chain's
+          back/next arrows only make sense for staff walking it manually. */}
+      {!isRealApplicant && (
+        <BadCaseNav back="/apply/pending-review" next="/apply/existing-customer" />
+      )}
     </ApplyIosShell>
   );
 }
