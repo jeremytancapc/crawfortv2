@@ -30,5 +30,33 @@ export default async function ReviewPage() {
     ...hydrated,
   });
 
-  return <ReviewForm initialData={initialData} />;
+  return (
+    <>
+      <MyinfoEditorLink rid={hydrated?.singpassRawKey ?? session?.singpassRawKey} />
+      <ReviewForm initialData={initialData} />
+    </>
+  );
+}
+
+/**
+ * Staging-only shortcut to the MyInfo editor for this application's own
+ * retrieval - without it a tester has no way to find their own rid, since
+ * singpassRawKey only ever travels inside the signed session cookie.
+ *
+ * Same gate as the inspector it links to (MYINFO_CAPTURE_ENABLED): off by
+ * default, so a real applicant's review page is never touched by this.
+ */
+function MyinfoEditorLink({ rid }: { rid?: string }) {
+  if (process.env.MYINFO_CAPTURE_ENABLED !== "true" || !rid) return null;
+
+  return (
+    <a
+      href={`/auth/callback-result?rid=${rid}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-3 right-3 z-50 rounded-full border border-amber-400 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900 shadow-md hover:bg-amber-100"
+    >
+      Edit MyInfo (staging)
+    </a>
+  );
 }

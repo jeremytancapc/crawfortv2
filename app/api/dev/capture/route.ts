@@ -11,8 +11,14 @@
  * this repository and guessing wrong wastes a Singpass round trip:
  *
  *   POST {...}              - webhook style, either {myinfo:{...}} or bare
+ *   POST ?rid=<uuid> {...}  - overwrite an existing capture in place
  *   GET  ?payload=<json>    - redirect style with the data inline
  *   GET  ?rid=<uuid>        - read back a payload already captured
+ *
+ * The `?rid=` form on POST is what lets a tester edit a capture - drop the
+ * CPF or NOA block, say - and have submit send Ascend exactly that: submit
+ * reads myinfo_retrievals by this same id, so overwriting the row in place
+ * reaches a live, in-progress application without it needing a new key.
  *
  * OFF unless MYINFO_CAPTURE_ENABLED=true. This returns unminimised personal
  * data - full NRIC, address, CPF and NOA history - to whoever holds the link,
@@ -75,7 +81,12 @@ export async function POST(request: NextRequest) {
 
   // Store the whole envelope, not just the unwrapped payload - if the Lambda
   // sends an error rather than data, the envelope is the thing worth seeing.
-  const stored = (myinfo ?? (parsed as Record<string, unknown>)) ?? {};
+  // An edited capture is the one case this does not apply to: the tester is
+  // sending back exactly the object they want stored, envelope or not, and
+  // re-wrapping it in a search for `myinfo`/`uinfin` would silently drop an
+  // edit that removed the field `unwrap` looks for.
+  const editingExisting = Boolean(request.nextUrl.searchParams.get("rid"));
+  const stored = editingExisting ? ((parsed as Record<string, unknown>) ?? {}) : (myinfo ?? (parsed as Record<string, unknown>) ?? {});
 
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
@@ -84,7 +95,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rid = await saveMyinfoRetrieval(stored);
+  const existingRid = request.nextUrl.searchParams.get("rid") ?? undefined;
+  const rid = await saveMyinfoRetrieval(stored, existingRid);
   const resultUrl = `${origin(request)}/auth/callback-result?rid=${rid}`;
 
   // Mirrors the shape /api/auth/callback returns, so a Lambda written against

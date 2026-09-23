@@ -20,6 +20,56 @@ export default function CallbackResultView({
   const [error, setError]         = useState<string | null>(null);
   const [loading, setLoading]     = useState(false);
   const [activeTab, setActiveTab] = useState<"patch" | "raw">("patch");
+  const [saving, setSaving]       = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+
+  /** Wherever the real fields live - flat (legacy) or nested under
+   *  person_info (FAPI 2.0). Editing the wrong level would silently no-op. */
+  const personLevel = useCallback((obj: Record<string, unknown>): Record<string, unknown> => {
+    const nested = obj.person_info;
+    return nested && typeof nested === "object" ? (nested as Record<string, unknown>) : obj;
+  }, []);
+
+  const stripField = useCallback(
+    (field: string) => {
+      setError(null);
+      setSaveNotice(null);
+      try {
+        const parsed = JSON.parse(rawJson) as Record<string, unknown>;
+        delete personLevel(parsed)[field];
+        setRawJson(JSON.stringify(parsed, null, 2));
+      } catch {
+        setError("Invalid JSON - fix that before stripping a field.");
+      }
+    },
+    [rawJson, personLevel],
+  );
+
+  const saveToCapture = useCallback(async () => {
+    if (!rid) return;
+    setSaveNotice(null);
+    setError(null);
+    setSaving(true);
+    try {
+      JSON.parse(rawJson); // fail early with the same message stripField uses
+      const res = await fetch(`/api/dev/capture?rid=${rid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: rawJson,
+      });
+      if (!res.ok) {
+        setError(`Save failed: server error ${res.status}`);
+        return;
+      }
+      setSaveNotice(
+        "Saved. A live application still on this rid will send this edited MyInfo to Ascend at submit.",
+      );
+    } catch {
+      setError("Invalid JSON - check your input before saving.");
+    } finally {
+      setSaving(false);
+    }
+  }, [rawJson, rid]);
 
   const process = useCallback(async () => {
     setError(null);
@@ -83,6 +133,12 @@ export default function CallbackResultView({
               Retrieval <code>{rid}</code>
               {" · read from myinfo_retrievals. This is data Singpass really returned, not the mock."}
             </p>
+            <p className="mt-2 text-[11px] text-emerald-800">
+              Edit the JSON below, then <b>Save to this capture</b> - any application still
+              open on this same retrieval will send the edited MyInfo to Ascend at submit.
+              The strip buttons below the textarea remove a field for you, so a typo can&apos;t
+              break the JSON.
+            </p>
           </div>
         )}
       </div>
@@ -116,13 +172,45 @@ export default function CallbackResultView({
           placeholder='Paste raw myinfo JSON here, or a full webhook payload { "myinfo": { ... } }'
           spellCheck={false}
         />
-        <button
-          onClick={() => void process()}
-          disabled={loading || !rawJson.trim()}
-          className="self-start rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? "Processing…" : "Process →"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void process()}
+            disabled={loading || !rawJson.trim()}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? "Processing…" : "Process →"}
+          </button>
+
+          {rid && (
+            <>
+              <span className="mx-1 h-4 w-px bg-slate-300" aria-hidden />
+              <button
+                onClick={() => stripField("cpfcontributions")}
+                className="rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+              >
+                Remove CPF
+              </button>
+              <button
+                onClick={() => stripField("noahistory")}
+                className="rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+              >
+                Remove NOA
+              </button>
+              <button
+                onClick={() => void saveToCapture()}
+                disabled={saving}
+                className="rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save to this capture"}
+              </button>
+            </>
+          )}
+        </div>
+        {saveNotice && (
+          <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+            {saveNotice}
+          </p>
+        )}
         {error && (
           <p className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">{error}</p>
         )}
