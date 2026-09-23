@@ -5,6 +5,7 @@ import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { hydrateSingpassReviewSession } from "@/lib/singpass-session-hydrate";
 
+import { MyinfoDebugWidget } from "./myinfo-debug-widget";
 import { ReviewForm } from "./review-form";
 
 export const dynamic = "force-dynamic";
@@ -30,36 +31,20 @@ export default async function ReviewPage() {
     ...hydrated,
   });
 
+  // Staging-only, one-click CPF/NOA removal for this application's own
+  // retrieval - without a rid there is nothing to edit. Gated by
+  // MYINFO_EDITOR_ENABLED, not MYINFO_CAPTURE_ENABLED - that flag also
+  // diverts the real Singpass callback to the inspector, which would stop
+  // a tester from ever reaching this page with a rid to edit. This flag has
+  // no effect on the callback, so a real applicant's review page is never
+  // touched by this either way.
+  const rid = hydrated?.singpassRawKey ?? session?.singpassRawKey;
+  const showMyinfoDebug = process.env.MYINFO_EDITOR_ENABLED === "true" && Boolean(rid);
+
   return (
     <>
-      <MyinfoEditorLink rid={hydrated?.singpassRawKey ?? session?.singpassRawKey} />
+      {showMyinfoDebug && rid && <MyinfoDebugWidget rid={rid} />}
       <ReviewForm initialData={initialData} />
     </>
-  );
-}
-
-/**
- * Staging-only shortcut to the MyInfo editor for this application's own
- * retrieval - without it a tester has no way to find their own rid, since
- * singpassRawKey only ever travels inside the signed session cookie.
- *
- * Gated by MYINFO_EDITOR_ENABLED, not MYINFO_CAPTURE_ENABLED - that flag
- * also diverts the real Singpass callback to the inspector, which stops
- * a tester from ever reaching this page with a rid to edit. This flag has
- * no effect on the callback: Singpass continues into the funnel as normal,
- * so a real applicant's review page is never touched by this either way.
- */
-function MyinfoEditorLink({ rid }: { rid?: string }) {
-  if (process.env.MYINFO_EDITOR_ENABLED !== "true" || !rid) return null;
-
-  return (
-    <a
-      href={`/auth/callback-result?rid=${rid}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed bottom-3 right-3 z-50 rounded-full border border-amber-400 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900 shadow-md hover:bg-amber-100"
-    >
-      Edit MyInfo (staging)
-    </a>
   );
 }
