@@ -119,10 +119,10 @@ export async function submitIncome(
       };
     }
 
-    const result = (await res.json()) as { destination?: string };
+    const result = (await res.json()) as { destination?: string; leadId?: string };
     return {
       ok: true,
-      nextPath: nextPathAfterSubmit({ destination: result.destination, leadId: null }),
+      nextPath: nextPathAfterSubmit({ destination: result.destination, leadId: result.leadId ?? null }),
     };
   } catch (err) {
     console.error("Income submission failed", err);

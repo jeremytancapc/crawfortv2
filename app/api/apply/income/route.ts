@@ -27,6 +27,7 @@ import {
 } from "@/lib/approval-offer";
 import { ascendSubmitIncome, AscendError } from "@/lib/ascend/client";
 import { ascendConfig } from "@/lib/ascend/config";
+import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
 import { getAscendOrder, updateAscendOrderDecision } from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
@@ -118,6 +119,11 @@ export async function POST(request: NextRequest) {
     // being reviewed, not that more is wanted.
     const outcome = decideAfterIncome(settled);
     const res = NextResponse.json({
+      // The declined/in-review/unresolved branch below clears the session,
+      // so the client has nowhere else to read a leadId from - and without
+      // one, postSubmitUrl sends it to a bare "/apply/pending" that the
+      // funnel guard cannot resolve to anything and bounces to "/".
+      leadId: applicantId,
       destination: outcome.destination,
       outcome: outcome.kind,
       aCardLimit: outcome.kind === "approved" ? outcome.aCardLimit : null,
@@ -152,6 +158,18 @@ export async function POST(request: NextRequest) {
           }),
         ),
       );
+    } else {
+      // Declined, in review, or unresolved: not approved, but just as
+      // submitted as the approved branch above - and review_gate would be
+      // the wrong marker for that, since it also grants /apply/book access
+      // (hasPostSubmitAccess). Clearing apply_gate and the session instead
+      // is what /apply/submit's own declined branch already does: with no
+      // apply_gate, canEnterReview can't say yes, and the funnel guard stops
+      // reading a leadId alone as "still eligible for review." Without this,
+      // an applicant Ascend declined via income could navigate straight
+      // back into Review and edit it - not just see a dead button, but
+      // actually reach the form the one-way gate exists to lock.
+      applyClearApplyCookiesOnResponse(res);
     }
 
     return res;
