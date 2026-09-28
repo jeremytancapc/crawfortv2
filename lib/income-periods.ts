@@ -102,11 +102,58 @@ type Slice = {
   days: number;
   amount: number;
   employer: string | null;
+  /** The employer as compared: "Sunrise Logistics Pte. Ltd." and "SUNRISE LOGISTICS PTE LTD" are one. */
+  employerKey: string;
   whole: boolean;
   /** Inclusive day range within this month, for working out what is absent. */
   from: number;
   to: number;
 };
+
+/**
+ * An employer name as compared, not as shown. Case, punctuation and the
+ * company suffix vary between one payslip and the next from the same payroll,
+ * and treating those as two employers would let a duplicate upload through as
+ * a second job.
+ */
+function employerKey(employer: string | null): string {
+  return (employer ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .replace(/(PTELTD|PRIVATELIMITED|LTD|LIMITED|LLP|INC)$/, "");
+}
+
+function overlapsWithinAnEmployer(slices: Slice[]): boolean {
+  const byEmployer = new Map<string, Slice[]>();
+  for (const slice of slices) {
+    byEmployer.set(slice.employerKey, [...(byEmployer.get(slice.employerKey) ?? []), slice]);
+  }
+  for (const own of byEmployer.values()) {
+    const sorted = [...own].sort((a, b) => a.from - b.from);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].from <= sorted[i - 1].to) return true;
+    }
+  }
+
+  // The same days and the same pay under two employer names is one payslip
+  // whose employer was read two ways, not two jobs that pay to the cent.
+  const fingerprints = new Set<string>();
+  for (const slice of slices) {
+    const print = `${slice.from}|${slice.to}|${slice.amount.toFixed(2)}`;
+    if (fingerprints.has(print)) return true;
+    fingerprints.add(print);
+  }
+  return false;
+}
+
+/** "A PTE LTD + B PTE LTD", each employer once, in the order they were read. */
+function employersOf(slices: Slice[]): string | null {
+  const seen = new Map<string, string>();
+  for (const slice of slices) {
+    if (slice.employer && !seen.has(slice.employerKey)) seen.set(slice.employerKey, slice.employer);
+  }
+  return seen.size > 0 ? [...seen.values()].join(" + ") : null;
+}
 
 export function assembleMonths(periods: PayPeriod[]): Assembly {
   const byMonth = new Map<string, Slice[]>();
@@ -133,6 +180,7 @@ export function assembleMonths(periods: PayPeriod[]): Assembly {
         days,
         amount: (period.gross * days) / totalDays,
         employer: period.employer,
+        employerKey: employerKey(period.employer),
         whole: days === totalDays,
         from: overlapFrom,
         to: overlapTo,
@@ -149,14 +197,24 @@ export function assembleMonths(periods: PayPeriod[]): Assembly {
 
   for (const [month, slices] of byMonth) {
     const daysInMonth = daysInMonthOf(month);
-    const daysCovered = slices.reduce((sum, slice) => sum + slice.days, 0);
 
-    if (daysCovered > daysInMonth) {
+    // An overlap is one employer paying for the same day twice - the same
+    // payslip uploaded twice, or a fortnightly one beside a monthly one.
+    // Two employers paying for the same day is two jobs, and both count.
+    if (overlapsWithinAnEmployer(slices)) {
       overlapping.push(month);
       continue;
     }
-    if (daysCovered < daysInMonth) {
-      incomplete.push({ month, daysCovered, daysInMonth, missing: gapsIn(month, slices) });
+
+    // Covered is covered by anyone: a job change on the 16th, or a second
+    // job that started then, leaves no day of the month without pay.
+    const missing = gapsIn(month, slices);
+    if (missing.length > 0) {
+      const gapDays = missing.reduce(
+        (sum, gap) => sum + inclusiveDays(Date.parse(`${gap.from}T00:00:00Z`), Date.parse(`${gap.to}T00:00:00Z`)),
+        0,
+      );
+      incomplete.push({ month, daysCovered: daysInMonth - gapDays, daysInMonth, missing });
       continue;
     }
 
@@ -165,7 +223,7 @@ export function assembleMonths(periods: PayPeriod[]): Assembly {
       month,
       // Cents, not floating-point dust: 2690 + 1408 must read as 4098.
       amount: Math.round(amount * 100) / 100,
-      employer: slices.find((slice) => slice.employer)?.employer ?? null,
+      employer: employersOf(slices),
       exact: slices.every((slice) => slice.whole),
       periods: slices.length,
     });

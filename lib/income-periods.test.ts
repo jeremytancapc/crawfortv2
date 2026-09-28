@@ -305,3 +305,83 @@ describe("uploadWindowLabel names both sets of months the rule accepts", () => {
     );
   });
 });
+
+describe("assembleMonths with more than one employer", () => {
+  const TODAY = new Date("2026-09-28T00:00:00Z");
+  const at = (employer: string) => (start: string, end: string, gross: number): PayPeriod => ({
+    employer, start, end, gross,
+  });
+  const dayJob = at("SUNRISE LOGISTICS PTE LTD");
+  const nightJob = at("KOPI CORNER PTE LTD");
+
+  it("adds two jobs' payslips for the same month together", () => {
+    const assembly = assembleMonths([
+      dayJob("2026-08-01", "2026-08-31", 3200),
+      nightJob("2026-08-01", "2026-08-31", 1100),
+    ]);
+
+    expect(assembly.overlapping).toEqual([]);
+    expect(assembly.months).toMatchObject([
+      { month: "2026-08", amount: 4300, exact: true, periods: 2 },
+    ]);
+    expect(assembly.months[0].employer).toBe("SUNRISE LOGISTICS PTE LTD + KOPI CORNER PTE LTD");
+  });
+
+  it("still refuses the same employer's payslip twice", () => {
+    const assembly = assembleMonths([
+      dayJob("2026-08-01", "2026-08-31", 3200),
+      at("Sunrise Logistics Pte. Ltd.")("2026-08-01", "2026-08-31", 3200),
+    ]);
+
+    expect(assembly.overlapping).toEqual(["2026-08"]);
+    expect(assembly.months).toEqual([]);
+  });
+
+  it("counts a second job that started partway through the window from when it started", () => {
+    const assembly = assembleMonths([
+      dayJob("2026-06-01", "2026-06-30", 3200),
+      dayJob("2026-07-01", "2026-07-31", 3200),
+      dayJob("2026-08-01", "2026-08-31", 3200),
+      nightJob("2026-08-01", "2026-08-31", 1100),
+    ]);
+
+    expect(assembly.months.map((m) => [m.month, m.amount])).toEqual([
+      ["2026-08", 4300],
+      ["2026-07", 3200],
+      ["2026-06", 3200],
+    ]);
+    expect(nextUploadAsk(assembly, { monthlyOnly: true, today: TODAY })).toBeNull();
+  });
+
+  it("treats the same dates and the same pay under two spellings as one payslip twice", () => {
+    // Two jobs paying to the cent for the same days is not a thing that
+    // happens; one payslip whose employer was read two ways is.
+    const assembly = assembleMonths([
+      dayJob("2026-08-01", "2026-08-31", 3200),
+      at("SUNRISE GROUP")("2026-08-01", "2026-08-31", 3200),
+    ]);
+
+    expect(assembly.overlapping).toEqual(["2026-08"]);
+  });
+
+  it("counts a second job that started mid-month, since it has no payslip for the days before", () => {
+    const assembly = assembleMonths([
+      dayJob("2026-06-01", "2026-06-30", 3200),
+      dayJob("2026-07-01", "2026-07-31", 3200),
+      dayJob("2026-08-01", "2026-08-31", 3200),
+      nightJob("2026-08-16", "2026-08-31", 550),
+    ]);
+
+    expect(assembly.months[0]).toMatchObject({ month: "2026-08", amount: 3750 });
+    expect(nextUploadAsk(assembly, { monthlyOnly: true, today: TODAY })).toBeNull();
+  });
+
+  it("joins a mid-month job change into one full month", () => {
+    const assembly = assembleMonths([
+      dayJob("2026-08-01", "2026-08-15", 1600),
+      nightJob("2026-08-16", "2026-08-31", 1900),
+    ]);
+
+    expect(assembly.months).toMatchObject([{ month: "2026-08", amount: 3500 }]);
+  });
+});
