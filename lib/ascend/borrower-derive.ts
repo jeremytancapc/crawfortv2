@@ -23,6 +23,7 @@ import {
   WORKING_POSITION_OPTIONS,
   type BorrowerAnswers,
 } from "./borrower-info";
+import type { CpfContribution, NoaRecord } from "../loan-form";
 
 type Derived = Pick<BorrowerAnswers, "employmentPeriod" | "wokingPosition" | "jobCategory">;
 
@@ -113,4 +114,53 @@ export function deriveBorrowerFields(person: Record<string, unknown>): Derived {
     wokingPosition: positionFor(valueOf(person.occupation)),
     jobCategory: "ACTIVITIES NOT ADEQUATELY DEFINED",
   };
+}
+
+export type EmploymentSuggestion = {
+  value: Extract<BorrowerAnswers["employmentType"], "EMPLOYED" | "SELF EMPLOYED">;
+  /** Which record it came from, so the screen can say why it is ticked. */
+  reason: "cpf" | "noa";
+};
+
+/** CPF older than this says where someone worked, not where they work. */
+const RECENT_CPF_MONTHS = 3;
+
+/**
+ * A pre-selection for the employment question, from records Singpass already
+ * gave us - never an answer. Employment type is the applicant's to declare,
+ * so this only saves them a tap when the records point one way, and says
+ * nothing when they do not.
+ *
+ *   EMPLOYED       an employer paid CPF for one of the last three months.
+ *   SELF EMPLOYED  no recent CPF, and this year's or last year's NOA is
+ *                  mostly trade income.
+ *
+ * Recent CPF wins over trade income: an employee with a side business is
+ * still employed. Platform work is never suggested - nothing in MyInfo tells
+ * a Grab driver from anyone else - and neither is not working, which would
+ * be a guess about someone from the absence of a record.
+ */
+export function suggestEmploymentType(
+  records: { cpfContributions: CpfContribution[]; noaHistory: NoaRecord[] },
+  today: Date = new Date(),
+): EmploymentSuggestion | null {
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth();
+  const recent = new Set(
+    Array.from({ length: RECENT_CPF_MONTHS }, (_, i) =>
+      new Date(Date.UTC(year, month - 1 - i, 1)).toISOString().slice(0, 7),
+    ),
+  );
+  if (records.cpfContributions.some((c) => recent.has(c.month) && c.amount > 0)) {
+    return { value: "EMPLOYED", reason: "cpf" };
+  }
+
+  const latest = records.noaHistory
+    .filter((n) => Number(n.yearOfAssessment) >= year - 1)
+    .sort((a, b) => b.yearOfAssessment.localeCompare(a.yearOfAssessment))[0];
+  if (latest && latest.tradeIncome > 0 && latest.tradeIncome >= latest.employmentIncome) {
+    return { value: "SELF EMPLOYED", reason: "noa" };
+  }
+
+  return null;
 }

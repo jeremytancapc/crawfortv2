@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveBorrowerFields } from "./borrower-derive";
+import { deriveBorrowerFields, suggestEmploymentType } from "./borrower-derive";
 
 /** MyInfo's shape: almost everything is wrapped as {value}. */
 const cpf = (months: string[], employer = "UOB BANK LTD") => ({
@@ -87,5 +87,66 @@ describe("deriveBorrowerFields", () => {
         {},
       ),
     ).not.toThrow();
+  });
+});
+
+describe("suggestEmploymentType, from the CPF and NOA already retrieved", () => {
+  const TODAY = new Date("2026-09-28T00:00:00Z");
+  const contribution = (month: string) => ({
+    month, amount: 1480, employer: "SUNRISE LOGISTICS PTE LTD", paidOn: `${month}-28`,
+  });
+  const noa = (year: string, employmentIncome: number, tradeIncome: number) => ({
+    yearOfAssessment: year, type: "ORIGINAL", taxClearance: "N",
+    assessableIncome: employmentIncome + tradeIncome, employmentIncome, tradeIncome,
+    rentIncome: 0, interestIncome: 0,
+  });
+
+  it("suggests employed when an employer paid CPF in the last three months", () => {
+    const suggestion = suggestEmploymentType(
+      { cpfContributions: [contribution("2026-08"), contribution("2026-07")], noaHistory: [] },
+      TODAY,
+    );
+
+    expect(suggestion).toEqual({ value: "EMPLOYED", reason: "cpf" });
+  });
+
+  it("does not call someone employed on CPF that stopped months ago", () => {
+    const suggestion = suggestEmploymentType(
+      { cpfContributions: [contribution("2026-03"), contribution("2026-02")], noaHistory: [] },
+      TODAY,
+    );
+
+    expect(suggestion).toBeNull();
+  });
+
+  it("suggests self-employed when the latest NOA is mostly trade income and CPF is quiet", () => {
+    const suggestion = suggestEmploymentType(
+      { cpfContributions: [], noaHistory: [noa("2025", 0, 48000), noa("2026", 6000, 52000)] },
+      TODAY,
+    );
+
+    expect(suggestion).toEqual({ value: "SELF EMPLOYED", reason: "noa" });
+  });
+
+  it("does not read self-employment off a NOA older than last year's", () => {
+    const suggestion = suggestEmploymentType(
+      { cpfContributions: [], noaHistory: [noa("2024", 0, 48000)] },
+      TODAY,
+    );
+
+    expect(suggestion).toBeNull();
+  });
+
+  it("prefers recent CPF over trade income - a side business does not make them self-employed", () => {
+    const suggestion = suggestEmploymentType(
+      { cpfContributions: [contribution("2026-08")], noaHistory: [noa("2026", 20000, 30000)] },
+      TODAY,
+    );
+
+    expect(suggestion?.value).toBe("EMPLOYED");
+  });
+
+  it("suggests nothing when Singpass had neither", () => {
+    expect(suggestEmploymentType({ cpfContributions: [], noaHistory: [] }, TODAY)).toBeNull();
   });
 });

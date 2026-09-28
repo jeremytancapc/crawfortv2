@@ -20,6 +20,7 @@ import {
   EMPLOYMENT_TYPE_LABELS,
   EMPLOYMENT_TYPE_OPTIONS,
 } from "@/lib/ascend/borrower-info";
+import type { EmploymentSuggestion } from "@/lib/ascend/borrower-derive";
 import {
   CheckCircle,
   ShieldCheck,
@@ -1925,21 +1926,33 @@ function DeclarationChoiceCard({
  * things only the applicant can state, and putting them on their own screen
  * would add a step to a funnel people already leave.
  *
- * EMPLOYED is offered first because that is nearly everyone; nothing is
- * pre-selected, so an answer on the record is always one somebody gave.
+ * EMPLOYED is offered first because that is nearly everyone. When the
+ * applicant's CPF or NOA points one way it arrives pre-ticked (see
+ * suggestEmploymentType), and the note under the question says what it was
+ * read from - so the answer on the record is still one they saw and kept.
  */
 export function Step7_EmploymentType({
   formData,
   updateField,
+  suggestion = null,
 }: {
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
+  suggestion?: EmploymentSuggestion | null;
 }) {
+  const showSuggestion = suggestion !== null && formData.employmentStatus === suggestion.value;
   return (
     <div>
       <p className="ios-type-label mb-2.5 text-[var(--text-secondary)]">
         What is your employment status?
       </p>
+      {showSuggestion ? (
+        <p className="-mt-1 mb-2.5 text-[13px] leading-snug text-[var(--text-tertiary)]">
+          {suggestion.reason === "cpf"
+            ? "Selected from your CPF records. Change it if it's not right."
+            : "Selected from your latest tax assessment. Change it if it's not right."}
+        </p>
+      ) : null}
       <div
         className="flex flex-col gap-2"
         role="group"

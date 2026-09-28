@@ -28,9 +28,12 @@ import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { saveReviewDraft, submitReview } from "@/app/apply/review/submit-review";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { useApplyPath } from "@/app/use-apply-path";
+import type { EmploymentSuggestion } from "@/lib/ascend/borrower-derive";
 
 interface Props {
   initialData: LoanFormData;
+  /** What employment was pre-ticked from, so the picker can say so. */
+  employmentSuggestion?: EmploymentSuggestion | null;
 }
 
 // Internal step numbers (same as original form)
@@ -52,7 +55,7 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
   },
 };
 
-export function ReviewForm({ initialData }: Props) {
+export function ReviewForm({ initialData, employmentSuggestion = null }: Props) {
   const router = useRouter();
   const applyHref = useApplyPath();
   const [formData, setFormData] = useState<LoanFormData>(initialData);
@@ -92,9 +95,9 @@ export function ReviewForm({ initialData }: Props) {
       case 5:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
-          // Ascend requires employment status and a declaration, and neither
-          // can be inferred - an unanswered one is not a default, it is a
-          // field nobody filled in.
+          // Ascend requires employment status and a declaration. Employment
+          // may arrive pre-ticked from CPF or NOA, but the applicant sees it
+          // and can change it; the declaration is never filled in for them.
           formData.employmentStatus !== "" &&
           formData.bankruptcyDeclaration !== "" &&
           formData.bankruptcyDeclaration !== "active"
@@ -104,9 +107,9 @@ export function ReviewForm({ initialData }: Props) {
       case 7:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
-          // Ascend requires employment status and a declaration, and neither
-          // can be inferred - an unanswered one is not a default, it is a
-          // field nobody filled in.
+          // Ascend requires employment status and a declaration. Employment
+          // may arrive pre-ticked from CPF or NOA, but the applicant sees it
+          // and can change it; the declaration is never filled in for them.
           formData.employmentStatus !== "" &&
           formData.bankruptcyDeclaration !== "" &&
           formData.bankruptcyDeclaration !== "active"
@@ -298,7 +301,11 @@ export function ReviewForm({ initialData }: Props) {
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
-                      <Step7_EmploymentType formData={formData} updateField={updateField} />
+                      <Step7_EmploymentType
+                        formData={formData}
+                        updateField={updateField}
+                        suggestion={employmentSuggestion}
+                      />
                       <Step7_BankruptcyDeclaration
                         formData={formData}
                         updateField={updateField}
@@ -311,7 +318,11 @@ export function ReviewForm({ initialData }: Props) {
                   {step === 7 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
-                      <Step7_EmploymentType formData={formData} updateField={updateField} />
+                      <Step7_EmploymentType
+                        formData={formData}
+                        updateField={updateField}
+                        suggestion={employmentSuggestion}
+                      />
                       <Step7_BankruptcyDeclaration
                         formData={formData}
                         updateField={updateField}

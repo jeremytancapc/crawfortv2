@@ -3,7 +3,8 @@ import { initialLoanFormData, type LoanFormData } from "@/lib/loan-form";
 import { getApplySession } from "@/lib/apply-session";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
-import { hydrateSingpassReviewSession } from "@/lib/singpass-session-hydrate";
+import { suggestEmploymentType } from "@/lib/ascend/borrower-derive";
+import { hydrateSingpassReviewSession, loadSingpassRecords } from "@/lib/singpass-session-hydrate";
 
 import { MyinfoDebugWidget } from "./myinfo-debug-widget";
 import { ReviewForm } from "./review-form";
@@ -25,10 +26,25 @@ export default async function ReviewPage() {
   await enforceApplyFunnel("/apply/review");
 
   const session = await getApplySession();
-  const hydrated = await hydrateSingpassReviewSession(session);
+  const records = await loadSingpassRecords(session);
+  const hydrated = await hydrateSingpassReviewSession(session, records);
+
+  // Pre-ticks employment from the applicant's own CPF or NOA - never from
+  // the demo records hydrate fills in for display, which would tick
+  // "Employed" for someone with no CPF at all. An answer they already gave
+  // is left alone.
+  const employmentSuggestion =
+    records && !hydrated?.employmentStatus
+      ? suggestEmploymentType({
+          cpfContributions: records.data.cpfContributions ?? [],
+          noaHistory: records.data.noaHistory ?? [],
+        })
+      : null;
+
   const initialData: LoanFormData = withDemoReviewMyInfo({
     ...initialLoanFormData,
     ...hydrated,
+    ...(employmentSuggestion ? { employmentStatus: employmentSuggestion.value } : {}),
   });
 
   // Staging-only, one-click CPF/NOA removal for this application's own
@@ -44,7 +60,7 @@ export default async function ReviewPage() {
   return (
     <>
       {showMyinfoDebug && rid && <MyinfoDebugWidget rid={rid} />}
-      <ReviewForm initialData={initialData} />
+      <ReviewForm initialData={initialData} employmentSuggestion={employmentSuggestion} />
     </>
   );
 }

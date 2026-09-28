@@ -19,15 +19,21 @@ import {
  * durable - the note about surviving serverless isolates described the
  * in-memory store, which is gone.
  */
-export async function hydrateSingpassReviewSession(
+/**
+ * The applicant's real CPF and NOA, wherever they are held - or null when
+ * none can be found. Never the demo records `hydrateSingpassReviewSession`
+ * fills in for display, so anything that draws a conclusion about the
+ * applicant (the employment pre-selection) reads this instead.
+ */
+export async function loadSingpassRecords(
   session: Partial<LoanFormData> | null,
-): Promise<Partial<LoanFormData> | null> {
-  if (!session) return withDemoReviewMyInfo(session);
+): Promise<{ data: Partial<LoanFormData>; fromStore: boolean } | null> {
+  if (!session) return null;
 
   const hasBulk =
     (session.cpfContributions?.length ?? 0) > 0 ||
     (session.noaHistory?.length ?? 0) > 0;
-  if (hasBulk) return session;
+  if (hasBulk) return { data: session, fromStore: false };
 
   const store = await cookies();
 
@@ -37,10 +43,13 @@ export async function hydrateSingpassReviewSession(
     (fromCookie.cpfContributions.length > 0 || fromCookie.noaHistory.length > 0)
   ) {
     return {
-      ...session,
-      cpfContributions: fromCookie.cpfContributions,
-      noaHistory: fromCookie.noaHistory,
-      dob: session.dob || fromCookie.dob,
+      data: {
+        ...session,
+        cpfContributions: fromCookie.cpfContributions,
+        noaHistory: fromCookie.noaHistory,
+        dob: session.dob || fromCookie.dob,
+      },
+      fromStore: false,
     };
   }
 
@@ -64,12 +73,29 @@ export async function hydrateSingpassReviewSession(
     }
   }
 
-  if (!processed) return withDemoReviewMyInfo(session);
+  if (!processed) return null;
 
-  return withDemoReviewMyInfo({
-    ...session,
-    cpfContributions: processed.cpfContributions,
-    noaHistory: processed.noaHistory,
-    dob: session.dob || processed.dob,
-  });
+  return {
+    data: {
+      ...session,
+      cpfContributions: processed.cpfContributions,
+      noaHistory: processed.noaHistory,
+      dob: session.dob || processed.dob,
+    },
+    fromStore: true,
+  };
+}
+
+/**
+ * The review page's data: the real records where the session or cookie held
+ * them, and demo records filled in for display otherwise. Pass `loaded` when
+ * the caller has already called loadSingpassRecords, to save the round trip.
+ */
+export async function hydrateSingpassReviewSession(
+  session: Partial<LoanFormData> | null,
+  loaded?: Awaited<ReturnType<typeof loadSingpassRecords>>,
+): Promise<Partial<LoanFormData> | null> {
+  const records = loaded === undefined ? await loadSingpassRecords(session) : loaded;
+  if (records && !records.fromStore) return records.data;
+  return withDemoReviewMyInfo(records?.data ?? session);
 }
