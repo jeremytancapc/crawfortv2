@@ -45,7 +45,7 @@ export type ExtractResponse = {
 };
 
 /** Said to an applicant when nothing more specific came back. */
-const GENERIC_ASK = "Please upload your last 3 monthly payslips.";
+const GENERIC_ASK = "Please upload your last 3 months of payslips or bank statements.";
 
 /**
  * Something written for a person, rather than an identifier written for us.

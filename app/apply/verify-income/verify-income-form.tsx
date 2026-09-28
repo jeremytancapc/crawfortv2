@@ -45,7 +45,7 @@ export function VerifyIncomeForm({
     incomeMonths,
     extractionAsk,
     canSubmit,
-    uploadMonthNames,
+    uploadWindow,
     averageIncome,
     submitIncome,
   } = useVerifyIncome(initialShowResults);
@@ -179,7 +179,7 @@ export function VerifyIncomeForm({
           <section>
             <div className="mb-2 flex items-center gap-0.5 px-1">
               <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
-                Upload documents ({uploadMonthNames})
+                Upload documents ({uploadWindow.short})
               </p>
               <IncomeDocsHint />
             </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assembleMonths, nextUploadAsk, type PayPeriod } from "./income-periods";
+import { assembleMonths, nextUploadAsk, uploadWindowLabel, type PayPeriod } from "./income-periods";
 
 /** A whole calendar month, the shape a monthly payslip produces. */
 function monthly(start: string, end: string, gross: number): PayPeriod {
@@ -288,5 +288,20 @@ describe("nextUploadAsk accepts the latest three months, not only the three befo
     const ask = nextUploadAsk(assembleMonths([OCT, SEP, AUG]), { monthlyOnly: true, today: TODAY });
 
     expect(ask).toBe("We have August and September 2026. Please add your July 2026 payslip.");
+  });
+});
+
+describe("uploadWindowLabel names both sets of months the rule accepts", () => {
+  it("offers the three before this month, or the three ending with it", () => {
+    expect(uploadWindowLabel(new Date("2026-09-28T00:00:00Z"))).toEqual({
+      long: "June to August, or July to September",
+      short: "Jun–Aug or Jul–Sep",
+    });
+  });
+
+  it("crosses the year without losing a month", () => {
+    expect(uploadWindowLabel(new Date("2027-01-05T00:00:00Z")).long).toBe(
+      "October to December, or November to January",
+    );
   });
 });

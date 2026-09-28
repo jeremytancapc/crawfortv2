@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
+import { uploadWindowLabel } from "@/lib/income-periods";
 import { incomeResultFrom, type ExtractResponse } from "@/lib/income-result";
 import { nextPathAfterSubmit } from "@/lib/post-submit-nav";
 
@@ -48,18 +49,6 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function lastThreeMonthDates(from: Date = new Date()): Date[] {
-  return [3, 2, 1].map(
-    (offset) => new Date(from.getFullYear(), from.getMonth() - offset, 1),
-  );
-}
-
-export function lastThreeMonthNames(from: Date = new Date()): string {
-  return lastThreeMonthDates(from)
-    .map((date) => date.toLocaleDateString("en-SG", { month: "long" }))
-    .join(", ");
 }
 
 export type SubmitIncomeResult =
@@ -179,7 +168,7 @@ export function useVerifyIncome(initialShowResults = false) {
   /** What the documents were, in Ascend's words - set with the figures. */
   const [incomeType, setIncomeType] = useState("PANEL_PAYSLIP");
   const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
-  const uploadMonthNames = useMemo(() => lastThreeMonthNames(), []);
+  const uploadWindow = useMemo(() => uploadWindowLabel(), []);
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const next: SelectedFile[] = [];
@@ -272,7 +261,8 @@ export function useVerifyIncome(initialShowResults = false) {
     finishProcessing,
     showResults,
     incomeMonths,
-    uploadMonthNames,
+    /** The months that can be uploaded, e.g. "June to August, or July to September". */
+    uploadWindow,
     averageIncome,
     submitIncome: (months: IncomeMonth[], selected: SelectedFile[]) =>
       submitIncome(months, selected, incomeType),

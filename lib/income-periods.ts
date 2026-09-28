@@ -275,6 +275,32 @@ export function incomeWindow(
     : named;
 }
 
+const MONTH_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * The months the upload screen names - both windows `incomeWindow` accepts,
+ * so the page never asks for less than the rule allows. It named only the
+ * three before this month, and applicants holding this month's payslip went
+ * looking for an older one.
+ *
+ * Month names are spelled out here rather than taken from the locale, which
+ * shortens September to "Sept" in en-SG.
+ */
+export function uploadWindowLabel(today: Date = new Date()): { long: string; short: string } {
+  const { named, latest } = candidateWindows(today);
+  const name = (key: string) => MONTH_LONG[Number(key.slice(5, 7)) - 1];
+  const abbr = (key: string) => name(key).slice(0, 3);
+  const span = (window: string[], fmt: (key: string) => string, joiner: string) =>
+    `${fmt(window[0])}${joiner}${fmt(window[2])}`;
+  return {
+    long: `${span(named, name, " to ")}, or ${span(latest, name, " to ")}`,
+    short: `${span(named, abbr, "–")} or ${span(latest, abbr, "–")}`,
+  };
+}
+
 /** What the applicant uploaded. Ascend takes one kind per submission. */
 export type IncomeSource = "payslip" | "bank_statement" | "earnings_statement";
 

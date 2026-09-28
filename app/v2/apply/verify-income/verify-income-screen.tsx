@@ -32,7 +32,7 @@ export function VerifyIncomeScreen({
     finishProcessing,
     showResults,
     incomeMonths,
-    uploadMonthNames,
+    uploadWindow,
     averageIncome,
     submitIncome,
     extractionAsk,
@@ -91,7 +91,7 @@ export function VerifyIncomeScreen({
         <V2Body justify="center">
           <V2Title title="We need a bit more" subtitle="Here is what is still missing." />
           <p className="v2-note v2-enter mt-4" style={{ ["--i" as string]: 1 }}>
-            {extractionAsk ?? "Please upload your last 3 monthly payslips."}
+            {extractionAsk ?? "Please upload your last 3 months of payslips or bank statements."}
           </p>
         </V2Body>
         <V2Footer note="Your documents are saved. Add the missing one to continue.">
@@ -150,8 +150,8 @@ export function VerifyIncomeScreen({
       <V2Header progress={{ stage: "verify", fraction: 0.4 }} />
       <V2Body justify="between">
         <V2Title
-          title="Upload your last 3 payslips"
-          subtitle={`${uploadMonthNames}. PDF, JPG or PNG.`}
+          title="Upload your last 3 months"
+          subtitle={`${uploadWindow.long}. PDF, JPG or PNG.`}
         />
 
         <button
@@ -229,7 +229,7 @@ export function VerifyIncomeScreen({
           </ul>
         ) : null}
       </V2Body>
-      <V2Footer note="Up to 10 MB each. Bank statements work if you're self-employed.">
+      <V2Footer note="Payslips, bank statements or earnings statements - one kind, up to 10 MB each.">
         <Pill onClick={startProcessing} disabled={isProcessing} loading={isProcessing}>
           {isProcessing ? "Reading documents" : "Upload documents"}
         </Pill>
