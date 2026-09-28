@@ -26,7 +26,7 @@ export type ExtractedMonth = {
 export type ExtractionReview =
   | {
       kind: "usable";
-      /** The three months before this one, most recent first - Ascend's shape. */
+      /** The three months the income is judged on, most recent first - Ascend's shape. */
       m1: number;
       m2: number;
       m3: number;
@@ -104,10 +104,32 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import {
   assembleMonths,
+  bankStatementMonths,
+  incomeWindow,
   nextUploadAsk,
   type Assembly,
+  type IncomeSource,
   type PayPeriod,
 } from "./income-periods";
+
+export type { IncomeSource } from "./income-periods";
+
+/**
+ * The incomeType /openApi/income/credit takes for each kind of document.
+ *
+ * Payslips stay PANEL_PAYSLIP, what every submission sent before bank and
+ * earnings statements were read at all.
+ */
+export function ascendIncomeType(source: IncomeSource): string {
+  switch (source) {
+    case "bank_statement":
+      return "BANK_STATEMENT_OTHER_INCOME";
+    case "earnings_statement":
+      return "INCOME_STATEMENT";
+    default:
+      return "PANEL_PAYSLIP";
+  }
+}
 
 export type IncomeDocument = {
   fileName: string;
@@ -124,64 +146,117 @@ export type IncomeDocument = {
  * only against the figures being wrong, which is what reviewExtraction is
  * for.
  */
+const PERIOD_ITEM = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    start: {
+      type: "string",
+      description: "YYYY-MM-DD, the first day the period pays for, as printed.",
+    },
+    end: {
+      type: "string",
+      description: "YYYY-MM-DD, the last day the period pays for, inclusive, as printed.",
+    },
+    gross: {
+      type: "number",
+      description:
+        "GROSS pay for THIS period alone, in SGD. Never a year-to-date total, " +
+        "never a net or take-home figure, never a sum of several periods.",
+    },
+    employer: { type: "string", description: "Employer or platform name as printed, or empty." },
+  },
+  required: ["start", "end", "gross", "employer"],
+} as const;
+
 const REPORT_INCOME_TOOL: Anthropic.Tool = {
   name: "report_income",
   description:
-    "Report the pay periods printed on the applicant's payslips. Call this once, " +
+    "Report the income shown on the applicant's documents. Call this once, " +
     "after reading every document provided.",
   strict: true,
   input_schema: {
     type: "object",
     additionalProperties: false,
     properties: {
+      documentType: {
+        type: "string",
+        enum: ["payslip", "bank_statement", "earnings_statement", "mixed", "other"],
+        description:
+          "What the documents are, taken together. `mixed` when they are more than one of " +
+          "payslip, bank statement and earnings statement; `other` when none of them is any of these.",
+      },
       readable: {
         type: "boolean",
         description:
-          "false if the documents are not payslips, are illegible, or do not state a pay period and an amount.",
+          "false if the documents are illegible, or state no period and no amount.",
       },
       note: {
         type: "string",
         description:
-          "If readable is false, what is wrong, in one sentence an applicant could act on.",
+          "If readable is false, or documentType is mixed or other, what is wrong, in one " +
+          "sentence an applicant could act on.",
       },
       periods: {
         type: "array",
         description:
-          "One entry per pay period found, exactly as printed. Several may come from one " +
-          "document. Empty when readable is false.",
+          "Payslips and earnings statements only: one entry per pay period found, exactly as " +
+          "printed. Several may come from one document. Empty for bank statements.",
+        items: PERIOD_ITEM,
+      },
+      statements: {
+        type: "array",
+        description:
+          "Bank statements only: the dates each statement covers, as printed. Empty otherwise.",
         items: {
           type: "object",
           additionalProperties: false,
           properties: {
-            start: {
-              type: "string",
-              description: "YYYY-MM-DD, the first day the period pays for, as printed.",
-            },
-            end: {
-              type: "string",
-              description: "YYYY-MM-DD, the last day the period pays for, inclusive, as printed.",
-            },
-            gross: {
-              type: "number",
-              description:
-                "GROSS pay for THIS period alone, in SGD. Never a year-to-date total, " +
-                "never a net or take-home figure, never a sum of several periods.",
-            },
-            employer: { type: "string", description: "Employer name as printed, or empty." },
+            start: { type: "string", description: "YYYY-MM-DD, the statement's first day." },
+            end: { type: "string", description: "YYYY-MM-DD, the statement's last day, inclusive." },
           },
-          required: ["start", "end", "gross", "employer"],
+          required: ["start", "end"],
+        },
+      },
+      credits: {
+        type: "array",
+        description:
+          "Bank statements only: every credit that is income, one entry per transaction line. " +
+          "Empty otherwise.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            date: { type: "string", description: "YYYY-MM-DD, the date the credit was posted." },
+            amount: { type: "number", description: "The amount credited, in SGD, as printed." },
+            payer: {
+              type: "string",
+              description:
+                "The company or person who paid it, as named in the transaction description - " +
+                "the name only, without references, dates or codes. Empty if none is named.",
+            },
+          },
+          required: ["date", "amount", "payer"],
         },
       },
     },
-    required: ["readable", "note", "periods"],
+    required: ["documentType", "readable", "note", "periods", "statements", "credits"],
   },
 };
 
-const SYSTEM = `You read Singapore payslips and report the pay periods printed on them.
+const SYSTEM = `You read Singapore income documents - payslips, bank statements, and
+earnings statements from platforms like Grab, Gojek or Foodpanda - and report
+the income printed on them.
 
 These figures decide how much someone is lent, so report only what the
 document says. The arithmetic is done elsewhere.
 
+Say what the documents are. If they are more than one kind - payslips and a
+bank statement together - set documentType to mixed and report nothing else:
+one kind is assessed at a time. If none is a payslip, bank statement or
+earnings statement, set documentType to other.
+
+PAYSLIPS
 - Report the pay PERIOD as printed - its first and last day. Do not convert it
   to a month, do not round it to month boundaries, and do not merge periods.
   A payslip for 16-31 August is start 2025-08-16, end 2025-08-31.
@@ -194,11 +269,37 @@ document says. The arithmetic is done elsewhere.
   often show both, sometimes as "345.00 / 7795.00" where the second figure is
   the running total. The larger one is not what is wanted.
 - Exclude expense reimbursements. They are not income.
+
+EARNINGS STATEMENTS (ride-hailing, delivery and other platform work)
+- Report them as periods, like payslips: the dates the statement covers and
+  the earnings for them.
+- Report what the worker earned for the period after the platform's own
+  commission or service fee - the figure the statement gives as their
+  earnings. Leave out cash collected from customers that is not earnings,
+  and leave out tips only when the statement lists them apart from earnings.
+
+BANK STATEMENTS
+- Report the dates each statement covers, as printed.
+- Report every credit that is income, one entry per transaction line, with
+  its posting date, amount and payer as printed. Income is salary, wages,
+  commission, or a platform payout paid in by an employer or platform -
+  usually a GIRO or FAST credit described as salary, SAL, payroll, or naming
+  a company that pays on a regular date.
+- Leave out everything else: transfers between the account holder's own
+  accounts, PayNow or FAST from individuals, cash deposits, refunds and
+  reversals, interest, dividends, loan disbursements, insurance payouts and
+  government payouts. When you cannot tell whether a credit is income, leave
+  it out - counting money that is not income lends someone more than they
+  can repay.
+- Do not add credits up, and report a credit once even when two documents
+  both show it.
+
+ALL DOCUMENTS
 - One document may hold several periods. Report every one you can read.
 - Do not add up periods, do not average, and do not infer a period you cannot
   see. A missing month is handled by asking the applicant for it.
-- If a document is not a payslip, is unreadable, or states no period and
-  amount, set readable to false and say why.
+- If a document is unreadable, or states no period and no amount, set
+  readable to false and say why.
 
 Call report_income exactly once when you have read every document.`;
 
@@ -250,23 +351,40 @@ export function applicantSafeNote(note: string | null | undefined): string | nul
 const MONTHLY_ONLY = true;
 
 /**
- * Both shapes carry `periods` and `assembly`: the pay periods as printed and
- * the arithmetic that turned them into months. A lending decision has to be
+ * Every shape carries `periods` and `assembly`: the pay periods as printed (or,
+ * for bank statements, the months their income credits sum to) and the
+ * arithmetic that turned them into months. A lending decision has to be
  * explainable after the fact, and these are what make it replayable.
+ *
+ * `source` is the kind of document the figures came from, which decides the
+ * incomeType Ascend is told.
  */
 export type ExtractionOutcome =
   | (ExtractionReview & {
       note: string | null;
+      source: IncomeSource;
       periods: PayPeriod[];
       assembly: Assembly;
     })
   | {
       kind: "unreadable";
       reason: string;
+      source: IncomeSource;
       months: ExtractedMonth[];
       periods: PayPeriod[];
       assembly: Assembly;
     };
+
+const EMPTY_ASSEMBLY: Assembly = { months: [], incomplete: [], overlapping: [] };
+
+type Reported = {
+  documentType: IncomeSource | "mixed" | "other";
+  readable: boolean;
+  note: string;
+  periods: Array<{ start: string; end: string; gross: number; employer: string }>;
+  statements: Array<{ start: string; end: string }>;
+  credits: Array<{ date: string; amount: number; payer: string }>;
+};
 
 /**
  * Reads the documents and returns figures that have been checked.
@@ -278,15 +396,16 @@ export type ExtractionOutcome =
  */
 export async function extractIncome(
   documents: IncomeDocument[],
-  options?: { client?: Anthropic },
+  options?: { client?: Anthropic; today?: Date },
 ): Promise<ExtractionOutcome> {
   if (documents.length === 0) {
     return {
       kind: "unreadable",
       reason: "No documents were provided.",
+      source: "payslip",
       months: [],
       periods: [],
-      assembly: { months: [], incomplete: [], overlapping: [] },
+      assembly: EMPTY_ASSEMBLY,
     };
   }
 
@@ -314,14 +433,15 @@ export async function extractIncome(
 
   content.push({
     type: "text",
-    text: `Read the ${documents.length} document(s) above and report every pay period on them.`,
+    text: `Read the ${documents.length} document(s) above and report the income on them.`,
   });
 
   const response = await client.messages.create({
     model: "claude-opus-5",
     max_tokens: 16000,
     // Reading a payslip correctly is worth thinking about: the YTD column and
-    // the month's pay sit next to each other and look alike.
+    // the month's pay sit next to each other and look alike. A bank statement
+    // is worse - which of forty credits is salary is a judgement.
     thinking: { type: "adaptive" },
     system: SYSTEM,
     tools: [REPORT_INCOME_TOOL],
@@ -336,25 +456,61 @@ export async function extractIncome(
   if (!call) {
     return {
       kind: "unreadable",
-      reason: "The documents could not be read. Please upload clear payslips.",
+      reason: "The documents could not be read. Please upload clear payslips or bank statements.",
+      source: "payslip",
       months: [],
       periods: [],
-      assembly: { months: [], incomplete: [], overlapping: [] },
+      assembly: EMPTY_ASSEMBLY,
     };
   }
 
-  const reported = call.input as {
-    readable: boolean;
-    note: string;
-    periods: Array<{ start: string; end: string; gross: number; employer: string }>;
-  };
+  const reported = call.input as Reported;
 
-  const periods: PayPeriod[] = reported.periods.map((p) => ({
-    start: p.start,
-    end: p.end,
-    gross: p.gross,
-    employer: p.employer || null,
-  }));
+  // Ascend takes one incomeType per submission, so a payslip and a bank
+  // statement cannot be scored together.
+  if (reported.documentType === "mixed") {
+    return {
+      kind: "needs_review",
+      reason:
+        "Please upload one kind of document: your last 3 payslips, or your last 3 months of " +
+        "bank statements.",
+      months: [],
+      note: applicantSafeNote(reported.note),
+      source: "payslip",
+      periods: [],
+      assembly: EMPTY_ASSEMBLY,
+    };
+  }
+  if (reported.documentType === "other") {
+    return {
+      kind: "unreadable",
+      reason:
+        applicantSafeNote(reported.note) ??
+        "These do not look like payslips, bank statements or earnings statements.",
+      source: "payslip",
+      months: [],
+      periods: [],
+      assembly: EMPTY_ASSEMBLY,
+    };
+  }
+
+  const source: IncomeSource = reported.documentType;
+
+  let periods: PayPeriod[];
+  let withoutIncome: string[] = [];
+  if (source === "bank_statement") {
+    ({ periods, withoutIncome } = bankStatementMonths(
+      reported.statements,
+      reported.credits.map((c) => ({ date: c.date, amount: c.amount, payer: c.payer || null })),
+    ));
+  } else {
+    periods = reported.periods.map((p) => ({
+      start: p.start,
+      end: p.end,
+      gross: p.gross,
+      employer: p.employer || null,
+    }));
+  }
 
   const assembly = assembleMonths(periods);
   const months: ExtractedMonth[] = assembly.months.map((m) => ({
@@ -368,8 +524,32 @@ export async function extractIncome(
       kind: "unreadable",
       reason:
         applicantSafeNote(reported.note) ??
-        "The documents could not be read as payslips.",
+        "The documents could not be read. Please upload clear copies.",
+      source,
       months,
+      periods,
+      assembly,
+    };
+  }
+
+  const askOptions = { monthlyOnly: MONTHLY_ONLY, today: options?.today, source };
+  const window = incomeWindow(assembly, askOptions);
+
+  // A statement month with nothing paid in is not a missing statement, and
+  // asking for it again would send the applicant looking for a document they
+  // have already given us.
+  const empty = withoutIncome.filter((m) => window.includes(m)).sort();
+  if (empty.length > 0) {
+    const names = empty.map((m) => monthParts(m).label).join(" and ");
+    return {
+      kind: "needs_review",
+      reason:
+        `We could not find salary or other income paid in during ${names}. ` +
+        "If you were paid into another account, please upload that account's statements, " +
+        "or upload your payslips instead.",
+      months,
+      note: applicantSafeNote(reported.note),
+      source,
       periods,
       assembly,
     };
@@ -379,21 +559,25 @@ export async function extractIncome(
   // not underwritable, so the ask comes before the review: telling someone
   // their October is short is wrong when what we want is October's monthly
   // payslip.
-  const ask = nextUploadAsk(assembly, { monthlyOnly: MONTHLY_ONLY });
+  const ask = nextUploadAsk(assembly, askOptions);
   if (ask) {
     return {
       kind: "needs_review",
       reason: ask,
       months: MONTHLY_ONLY ? months.filter((_, i) => assembly.months[i].exact) : months,
       note: applicantSafeNote(reported.note),
+      source,
       periods,
       assembly,
     };
   }
 
+  // Only the window's months are underwritten. A payslip dated after this
+  // month, or one older than the three, is read and kept but never scored.
   return {
-    ...reviewExtraction(months),
+    ...reviewExtraction(months.filter((m) => window.includes(m.month))),
     note: applicantSafeNote(reported.note),
+    source,
     periods,
     assembly,
   };

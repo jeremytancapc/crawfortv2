@@ -249,3 +249,44 @@ describe("nextUploadAsk anchors on today, not on what was uploaded", () => {
     expect(ask).toContain("1 to 15 August 2026");
   });
 });
+
+describe("nextUploadAsk accepts the latest three months, not only the three before this one", () => {
+  // 28 Sep 2026: the screen names June, July and August, but an applicant
+  // paid at the end of the month already holds September's payslip, and the
+  // three most recent months they have are July, August and September.
+  const TODAY = new Date("2026-09-28T00:00:00Z");
+  const slip = (start: string, end: string, gross: number): PayPeriod => ({
+    employer: "Kimseng Food", start, end, gross,
+  });
+  const JUN = slip("2026-06-01", "2026-06-30", 4800);
+  const JUL = slip("2026-07-01", "2026-07-31", 4800);
+  const AUG = slip("2026-08-01", "2026-08-31", 4900);
+  const SEP = slip("2026-09-01", "2026-09-30", 4900);
+
+  it("is satisfied by September, August and July", () => {
+    expect(nextUploadAsk(assembleMonths([SEP, AUG, JUL]), { monthlyOnly: true, today: TODAY })).toBeNull();
+  });
+
+  it("is still satisfied by June, July and August", () => {
+    expect(nextUploadAsk(assembleMonths([JUN, JUL, AUG]), { monthlyOnly: true, today: TODAY })).toBeNull();
+  });
+
+  it("asks for July, not June and July, when September and August are in", () => {
+    const ask = nextUploadAsk(assembleMonths([SEP, AUG]), { monthlyOnly: true, today: TODAY });
+
+    expect(ask).toBe("We have August and September 2026. Please add your July 2026 payslip.");
+  });
+
+  it("names the months the screen asked for when nothing leans either way", () => {
+    const ask = nextUploadAsk(assembleMonths([AUG, JUL]), { monthlyOnly: true, today: TODAY });
+
+    expect(ask).toBe("We have July and August 2026. Please add your June 2026 payslip.");
+  });
+
+  it("never takes a month after this one", () => {
+    const OCT = slip("2026-10-01", "2026-10-31", 4900);
+    const ask = nextUploadAsk(assembleMonths([OCT, SEP, AUG]), { monthlyOnly: true, today: TODAY });
+
+    expect(ask).toBe("We have August and September 2026. Please add your July 2026 payslip.");
+  });
+});

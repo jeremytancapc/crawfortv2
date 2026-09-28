@@ -257,7 +257,11 @@ export type AscendIncomeInput = {
   orderId: string;
   /** CPF, NOA, PANEL_PAYSLIP, NON_PANEL_PAYSLIP, BANK_STATEMENT_OTHER_INCOME, INCOME_STATEMENT */
   incomeType: string;
-  /** The three months before this one, most recent first. */
+  /**
+   * Three consecutive months, most recent first: the three before this one,
+   * or - when the applicant already has this month's payslip - the three
+   * ending with it.
+   */
   m1: number;
   m2: number;
   m3: number;

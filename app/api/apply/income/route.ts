@@ -36,6 +36,16 @@ import { creditAfterIncome } from "@/lib/ascend/after-income";
 
 export const runtime = "nodejs";
 
+/**
+ * The document kinds the upload step reads. CPF and NOA come from Myinfo at
+ * submit and are never uploaded, so they are not accepted here.
+ */
+const UPLOADED_INCOME_TYPES = new Set([
+  "PANEL_PAYSLIP",
+  "BANK_STATEMENT_OTHER_INCOME",
+  "INCOME_STATEMENT",
+]);
+
 type Body = {
   months?: Array<{ amount?: number }>;
   incomeType?: string;
@@ -95,10 +105,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const incomeType =
+    body.incomeType && UPLOADED_INCOME_TYPES.has(body.incomeType) ? body.incomeType : "PANEL_PAYSLIP";
+
   try {
     const result = await ascendSubmitIncome({
       orderId: order.order_id,
-      incomeType: body.incomeType ?? "PANEL_PAYSLIP",
+      incomeType,
       m1: amounts[0],
       m2: amounts[1],
       m3: amounts[2],

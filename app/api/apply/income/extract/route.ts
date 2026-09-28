@@ -1,7 +1,8 @@
 /**
  * POST /api/apply/income/extract
  *
- * Reads the applicant's uploaded payslips and answers with the monthly
+ * Reads the applicant's uploaded payslips, bank statements or earnings
+ * statements and answers with the monthly
  * figures. Nothing is sent to Ascend here - this is the step that turns
  * documents into numbers a person can check before anything is submitted.
  *
@@ -11,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { extractIncome, type IncomeDocument } from "@/lib/income-extraction";
+import { ascendIncomeType, extractIncome, type IncomeDocument } from "@/lib/income-extraction";
 
 export const runtime = "nodejs";
 
@@ -82,6 +83,9 @@ export async function POST(request: NextRequest) {
         m1: outcome.m1,
         m2: outcome.m2,
         m3: outcome.m3,
+        // Payslip, bank statement or earnings statement, in Ascend's words -
+        // income/credit is told which one the figures came from.
+        incomeType: ascendIncomeType(outcome.source),
       });
     }
 

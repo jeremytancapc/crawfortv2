@@ -81,6 +81,7 @@ export type SubmitIncomeResult =
 export async function submitIncome(
   months: IncomeMonth[],
   selected: SelectedFile[],
+  incomeType = "PANEL_PAYSLIP",
 ): Promise<SubmitIncomeResult> {
   if (months.length === 0) {
     console.error("Income submission refused: no months were read");
@@ -106,7 +107,7 @@ export async function submitIncome(
       }
 
       const { fileUrl, fileName } = (await upload.json()) as { fileUrl: string; fileName: string };
-      files.push({ fileType: "PANEL_PAYSLIP", fileName, fileUrl });
+      files.push({ fileType: incomeType, fileName, fileUrl });
     }
 
     const res = await fetch("/api/apply/income", {
@@ -114,7 +115,7 @@ export async function submitIncome(
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         months: months.map((m) => ({ amount: m.amount })),
-        incomeType: "PANEL_PAYSLIP",
+        incomeType,
         files,
       }),
     });
@@ -175,6 +176,8 @@ export function useVerifyIncome(initialShowResults = false) {
   // a figure on this screen means a figure off a payslip.
   const [incomeMonths, setIncomeMonths] = useState<IncomeMonth[]>([]);
   const [averageIncome, setAverageIncome] = useState(0);
+  /** What the documents were, in Ascend's words - set with the figures. */
+  const [incomeType, setIncomeType] = useState("PANEL_PAYSLIP");
   const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
   const uploadMonthNames = useMemo(() => lastThreeMonthNames(), []);
 
@@ -218,6 +221,7 @@ export function useVerifyIncome(initialShowResults = false) {
         if (outcome.kind === "read") {
           setIncomeMonths(outcome.months);
           setAverageIncome(outcome.average);
+          setIncomeType(outcome.incomeType);
           return;
         }
 
@@ -270,7 +274,8 @@ export function useVerifyIncome(initialShowResults = false) {
     incomeMonths,
     uploadMonthNames,
     averageIncome,
-    submitIncome,
+    submitIncome: (months: IncomeMonth[], selected: SelectedFile[]) =>
+      submitIncome(months, selected, incomeType),
     /**
      * What to ask the applicant for, when the documents did not yield three
      * months. Null once they have. Exactly one of this and `incomeMonths` is
