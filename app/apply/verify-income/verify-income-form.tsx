@@ -19,6 +19,17 @@ import { useApplyPath } from "@/app/use-apply-path";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
+import { useDeclaredIncome } from "@/lib/declared-income";
+import {
+  DeclarationPromptModal,
+  DeclareIncomeStep,
+} from "@/app/apply/verify-income/declare-income-step";
+import {
+  INCOME_DOC_STEPS,
+  type IncomeDocStep,
+  type IncomeSource,
+} from "@/app/apply/verify-income/income-doc-steps";
+import { useIncomeDeclaration } from "@/app/apply/verify-income/use-income-declaration";
 import {
   ACCEPTED_TYPES,
   PROCESSING_STATUSES,
@@ -27,21 +38,33 @@ import {
 
 export function VerifyIncomeForm({
   initialShowResults = false,
+  initialStep = 1,
+  initialSource = "documents",
 }: {
   initialShowResults?: boolean;
+  initialStep?: IncomeDocStep;
+  initialSource?: IncomeSource;
 }) {
   const {
+    docStep,
     files,
     addFiles,
     removeFile,
     isProcessing,
     startProcessing: handleUpload,
     finishProcessing: handleProcessingDone,
+    finishDeclaration,
+    skipStep,
+    stepBack,
     showResults,
+    resultsSource,
     incomeMonths,
-    uploadMonthNames,
     averageIncome,
-  } = useVerifyIncome(initialShowResults);
+  } = useVerifyIncome(initialShowResults, initialStep, initialSource);
+  const declaration = useIncomeDeclaration(finishDeclaration);
+  const declaredIncome = useDeclaredIncome();
+  const isDeclaredResults =
+    showResults && resultsSource === "declared" && declaredIncome !== null;
   const router = useRouter();
   const applyHref = useApplyPath();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -55,7 +78,10 @@ export function VerifyIncomeForm({
     router.push(applyHref("/apply/pending-review"));
   };
 
-  const applyNav = useApplyStepNav("verify");
+  const stepConfig = INCOME_DOC_STEPS[docStep];
+
+  // Inside this page the arrows walk the upload steps before leaving it.
+  const applyNav = useApplyStepNav("verify", { onBack: stepBack });
 
   const stepNav = {
     back: {
@@ -74,12 +100,14 @@ export function VerifyIncomeForm({
       <MobileGateSheet>
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="ios-type-title">
-          {showResults ? "Confirm your income" : "Upload your income proof"}
+          {showResults ? "Confirm your income" : stepConfig.title}
         </h1>
         <p className="ios-type-subtitle mt-1.5">
           {showResults
-            ? "Check the last 3 months we read from your documents."
-            : "Payslips, income statements and bank statements."}
+            ? isDeclaredResults
+              ? "This is the income you declared and signed for."
+              : "Check the last 3 months we read from your documents."
+            : stepConfig.subtitle}
         </p>
       </div>
 
@@ -90,7 +118,39 @@ export function VerifyIncomeForm({
             : "flex-1 px-5 pb-8"
         }
       >
-        {showResults ? (
+        {isDeclaredResults ? (
+          <div key="results-declared" className="ios-income-fit flex w-full animate-fade-up flex-col gap-4">
+            <section>
+              <Card>
+                <CardRow>
+                  <span className="min-w-0">
+                    <span className="ios-income-fit-label block leading-tight text-[var(--text-primary)]">
+                      Self-declared monthly income
+                    </span>
+                    <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
+                      Signed {formatSignedDate(declaredIncome.signedAt)}
+                    </span>
+                  </span>
+                  <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
+                    {formatCurrency(declaredIncome.monthlyIncome)}
+                  </span>
+                </CardRow>
+              </Card>
+            </section>
+            <p
+              role="note"
+              className="flex items-start gap-2 px-1 text-[14px] leading-snug text-[var(--text-secondary)]"
+            >
+              <Info
+                size={18}
+                weight="fill"
+                aria-hidden
+                className="mt-px shrink-0 text-[var(--accent)]"
+              />
+              Your loan amount will be limited because this income isn&rsquo;t backed by documents.
+            </p>
+          </div>
+        ) : showResults ? (
           <div key="results" className="ios-income-fit w-full animate-fade-up">
             <section>
               <Card>
@@ -120,16 +180,24 @@ export function VerifyIncomeForm({
               </Card>
             </section>
           </div>
+        ) : docStep === 3 ? (
+          <DeclareIncomeStep key="declare" declaration={declaration} />
         ) : (
-        <div className="animate-fade-up flex flex-col gap-6">
+        <div key={`upload-${docStep}`} className="animate-fade-up flex flex-col gap-6">
           <section>
-            <div className="mb-2 flex items-center gap-0.5 px-1">
-              <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
-                Upload documents ({uploadMonthNames})
+            <Card className="ios-doc-card">
+              <p
+                role="note"
+                className="ios-doc-note flex items-center gap-2 whitespace-nowrap bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 font-semibold leading-snug text-[var(--brand-blue-hex)]"
+              >
+                <Info
+                  size={18}
+                  weight="fill"
+                  aria-hidden
+                  className="shrink-0 text-[var(--accent)]"
+                />
+                Documents must match your Singpass name.
               </p>
-              <IncomeDocsHint />
-            </div>
-            <Card>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -224,11 +292,29 @@ export function VerifyIncomeForm({
         )}
       </div>
 
-      <StickyFooter nav={stepNav}>
+      <StickyFooter
+        nav={stepNav}
+        above={
+          showResults ? null : (
+            <button
+              type="button"
+              onClick={skipStep}
+              disabled={isProcessing}
+              className="ios-skip-link mx-auto block whitespace-nowrap text-center font-semibold leading-snug text-red-700 underline underline-offset-2 transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              {stepConfig.skipLabel}
+            </button>
+          )
+        }
+      >
         {showResults ? (
           <PrimaryButton onClick={goToBadCaseChain}>Review Application</PrimaryButton>
+        ) : docStep === 3 ? (
+          <PrimaryButton onClick={declaration.openPrompt} disabled={!declaration.isSigned}>
+            Continue
+          </PrimaryButton>
         ) : (
-          <PrimaryButton onClick={handleUpload}>
+          <PrimaryButton onClick={handleUpload} disabled={files.length === 0}>
             Upload documents
           </PrimaryButton>
         )}
@@ -237,70 +323,20 @@ export function VerifyIncomeForm({
       {isProcessing && (
         <ProcessingDocumentsModal onComplete={handleProcessingDone} />
       )}
+      {declaration.isPromptOpen && !showResults && docStep === 3 ? (
+        <DeclarationPromptModal declaration={declaration} />
+      ) : null}
       </MobileGateSheet>
     </div>
   );
 }
 
-const INCOME_DOC_HINTS = [
-  "Payslips for full-time employees",
-  "Monthly statements for PHV drivers",
-  "Bank statements for all other employment types",
-] as const;
-
-function IncomeDocsHint() {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!wrapRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
-  const canHover =
-    typeof window !== "undefined" &&
-    window.matchMedia("(hover: hover)").matches;
-
-  return (
-    <span
-      ref={wrapRef}
-      className="relative inline-flex shrink-0 self-center"
-      onMouseEnter={() => {
-        if (canHover) setOpen(true);
-      }}
-      onMouseLeave={() => {
-        if (canHover) setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        aria-label="Accepted income documents"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors duration-150 hover:text-[var(--accent)]"
-      >
-        <Info size={18} weight="fill" />
-      </button>
-      {open ? (
-        <span
-          role="tooltip"
-          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,100%)] rounded-[var(--radius-md)] bg-gray-900 px-3.5 py-3 text-left shadow-2xl"
-        >
-          <ul className="flex list-disc flex-col gap-1.5 pl-4 text-[12px] leading-snug text-white">
-            {INCOME_DOC_HINTS.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </span>
-      ) : null}
-    </span>
-  );
+function formatSignedDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-SG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
 }
 
 function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {

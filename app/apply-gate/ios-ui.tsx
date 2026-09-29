@@ -1141,14 +1141,18 @@ export function StepperRow({
  *  to the bar's top edge and spans the whole right pane on desktop. */
 export function StickyFooter({
   banner,
+  above,
   nav,
   children,
 }: {
   banner?: ReactNode;
+  /** Low-emphasis row (e.g. a skip link) that sits flush on top of the bar. */
+  above?: ReactNode;
   nav?: StepNavControls;
   children?: ReactNode;
 }) {
   const hasBanner = banner != null;
+  const hasAbove = above != null && above !== false;
   const hasAction = children != null && children !== false;
   const hasNav = nav != null;
   const liveStep = useApplyProgressStep(0);
@@ -1162,10 +1166,12 @@ export function StickyFooter({
           "ios-sticky-footer",
           hasBanner ? "ios-sticky-footer--bannered" : "",
           showProgressBanner ? "ios-sticky-footer--progress" : "",
+          hasAbove ? "ios-sticky-footer--above" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
+        {hasAbove ? <div className="ios-sticky-footer-above">{above}</div> : null}
         {hasBanner || showProgressBanner ? (
           <div className="ios-sticky-footer-banner">
             {hasBanner ? banner : <ApplyProgressFooterStrip current={liveStep} />}

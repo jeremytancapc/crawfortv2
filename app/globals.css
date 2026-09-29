@@ -2078,6 +2078,33 @@ input[type="range"].ios-slider::-moz-range-thumb {
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
 }
 
+/* Optional row above the progress strip. It has no tint of its own, so it
+   reads as part of the page; the slot grows by its height so the fitted
+   content never slides underneath it. */
+.ios-sticky-footer-above {
+  padding: 8px 20px 18px;
+  background: var(--surface-primary);
+  text-align: center;
+  container-type: inline-size;
+}
+
+/* One line at any width: 13px where it fits, shrinking with the row on
+   narrow phones (the row's content box is the container size). */
+.ios-skip-link {
+  font-size: min(13px, 3.4cqw);
+}
+
+/* Name-match note on the upload card: always one line. The type size follows
+   the card's width (minus padding, icon and gap) so it shrinks on phones and
+   tops out at 16px on the desktop rail. The divisor is the note's width in em. */
+.ios-doc-card {
+  container-type: inline-size;
+}
+
+.ios-doc-note {
+  font-size: min(16px, calc((100cqw - 56px) / 21));
+}
+
 /* Pin the action bar to the visible viewport on phones so it cannot sit
    under the browser chrome the way an in-flow 100dvh footer does. */
 @media (max-width: 1023.98px) {
@@ -2096,6 +2123,11 @@ input[type="range"].ios-slider::-moz-range-thumb {
     height: 108px;
   }
 
+  .ios-apply-sheet:has(.ios-sticky-footer--progress.ios-sticky-footer--above)
+    .ios-apply-footer-slot {
+    height: 170px;
+  }
+
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {
     height: 105px;
   }
@@ -2105,6 +2137,10 @@ input[type="range"].ios-slider::-moz-range-thumb {
 @media (min-width: 1024px) {
   .ios-apply-footer-slot {
     height: 84px;
+  }
+
+  .ios-apply-sheet:has(.ios-sticky-footer--above) .ios-apply-footer-slot {
+    height: 132px;
   }
 
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {

@@ -67,6 +67,16 @@ interface SignaturePadProps {
    */
   onSigned: (dataUrl: string) => void;
   onCleared?: () => void;
+  /** Card heading before signing. */
+  title?: string;
+  /** Line under the heading before signing. */
+  description?: string;
+  /** Label of the button that seals the drawn signature. */
+  confirmLabel?: string;
+  /** Placeholder inside the drawing area while `disabled`. */
+  disabledHint?: string;
+  /** Sets the heading in the coloured banner, so it is the card's header. */
+  headingInBanner?: boolean;
 }
 
 export function SignaturePad({
@@ -74,6 +84,11 @@ export function SignaturePad({
   invalid = false,
   onSigned,
   onCleared,
+  title = "Your signature is required",
+  description = "Draw your signature below to accept this offer.",
+  confirmLabel = "Confirm signature",
+  disabledHint = "Tick the boxes above first",
+  headingInBanner = false,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -231,29 +246,40 @@ export function SignaturePad({
         className="accept-terms-card flex w-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white"
         style={{ boxShadow: "0 18px 40px oklch(0.24 0.02 80 / 0.10)" }}
       >
-        <div className="deck-card-banner relative isolate h-12 overflow-hidden">
+        <div
+          className={`deck-card-banner relative isolate h-12 overflow-hidden${
+            headingInBanner ? " flex items-center px-6" : ""
+          }`}
+        >
           <BannerIcon
             aria-hidden
             weight="fill"
             size={104}
             className="deck-card-watermark pointer-events-none"
           />
+          {headingInBanner ? (
+            <h2 className="relative z-10 min-w-0 truncate text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--brand-blue-hex)]">
+              {isSigned ? "Signature captured" : title}
+            </h2>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-2 px-6 pb-2 pt-3">
-          <h2
-            className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]"
-            style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-primary)" }}
-          >
-            {isSigned ? "Signature captured" : "Your signature is required"}
-          </h2>
+          {headingInBanner ? null : (
+            <h2
+              className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]"
+              style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-primary)" }}
+            >
+              {isSigned ? "Signature captured" : title}
+            </h2>
+          )}
           <p
             className={`text-[16px] font-medium leading-snug${isSigned ? " whitespace-nowrap" : ""}`}
             style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-secondary)" }}
           >
             {isSigned
               ? "Re-sign below to change it."
-              : "Draw your signature below to accept this offer."}
+              : description}
           </p>
         </div>
 
@@ -296,7 +322,7 @@ export function SignaturePad({
               aria-hidden="true"
             >
               <span className="text-[11px] font-medium tracking-wide" style={{ color: "var(--text-tertiary)" }}>
-                {disabled ? "Tick the boxes above first" : "Sign here with your finger or mouse"}
+                {disabled ? disabledHint : "Sign here with your finger or mouse"}
               </span>
             </div>
           )}
@@ -443,7 +469,7 @@ export function SignaturePad({
                   boxShadow: needsConfirm ? "0 0 0 2px var(--ios-danger)" : undefined,
                 }}
               >
-                {isSigning ? "Signing…" : "Confirm signature"}
+                {isSigning ? "Signing…" : confirmLabel}
               </button>
             </>
           )}

@@ -5,6 +5,7 @@ import { ApplyProgressPanel, ApplySidebarTagline, ApplySidebarWordmark } from "@
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
 
+import { parseIncomeDocStep, parseIncomeSource } from "@/app/apply/verify-income/income-doc-steps";
 import { VerifyIncomeForm } from "@/app/apply/verify-income/verify-income-form";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export const viewport: Viewport = {
 export default async function VerifyIncomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; step?: string | string[]; source?: string | string[] }>;
 }) {
   await enforceApplyFunnel("/apply/verify-income");
   const params = await searchParams;
@@ -55,7 +56,11 @@ export default async function VerifyIncomePage({
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-clip">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:px-8 xl:px-12">
           <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-            <VerifyIncomeForm initialShowResults={view === "results"} />
+            <VerifyIncomeForm
+              initialShowResults={view === "results"}
+              initialStep={parseIncomeDocStep(params.step)}
+              initialSource={parseIncomeSource(params.source)}
+            />
           </div>
         </div>
 
