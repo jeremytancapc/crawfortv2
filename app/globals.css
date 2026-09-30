@@ -2079,10 +2079,10 @@ input[type="range"].ios-slider::-moz-range-thumb {
 }
 
 /* Optional row above the progress strip. It has no tint of its own, so it
-   reads as part of the page; the slot grows by its height so the fitted
-   content never slides underneath it. */
+   reads as part of the page. The bottom padding is the gap under a skip link,
+   and the slot grows by the row's height so fitted content never slides under it. */
 .ios-sticky-footer-above {
-  padding: 8px 20px 18px;
+  padding: 8px 20px 24px;
   background: var(--surface-primary);
   text-align: center;
   container-type: inline-size;
@@ -2125,7 +2125,7 @@ input[type="range"].ios-slider::-moz-range-thumb {
 
   .ios-apply-sheet:has(.ios-sticky-footer--progress.ios-sticky-footer--above)
     .ios-apply-footer-slot {
-    height: 170px;
+    height: 176px;
   }
 
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {
@@ -2140,7 +2140,7 @@ input[type="range"].ios-slider::-moz-range-thumb {
   }
 
   .ios-apply-sheet:has(.ios-sticky-footer--above) .ios-apply-footer-slot {
-    height: 132px;
+    height: 138px;
   }
 
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {

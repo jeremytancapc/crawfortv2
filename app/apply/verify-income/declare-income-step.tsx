@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { Card, PrimaryButton } from "@/app/apply-gate/ios-ui";
 import { SignaturePad } from "@/app/apply/accept/signature-pad";
@@ -17,7 +17,6 @@ import { formatCurrency } from "@/lib/loan-form";
 export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclaration }) {
   const { monthlyIncome, changeIncome, showSignature, isSigned, handleSigned, handleCleared } =
     declaration;
-  const signatureRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
   // The pad's canvas is lost when this step unmounts, so the signed state
@@ -62,33 +61,34 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
         </Card>
       </section>
 
-      <AnimatePresence initial={false}>
-        {showSignature ? (
-          <motion.div
-            key="signature"
-            ref={signatureRef}
-            // Extra padding keeps the card's soft shadow from being clipped
-            // while the height animates; the negative margin cancels it out.
-            className="-mx-10 -mb-10 overflow-hidden px-10 pb-10"
-            initial={prefersReducedMotion ? false : { height: 0, opacity: 0, y: 28 }}
-            animate={{ height: "auto", opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0, y: 14 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-            onAnimationComplete={() =>
-              signatureRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
-            }
-          >
-            <SignaturePad
-              title="Sign to confirm"
-              description="Draw your signature to confirm this is your income."
-              confirmLabel="Sign"
-              headingInBanner
-              onSigned={handleSigned}
-              onCleared={handleCleared}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {/* The card always holds its place in the layout so the pane fitter sizes
+          the whole step - signature included - on load. Revealing it only
+          fades and lifts it; nothing reflows, so the page never rescales. */}
+      <motion.div
+        aria-hidden={!showSignature}
+        inert={!showSignature}
+        initial={false}
+        animate={
+          showSignature
+            ? { opacity: 1, y: 0, visibility: "visible" }
+            : {
+                opacity: 0,
+                y: prefersReducedMotion ? 0 : 12,
+                transitionEnd: { visibility: "hidden" },
+              }
+        }
+        transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <SignaturePad
+          title="Sign to confirm"
+          description="Draw your signature to confirm this is your income."
+          confirmLabel="Sign"
+          headingInBanner
+          canvasHeight={120}
+          onSigned={handleSigned}
+          onCleared={handleCleared}
+        />
+      </motion.div>
     </div>
   );
 }
