@@ -16,6 +16,7 @@ import {
   X,
   CaretDown,
   DownloadSimple,
+  ArrowSquareOut,
 } from "@phosphor-icons/react";
 
 import {
@@ -64,6 +65,27 @@ interface AppointmentBookingProps {
    * it in the sticky footer instead. */
   hideInlineCta?: boolean;
   ctaHost?: Element | null;
+}
+
+const OFFICE_MAPS_URL = "https://maps.app.goo.gl/cBDL1NoEfJLMGcyp8";
+
+/** Google Maps pin in its brand colours. */
+function GoogleMapsIcon({ size = 28 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 92.3 132.3"
+      height={size}
+      width={(size * 92.3) / 132.3}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z" />
+      <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z" />
+      <path fill="#4285f4" d="M46.2 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.4-1.6 8.4-4.2 11.5 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.6-6.3" />
+      <path fill="#fbbc04" d="M46.2 63.8c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3" />
+      <path fill="#34a853" d="M59.1 109.2c15.4-24.1 33.3-35 33.3-63 0-7.7-1.9-14.9-5.2-21.3L25.6 98c2.6 3.4 5.3 7.3 7.9 11.3 9.4 14.5 6.8 23.1 12.8 23.1s3.4-8.7 12.8-23.2" />
+    </svg>
+  );
 }
 
 const WHAT_TO_BRING = {
@@ -144,7 +166,6 @@ export function AppointmentBooking({
   const [slotNeedNonce, setSlotNeedNonce] = useState(0);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
-  const [locationTooltip, setLocationTooltip] = useState(false);
   const [timeListCanScrollMore, setTimeListCanScrollMore] = useState(true);
 
   type PopupPos = { top: number; left: number; width: number };
@@ -490,41 +511,37 @@ export function AppointmentBooking({
       >
         {/* Location blurb */}
         <div className="mb-4 lg:mb-8">
-          <span className="inline-flex items-center gap-1.5">
-            <p className="text-lg font-bold text-[var(--text-primary)]">Location</p>
-            {/* Tooltip trigger */}
-            <span className="relative inline-flex">
-              <button
-                type="button"
-                aria-label="More location details"
-                onClick={() => setLocationTooltip((v) => !v)}
-                onMouseEnter={() => setLocationTooltip(true)}
-                onMouseLeave={() => setLocationTooltip(false)}
-                className="flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border-medium)] text-[10px] font-bold text-[var(--text-tertiary)] transition-colors duration-150 hover:border-brand-blue hover:text-brand-blue"
-              >
-                ?
-              </button>
-              {locationTooltip && (
-                <div className="absolute left-1/2 top-[calc(100%+6px)] z-50 w-[240px] -translate-x-1/2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-2 shadow-lg">
-                  <p className="text-sm text-[var(--text-secondary)]">Near Funan IT Mall, Parliament House &amp; Boat Quay</p>
-                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[var(--border-subtle)]" />
-                </div>
-              )}
-            </span>
-          </span>
-          <div className="mt-2 flex flex-col gap-1.5 text-lg font-medium leading-snug text-[var(--text-primary)]">
-            <p>1 North Bridge Road, #01-35</p>
-            <p>High Street Centre, Singapore 179094</p>
-            <ul className="mt-1.5 flex flex-col gap-2 text-base font-normal leading-snug text-[var(--text-secondary)]">
-              <li className="flex items-start gap-1.5">
-                <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Near City Hall and Clarke Quay MRT</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Carpark available</span>
-              </li>
-            </ul>
+          <p className="text-lg font-bold text-[var(--text-primary)]">Location</p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-1.5 text-lg font-medium leading-snug text-[var(--text-primary)]">
+              <p>1 North Bridge Road, #01-35</p>
+              <p>High Street Centre, Singapore 179094</p>
+              <ul className="mt-1.5 flex flex-col gap-2 text-base font-normal leading-snug text-[var(--text-secondary)]">
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span>Near City Hall and Clarke Quay MRT</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span>Carpark available on-site</span>
+                </li>
+              </ul>
+            </div>
+            <a
+              href={OFFICE_MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open our office in Google Maps"
+              className="group flex shrink-0 flex-col items-center gap-1.5 transition-transform duration-150 active:scale-[0.96]"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] transition-colors duration-150 group-hover:border-[var(--border-medium)]">
+                <GoogleMapsIcon size={30} />
+              </span>
+              <span className="flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold leading-tight text-[var(--text-primary)] underline underline-offset-2">
+                Google Maps
+                <ArrowSquareOut size={13} weight="bold" aria-hidden="true" className="shrink-0" />
+              </span>
+            </a>
           </div>
         </div>
 
