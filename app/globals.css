@@ -1323,17 +1323,21 @@ body:has(.theme-fresh)::before {
   font-weight: 600;
 }
 
-/* Solid teal banner on accept term cards. Depth comes from the oversized
-   watermark glyph, not from a second colour or a frosted overlay. */
+/* Off-black banner on accept cards. Depth comes from the oversized watermark
+   glyph, not from a second colour or a frosted overlay. */
 .theme-ios .deck-card-banner {
-  background: var(--brand-teal-hex, #06dec0);
+  background: #1c1c1e;
+}
+
+.theme-ios .deck-card-banner-title {
+  color: #fff;
 }
 
 .theme-ios .deck-card-watermark {
   position: absolute;
   right: -1.25rem;
   top: -1.75rem;
-  color: rgb(255 255 255 / 0.4);
+  color: rgb(255 255 255 / 0.22);
 }
 
 /* Seal sits more in-frame than the term-card glyphs, which read at the corner. */
@@ -1372,10 +1376,11 @@ body:has(.theme-fresh)::before {
   font-size: clamp(11.5px, 3.5vw, 17px);
 }
 
-/* Long labels stack as Next: / rest instead of shrinking past readability. */
+/* Long labels stack as Next: / rest. Keep the same 17px as a one-line footer
+   label; the second line is what makes the long copy fit. */
 .theme-ios .ios-footer-cta .ios-type-cta--stacked {
   white-space: normal;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.15;
 }
 
