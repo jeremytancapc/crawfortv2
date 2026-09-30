@@ -141,6 +141,7 @@ function ApplyPaneFit({
   maxWidth,
   scaleToFit = true,
   maxScale = APPLY_FIT_MAX_SCALE,
+  minScale: minScaleOverride,
   lockAfterFit = true,
 }: {
   children: ReactNode;
@@ -150,6 +151,9 @@ function ApplyPaneFit({
   /** Cap how far a short step grows. Defaults to 1× so desktop type stays
    *  aligned with the sidebar instead of filling the pane by zooming. */
   maxScale?: number;
+  /** Lowest scale before the pane scrolls instead of shrinking. Overrides the
+   *  desktop/phone defaults for a step that must always fit on one screen. */
+  minScale?: number;
   /** After the first layout, ignore content mutations so swiping cards
    *  or picking a date cannot rescale the column. */
   lockAfterFit?: boolean;
@@ -238,7 +242,8 @@ function ApplyPaneFit({
       // stops being worth it far sooner. Once a phone would need to shrink
       // more than ~10%, scroll the rest instead of shrinking text and the
       // gauge down toward two-thirds size just to keep it above the fold.
-      const minScale = isDesktopRail ? APPLY_FIT_MIN_SCALE : APPLY_FIT_PHONE_MIN_SCALE;
+      const minScale =
+        minScaleOverride ?? (isDesktopRail ? APPLY_FIT_MIN_SCALE : APPLY_FIT_PHONE_MIN_SCALE);
       const overflowing = raw < minScale;
       // Phone: the column already spans the pane. Scaling with leftover
       // height blows type and gauges up. Tablet/desktop can still grow
@@ -319,7 +324,7 @@ function ApplyPaneFit({
       ro.disconnect();
       mo.disconnect();
     };
-  }, [maxWidth, maxScale, scaleToFit, lockAfterFit]);
+  }, [maxWidth, maxScale, minScaleOverride, scaleToFit, lockAfterFit]);
 
   // Choose-plan (and other wide steps) skip scale, so leftover used to stay
   // 0 and the cards sat in a short island. Measure the unused pane once and
@@ -424,6 +429,7 @@ export function MobileGateSheet({
   fitMaxWidth = 560,
   scaleToFit = true,
   fitMaxScale,
+  fitMinScale,
   lockAfterFit = true,
 }: {
   children: ReactNode;
@@ -432,6 +438,8 @@ export function MobileGateSheet({
   /** Set false to keep native size and scroll instead of shrinking to the pane. */
   scaleToFit?: boolean;
   fitMaxScale?: number;
+  /** Lowest scale before the pane scrolls; see `ApplyPaneFit`. */
+  fitMinScale?: number;
   lockAfterFit?: boolean;
 }) {
   const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
@@ -444,6 +452,7 @@ export function MobileGateSheet({
             maxWidth={fitMaxWidth}
             scaleToFit={scaleToFit}
             maxScale={fitMaxScale}
+            minScale={fitMinScale}
             lockAfterFit={lockAfterFit}
           >
             {children}

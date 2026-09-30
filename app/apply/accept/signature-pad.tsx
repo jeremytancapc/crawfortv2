@@ -77,6 +77,8 @@ interface SignaturePadProps {
   disabledHint?: string;
   /** Sets the heading in the coloured banner, so it is the card's header. */
   headingInBanner?: boolean;
+  /** Height of the drawing area in px. */
+  canvasHeight?: number;
 }
 
 export function SignaturePad({
@@ -89,6 +91,7 @@ export function SignaturePad({
   confirmLabel = "Confirm signature",
   disabledHint = "Tick the boxes above first",
   headingInBanner = false,
+  canvasHeight = 176,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -330,7 +333,7 @@ export function SignaturePad({
           <canvas
             ref={canvasRef}
             className="block w-full touch-none"
-            style={{ height: 176, cursor: disabled || isSigned ? "default" : "crosshair" }}
+            style={{ height: canvasHeight, cursor: disabled || isSigned ? "default" : "crosshair" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
