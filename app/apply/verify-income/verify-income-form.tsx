@@ -29,6 +29,7 @@ import {
   type IncomeDocStep,
   type IncomeSource,
 } from "@/app/apply/verify-income/income-doc-steps";
+import { NoIncomeDataModal } from "@/app/apply/verify-income/no-income-data-modal";
 import { useIncomeDeclaration } from "@/app/apply/verify-income/use-income-declaration";
 import {
   ACCEPTED_TYPES,
@@ -68,6 +69,11 @@ export function VerifyIncomeForm({
   const router = useRouter();
   const applyHref = useApplyPath();
   const [isDragOver, setIsDragOver] = useState(false);
+  // Explains why documents are being asked for; only on arrival at the first
+  // upload step, so stepping back to it later does not raise it again.
+  const [hasSeenNoDataNotice, setHasSeenNoDataNotice] = useState(
+    initialStep !== 1 || initialShowResults,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Staging: walk the "bad case" demo chain (pending → rejected → existing
@@ -99,15 +105,6 @@ export function VerifyIncomeForm({
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet fitMinScale={docStep === 3 && !showResults ? 0.85 : undefined}>
       <div className="shrink-0 px-5 pb-6 pt-7">
-        {!showResults && stepConfig.notice ? (
-          <p
-            role="note"
-            className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF4E0] py-1.5 pl-2.5 pr-3.5 text-[14px] font-semibold leading-none text-[#7A3600]"
-          >
-            <Info size={16} weight="fill" aria-hidden className="shrink-0 text-[#B25000]" />
-            {stepConfig.notice}
-          </p>
-        ) : null}
         <h1 className="ios-type-title">
           {showResults ? "Confirm your income" : stepConfig.title}
         </h1>
@@ -335,6 +332,9 @@ export function VerifyIncomeForm({
         )}
       </StickyFooter>
 
+      {!hasSeenNoDataNotice ? (
+        <NoIncomeDataModal onContinue={() => setHasSeenNoDataNotice(true)} />
+      ) : null}
       {isProcessing && (
         <ProcessingDocumentsModal onComplete={handleProcessingDone} />
       )}
