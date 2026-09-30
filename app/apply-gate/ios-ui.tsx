@@ -224,8 +224,8 @@ function ApplyPaneFit({
       // Designed column width only. A terms-card swipe translates the
       // outgoing face past the edge; scrollWidth then reads ~2× wide,
       // the scale floor kicks in, and leftover stays 0 until remount.
-      const contentW = designW;
-      const contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
+      let contentW = designW;
+      let contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
       if (contentH < 8) {
         inner.style.setProperty("--apply-fit-leftover", prevLeftover);
         inner.style.transform = prevTransform;
@@ -252,6 +252,18 @@ function ApplyPaneFit({
       const scale = overflowing
         ? minScale
         : Math.min(Math.max(raw, minScale), cap);
+      // A phone column that had to shrink would sit narrower than the pane,
+      // leaving dead gutters either side. Design it wider by the same factor
+      // so the scaled column spans the pane edge to edge (type stays at the
+      // shrunk size; the wider column also wraps a little less). Only for a
+      // step that sets its own floor, i.e. one built to be zoomed out.
+      if (minScaleOverride !== undefined && !isDesktopRail && scale < 0.995) {
+        contentW = availW / scale;
+        inner.style.width = `${contentW}px`;
+        inner.style.maxWidth = `${contentW}px`;
+        void inner.offsetHeight;
+        contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
+      }
       const leftover = overflowing ? 0 : Math.max(0, fitH / scale - contentH);
       inner.style.setProperty("--apply-fit-leftover", `${leftover}px`);
       inner.style.transform = `scale(${scale})`;

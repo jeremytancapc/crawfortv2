@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "framer-motion";
 
@@ -18,6 +18,7 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
   const { monthlyIncome, changeIncome, showSignature, isSigned, handleSigned, handleCleared } =
     declaration;
   const prefersReducedMotion = useReducedMotion();
+  const signatureRef = useRef<HTMLDivElement>(null);
 
   // The pad's canvas is lost when this step unmounts, so the signed state
   // must not outlive it - otherwise "Continue" would stay enabled on a blank pad.
@@ -65,6 +66,7 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
           the whole step - signature included - on load. Revealing it only
           fades and lifts it; nothing reflows, so the page never rescales. */}
       <motion.div
+        ref={signatureRef}
         aria-hidden={!showSignature}
         inert={!showSignature}
         initial={false}
@@ -78,6 +80,13 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
               }
         }
         transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: [0.22, 1, 0.36, 1] }}
+        // On a short phone the card can sit below the fold; bring it into view
+        // once it has appeared.
+        onAnimationComplete={() => {
+          if (showSignature) {
+            signatureRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }
+        }}
       >
         <SignaturePad
           title="Sign to confirm"
