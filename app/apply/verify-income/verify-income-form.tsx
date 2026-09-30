@@ -176,10 +176,10 @@ export function VerifyIncomeForm({
                   </CardRow>
                 ))}
                 <div className="ios-income-fit-avg flex items-center justify-between gap-3 bg-brand-teal/14 px-4">
-                  <span className="ios-income-fit-avg-label font-semibold leading-tight text-[var(--brand-blue-hex)]">
-                    Monthly average
+                  <span className="ios-income-fit-avg-label min-w-0 font-semibold leading-tight text-[var(--brand-blue-hex)]">
+                    Monthly Average Income (Gross)
                   </span>
-                  <span className="ios-income-fit-avg-value font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
+                  <span className="ios-income-fit-avg-value shrink-0 font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
                     {formatCurrency(averageIncome)}
                   </span>
                 </div>
@@ -322,7 +322,7 @@ export function VerifyIncomeForm({
         }
       >
         {showResults ? (
-          <PrimaryButton onClick={goToBadCaseChain}>Review Application</PrimaryButton>
+          <PrimaryButton onClick={goToBadCaseChain}>I confirm my income is correct</PrimaryButton>
         ) : docStep === 3 ? (
           <PrimaryButton onClick={declaration.requestContinue}>Continue</PrimaryButton>
         ) : (

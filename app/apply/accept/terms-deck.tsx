@@ -320,20 +320,19 @@ function DeckCardFace({
       className="accept-terms-card flex w-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white"
       style={{ boxShadow: LISTING_CARD_SHADOW }}
     >
-      <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
+      <div className="deck-card-banner relative isolate flex h-[88px] items-center overflow-hidden px-6">
         <card.Icon
           aria-hidden
           weight="fill"
           size={168}
           className="deck-card-watermark pointer-events-none"
         />
+        <h2 className="deck-card-banner-title relative z-10 min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]">
+          <TitleWithAccessory title={card.title} accessory={card.accessory} />
+        </h2>
       </div>
 
       <div className="flex flex-1 flex-col justify-center gap-5 px-6 pb-8 pt-6">
-        <h2 className="text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
-          <TitleWithAccessory title={card.title} accessory={card.accessory} />
-        </h2>
-
         {card.subtitle ? (
           <p className="text-[16px] font-medium leading-snug text-[var(--text-secondary)]">
             {card.subtitle}

@@ -129,8 +129,11 @@ function PlanSummaryCard({
             style={{ overflow: collapsible ? "hidden" : "visible" }}
           >
             {!collapsible && (
-              <div className="deck-card-banner relative isolate h-[88px] overflow-hidden">
-                <p className="absolute bottom-3 left-5 z-10 text-[13.5px] font-semibold tabular-nums leading-none text-white/70">
+              <div className="deck-card-banner relative isolate flex h-[88px] flex-col justify-center gap-1.5 overflow-hidden px-5">
+                <h2 className="deck-card-banner-title relative z-10 min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]">
+                  Approved Loan Amount
+                </h2>
+                <p className="deck-card-banner-title relative z-10 text-[13.5px] font-semibold tabular-nums leading-none opacity-90">
                   Ref ID: {referenceId}
                 </p>
                 <div
@@ -167,14 +170,9 @@ function PlanSummaryCard({
               }
             >
               {!collapsible ? (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <h2 className="min-w-0 text-[19px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--text-primary)]">
-                    Approved Loan Amount
-                  </h2>
-                  <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
-                    {formatCurrency(plan.amount)}
-                  </p>
-                </div>
+                <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-primary)] lg:text-[32px]">
+                  {formatCurrency(plan.amount)}
+                </p>
               ) : (
                 <p className="text-[13.5px] font-semibold tabular-nums leading-snug text-[var(--text-tertiary)]">
                   Ref ID: {referenceId}
@@ -661,6 +659,8 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                 }
               >
                 <SignaturePad
+                  headingInBanner
+                  bannerHeight={88}
                   invalid={signatureNeedsInput}
                   onSigned={(dataUrl) => {
                     setSignatureDataUrl(dataUrl);

@@ -79,6 +79,8 @@ interface SignaturePadProps {
   headingInBanner?: boolean;
   /** Height of the drawing area in px. */
   canvasHeight?: number;
+  /** Height of the coloured banner in px; defaults to a compact 48. */
+  bannerHeight?: number;
 }
 
 export function SignaturePad({
@@ -92,6 +94,7 @@ export function SignaturePad({
   disabledHint = "Tick the boxes above first",
   headingInBanner = false,
   canvasHeight = 176,
+  bannerHeight,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -253,6 +256,7 @@ export function SignaturePad({
           className={`deck-card-banner relative isolate h-12 overflow-hidden${
             headingInBanner ? " flex items-center px-6" : ""
           }`}
+          style={bannerHeight ? { height: bannerHeight } : undefined}
         >
           <BannerIcon
             aria-hidden
@@ -261,7 +265,7 @@ export function SignaturePad({
             className="deck-card-watermark pointer-events-none"
           />
           {headingInBanner ? (
-            <h2 className="relative z-10 min-w-0 truncate text-[22px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--brand-blue-hex)]">
+            <h2 className="deck-card-banner-title relative z-10 min-w-0 truncate text-[22px] font-bold leading-[1.15] tracking-[-0.03em]">
               {isSigned ? "Signature captured" : title}
             </h2>
           ) : null}
