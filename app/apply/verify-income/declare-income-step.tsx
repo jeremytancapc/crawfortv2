@@ -15,13 +15,39 @@ import { formatCurrency } from "@/lib/loan-form";
  * signature always matches the figure.
  */
 export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclaration }) {
-  const { monthlyIncome, changeIncome, showSignature, isSigned, handleSigned, handleCleared } =
-    declaration;
+  const {
+    monthlyIncome,
+    changeIncome,
+    showSignature,
+    isSigned,
+    incomeNeedsInput,
+    signatureNeedsInput,
+    attentionNonce,
+    handleSigned,
+    handleCleared,
+  } = declaration;
   const prefersReducedMotion = useReducedMotion();
+  const incomeRef = useRef<HTMLDivElement>(null);
   const signatureRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!incomeNeedsInput) return;
+    const card = incomeRef.current;
+    if (!card) return;
+    card.classList.remove("is-zooming");
+    void card.offsetWidth;
+    card.classList.add("is-zooming");
+    document.getElementById("declared-income-input")?.focus();
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [incomeNeedsInput, attentionNonce]);
+
+  useEffect(() => {
+    if (!signatureNeedsInput) return;
+    signatureRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [signatureNeedsInput, attentionNonce]);
+
   // The pad's canvas is lost when this step unmounts, so the signed state
-  // must not outlive it - otherwise "Continue" would stay enabled on a blank pad.
+  // must not outlive it.
   useEffect(() => () => handleCleared(), [handleCleared]);
 
   return (
@@ -29,16 +55,28 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
       <section aria-labelledby="declared-income-heading">
         <h3
           id="declared-income-heading"
-          className="mb-2.5 px-1 text-[20px] font-bold leading-tight text-[var(--text-primary)]"
+          className={`mb-2.5 px-1 text-[20px] font-bold leading-tight ${
+            incomeNeedsInput ? "text-[var(--ios-danger)]" : "text-[var(--text-primary)]"
+          }`}
         >
           Monthly income
         </h3>
+        <div
+          ref={incomeRef}
+          className={`ios-field-needs-input rounded-[var(--radius-card)]${
+            incomeNeedsInput ? " ios-card--invalid" : ""
+          }`}
+        >
         <Card className="px-4 pb-4 pt-5">
           <label
             htmlFor="declared-income-input"
             className="ios-display-amount flex items-baseline gap-1"
           >
-            <span className="text-[28px] font-bold leading-none tracking-[-0.022em] text-[var(--text-primary)]">
+            <span
+              className={`text-[28px] font-bold leading-none tracking-[-0.022em] ${
+                incomeNeedsInput ? "text-[var(--ios-danger)]" : "text-[var(--text-primary)]"
+              }`}
+            >
               $
             </span>
             <input
@@ -51,15 +89,25 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
               readOnly={isSigned}
               onChange={(event) => changeIncome(event.target.value)}
               aria-label="Your monthly income in dollars"
+              aria-invalid={incomeNeedsInput || undefined}
               className="ios-display-input w-full min-w-0 border-0 bg-transparent overflow-hidden p-0 text-[36px] font-bold leading-[1.35] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] read-only:opacity-70"
             />
           </label>
-          <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
-            {isSigned
-              ? "Re-sign below if you need to change this amount."
-              : "What you earn in an average month, in SGD."}
+          <p
+            className={`mt-2 text-[13px] ${
+              incomeNeedsInput
+                ? "font-medium text-[var(--ios-danger)]"
+                : "text-[var(--text-secondary)]"
+            }`}
+          >
+            {incomeNeedsInput
+              ? "Enter your monthly income to continue."
+              : isSigned
+                ? "Re-sign below if you need to change this amount."
+                : "What you earn in an average month, in SGD."}
           </p>
         </Card>
+        </div>
       </section>
 
       {/* The card always holds its place in the layout so the pane fitter sizes
@@ -94,6 +142,7 @@ export function DeclareIncomeStep({ declaration }: { declaration: IncomeDeclarat
           confirmLabel="Sign"
           headingInBanner
           canvasHeight={120}
+          invalid={signatureNeedsInput}
           onSigned={handleSigned}
           onCleared={handleCleared}
         />

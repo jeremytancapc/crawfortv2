@@ -99,6 +99,15 @@ export function VerifyIncomeForm({
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
       <MobileGateSheet fitMinScale={docStep === 3 && !showResults ? 0.85 : undefined}>
       <div className="shrink-0 px-5 pb-6 pt-7">
+        {!showResults && stepConfig.notice ? (
+          <p
+            role="note"
+            className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF4E0] py-1.5 pl-2.5 pr-3.5 text-[14px] font-semibold leading-none text-[#7A3600]"
+          >
+            <Info size={16} weight="fill" aria-hidden className="shrink-0 text-[#B25000]" />
+            {stepConfig.notice}
+          </p>
+        ) : null}
         <h1 className="ios-type-title">
           {showResults ? "Confirm your income" : stepConfig.title}
         </h1>
@@ -250,6 +259,14 @@ export function VerifyIncomeForm({
                 aria-label="Upload income documents"
               />
             </Card>
+            <button
+              type="button"
+              onClick={skipStep}
+              disabled={isProcessing}
+              className="ios-skip-link mx-auto mt-5 block whitespace-nowrap text-center font-semibold leading-snug text-red-700 underline underline-offset-2 transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              {stepConfig.skipLabel}
+            </button>
           </section>
 
           {files.length > 0 && (
@@ -295,7 +312,7 @@ export function VerifyIncomeForm({
       <StickyFooter
         nav={stepNav}
         above={
-          showResults ? null : (
+          showResults || docStep !== 3 ? null : (
             <button
               type="button"
               onClick={skipStep}
@@ -310,9 +327,7 @@ export function VerifyIncomeForm({
         {showResults ? (
           <PrimaryButton onClick={goToBadCaseChain}>Review Application</PrimaryButton>
         ) : docStep === 3 ? (
-          <PrimaryButton onClick={declaration.openPrompt} disabled={!declaration.isSigned}>
-            Continue
-          </PrimaryButton>
+          <PrimaryButton onClick={declaration.requestContinue}>Continue</PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleUpload} disabled={files.length === 0}>
             Upload documents

@@ -12,6 +12,11 @@ export type IncomeDocStepConfig = {
   id: "payslip" | "bank" | "declare";
   title: string;
   subtitle: string;
+  /**
+   * Optional note above the title that says why the step exists. The title
+   * stays the instruction; this is the reason for it.
+   */
+  notice?: string;
   /** Label of the link that skips this step. */
   skipLabel: string;
 };
@@ -19,7 +24,8 @@ export type IncomeDocStepConfig = {
 export const INCOME_DOC_STEPS: Record<IncomeDocStep, IncomeDocStepConfig> = {
   1: {
     id: "payslip",
-    title: "Income Documents Required",
+    notice: "No CPF/NOA detected",
+    title: "Upload your income documents manually",
     subtitle: "Payslips for full-time employees, or monthly statements for PHV drivers.",
     skipLabel: "I do not have any payslips or income documents, skip this step",
   },

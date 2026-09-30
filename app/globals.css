@@ -623,7 +623,8 @@ input[type="range"]::-moz-range-thumb {
   animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
 }
 
-.booking-field--invalid {
+.booking-field--invalid,
+.ios-card--invalid {
   border-color: var(--ios-danger);
   box-shadow: 0 0 0 2px var(--ios-danger);
   animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
@@ -642,7 +643,8 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .plan-lane--invalid .plan-lane-card,
   .signature-pad--invalid,
-  .booking-field--invalid {
+  .booking-field--invalid,
+  .ios-card--invalid {
     animation: none;
   }
 }
@@ -2088,10 +2090,10 @@ input[type="range"].ios-slider::-moz-range-thumb {
   container-type: inline-size;
 }
 
-/* One line at any width: 13px where it fits, shrinking with the row on
-   narrow phones (the row's content box is the container size). */
+/* One line. 16px on the upload card; the footer row is narrower, so it
+   shrinks there just enough to stay on one line. */
 .ios-skip-link {
-  font-size: min(13px, 3.4cqw);
+  font-size: min(16px, 4.2cqw);
 }
 
 /* Name-match note on the upload card: always one line. The type size follows

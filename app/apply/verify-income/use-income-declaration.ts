@@ -29,6 +29,9 @@ export function useIncomeDeclaration(onDeclared: () => void) {
   const [signature, setSignature] = useState<string | null>(null);
   const [isPromptOpen, setIsPromptOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [incomeNeedsInput, setIncomeNeedsInput] = useState(false);
+  const [signatureNeedsInput, setSignatureNeedsInput] = useState(false);
+  const [attentionNonce, setAttentionNonce] = useState(0);
   const typingTimerRef = useRef<number | null>(null);
 
   const monthlyIncome = typedIncome ?? saved?.monthlyIncome ?? 0;
@@ -38,7 +41,9 @@ export function useIncomeDeclaration(onDeclared: () => void) {
   const showSignature = isSigned || (monthlyIncome > 0 && !isTyping);
 
   const changeIncome = useCallback((text: string) => {
-    setTypedIncome(parseIncomeInput(text));
+    const amount = parseIncomeInput(text);
+    setTypedIncome(amount);
+    if (amount > 0) setIncomeNeedsInput(false);
     setIsTyping(true);
     if (typingTimerRef.current !== null) window.clearTimeout(typingTimerRef.current);
     typingTimerRef.current = window.setTimeout(() => {
@@ -56,6 +61,7 @@ export function useIncomeDeclaration(onDeclared: () => void) {
 
   const handleSigned = useCallback((dataUrl: string) => {
     setSignature(dataUrl);
+    setSignatureNeedsInput(false);
     setIsPromptOpen(true);
   }, []);
 
@@ -63,10 +69,33 @@ export function useIncomeDeclaration(onDeclared: () => void) {
     setSignature(null);
   }, []);
 
-  /** Footer "Continue": reopens the prompt if it was dismissed after signing. */
-  const openPrompt = useCallback(() => {
-    if (signature && monthlyIncome > 0) setIsPromptOpen(true);
-  }, [signature, monthlyIncome]);
+  /**
+   * Footer "Continue" is always tappable. A missing amount or signature is
+   * painted red instead of greying the button; the prompt opens only once both
+   * are present.
+   */
+  const requestContinue = useCallback(() => {
+    if (monthlyIncome <= 0) {
+      setIncomeNeedsInput(true);
+      setSignatureNeedsInput(false);
+      setAttentionNonce((nonce) => nonce + 1);
+      return;
+    }
+    if (!signature) {
+      setIncomeNeedsInput(false);
+      setIsTyping(false);
+      if (typingTimerRef.current !== null) {
+        window.clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+      setSignatureNeedsInput(true);
+      setAttentionNonce((nonce) => nonce + 1);
+      return;
+    }
+    setIncomeNeedsInput(false);
+    setSignatureNeedsInput(false);
+    setIsPromptOpen(true);
+  }, [monthlyIncome, signature]);
 
   const closePrompt = useCallback(() => {
     setIsPromptOpen(false);
@@ -88,10 +117,13 @@ export function useIncomeDeclaration(onDeclared: () => void) {
     changeIncome,
     showSignature,
     isSigned,
+    incomeNeedsInput,
+    signatureNeedsInput,
+    attentionNonce,
     handleSigned,
     handleCleared,
     isPromptOpen,
-    openPrompt,
+    requestContinue,
     closePrompt,
     confirm,
   };
