@@ -660,7 +660,9 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
               >
                 <SignaturePad
                   headingInBanner
-                  bannerHeight={88}
+                  bannerHeight={64}
+                  canvasHeight={120}
+                  absorbPaneSpace={false}
                   invalid={signatureNeedsInput}
                   onSigned={(dataUrl) => {
                     setSignatureDataUrl(dataUrl);

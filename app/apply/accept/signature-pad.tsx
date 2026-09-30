@@ -81,6 +81,8 @@ interface SignaturePadProps {
   canvasHeight?: number;
   /** Height of the coloured banner in px; defaults to a compact 48. */
   bannerHeight?: number;
+  /** Stretch the card with unused pane space. Off when the card should keep a gap around it. */
+  absorbPaneSpace?: boolean;
 }
 
 export function SignaturePad({
@@ -95,6 +97,7 @@ export function SignaturePad({
   headingInBanner = false,
   canvasHeight = 176,
   bannerHeight,
+  absorbPaneSpace = true,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -460,7 +463,7 @@ export function SignaturePad({
                 type="button"
                 onClick={handleClear}
                 disabled={isEmpty || isSigning}
-                className="text-[11px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-30"
+                className="text-[16px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-30"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Clear
@@ -469,7 +472,7 @@ export function SignaturePad({
                 type="button"
                 onClick={handleConfirm}
                 disabled={isEmpty || isSigning}
-                className="rounded-[var(--radius-sm)] px-3.5 py-1.5 text-[11px] font-bold tracking-wide transition-all duration-150 disabled:opacity-30"
+                className="rounded-[var(--radius-sm)] px-4 py-2 text-[16px] font-bold tracking-wide transition-all duration-150 disabled:opacity-30"
                 style={{
                   background: "var(--brand-blue-hex)",
                   color: "#ffffff",
@@ -482,11 +485,13 @@ export function SignaturePad({
           )}
         </div>
       </div>
-        <div
-          aria-hidden
-          className="shrink-0"
-          style={{ height: "var(--apply-fit-leftover, 0px)" }}
-        />
+        {absorbPaneSpace ? (
+          <div
+            aria-hidden
+            className="shrink-0"
+            style={{ height: "var(--apply-fit-leftover, 0px)" }}
+          />
+        ) : null}
       </div>
       {needsDraw || needsConfirm ? (
         <p

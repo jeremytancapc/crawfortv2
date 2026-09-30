@@ -8,8 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ReactNode } from "react";
-import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
 import {
@@ -90,8 +88,6 @@ interface DeckCard {
   iconBg: string;
   title: string;
   subtitle?: string;
-  /** Small logo rendered beside the title, e.g. PayNow's mark. */
-  accessory?: ReactNode;
   /** Bullets for key-term cards. */
   terms?: readonly string[];
   /** First-person line on the confirm button. */
@@ -134,15 +130,6 @@ function buildDeckCards(plan: SelectedPlanData, acceptedAt: string): DeckCard[] 
       title: "Link your NRIC to PayNow",
       agreeLabel: DISBURSEMENT_ACK_STATEMENT,
       ctaLabel: DISBURSEMENT_CTA_LABEL,
-      accessory: (
-        <Image
-          src="/images/paynow-logo.png"
-          alt=""
-          width={228}
-          height={148}
-          className="h-[0.95em] w-auto"
-        />
-      ),
     },
   ];
 }
@@ -270,42 +257,6 @@ function DeckCardBody({
 
 const LISTING_CARD_SHADOW = "0 18px 40px oklch(0.24 0.02 80 / 0.10)";
 
-function TitleWithAccessory({
-  title,
-  accessory,
-}: {
-  title: string;
-  accessory?: ReactNode;
-}) {
-  if (!accessory) return title;
-
-  const mark = "PayNow";
-  const at = title.lastIndexOf(mark);
-  if (at === -1) {
-    return (
-      <>
-        {title}{" "}
-        <span className="ml-1 inline-flex translate-y-[0.08em] items-center">
-          {accessory}
-        </span>
-      </>
-    );
-  }
-
-  return (
-    <>
-      {title.slice(0, at)}
-      <span className="inline-flex items-center gap-1.5">
-        {mark}
-        <span className="inline-flex translate-y-[0.06em] items-center">
-          {accessory}
-        </span>
-      </span>
-      {title.slice(at + mark.length)}
-    </>
-  );
-}
-
 function DeckCardFace({
   card,
   plan,
@@ -328,7 +279,7 @@ function DeckCardFace({
           className="deck-card-watermark pointer-events-none"
         />
         <h2 className="deck-card-banner-title relative z-10 min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]">
-          <TitleWithAccessory title={card.title} accessory={card.accessory} />
+          {card.title}
         </h2>
       </div>
 
