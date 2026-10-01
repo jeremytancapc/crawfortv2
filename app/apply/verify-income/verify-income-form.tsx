@@ -192,18 +192,48 @@ export function VerifyIncomeForm({
         <div key={`upload-${docStep}`} className="animate-fade-up flex flex-col gap-6">
           <section>
             <Card className="ios-doc-card">
-              <p
-                role="note"
-                className="ios-doc-note flex items-center gap-2 whitespace-nowrap bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 font-semibold leading-snug text-[var(--brand-blue-hex)]"
-              >
-                <Info
-                  size={18}
-                  weight="fill"
-                  aria-hidden
-                  className="shrink-0 text-[var(--accent)]"
-                />
-                Documents must match your Singpass name.
-              </p>
+              {docStep === 2 ? (
+                <div
+                  role="note"
+                  className="bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-2.5 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
+                >
+                  <p className="flex items-start gap-2">
+                    <Info
+                      size={18}
+                      weight="fill"
+                      aria-hidden
+                      className="mt-0.5 shrink-0 text-[var(--accent)]"
+                    />
+                    Documents must match your Singpass name.
+                  </p>
+                  <ul className="mt-1.5 flex flex-col gap-1 pl-[26px]">
+                    <li className="flex gap-2">
+                      <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+                      <span>
+                        Upload the full bank statement, including your name, the month, the bank
+                        logo and all pages.
+                      </span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+                      <span>No partial statements or screenshots.</span>
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <p
+                  role="note"
+                  className="ios-doc-note flex items-center gap-2 whitespace-nowrap bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 font-semibold leading-snug text-[var(--brand-blue-hex)]"
+                >
+                  <Info
+                    size={18}
+                    weight="fill"
+                    aria-hidden
+                    className="shrink-0 text-[var(--accent)]"
+                  />
+                  Documents must match your Singpass name.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
