@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { getApplicant } from "@/lib/db/applicants";
 import { isDatabaseConfigured } from "@/lib/db/sql";
-import { ascendIncomeType, extractIncome, type IncomeDocument } from "@/lib/income-extraction";
+import { extractIncome, type IncomeDocument } from "@/lib/income-extraction";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 
 export const runtime = "nodejs";
@@ -119,9 +119,13 @@ export async function POST(request: NextRequest) {
         m1: outcome.m1,
         m2: outcome.m2,
         m3: outcome.m3,
-        // Payslip, bank statement or earnings statement, in Ascend's words -
-        // income/credit is told which one the figures came from.
-        incomeType: ascendIncomeType(outcome.source),
+        // What Ascend is told the figures came from, and what each file is -
+        // a payslip is PANEL only when a bank statement shows its pay arriving.
+        incomeType: outcome.incomeType,
+        fileTypes: outcome.fileTypes,
+        // Which months would confirm the figure, when fewer than three were
+        // read. Shown, never blocking.
+        advice: outcome.advice,
       });
     }
 

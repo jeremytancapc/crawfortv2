@@ -28,7 +28,16 @@ export type IncomeMonthView = {
 };
 
 export type IncomeResult =
-  | { kind: "read"; months: IncomeMonthView[]; average: number; incomeType: string }
+  | {
+      kind: "read";
+      months: IncomeMonthView[];
+      average: number;
+      incomeType: string;
+      /** Each uploaded file's type, in upload order. */
+      fileTypes: string[];
+      /** Which months would confirm the figure, when fewer than three were read. */
+      advice: string | null;
+    }
   | { kind: "not_read"; ask: string };
 
 export type ExtractResponse = {
@@ -36,6 +45,8 @@ export type ExtractResponse = {
   months?: Array<{ month: string; amount: number; employer: string | null }>;
   /** Ascend's incomeType for what was read, e.g. BANK_STATEMENT_OTHER_INCOME. */
   incomeType?: string;
+  fileTypes?: string[];
+  advice?: string | null;
   /** Written for the applicant - names the payslip that would finish it. */
   reason?: string;
   /** A code for our logs, e.g. "not_configured". Never shown to anyone. */
@@ -75,7 +86,9 @@ export function incomeResultFrom(response: ExtractResponse): IncomeResult {
       months,
       // Absent from a response written before statements were read, when
       // every submission was a payslip.
-      incomeType: response.incomeType || "PANEL_PAYSLIP",
+      incomeType: response.incomeType || "NON_PANEL_PAYSLIP",
+      fileTypes: response.fileTypes ?? [],
+      advice: readableSentence(response.advice ?? undefined),
       average: Math.round(
         months.reduce((sum, month) => sum + month.amount, 0) / months.length,
       ),

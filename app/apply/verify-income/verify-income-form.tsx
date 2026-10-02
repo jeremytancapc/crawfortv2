@@ -47,6 +47,7 @@ export function VerifyIncomeForm({
     canSubmit,
     uploadWindow,
     averageIncome,
+    incomeAdvice,
     submitIncome,
   } = useVerifyIncome(initialShowResults);
   const router = useRouter();
@@ -122,7 +123,7 @@ export function VerifyIncomeForm({
           {!showResults
             ? "Payslips, income statements and bank statements."
             : canSubmit
-              ? "Check the last 3 months we read from your documents."
+              ? "Check the income we read from your documents."
               : "Here is what is still missing."}
         </p>
       </div>
@@ -172,6 +173,11 @@ export function VerifyIncomeForm({
                 </div>
               </Card>
               )}
+              {canSubmit && incomeAdvice ? (
+                <p className="mt-3 px-1 text-[13px] leading-snug text-[var(--text-secondary)]">
+                  {incomeAdvice}
+                </p>
+              ) : null}
             </section>
           </div>
         ) : (

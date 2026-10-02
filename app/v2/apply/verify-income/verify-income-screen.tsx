@@ -34,6 +34,7 @@ export function VerifyIncomeScreen({
     incomeMonths,
     uploadWindow,
     averageIncome,
+    incomeAdvice,
     submitIncome,
     extractionAsk,
     canSubmit,
@@ -131,6 +132,11 @@ export function VerifyIncomeScreen({
               />
             ))}
           </Rows>
+          {incomeAdvice ? (
+            <p className="v2-note v2-enter mt-3" style={{ ["--i" as string]: 2 }}>
+              {incomeAdvice}
+            </p>
+          ) : null}
         </V2Body>
         <V2Footer
           note={
@@ -150,7 +156,7 @@ export function VerifyIncomeScreen({
       <V2Header progress={{ stage: "verify", fraction: 0.4 }} />
       <V2Body justify="between">
         <V2Title
-          title="Upload your last 3 months"
+          title="Upload your latest 3 months"
           subtitle={`${uploadWindow.long}. PDF, JPG or PNG.`}
         />
 
@@ -229,7 +235,7 @@ export function VerifyIncomeScreen({
           </ul>
         ) : null}
       </V2Body>
-      <V2Footer note="Payslips, bank statements or earnings statements - one kind, up to 10 MB each.">
+      <V2Footer note="One is enough to continue. Payslips, bank or earnings statements, up to 10 MB each.">
         <Pill onClick={startProcessing} disabled={isProcessing} loading={isProcessing}>
           {isProcessing ? "Reading documents" : "Upload documents"}
         </Pill>

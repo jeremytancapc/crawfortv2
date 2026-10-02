@@ -70,7 +70,9 @@ export type SubmitIncomeResult =
 export async function submitIncome(
   months: IncomeMonth[],
   selected: SelectedFile[],
-  incomeType = "PANEL_PAYSLIP",
+  incomeType = "NON_PANEL_PAYSLIP",
+  /** Each file's own type, in the order selected; incomeType where missing. */
+  fileTypes: string[] = [],
 ): Promise<SubmitIncomeResult> {
   if (months.length === 0) {
     console.error("Income submission refused: no months were read");
@@ -82,7 +84,7 @@ export async function submitIncome(
     // (`600: orderFile is required`), so a failed upload must stop here
     // rather than submit figures that will be rejected.
     const files: Array<{ fileType: string; fileName: string; fileUrl: string }> = [];
-    for (const item of selected) {
+    for (const [i, item] of selected.entries()) {
       const form = new FormData();
       form.append("file", item.file);
 
@@ -96,7 +98,7 @@ export async function submitIncome(
       }
 
       const { fileUrl, fileName } = (await upload.json()) as { fileUrl: string; fileName: string };
-      files.push({ fileType: incomeType, fileName, fileUrl });
+      files.push({ fileType: fileTypes[i] ?? incomeType, fileName, fileUrl });
     }
 
     const res = await fetch("/api/apply/income", {
@@ -166,7 +168,10 @@ export function useVerifyIncome(initialShowResults = false) {
   const [incomeMonths, setIncomeMonths] = useState<IncomeMonth[]>([]);
   const [averageIncome, setAverageIncome] = useState(0);
   /** What the documents were, in Ascend's words - set with the figures. */
-  const [incomeType, setIncomeType] = useState("PANEL_PAYSLIP");
+  const [incomeType, setIncomeType] = useState("NON_PANEL_PAYSLIP");
+  const [fileTypes, setFileTypes] = useState<string[]>([]);
+  /** Which months would confirm the figure, when fewer than three were read. */
+  const [incomeAdvice, setIncomeAdvice] = useState<string | null>(null);
   const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
   const uploadWindow = useMemo(() => uploadWindowLabel(), []);
 
@@ -211,6 +216,8 @@ export function useVerifyIncome(initialShowResults = false) {
           setIncomeMonths(outcome.months);
           setAverageIncome(outcome.average);
           setIncomeType(outcome.incomeType);
+          setFileTypes(outcome.fileTypes);
+          setIncomeAdvice(outcome.advice);
           return;
         }
 
@@ -265,7 +272,8 @@ export function useVerifyIncome(initialShowResults = false) {
     uploadWindow,
     averageIncome,
     submitIncome: (months: IncomeMonth[], selected: SelectedFile[]) =>
-      submitIncome(months, selected, incomeType),
+      submitIncome(months, selected, incomeType, fileTypes),
+    incomeAdvice,
     /**
      * What to ask the applicant for, when the documents did not yield three
      * months. Null once they have. Exactly one of this and `incomeMonths` is

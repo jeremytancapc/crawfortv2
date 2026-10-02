@@ -14,31 +14,45 @@ const THREE: ExtractedMonth[] = [
 ];
 
 describe("reviewExtraction", () => {
-  it("accepts three consistent months", () => {
-    const result = reviewExtraction(THREE);
+  const WINDOW = ["2026-06", "2026-07", "2026-08"];
 
-    expect(result.kind).toBe("usable");
-    expect(result).toMatchObject({ m1: 4280, m2: 4150, m3: 4200 });
+  it("accepts three consistent months", () => {
+    const result = reviewExtraction(THREE, WINDOW);
+
+    expect(result).toMatchObject({ kind: "usable", m1: 4280, m2: 4150, m3: 4200, filled: [] });
   });
 
   it("orders by month, so m1 is the most recent whatever order they arrived in", () => {
     const shuffled = [THREE[2], THREE[0], THREE[1]];
-    const result = reviewExtraction(shuffled);
+    const result = reviewExtraction(shuffled, WINDOW);
 
     expect(result).toMatchObject({ m1: 4280, m2: 4150, m3: 4200 });
   });
 
-  it("refuses fewer than three months rather than padding", () => {
-    // Ascend wants m1, m2 and m3. Inventing the third from an average would
-    // put a number nobody read into a credit decision.
-    const result = reviewExtraction(THREE.slice(0, 2));
+  it("goes ahead on one month, sending it as the income for the months not read", () => {
+    // The applicant is told we went with the one payslip. Ascend averages
+    // m1-m3, so a zero for each unread month would cut their income to a
+    // third of what the payslip says - the figure they were shown.
+    const result = reviewExtraction([THREE[0]], WINDOW);
 
-    expect(result.kind).toBe("needs_review");
-    expect(result).toMatchObject({ reason: expect.stringContaining("3 months") });
+    expect(result).toMatchObject({
+      kind: "usable", m1: 4280, m2: 4280, m3: 4280, filled: ["2026-06", "2026-07"],
+    });
+    if (result.kind === "usable") expect(result.months).toHaveLength(1);
+  });
+
+  it("fills a missing month with the average of the ones read", () => {
+    const result = reviewExtraction([THREE[0], THREE[2]], WINDOW);
+
+    expect(result).toMatchObject({ m1: 4280, m2: 4240, m3: 4200, filled: ["2026-07"] });
+  });
+
+  it("refuses nothing read at all", () => {
+    expect(reviewExtraction([], WINDOW).kind).toBe("needs_review");
   });
 
   it("refuses a zero or negative amount", () => {
-    const result = reviewExtraction([{ ...THREE[0], amount: 0 }, THREE[1], THREE[2]]);
+    const result = reviewExtraction([{ ...THREE[0], amount: 0 }, THREE[1], THREE[2]], WINDOW);
 
     expect(result.kind).toBe("needs_review");
   });
@@ -46,29 +60,25 @@ describe("reviewExtraction", () => {
   it("flags a month that dwarfs the others", () => {
     // The classic payslip misread: year-to-date taken for one month's pay.
     // 4280 and 4150 alongside 51000 is not a pay rise.
-    const result = reviewExtraction([{ ...THREE[0], amount: 51000 }, THREE[1], THREE[2]]);
+    const result = reviewExtraction([{ ...THREE[0], amount: 51000 }, THREE[1], THREE[2]], WINDOW);
 
     expect(result.kind).toBe("needs_review");
     expect(result).toMatchObject({ reason: expect.stringContaining("year-to-date") });
   });
 
   it("allows a normal variation, like a month with overtime", () => {
-    const result = reviewExtraction([{ ...THREE[0], amount: 5600 }, THREE[1], THREE[2]]);
+    const result = reviewExtraction([{ ...THREE[0], amount: 5600 }, THREE[1], THREE[2]], WINDOW);
 
     expect(result.kind).toBe("usable");
   });
 
-  it("flags months that are not consecutive", () => {
-    // A gap means a payslip is missing, and Ascend is told m1/m2/m3 are the
-    // three months before this one.
-    const result = reviewExtraction([
-      { month: "2026-08", amount: 4280, employer: null },
-      { month: "2026-05", amount: 4150, employer: null },
-      { month: "2026-04", amount: 4200, employer: null },
-    ]);
+  it("ignores a month outside the window", () => {
+    const result = reviewExtraction(
+      [...THREE, { month: "2026-05", amount: 99000, employer: null }],
+      WINDOW,
+    );
 
-    expect(result.kind).toBe("needs_review");
-    expect(result).toMatchObject({ reason: expect.stringContaining("consecutive") });
+    expect(result).toMatchObject({ kind: "usable", m1: 4280, m2: 4150, m3: 4200 });
   });
 });
 

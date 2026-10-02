@@ -34,6 +34,8 @@ export type PayPeriod = {
   end: string;
   /** Gross for this period alone - never year-to-date, never net. */
   gross: number;
+  /** Take-home pay as printed, when the document shows it: what reaches the bank. */
+  net?: number | null;
 };
 
 export type AssembledMonth = {
@@ -285,78 +287,30 @@ function listMonths(keys: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/**
- * The two windows an applicant can prove income with: the three complete
- * calendar months before this one - what the upload screen names - or the
- * three ending with this month, for someone already paid for it.
- *
- * Only the first used to count, so on 28 September an applicant holding
- * September, August and July payslips was told to find June: a document older
- * than the one they already had, for a decision that is better made on the
- * newer one.
- *
- * Anchoring on today rather than on whatever arrived is still the point. A
- * single stale May payslip used to produce "please add your April 2026
- * payslip" - walking further into the past, away from the months the screen
- * had already named, and asking for a document no decision needs.
- */
-function candidateWindows(today: Date): { named: string[]; latest: string[] } {
-  const year = today.getUTCFullYear();
-  const month = today.getUTCMonth();
-  const window = (backs: number[]) =>
-    backs.map((back) => new Date(Date.UTC(year, month - back, 1)).toISOString().slice(0, 7));
-  return { named: window([3, 2, 1]), latest: window([2, 1, 0]) };
-}
-
-function monthsHeld(assembly: Assembly, window: string[], monthlyOnly: boolean): string[] {
-  return assembly.months
-    .filter((m) => window.includes(m.month) && (!monthlyOnly || m.exact))
-    .map((m) => m.month);
-}
-
-/**
- * The three months this applicant's income is judged on, oldest first.
- *
- * Whichever window the documents come closer to filling. A tie goes to the
- * months the screen named, so the applicant is never asked for something the
- * page did not mention.
- */
-export function incomeWindow(
-  assembly: Assembly,
-  options?: { monthlyOnly?: boolean; today?: Date },
-): string[] {
-  const monthlyOnly = options?.monthlyOnly ?? false;
-  const { named, latest } = candidateWindows(options?.today ?? new Date());
-  return monthsHeld(assembly, latest, monthlyOnly).length >
-    monthsHeld(assembly, named, monthlyOnly).length
-    ? latest
-    : named;
-}
-
 const MONTH_LONG = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
+/** "2026-09" moved by `delta` months. */
+function shiftMonth(key: string, delta: number): string {
+  const [year, month] = key.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1 + delta, 1)).toISOString().slice(0, 7);
+}
+
+function thisMonth(today: Date): string {
+  return today.toISOString().slice(0, 7);
+}
+
 /**
- * The months the upload screen names - both windows `incomeWindow` accepts,
- * so the page never asks for less than the rule allows. It named only the
- * three before this month, and applicants holding this month's payslip went
- * looking for an older one.
- *
- * Month names are spelled out here rather than taken from the locale, which
- * shortens September to "Sept" in en-SG.
+ * The months the latest document may be for, most recent first: this month,
+ * last month, or the one before. In October that is October, September or
+ * August - an August payslip is recent enough, and a September one is not
+ * required.
  */
-export function uploadWindowLabel(today: Date = new Date()): { long: string; short: string } {
-  const { named, latest } = candidateWindows(today);
-  const name = (key: string) => MONTH_LONG[Number(key.slice(5, 7)) - 1];
-  const abbr = (key: string) => name(key).slice(0, 3);
-  const span = (window: string[], fmt: (key: string) => string, joiner: string) =>
-    `${fmt(window[0])}${joiner}${fmt(window[2])}`;
-  return {
-    long: `${span(named, name, " to ")}, or ${span(latest, name, " to ")}`,
-    short: `${span(named, abbr, "–")} or ${span(latest, abbr, "–")}`,
-  };
+export function latestAllowed(today: Date): string[] {
+  const now = thisMonth(today);
+  return [0, -1, -2].map((delta) => shiftMonth(now, delta));
 }
 
 /** What the applicant uploaded. Ascend takes one kind per submission. */
@@ -373,59 +327,125 @@ function noun(source: IncomeSource, count = 1): string {
   return count === 1 ? NOUN[source] : `${NOUN[source]}s`;
 }
 
-export function nextUploadAsk(
+/**
+ * The months the upload screen names: last month or the one before, as the
+ * latest, and the two before that. Spelled out here rather than taken from
+ * the locale, which shortens September to "Sept" in en-SG.
+ */
+export function uploadWindowLabel(today: Date = new Date()): { long: string; short: string } {
+  const [, last, before] = latestAllowed(today);
+  const name = (key: string) => MONTH_LONG[Number(key.slice(5, 7)) - 1];
+  return {
+    long: `${name(last)} or ${name(before)}, and the 2 months before it`,
+    short: `latest: ${name(last).slice(0, 3)} or ${name(before).slice(0, 3)}`,
+  };
+}
+
+export type MonthPlan =
+  /** Nothing can go to Ascend yet; `ask` says what would let it. */
+  | { kind: "ask"; ask: string }
+  | {
+      kind: "ready";
+      /** The latest month held and the two before it, oldest first. */
+      window: string[];
+      /** The window's months that were read, most recent first. */
+      held: string[];
+      /** The window's months not read, oldest first. */
+      missing: string[];
+      /** What would confirm the figure, when months are missing. Never blocks. */
+      advice: string | null;
+    };
+
+/**
+ * Which months an applicant's income is judged on.
+ *
+ * The latest month read decides it: it has to be this month, last month or
+ * the month before, and the two months before it are asked for. One is enough
+ * to go ahead - the applicant is told which months would confirm the figure,
+ * not stopped for them.
+ *
+ * Anchoring on today rather than on whatever arrived still matters: a single
+ * stale May payslip used to produce "please add your April 2026 payslip",
+ * walking further into the past. A latest month older than allowed is asked
+ * for again by name, never walked back from.
+ *
+ * Under a monthly-only policy a month assembled from weekly payslips does not
+ * count, however completely they cover it.
+ */
+export function planIncomeMonths(
   assembly: Assembly,
   options?: { monthlyOnly?: boolean; today?: Date; source?: IncomeSource },
-): string | null {
+): MonthPlan {
   const monthlyOnly = options?.monthlyOnly ?? false;
   const source = options?.source ?? "payslip";
-  const wanted = incomeWindow(assembly, options);
+  const allowed = latestAllowed(options?.today ?? new Date());
 
-  if (assembly.overlapping.some((m) => wanted.includes(m))) {
-    return (
-      `The ${noun(source, 2)} for ${listMonths(assembly.overlapping.filter((m) => wanted.includes(m)))} ` +
-      `cover some of the same days. Please upload one ${noun(source)} per pay period.`
-    );
+  const usable = new Set(
+    assembly.months.filter((m) => !monthlyOnly || m.exact).map((m) => m.month),
+  );
+
+  // The most recent allowed month that has *anything* in it decides what to
+  // ask: a half-covered September is finished, not skipped for August.
+  const touched = (month: string) =>
+    usable.has(month) ||
+    assembly.overlapping.includes(month) ||
+    assembly.incomplete.some((i) => i.month === month) ||
+    assembly.months.some((m) => m.month === month);
+  // This month is still running, so a part of it is expected, not a gap:
+  // it only counts once it is whole.
+  const latest = allowed.find((month, i) => (i === 0 ? usable.has(month) : touched(month)));
+
+  if (latest && !usable.has(latest)) {
+    if (assembly.overlapping.includes(latest)) {
+      return {
+        kind: "ask",
+        ask:
+          `The ${noun(source, 2)} for ${monthName(latest)} cover some of the same days. ` +
+          `Please upload one ${noun(source)} per pay period.`,
+      };
+    }
+    const partial = assembly.incomplete.find((i) => i.month === latest);
+    const gap = partial?.missing[0];
+    if (partial && gap) {
+      const from = new Date(`${gap.from}T00:00:00Z`).getUTCDate();
+      const to = new Date(`${gap.to}T00:00:00Z`).getUTCDate();
+      const span = from === to ? `${from}` : `${from} to ${to}`;
+      return {
+        kind: "ask",
+        ask: `We have part of ${monthName(latest)}. Please add the ${noun(source)} covering ${span} ${monthName(latest)}.`,
+      };
+    }
+    return {
+      kind: "ask",
+      ask:
+        `We can only use a monthly ${noun(source)} for ${monthName(latest)}. ` +
+        `Please upload the monthly ${noun(source)} for that period.`,
+    };
   }
 
-  // Under a monthly-only policy an apportioned month is not underwritable,
-  // however completely the weekly payslips cover it.
-  const apportioned = assembly.months.filter((m) => !m.exact && wanted.includes(m.month));
-  if (monthlyOnly && apportioned.length > 0) {
-    return (
-      `We can only use a monthly ${noun(source)} for ${listMonths(apportioned.map((m) => m.month))}. ` +
-      `Please upload the monthly ${noun(source)} for that period.`
-    );
+  if (!latest) {
+    const [, last, before] = allowed;
+    return {
+      kind: "ask",
+      ask: `Please upload your latest ${noun(source)} - for ${monthName(last).replace(/ \d{4}$/, "")} or ${monthName(before)}.`,
+    };
   }
 
-  // Only the months being asked for count. A complete May sitting next to a
-  // wanted June is still not one of the three, and must not be treated as
-  // progress towards them.
-  const have = monthsHeld(assembly, wanted, monthlyOnly);
-  const missing = wanted.filter((m) => !have.includes(m));
+  const window = [shiftMonth(latest, -2), shiftMonth(latest, -1), latest];
+  const held = window.filter((m) => usable.has(m)).reverse();
+  const missing = window.filter((m) => !usable.has(m));
 
-  if (missing.length === 0) return null;
-
-  // A half-covered month inside the window is the cheapest thing to finish,
-  // so ask for the rest of it before asking for a whole other month.
-  const partial = assembly.incomplete.find((i) => wanted.includes(i.month));
-  const gap = partial?.missing[0];
-  if (partial && gap) {
-    const from = new Date(`${gap.from}T00:00:00Z`).getUTCDate();
-    const to = new Date(`${gap.to}T00:00:00Z`).getUTCDate();
-    const span = from === to ? `${from}` : `${from} to ${to}`;
-    return `We have part of ${monthName(partial.month)}. Please add the ${noun(source)} covering ${span} ${monthName(partial.month)}.`;
-  }
-
-  if (have.length === 0) {
-    return `Please upload your ${noun(source, 2)} for ${listMonths(missing)}.`;
-  }
-
-  return `We have ${listMonths(have)}. Please add your ${
-    missing.length === 1
-      ? `${monthName(missing[0])} ${noun(source)}`
-      : `${listMonths(missing)} ${noun(source, 2)}`
-  }.`;
+  return {
+    kind: "ready",
+    window,
+    held,
+    missing,
+    advice:
+      missing.length === 0
+        ? null
+        : `We'll go with your ${listMonths(held)} ${noun(source, held.length)}. Adding your ` +
+          `${listMonths(missing)} ${noun(source, missing.length)} helps us confirm your income.`,
+  };
 }
 
 // ── Bank statements ───────────────────────────────────────────────────────
@@ -522,4 +542,44 @@ export function bankStatementMonths(
   }
 
   return { periods, withoutIncome };
+}
+
+/** How close a bank credit has to be to a payslip's take-home pay, in dollars. */
+const PAY_MATCH_TOLERANCE = 1;
+
+/** Pay for a month often lands in the first days of the next. */
+const PAY_LANDS_WITHIN_DAYS = 20;
+
+/**
+ * True when every payslip for `months` can be seen arriving in the bank: a
+ * credit within a dollar of its take-home pay, dated from the start of its
+ * period to three weeks after it ends. Each credit pays one payslip only.
+ *
+ * Take-home, not gross - the bank receives pay after CPF, so it is the net
+ * line that should appear there. A payslip that prints no net cannot be
+ * matched, and one month unmatched means none of it is confirmed.
+ */
+export function paidIntoBank(periods: PayPeriod[], credits: IncomeCredit[], months: string[]): boolean {
+  const owed = periods.filter((p) => months.includes(p.start.slice(0, 7)));
+  if (owed.length === 0) return false;
+
+  const unused = [...credits];
+  for (const period of owed) {
+    const net = period.net ?? 0;
+    const from = parseDay(period.start);
+    const end = parseDay(period.end);
+    if (net <= 0 || from === null || end === null) return false;
+    const until = end + PAY_LANDS_WITHIN_DAYS * DAY_MS;
+
+    const at = unused.findIndex((credit) => {
+      const day = parseDay(credit.date);
+      return (
+        day !== null && day >= from && day <= until &&
+        Math.abs(credit.amount - net) <= PAY_MATCH_TOLERANCE
+      );
+    });
+    if (at === -1) return false;
+    unused.splice(at, 1);
+  }
+  return true;
 }

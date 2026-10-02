@@ -42,6 +42,7 @@ export const runtime = "nodejs";
  */
 const UPLOADED_INCOME_TYPES = new Set([
   "PANEL_PAYSLIP",
+  "NON_PANEL_PAYSLIP",
   "BANK_STATEMENT_OTHER_INCOME",
   "INCOME_STATEMENT",
 ]);
@@ -96,7 +97,14 @@ export async function POST(request: NextRequest) {
   // NOT YET WIRED: the verify-income page collects files in the browser and
   // they are never uploaded. Reaching Ascend needs /openApi/file/upload
   // first, then its returned URLs passed here as `files`.
-  const files = body.files ?? [];
+  const incomeType =
+    body.incomeType && UPLOADED_INCOME_TYPES.has(body.incomeType) ? body.incomeType : "NON_PANEL_PAYSLIP";
+  // Each file keeps its own type - a bank statement sent beside payslips is a
+  // bank statement - but only from the same list.
+  const files = (body.files ?? []).map((file) => ({
+    ...file,
+    fileType: UPLOADED_INCOME_TYPES.has(file.fileType) ? file.fileType : incomeType,
+  }));
   if (files.length === 0) {
     console.error("[apply/income] no documents to submit - file upload is not wired yet");
     return NextResponse.json(
@@ -104,9 +112,6 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-
-  const incomeType =
-    body.incomeType && UPLOADED_INCOME_TYPES.has(body.incomeType) ? body.incomeType : "PANEL_PAYSLIP";
 
   try {
     const result = await ascendSubmitIncome({

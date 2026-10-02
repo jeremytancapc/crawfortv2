@@ -1,33 +1,30 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 
-import { ascendIncomeType, extractIncome, type IncomeDocument } from "./income-extraction";
+import { extractIncome, type IncomeDocument } from "./income-extraction";
 
 /**
  * extractIncome with the model replaced by what it reported. The reading is
- * the model's job; everything after it - which months count, the sums, the
- * asks, which Ascend income type - is ours, and is what these pin down.
+ * the model's job; everything after it - whose documents they are, which
+ * credits are income, which months count, the sums, the asks and the income
+ * type Ascend is told - is ours, and is what these pin down.
  */
+type Kind = "payslip" | "bank_statement" | "earnings_statement" | "other";
+type Category =
+  | "salary" | "platform_payout" | "transfer_from_others" | "cash_deposit" | "government_payout"
+  | "own_account_transfer" | "interest" | "refund_or_reversal" | "loan_disbursement" | "other";
+
 type Report = {
-  documentType: "payslip" | "bank_statement" | "earnings_statement" | "mixed" | "other";
   readable?: boolean;
   note?: string;
-  periods?: Array<{ start: string; end: string; gross: number; employer: string }>;
+  documents: Array<{ index: number; kind: Kind; holderName: string; issuer: string }>;
+  periods?: Array<{ start: string; end: string; gross: number; net: number; employer: string }>;
   statements?: Array<{ start: string; end: string }>;
-  credits?: Array<{ date: string; amount: number; payer: string }>;
-  documents?: Array<{ index: number; holderName: string; issuer: string }>;
+  credits?: Array<{ date: string; amount: number; payer: string; category: Category }>;
 };
 
 function reporting(report: Report): Anthropic {
-  const input = {
-    readable: true,
-    note: "",
-    periods: [],
-    statements: [],
-    credits: [],
-    documents: [],
-    ...report,
-  };
+  const input = { readable: true, note: "", periods: [], statements: [], credits: [], ...report };
   return {
     messages: {
       create: async () => ({
@@ -37,270 +34,279 @@ function reporting(report: Report): Anthropic {
   } as unknown as Anthropic;
 }
 
-const DOC: IncomeDocument = { fileName: "x.pdf", mediaType: "application/pdf", bytes: Buffer.from("x") };
-const TODAY = new Date("2026-09-28T00:00:00Z");
+// 2 Oct 2026: the latest document has to be for September or August.
+const TODAY = new Date("2026-10-02T00:00:00Z");
+const APPLICANT = { name: "TAN CAKEN" };
 
-const read = (report: Report) => extractIncome([DOC], { client: reporting(report), today: TODAY });
+const files = (n: number): IncomeDocument[] =>
+  Array.from({ length: n }, (_, i) => ({
+    fileName: `doc-${i + 1}.pdf`, mediaType: "application/pdf", bytes: Buffer.from("x"),
+  }));
 
-describe("extractIncome - payslips", () => {
-  it("underwrites on September, August and July at the end of September", async () => {
-    const outcome = await read({
-      documentType: "payslip",
-      periods: [
-        { start: "2026-09-01", end: "2026-09-30", gross: 5200, employer: "Kimseng Food" },
-        { start: "2026-08-01", end: "2026-08-31", gross: 5100, employer: "Kimseng Food" },
-        { start: "2026-07-01", end: "2026-07-31", gross: 5000, employer: "Kimseng Food" },
-      ],
-    });
-
-    expect(outcome.kind).toBe("usable");
-    if (outcome.kind !== "usable") return;
-    expect([outcome.m1, outcome.m2, outcome.m3]).toEqual([5200, 5100, 5000]);
-    expect(outcome.source).toBe("payslip");
+const read = (report: Report) =>
+  extractIncome(files(report.documents.length), {
+    client: reporting(report), today: TODAY, applicant: APPLICANT,
   });
 
-  it("does not let a payslip for next month into the figures", async () => {
+const payslip = (index: number) => ({ index, kind: "payslip" as const, holderName: "TAN CAKEN", issuer: "Kimseng Food" });
+const statement = (index: number, bank = "OCBC Bank") =>
+  ({ index, kind: "bank_statement" as const, holderName: "TAN CAKEN", issuer: bank });
+
+const SEP = { start: "2026-09-01", end: "2026-09-30", gross: 5200, net: 4160, employer: "Kimseng Food" };
+const AUG = { start: "2026-08-01", end: "2026-08-31", gross: 5100, net: 4080, employer: "Kimseng Food" };
+const JUL = { start: "2026-07-01", end: "2026-07-31", gross: 5000, net: 4000, employer: "Kimseng Food" };
+
+const JUL_ST = { start: "2026-07-01", end: "2026-07-31" };
+const AUG_ST = { start: "2026-08-01", end: "2026-08-31" };
+const SEP_ST = { start: "2026-09-01", end: "2026-09-30" };
+const salary = (date: string, amount: number) =>
+  ({ date, amount, payer: "KIMSENG FOOD PTE LTD", category: "salary" as const });
+
+describe("extractIncome - payslips", () => {
+  it("submits payslips alone as non-panel, on their gross pay", async () => {
     const outcome = await read({
-      documentType: "payslip",
-      periods: [
-        { start: "2026-10-01", end: "2026-10-31", gross: 9000, employer: "Kimseng Food" },
-        { start: "2026-09-01", end: "2026-09-30", gross: 5200, employer: "Kimseng Food" },
-        { start: "2026-08-01", end: "2026-08-31", gross: 5100, employer: "Kimseng Food" },
-        { start: "2026-07-01", end: "2026-07-31", gross: 5000, employer: "Kimseng Food" },
-      ],
+      documents: [payslip(1), payslip(2), payslip(3)],
+      periods: [SEP, AUG, JUL],
     });
 
-    expect(outcome.kind).toBe("usable");
+    expect(outcome).toMatchObject({
+      kind: "usable",
+      m1: 5200, m2: 5100, m3: 5000,
+      incomeType: "NON_PANEL_PAYSLIP",
+      fileTypes: ["NON_PANEL_PAYSLIP", "NON_PANEL_PAYSLIP", "NON_PANEL_PAYSLIP"],
+      advice: null,
+    });
+  });
+
+  it("goes ahead on one September payslip, and says which months would confirm it", async () => {
+    const outcome = await read({ documents: [payslip(1)], periods: [SEP] });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 5200, m2: 5200, m3: 5200 });
     if (outcome.kind !== "usable") return;
-    expect(outcome.months.map((m) => m.month)).toEqual(["2026-09", "2026-08", "2026-07"]);
+    expect(outcome.advice).toContain("July and August 2026 payslips");
+  });
+
+  it("asks for September or August when the latest payslip is older", async () => {
+    const outcome = await read({
+      documents: [payslip(1)],
+      periods: [{ ...JUL, start: "2026-06-01", end: "2026-06-30" }],
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "needs_review",
+      reason: "Please upload your latest payslip - for September or August 2026.",
+    });
+  });
+
+  it("does not let a payslip for a later month into the figures", async () => {
+    const outcome = await read({
+      documents: [payslip(1), payslip(2)],
+      periods: [{ ...SEP, start: "2026-11-01", end: "2026-11-30", gross: 9000 }, SEP],
+    });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 5200 });
   });
 });
 
-describe("extractIncome - bank statements", () => {
-  const JUN = { start: "2026-06-01", end: "2026-06-30" };
-  const JUL = { start: "2026-07-01", end: "2026-07-31" };
-  const AUG = { start: "2026-08-01", end: "2026-08-31" };
-
-  it("sums each month's income credits into that month", async () => {
+describe("extractIncome - payslips seen arriving in the bank are panel payslips", () => {
+  it("is panel when every payslip's take-home pay is credited on the statement", async () => {
     const outcome = await read({
-      documentType: "bank_statement",
-      statements: [JUN, JUL, AUG],
-      credits: [
-        { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        // Paid twice a month in August - both halves are August's income.
-        { date: "2026-08-10", amount: 1950, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-08-25", amount: 1950, payer: "SUNRISE LOGISTICS PTE LTD" },
-      ],
+      documents: [payslip(1), payslip(2), payslip(3), statement(4)],
+      periods: [SEP, AUG, JUL],
+      statements: [JUL_ST, AUG_ST, SEP_ST],
+      credits: [salary("2026-07-31", 4000), salary("2026-08-31", 4080), salary("2026-09-30", 4160)],
     });
 
-    expect(outcome.kind).toBe("usable");
-    if (outcome.kind !== "usable") return;
-    expect([outcome.m1, outcome.m2, outcome.m3]).toEqual([3900, 3800, 3800]);
-    expect(outcome.months[0].employer).toBe("SUNRISE LOGISTICS PTE LTD");
-    expect(outcome.source).toBe("bank_statement");
+    expect(outcome).toMatchObject({
+      kind: "usable",
+      // The payslip's gross, not the bank's net: income is before CPF.
+      m1: 5200, m2: 5100, m3: 5000,
+      incomeType: "PANEL_PAYSLIP",
+      fileTypes: ["PANEL_PAYSLIP", "PANEL_PAYSLIP", "PANEL_PAYSLIP", "BANK_STATEMENT_OTHER_INCOME"],
+    });
+  });
+
+  it("finds pay credited early the next month", async () => {
+    const outcome = await read({
+      documents: [payslip(1), statement(2)],
+      periods: [AUG],
+      statements: [AUG_ST, SEP_ST],
+      credits: [salary("2026-09-03", 4080)],
+    });
+
+    expect(outcome).toMatchObject({ incomeType: "PANEL_PAYSLIP" });
+  });
+
+  it("stays non-panel when one month's pay is not on the statement", async () => {
+    const outcome = await read({
+      documents: [payslip(1), payslip(2), payslip(3), statement(4)],
+      periods: [SEP, AUG, JUL],
+      statements: [JUL_ST, AUG_ST, SEP_ST],
+      credits: [salary("2026-07-31", 4000), salary("2026-09-30", 4160)],
+    });
+
+    expect(outcome).toMatchObject({ kind: "usable", incomeType: "NON_PANEL_PAYSLIP" });
+  });
+});
+
+describe("extractIncome - bank statements alone count everything coming in", () => {
+  it("counts salary, PayNow from people, cash and CPF LIFE; not interest, refunds, own transfers or loans", async () => {
+    const month = (m: string) => [
+      salary(`${m}-25`, 3000),
+      { date: `${m}-03`, amount: 200, payer: "TAN WEI LING", category: "transfer_from_others" as const },
+      { date: `${m}-10`, amount: 400, payer: "", category: "cash_deposit" as const },
+      { date: `${m}-15`, amount: 300, payer: "CPF BOARD", category: "government_payout" as const },
+      { date: `${m}-28`, amount: 0.42, payer: "", category: "interest" as const },
+      { date: `${m}-18`, amount: 36.9, payer: "SHOPEE", category: "refund_or_reversal" as const },
+      { date: `${m}-08`, amount: 1500, payer: "TAN CAKEN", category: "own_account_transfer" as const },
+      { date: `${m}-20`, amount: 5000, payer: "ABC CREDIT", category: "loan_disbursement" as const },
+    ];
+    const outcome = await read({
+      documents: [statement(1), statement(2), statement(3)],
+      statements: [JUL_ST, AUG_ST, SEP_ST],
+      credits: [...month("2026-07"), ...month("2026-08"), ...month("2026-09")],
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "usable",
+      m1: 3900, m2: 3900, m3: 3900,
+      incomeType: "BANK_STATEMENT_OTHER_INCOME",
+      fileTypes: ["BANK_STATEMENT_OTHER_INCOME", "BANK_STATEMENT_OTHER_INCOME", "BANK_STATEMENT_OTHER_INCOME"],
+    });
   });
 
   it("counts a credit once when the same statement is uploaded twice", async () => {
-    const credit = { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" };
     const outcome = await read({
-      documentType: "bank_statement",
-      statements: [JUN, JUL, AUG, AUG],
-      credits: [
-        { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        credit,
-        credit,
-      ],
+      documents: [statement(1), statement(2)],
+      statements: [SEP_ST, SEP_ST],
+      credits: [salary("2026-09-25", 3800), salary("2026-09-25", 3800)],
     });
 
-    expect(outcome.kind).toBe("usable");
-    if (outcome.kind !== "usable") return;
-    expect(outcome.m1).toBe(3800);
+    expect(outcome).toMatchObject({ kind: "usable", m1: 3800 });
   });
 
   it("joins statements cut mid-month into the calendar month they cover", async () => {
     const outcome = await read({
-      documentType: "bank_statement",
-      statements: [
-        { start: "2026-05-15", end: "2026-06-14" },
-        { start: "2026-06-15", end: "2026-07-14" },
-        { start: "2026-07-15", end: "2026-08-14" },
-        { start: "2026-08-15", end: "2026-09-14" },
-      ],
-      credits: [
-        { date: "2026-06-01", amount: 4000, payer: "ACME PTE LTD" },
-        { date: "2026-07-01", amount: 4000, payer: "ACME PTE LTD" },
-        { date: "2026-08-01", amount: 4100, payer: "ACME PTE LTD" },
-      ],
+      documents: [statement(1), statement(2)],
+      statements: [{ start: "2026-08-15", end: "2026-09-14" }, { start: "2026-09-15", end: "2026-10-14" }],
+      credits: [salary("2026-09-01", 4000), salary("2026-09-20", 200)],
+    });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 4200 });
+    if (outcome.kind === "usable") expect(outcome.months.map((m) => m.month)).toEqual(["2026-09"]);
+  });
+
+  it("says which month shows nothing coming in rather than asking for its statement again", async () => {
+    const outcome = await read({
+      documents: [statement(1), statement(2)],
+      statements: [AUG_ST, SEP_ST],
+      credits: [salary("2026-08-25", 3800)],
+    });
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toContain("September 2026");
+  });
+
+  it("asks for a missing month by its bank statement, without stopping", async () => {
+    const outcome = await read({
+      documents: [statement(1), statement(2)],
+      statements: [AUG_ST, SEP_ST],
+      credits: [salary("2026-08-25", 3800), salary("2026-09-25", 3800)],
     });
 
     expect(outcome.kind).toBe("usable");
     if (outcome.kind !== "usable") return;
-    expect(outcome.months.map((m) => m.month)).toEqual(["2026-08", "2026-07", "2026-06"]);
-  });
-
-  it("says which month shows no income rather than asking for its statement again", async () => {
-    const outcome = await read({
-      documentType: "bank_statement",
-      statements: [JUN, JUL, AUG],
-      credits: [
-        { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-      ],
-    });
-
-    expect(outcome.kind).toBe("needs_review");
-    if (outcome.kind !== "needs_review") return;
-    expect(outcome.reason).toContain("July 2026");
-    expect(outcome.reason).not.toContain("Please add your July 2026 bank statement");
-  });
-
-  it("asks for a missing month by its bank statement, not its payslip", async () => {
-    const outcome = await read({
-      documentType: "bank_statement",
-      statements: [JUL, AUG],
-      credits: [
-        { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-      ],
-    });
-
-    expect(outcome.kind).toBe("needs_review");
-    if (outcome.kind !== "needs_review") return;
-    expect(outcome.reason).toBe(
-      "We have July and August 2026. Please add your June 2026 bank statement.",
-    );
+    expect(outcome.advice).toContain("July 2026 bank statement");
   });
 });
 
 describe("extractIncome - platform earnings statements", () => {
   it("reads them like payslips and submits them as income statements", async () => {
     const outcome = await read({
-      documentType: "earnings_statement",
-      periods: [
-        { start: "2026-08-01", end: "2026-08-31", gross: 4400, employer: "Grab" },
-        { start: "2026-07-01", end: "2026-07-31", gross: 4100, employer: "Grab" },
-        { start: "2026-06-01", end: "2026-06-30", gross: 4300, employer: "Grab" },
-      ],
+      documents: [{ index: 1, kind: "earnings_statement", holderName: "TAN CAKEN", issuer: "Grab" }],
+      periods: [{ ...SEP, employer: "Grab" }],
     });
 
-    expect(outcome.kind).toBe("usable");
-    expect(outcome.source).toBe("earnings_statement");
-    expect(ascendIncomeType(outcome.source)).toBe("INCOME_STATEMENT");
+    expect(outcome).toMatchObject({
+      kind: "usable",
+      incomeType: "INCOME_STATEMENT",
+      fileTypes: ["INCOME_STATEMENT"],
+    });
   });
 });
 
-describe("extractIncome - one kind of document per application", () => {
-  it("asks for one kind when payslips and bank statements are mixed", async () => {
-    const outcome = await read({ documentType: "mixed" });
+describe("extractIncome - what can be uploaded together", () => {
+  it("asks for one kind when payslips and earnings statements are mixed", async () => {
+    const outcome = await read({
+      documents: [payslip(1), { index: 2, kind: "earnings_statement", holderName: "TAN CAKEN", issuer: "Grab" }],
+      periods: [SEP, { ...SEP, employer: "Grab" }],
+    });
 
     expect(outcome.kind).toBe("needs_review");
     if (outcome.kind !== "needs_review") return;
     expect(outcome.reason).toMatch(/one kind/i);
   });
-});
 
-describe("ascendIncomeType", () => {
-  it("names each document the way Ascend's income/credit expects", () => {
-    expect(ascendIncomeType("payslip")).toBe("PANEL_PAYSLIP");
-    expect(ascendIncomeType("bank_statement")).toBe("BANK_STATEMENT_OTHER_INCOME");
-    expect(ascendIncomeType("earnings_statement")).toBe("INCOME_STATEMENT");
+  it("names a file that is not an income document", async () => {
+    const outcome = await read({
+      documents: [payslip(1), { index: 2, kind: "other", holderName: "TAN CAKEN", issuer: "" }],
+      periods: [SEP],
+    });
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toContain("doc-2.pdf");
   });
 });
 
 describe("extractIncome - the documents are the applicant's own", () => {
-  const applicant = { name: "TAN CAKEN" };
-  const PAYSLIPS = [
-    { start: "2026-08-01", end: "2026-08-31", gross: 5100, employer: "Kimseng Food" },
-    { start: "2026-07-01", end: "2026-07-31", gross: 5000, employer: "Kimseng Food" },
-    { start: "2026-06-01", end: "2026-06-30", gross: 5000, employer: "Kimseng Food" },
-  ];
-  const docs = (n: number): IncomeDocument[] =>
-    Array.from({ length: n }, (_, i) => ({
-      fileName: `slip-${i + 1}.pdf`, mediaType: "application/pdf", bytes: Buffer.from("x"),
-    }));
-  const named = (names: string[], issuer = "Kimseng Food") =>
-    names.map((holderName, i) => ({ index: i + 1, holderName, issuer }));
-
-  const readAs = (report: Report, n = 3) =>
-    extractIncome(docs(n), { client: reporting(report), today: TODAY, applicant });
-
-  it("accepts payslips in the applicant's name", async () => {
-    const outcome = await readAs({
-      documentType: "payslip",
-      periods: PAYSLIPS,
-      documents: named(["TAN CAKEN", "Caken Tan", "MR TAN CAKEN"]),
+  it("accepts documents in the applicant's name however it is written", async () => {
+    const outcome = await read({
+      documents: [
+        { ...payslip(1), holderName: "TAN CAKEN" },
+        { ...payslip(2), holderName: "Caken Tan" },
+        { ...payslip(3), holderName: "MR TAN CAKEN" },
+      ],
+      periods: [SEP, AUG, JUL],
     });
 
     expect(outcome.kind).toBe("usable");
   });
 
   it("refuses a payslip in someone else's name, and says which file", async () => {
-    const outcome = await readAs({
-      documentType: "payslip",
-      periods: PAYSLIPS,
-      documents: named(["TAN CAKEN", "LIM WEI JIE", "TAN CAKEN"]),
+    const outcome = await read({
+      documents: [payslip(1), { ...payslip(2), holderName: "LIM WEI JIE" }],
+      periods: [SEP, AUG],
     });
 
-    expect(outcome.kind).toBe("needs_review");
+    expect(outcome).toMatchObject({ kind: "needs_review", months: [] });
     if (outcome.kind !== "needs_review") return;
-    expect(outcome.reason).toContain("slip-2.pdf");
+    expect(outcome.reason).toContain("doc-2.pdf");
     expect(outcome.reason).toContain("Singpass");
-    expect(outcome.months).toEqual([]);
   });
 
-  it("refuses a document that shows no name at all", async () => {
-    const outcome = await readAs({
-      documentType: "payslip",
-      periods: PAYSLIPS,
-      documents: named(["TAN CAKEN", "TAN CAKEN"]),
+  it("refuses a document the reader gave no name for", async () => {
+    const outcome = await extractIncome(files(2), {
+      client: reporting({ documents: [payslip(1)], periods: [SEP] }),
+      today: TODAY,
+      applicant: APPLICANT,
     });
 
     expect(outcome.kind).toBe("needs_review");
     if (outcome.kind !== "needs_review") return;
-    expect(outcome.reason).toContain("slip-3.pdf");
+    expect(outcome.reason).toContain("doc-2.pdf");
   });
 
   it("refuses a bank statement from a bank it does not recognise", async () => {
-    const outcome = await readAs(
-      {
-        documentType: "bank_statement",
-        statements: [
-          { start: "2026-06-01", end: "2026-06-30" },
-          { start: "2026-07-01", end: "2026-07-31" },
-          { start: "2026-08-01", end: "2026-08-31" },
-        ],
-        credits: [
-          { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-          { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-          { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        ],
-        documents: named(["TAN CAKEN", "TAN CAKEN", "TAN CAKEN"], "MERLION BANK"),
-      },
-    );
+    const outcome = await read({
+      documents: [statement(1, "MERLION BANK")],
+      statements: [SEP_ST],
+      credits: [salary("2026-09-25", 3800)],
+    });
 
     expect(outcome.kind).toBe("needs_review");
     if (outcome.kind !== "needs_review") return;
-    expect(outcome.reason).toMatch(/bank/i);
-  });
-
-  it("accepts the same statements from a Singapore bank", async () => {
-    const outcome = await readAs({
-      documentType: "bank_statement",
-      statements: [
-        { start: "2026-06-01", end: "2026-06-30" },
-        { start: "2026-07-01", end: "2026-07-31" },
-        { start: "2026-08-01", end: "2026-08-31" },
-      ],
-      credits: [
-        { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-        { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
-      ],
-      documents: named(["TAN CAKEN", "TAN CAKEN", "TAN CAKEN"], "OCBC Bank"),
-    });
-
-    expect(outcome.kind).toBe("usable");
+    expect(outcome.reason).toMatch(/Singapore bank/);
   });
 });
