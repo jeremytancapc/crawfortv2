@@ -15,6 +15,7 @@ type Report = {
   periods?: Array<{ start: string; end: string; gross: number; employer: string }>;
   statements?: Array<{ start: string; end: string }>;
   credits?: Array<{ date: string; amount: number; payer: string }>;
+  documents?: Array<{ index: number; holderName: string; issuer: string }>;
 };
 
 function reporting(report: Report): Anthropic {
@@ -24,6 +25,7 @@ function reporting(report: Report): Anthropic {
     periods: [],
     statements: [],
     credits: [],
+    documents: [],
     ...report,
   };
   return {
@@ -204,5 +206,101 @@ describe("ascendIncomeType", () => {
     expect(ascendIncomeType("payslip")).toBe("PANEL_PAYSLIP");
     expect(ascendIncomeType("bank_statement")).toBe("BANK_STATEMENT_OTHER_INCOME");
     expect(ascendIncomeType("earnings_statement")).toBe("INCOME_STATEMENT");
+  });
+});
+
+describe("extractIncome - the documents are the applicant's own", () => {
+  const applicant = { name: "TAN CAKEN" };
+  const PAYSLIPS = [
+    { start: "2026-08-01", end: "2026-08-31", gross: 5100, employer: "Kimseng Food" },
+    { start: "2026-07-01", end: "2026-07-31", gross: 5000, employer: "Kimseng Food" },
+    { start: "2026-06-01", end: "2026-06-30", gross: 5000, employer: "Kimseng Food" },
+  ];
+  const docs = (n: number): IncomeDocument[] =>
+    Array.from({ length: n }, (_, i) => ({
+      fileName: `slip-${i + 1}.pdf`, mediaType: "application/pdf", bytes: Buffer.from("x"),
+    }));
+  const named = (names: string[], issuer = "Kimseng Food") =>
+    names.map((holderName, i) => ({ index: i + 1, holderName, issuer }));
+
+  const readAs = (report: Report, n = 3) =>
+    extractIncome(docs(n), { client: reporting(report), today: TODAY, applicant });
+
+  it("accepts payslips in the applicant's name", async () => {
+    const outcome = await readAs({
+      documentType: "payslip",
+      periods: PAYSLIPS,
+      documents: named(["TAN CAKEN", "Caken Tan", "MR TAN CAKEN"]),
+    });
+
+    expect(outcome.kind).toBe("usable");
+  });
+
+  it("refuses a payslip in someone else's name, and says which file", async () => {
+    const outcome = await readAs({
+      documentType: "payslip",
+      periods: PAYSLIPS,
+      documents: named(["TAN CAKEN", "LIM WEI JIE", "TAN CAKEN"]),
+    });
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toContain("slip-2.pdf");
+    expect(outcome.reason).toContain("Singpass");
+    expect(outcome.months).toEqual([]);
+  });
+
+  it("refuses a document that shows no name at all", async () => {
+    const outcome = await readAs({
+      documentType: "payslip",
+      periods: PAYSLIPS,
+      documents: named(["TAN CAKEN", "TAN CAKEN"]),
+    });
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toContain("slip-3.pdf");
+  });
+
+  it("refuses a bank statement from a bank it does not recognise", async () => {
+    const outcome = await readAs(
+      {
+        documentType: "bank_statement",
+        statements: [
+          { start: "2026-06-01", end: "2026-06-30" },
+          { start: "2026-07-01", end: "2026-07-31" },
+          { start: "2026-08-01", end: "2026-08-31" },
+        ],
+        credits: [
+          { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
+          { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
+          { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
+        ],
+        documents: named(["TAN CAKEN", "TAN CAKEN", "TAN CAKEN"], "MERLION BANK"),
+      },
+    );
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toMatch(/bank/i);
+  });
+
+  it("accepts the same statements from a Singapore bank", async () => {
+    const outcome = await readAs({
+      documentType: "bank_statement",
+      statements: [
+        { start: "2026-06-01", end: "2026-06-30" },
+        { start: "2026-07-01", end: "2026-07-31" },
+        { start: "2026-08-01", end: "2026-08-31" },
+      ],
+      credits: [
+        { date: "2026-06-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
+        { date: "2026-07-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
+        { date: "2026-08-25", amount: 3800, payer: "SUNRISE LOGISTICS PTE LTD" },
+      ],
+      documents: named(["TAN CAKEN", "TAN CAKEN", "TAN CAKEN"], "OCBC Bank"),
+    });
+
+    expect(outcome.kind).toBe("usable");
   });
 });

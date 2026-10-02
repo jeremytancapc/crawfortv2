@@ -102,6 +102,7 @@ export function reviewExtraction(months: ExtractedMonth[]): ExtractionReview {
 
 import Anthropic from "@anthropic-ai/sdk";
 
+import { isRecognisedSgBank, nameBelongsTo } from "./income-identity";
 import {
   assembleMonths,
   bankStatementMonths,
@@ -218,6 +219,32 @@ const REPORT_INCOME_TOOL: Anthropic.Tool = {
           required: ["start", "end"],
         },
       },
+      documents: {
+        type: "array",
+        description:
+          "One entry per document, whatever kind, using the number it was given: whose it is " +
+          "and who issued it.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            index: { type: "integer", description: "The document's number, as labelled." },
+            holderName: {
+              type: "string",
+              description:
+                "The employee's or account holder's name exactly as printed - every holder, " +
+                "joined with \" & \", on a joint account. Empty if the document names no one.",
+            },
+            issuer: {
+              type: "string",
+              description:
+                "Who issued it, as printed: the employer on a payslip, the bank on a bank " +
+                "statement, the platform on an earnings statement. Empty if none is named.",
+            },
+          },
+          required: ["index", "holderName", "issuer"],
+        },
+      },
       credits: {
         type: "array",
         description:
@@ -240,7 +267,7 @@ const REPORT_INCOME_TOOL: Anthropic.Tool = {
         },
       },
     },
-    required: ["documentType", "readable", "note", "periods", "statements", "credits"],
+    required: ["documentType", "readable", "note", "periods", "statements", "credits", "documents"],
   },
 };
 
@@ -295,6 +322,9 @@ BANK STATEMENTS
   both show it.
 
 ALL DOCUMENTS
+- Each document is labelled with a number. For every one, report the name of
+  the employee or account holder exactly as printed, and who issued it. Do not
+  correct, complete or reorder a name.
 - One document may hold several periods. Report every one you can read.
 - Do not add up periods, do not average, and do not infer a period you cannot
   see. A missing month is handled by asking the applicant for it.
@@ -384,7 +414,38 @@ type Reported = {
   periods: Array<{ start: string; end: string; gross: number; employer: string }>;
   statements: Array<{ start: string; end: string }>;
   credits: Array<{ date: string; amount: number; payer: string }>;
+  documents?: Array<{ index: number; holderName: string; issuer: string }>;
 };
+
+/**
+ * Why these documents cannot be taken as the applicant's, or null when they
+ * can: every one names them, and every bank statement is from a Singapore
+ * bank.
+ */
+function ownershipProblem(
+  documents: IncomeDocument[],
+  reported: Reported,
+  source: IncomeSource,
+  applicant: { name: string; aliases?: string[] },
+): string | null {
+  const byIndex = new Map((reported.documents ?? []).map((d) => [d.index, d]));
+
+  for (const [i, doc] of documents.entries()) {
+    const seen = byIndex.get(i + 1);
+    if (!seen || !nameBelongsTo(seen.holderName, applicant.name, applicant.aliases)) {
+      return seen?.holderName.trim()
+        ? `${doc.fileName} is in the name of ${seen.holderName.trim()}, which does not match ` +
+            "your Singpass name. Please upload documents in your own name."
+        : `We could not find your name on ${doc.fileName}. Please upload documents that show ` +
+            "your name as it appears in Singpass.";
+    }
+    if (source === "bank_statement" && !isRecognisedSgBank(seen.issuer)) {
+      return `We could not confirm ${doc.fileName} is from a Singapore bank. Please upload ` +
+        "statements from your bank in Singapore.";
+    }
+  }
+  return null;
+}
 
 /**
  * Reads the documents and returns figures that have been checked.
@@ -396,7 +457,16 @@ type Reported = {
  */
 export async function extractIncome(
   documents: IncomeDocument[],
-  options?: { client?: Anthropic; today?: Date },
+  options?: {
+    client?: Anthropic;
+    today?: Date;
+    /**
+     * Whose documents these should be. Every document must name them, or
+     * nothing is read off any of them. Omitted only where there is no
+     * applicant to check against, never on the upload step.
+     */
+    applicant?: { name: string; aliases?: string[] };
+  },
 ): Promise<ExtractionOutcome> {
   if (documents.length === 0) {
     return {
@@ -411,7 +481,10 @@ export async function extractIncome(
 
   const client = options?.client ?? new Anthropic();
 
-  const content: Anthropic.ContentBlockParam[] = documents.map((doc) =>
+  // Each file is numbered so the reader can say whose name is on which one,
+  // and a refusal can name the file to replace.
+  const content: Anthropic.ContentBlockParam[] = documents.flatMap((doc, i) => [
+    { type: "text" as const, text: `Document ${i + 1}:` },
     doc.mediaType === "application/pdf"
       ? {
           type: "document",
@@ -429,7 +502,7 @@ export async function extractIncome(
             data: doc.bytes.toString("base64"),
           },
         },
-  );
+  ]);
 
   content.push({
     type: "text",
@@ -495,6 +568,23 @@ export async function extractIncome(
   }
 
   const source: IncomeSource = reported.documentType;
+
+  // Before any figure is taken: income off someone else's payslip is not
+  // this applicant's income, however clearly it reads.
+  const notTheirs = options?.applicant
+    ? ownershipProblem(documents, reported, source, options.applicant)
+    : null;
+  if (notTheirs) {
+    return {
+      kind: "needs_review",
+      reason: notTheirs,
+      months: [],
+      note: null,
+      source,
+      periods: [],
+      assembly: EMPTY_ASSEMBLY,
+    };
+  }
 
   let periods: PayPeriod[];
   let withoutIncome: string[] = [];

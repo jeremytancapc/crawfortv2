@@ -12,13 +12,37 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
+import { getApplicant } from "@/lib/db/applicants";
+import { isDatabaseConfigured } from "@/lib/db/sql";
 import { ascendIncomeType, extractIncome, type IncomeDocument } from "@/lib/income-extraction";
+import { looksLikeLeadUuid } from "@/lib/lead-id";
 
 export const runtime = "nodejs";
 
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/png"];
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 6;
+
+/**
+ * The name the documents must carry: the one on the application Ascend is
+ * scoring, as Singpass gave it, or the signed session's copy where the
+ * database has none.
+ */
+async function applicantName(request: NextRequest): Promise<string | null> {
+  const session = decodeSession(request.cookies.get(SESSION_COOKIE)?.value ?? "") ?? {};
+  const leadId = (session as { leadId?: string }).leadId ?? "";
+
+  if (isDatabaseConfigured() && looksLikeLeadUuid(leadId)) {
+    try {
+      const stored = (await getApplicant(leadId))?.full_name?.trim();
+      if (stored) return stored;
+    } catch (err) {
+      console.error("[apply/income/extract] applicant lookup failed", err);
+    }
+  }
+  return session.fullName?.trim() || null;
+}
 
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) {
@@ -35,6 +59,18 @@ export async function POST(request: NextRequest) {
         message: "We cannot read documents right now. Please try again shortly.",
       },
       { status: 503 },
+    );
+  }
+
+  // No name, no reading: a payslip cannot be checked as theirs against nobody.
+  const name = await applicantName(request);
+  if (!name) {
+    return NextResponse.json(
+      {
+        error: "no_applicant",
+        message: "We could not find your application. Please start again from Singpass.",
+      },
+      { status: 400 },
     );
   }
 
@@ -74,7 +110,7 @@ export async function POST(request: NextRequest) {
   );
 
   try {
-    const outcome = await extractIncome(documents);
+    const outcome = await extractIncome(documents, { applicant: { name } });
 
     if (outcome.kind === "usable") {
       return NextResponse.json({
