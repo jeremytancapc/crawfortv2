@@ -221,33 +221,46 @@ describe("extractIncome - bank statements alone count everything coming in", () 
   });
 });
 
-describe("extractIncome - platform earnings statements", () => {
-  it("reads them like payslips and submits them as income statements", async () => {
-    const outcome = await read({
-      documents: [{ index: 1, kind: "earnings_statement", holderName: "TAN CAKEN", issuer: "Grab" }],
-      periods: [{ ...SEP, employer: "Grab" }],
-    });
+describe("extractIncome - platform earnings statements are treated as payslips", () => {
+  const grab = (index: number) =>
+    ({ index, kind: "earnings_statement" as const, holderName: "TAN CAKEN", issuer: "Grab" });
+  const GRAB_SEP = { ...SEP, gross: 3400, net: 3400, employer: "Grab" };
+
+  it("is non-panel on its own", async () => {
+    const outcome = await read({ documents: [grab(1)], periods: [GRAB_SEP] });
 
     expect(outcome).toMatchObject({
       kind: "usable",
-      incomeType: "INCOME_STATEMENT",
-      fileTypes: ["INCOME_STATEMENT"],
+      incomeType: "NON_PANEL_PAYSLIP",
+      fileTypes: ["NON_PANEL_PAYSLIP"],
     });
+  });
+
+  it("is panel when a bank statement shows the earnings arriving", async () => {
+    const outcome = await read({
+      documents: [grab(1), statement(2)],
+      periods: [GRAB_SEP],
+      statements: [SEP_ST, { start: "2026-10-01", end: "2026-10-01" }],
+      credits: [{ date: "2026-10-01", amount: 3400, payer: "GRAB", category: "platform_payout" }],
+    });
+
+    expect(outcome).toMatchObject({
+      incomeType: "PANEL_PAYSLIP",
+      fileTypes: ["PANEL_PAYSLIP", "BANK_STATEMENT_OTHER_INCOME"],
+    });
+  });
+
+  it("adds a Grab statement to a payslip for the same month, like a second job", async () => {
+    const outcome = await read({
+      documents: [payslip(1), grab(2)],
+      periods: [SEP, GRAB_SEP],
+    });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 8600, incomeType: "NON_PANEL_PAYSLIP" });
   });
 });
 
 describe("extractIncome - what can be uploaded together", () => {
-  it("asks for one kind when payslips and earnings statements are mixed", async () => {
-    const outcome = await read({
-      documents: [payslip(1), { index: 2, kind: "earnings_statement", holderName: "TAN CAKEN", issuer: "Grab" }],
-      periods: [SEP, { ...SEP, employer: "Grab" }],
-    });
-
-    expect(outcome.kind).toBe("needs_review");
-    if (outcome.kind !== "needs_review") return;
-    expect(outcome.reason).toMatch(/one kind/i);
-  });
-
   it("names a file that is not an income document", async () => {
     const outcome = await read({
       documents: [payslip(1), { index: 2, kind: "other", holderName: "TAN CAKEN", issuer: "" }],

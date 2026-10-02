@@ -124,13 +124,10 @@ export type { IncomeSource } from "./income-periods";
  *
  * A payslip on its own is NON_PANEL. It becomes PANEL when a bank statement
  * uploaded with it shows that pay arriving - the payslip is then confirmed
- * rather than taken on trust.
+ * rather than taken on trust. A platform's earnings statement (Grab and
+ * similar) is treated exactly as a payslip.
  */
-export type AscendIncomeType =
-  | "PANEL_PAYSLIP"
-  | "NON_PANEL_PAYSLIP"
-  | "BANK_STATEMENT_OTHER_INCOME"
-  | "INCOME_STATEMENT";
+export type AscendIncomeType = "PANEL_PAYSLIP" | "NON_PANEL_PAYSLIP" | "BANK_STATEMENT_OTHER_INCOME";
 
 export type IncomeDocument = {
   fileName: string;
@@ -609,16 +606,6 @@ export async function extractIncome(
   const hasEarnings = kinds.has("earnings_statement");
   const hasBank = kinds.has("bank_statement");
 
-  // A bank statement goes with either; payslips and earnings statements are
-  // two incomes Ascend cannot be told about in one submission.
-  if (hasPayslip && hasEarnings) {
-    return refuse(
-      "needs_review",
-      "Please upload one kind of income document: your payslips, or your earnings statements. " +
-        "Bank statements can go with either.",
-    );
-  }
-
   const source: IncomeSource = hasPayslip ? "payslip" : hasEarnings ? "earnings_statement" : "bank_statement";
   const credits: IncomeCredit[] = reported.credits.map((c) => ({
     date: c.date,
@@ -684,12 +671,11 @@ export async function extractIncome(
 
   const payslipType: AscendIncomeType =
     hasBank && paidIntoBank(periods, credits, plan.held) ? "PANEL_PAYSLIP" : "NON_PANEL_PAYSLIP";
+  // Earnings statements are payslips to Ascend: the same type, panel on the
+  // same evidence - and summed with a payslip for the same month, like a
+  // second job.
   const typeOf = (kind: DocumentKind | undefined): AscendIncomeType =>
-    kind === "payslip"
-      ? payslipType
-      : kind === "earnings_statement"
-        ? "INCOME_STATEMENT"
-        : "BANK_STATEMENT_OTHER_INCOME";
+    kind === "payslip" || kind === "earnings_statement" ? payslipType : "BANK_STATEMENT_OTHER_INCOME";
 
   return {
     ...review,
