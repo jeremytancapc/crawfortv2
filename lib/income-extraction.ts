@@ -169,8 +169,9 @@ const PERIOD_ITEM = {
         "total. 0 if the document does not print one.",
     },
     employer: { type: "string", description: "Employer or platform name as printed, or empty." },
+    document: { type: "integer", description: "The number of the document it was read from." },
   },
-  required: ["start", "end", "gross", "net", "employer"],
+  required: ["start", "end", "gross", "net", "employer", "document"],
 } as const;
 
 /**
@@ -462,7 +463,7 @@ type Reported = {
   readable: boolean;
   note: string;
   documents: Array<{ index: number; kind: DocumentKind; holderName: string; issuer: string }>;
-  periods: Array<{ start: string; end: string; gross: number; net: number; employer: string }>;
+  periods: Array<{ start: string; end: string; gross: number; net: number; employer: string; document?: number }>;
   statements: Array<{ start: string; end: string }>;
   credits: Array<{ date: string; amount: number; payer: string; category: CreditCategory }>;
 };
@@ -629,6 +630,7 @@ export async function extractIncome(
       gross: p.gross,
       net: p.net || null,
       employer: p.employer || null,
+      platform: seen[(p.document ?? 0) - 1]?.kind === "earnings_statement",
     }));
   }
 

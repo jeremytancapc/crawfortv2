@@ -18,7 +18,7 @@ type Report = {
   readable?: boolean;
   note?: string;
   documents: Array<{ index: number; kind: Kind; holderName: string; issuer: string }>;
-  periods?: Array<{ start: string; end: string; gross: number; net: number; employer: string }>;
+  periods?: Array<{ start: string; end: string; gross: number; net: number; employer: string; document?: number }>;
   statements?: Array<{ start: string; end: string }>;
   credits?: Array<{ date: string; amount: number; payer: string; category: Category }>;
 };
@@ -247,6 +247,50 @@ describe("extractIncome - platform earnings statements are treated as payslips",
     expect(outcome).toMatchObject({
       incomeType: "PANEL_PAYSLIP",
       fileTypes: ["PANEL_PAYSLIP", "BANK_STATEMENT_OTHER_INCOME"],
+    });
+  });
+
+  describe("paid out in several cash-outs", () => {
+    const payout = (date: string, amount: number, payer = "GRAB HOLDINGS") =>
+      ({ date, amount, payer, category: "platform_payout" as const });
+    const withPayouts = (credits: Array<ReturnType<typeof payout>>) =>
+      read({
+        documents: [grab(1), statement(2), statement(3)],
+        periods: [{ ...GRAB_SEP, document: 1 }],
+        statements: [SEP_ST, { start: "2026-10-01", end: "2026-10-31" }],
+        credits,
+      });
+
+    it("is panel when the platform's payouts add up to the month's earnings", async () => {
+      const outcome = await withPayouts([
+        payout("2026-09-07", 800), payout("2026-09-14", 850), payout("2026-09-21", 820),
+        payout("2026-09-28", 790), payout("2026-10-03", 150),
+      ]);
+
+      expect(outcome).toMatchObject({ incomeType: "PANEL_PAYSLIP" });
+    });
+
+    it("stays non-panel when the payouts fall well short of the earnings", async () => {
+      const outcome = await withPayouts([payout("2026-09-07", 800), payout("2026-09-14", 850)]);
+
+      expect(outcome).toMatchObject({ incomeType: "NON_PANEL_PAYSLIP" });
+    });
+
+    it("does not count money from anyone but the platform", async () => {
+      const outcome = await withPayouts([
+        payout("2026-09-07", 800), payout("2026-09-14", 850),
+        payout("2026-09-20", 1750, "TAN WEI LING"),
+      ]);
+
+      expect(outcome).toMatchObject({ incomeType: "NON_PANEL_PAYSLIP" });
+    });
+
+    it("does not count payouts from well after the period", async () => {
+      const outcome = await withPayouts([
+        payout("2026-09-07", 800), payout("2026-09-14", 850), payout("2026-10-20", 1750),
+      ]);
+
+      expect(outcome).toMatchObject({ incomeType: "NON_PANEL_PAYSLIP" });
     });
   });
 

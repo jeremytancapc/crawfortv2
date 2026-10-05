@@ -36,6 +36,8 @@ export type PayPeriod = {
   gross: number;
   /** Take-home pay as printed, when the document shows it: what reaches the bank. */
   net?: number | null;
+  /** From a platform's earnings statement, which pays out in many cash-outs. */
+  platform?: boolean;
 };
 
 export type AssembledMonth = {
@@ -551,6 +553,26 @@ const PAY_MATCH_TOLERANCE = 1;
 const PAY_LANDS_WITHIN_DAYS = 20;
 
 /**
+ * A platform pays out weekly or on demand, so its earnings arrive as many
+ * credits that never sum to the cent: the last week's cash-out lands after
+ * the statement closes, an earlier one before it opens. Payouts from the
+ * platform dated in the period or the week after, within 10% of its
+ * earnings, are taken as the earnings arriving.
+ */
+const PLATFORM_PAYOUT_TOLERANCE = 0.1;
+const PLATFORM_PAYOUT_TRAILING_DAYS = 7;
+
+/** True when a credit's payer is the platform: its first real word appears in it. */
+function paidBy(payer: string | null, platform: string | null): boolean {
+  const name = (platform ?? "")
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .find((word) => word.length >= 3 && !["THE", "PTE", "LTD"].includes(word));
+  if (!name || !payer) return false;
+  return payer.toUpperCase().split(/[^A-Z0-9]+/).includes(name);
+}
+
+/**
  * True when every payslip for `months` can be seen arriving in the bank: a
  * credit within a dollar of its take-home pay, dated from the start of its
  * period to three weeks after it ends. Each credit pays one payslip only.
@@ -558,6 +580,9 @@ const PAY_LANDS_WITHIN_DAYS = 20;
  * Take-home, not gross - the bank receives pay after CPF, so it is the net
  * line that should appear there. A payslip that prints no net cannot be
  * matched, and one month unmatched means none of it is confirmed.
+ *
+ * A platform's earnings may instead arrive as several cash-outs; see
+ * PLATFORM_PAYOUT_TOLERANCE.
  */
 export function paidIntoBank(periods: PayPeriod[], credits: IncomeCredit[], months: string[]): boolean {
   const owed = periods.filter((p) => months.includes(p.start.slice(0, 7)));
@@ -578,8 +603,20 @@ export function paidIntoBank(periods: PayPeriod[], credits: IncomeCredit[], mont
         Math.abs(credit.amount - net) <= PAY_MATCH_TOLERANCE
       );
     });
-    if (at === -1) return false;
-    unused.splice(at, 1);
+    if (at !== -1) {
+      unused.splice(at, 1);
+      continue;
+    }
+
+    if (!period.platform) return false;
+    const payoutsUntil = end + PLATFORM_PAYOUT_TRAILING_DAYS * DAY_MS;
+    const payouts = unused.filter((credit) => {
+      const day = parseDay(credit.date);
+      return day !== null && day >= from && day <= payoutsUntil && paidBy(credit.payer, period.employer);
+    });
+    const total = payouts.reduce((sum, credit) => sum + credit.amount, 0);
+    if (Math.abs(total - net) > net * PLATFORM_PAYOUT_TOLERANCE) return false;
+    for (const payout of payouts) unused.splice(unused.indexOf(payout), 1);
   }
   return true;
 }
