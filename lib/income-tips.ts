@@ -11,16 +11,30 @@
 
 export type IncomeTip = { title: string; body: string };
 
-export function improveLimitTips(incomeType: string): IncomeTip[] {
+/** The incomeType a bank statement is sent as, beside payslips or alone. */
+const BANK_STATEMENT = "BANK_STATEMENT_OTHER_INCOME";
+
+export function improveLimitTips(incomeType: string, fileTypes: string[] = []): IncomeTip[] {
   switch (incomeType) {
     case "NON_PANEL_PAYSLIP":
+      // A bank statement was uploaded but did not show the pay arriving, so
+      // the payslips stayed unconfirmed. Telling them to add one would be
+      // telling them to do what they have already done.
+      if (fileTypes.includes(BANK_STATEMENT)) {
+        return [
+          {
+            title: "We could not match your pay to your bank statement",
+            body: "Check the statement covers the same months as your payslips and shows your pay arriving. Income we can confirm can increase your credit limit.",
+          },
+        ];
+      }
       return [
         {
           title: "Confirm your payslips",
           body: "Add a bank statement showing your pay arriving. Income we can confirm can increase your credit limit.",
         },
       ];
-    case "BANK_STATEMENT_OTHER_INCOME":
+    case BANK_STATEMENT:
       return [
         {
           title: "Add your payslips",

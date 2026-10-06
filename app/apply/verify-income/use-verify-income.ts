@@ -176,6 +176,18 @@ export function useVerifyIncome(initialShowResults = false) {
   const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
   const uploadWindow = useMemo(() => uploadWindowLabel(), []);
 
+  // Everything read off the documents describes the files that were read. Any
+  // change to the files, or a failed re-read, drops it all together, so a
+  // figure, an income type and a list of file types can never describe
+  // different sets of files.
+  const clearReading = useCallback(() => {
+    setIncomeMonths([]);
+    setAverageIncome(0);
+    setIncomeType("NON_PANEL_PAYSLIP");
+    setFileTypes([]);
+    setIncomeAdvice(null);
+  }, []);
+
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const next: SelectedFile[] = [];
     for (const file of Array.from(incoming)) {
@@ -188,12 +200,16 @@ export function useVerifyIncome(initialShowResults = false) {
         file,
       });
     }
-    if (next.length) setFiles((prev) => [...prev, ...next]);
-  }, []);
+    if (next.length) {
+      clearReading();
+      setFiles((prev) => [...prev, ...next]);
+    }
+  }, [clearReading]);
 
   const removeFile = useCallback((id: string) => {
+    clearReading();
     setFiles((prev) => prev.filter((file) => file.id !== id));
-  }, []);
+  }, [clearReading]);
 
   const startProcessing = useCallback(() => {
     setIsProcessing(true);
@@ -224,13 +240,11 @@ export function useVerifyIncome(initialShowResults = false) {
 
         // Read, but not enough of it to put into a credit decision - or not
         // attempted at all. The ask names the payslip that would finish it.
-        setIncomeMonths([]);
-        setAverageIncome(0);
+        clearReading();
         setExtractionAsk(outcome.ask);
       } catch (err) {
         console.error("Income extraction failed", err);
-        setIncomeMonths([]);
-        setAverageIncome(0);
+        clearReading();
         setExtractionAsk(
           "We could not read those documents just now. Please try uploading them again.",
         );
@@ -238,7 +252,7 @@ export function useVerifyIncome(initialShowResults = false) {
         setIsReading(false);
       }
     })();
-  }, [files]);
+  }, [files, clearReading]);
 
   const finishProcessing = useCallback(() => {
     setIsProcessing(false);
@@ -276,7 +290,7 @@ export function useVerifyIncome(initialShowResults = false) {
       submitIncome(months, selected, incomeType, fileTypes),
     incomeAdvice,
     /** How to strengthen the income just read. Empty when nothing would help. */
-    improveTips: incomeMonths.length > 0 ? improveLimitTips(incomeType) : [],
+    improveTips: incomeMonths.length > 0 ? improveLimitTips(incomeType, fileTypes) : [],
     /**
      * What to ask the applicant for, when the documents did not yield three
      * months. Null once they have. Exactly one of this and `incomeMonths` is

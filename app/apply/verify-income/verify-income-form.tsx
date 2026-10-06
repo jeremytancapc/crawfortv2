@@ -122,7 +122,7 @@ export function VerifyIncomeForm({
         </h1>
         <p className="ios-type-subtitle mt-1.5">
           {!showResults
-            ? "Payslips, income statements and bank statements."
+            ? "Payslips, bank statements and platform earnings statements."
             : canSubmit
               ? "Check the income we read from your documents."
               : "Here is what is still missing."}
