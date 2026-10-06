@@ -42,6 +42,8 @@ export type IncomeResult =
 
 export type ExtractResponse = {
   status?: string;
+  /** The server's record of this reading; submit needs only this. */
+  readingId?: string;
   months?: Array<{ month: string; amount: number; employer: string | null }>;
   /** Ascend's incomeType for what was read, e.g. BANK_STATEMENT_OTHER_INCOME. */
   incomeType?: string;

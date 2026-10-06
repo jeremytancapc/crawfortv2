@@ -1,27 +1,34 @@
 /**
  * POST /api/apply/income/extract
  *
- * Reads the applicant's uploaded payslips, bank statements or earnings
- * statements and answers with the monthly
- * figures. Nothing is sent to Ascend here - this is the step that turns
- * documents into numbers a person can check before anything is submitted.
+ * Reads the applicant's stored payslips, bank statements or earnings
+ * statements - named by id, as stored by /api/apply/income/documents - and
+ * answers with the monthly figures. Nothing is sent to Ascend here - this is
+ * the step that turns documents into numbers a person can check before
+ * anything is submitted.
  *
- * The files are held in memory for the length of the request and never
- * written to disk. They are payslips: someone's salary, employer and name.
+ * What was read is recorded as a reading, tied to exactly those documents.
+ * Submit works from that record, not from anything the browser says back.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { getApplicant } from "@/lib/db/applicants";
+import {
+  getIncomeDocument,
+  insertIncomeReading,
+  logIncomeDocumentEvent,
+  type IncomeDocument as StoredIncomeDocument,
+} from "@/lib/db/income-documents";
 import { isDatabaseConfigured } from "@/lib/db/sql";
+import { getDocumentBytes } from "@/lib/documents/store";
 import { extractIncome, type IncomeDocument } from "@/lib/income-extraction";
+import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 
 export const runtime = "nodejs";
 
-const ACCEPTED = ["application/pdf", "image/jpeg", "image/png"];
-const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 6;
 
 /**
@@ -74,47 +81,85 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    return NextResponse.json({ error: "Invalid upload." }, { status: 400 });
+  const applicantId = applicantIdFromRequest(request);
+  if (!applicantId) {
+    return NextResponse.json({ error: "No application in progress." }, { status: 400 });
   }
 
-  const files = form.getAll("files").filter((f): f is File => f instanceof File);
+  let ids: string[] = [];
+  try {
+    const body = (await request.json()) as { documentIds?: unknown };
+    ids = Array.isArray(body.documentIds)
+      ? [...new Set(body.documentIds.filter((id): id is string => typeof id === "string"))]
+      : [];
+  } catch {
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  }
 
-  if (files.length === 0) {
+  if (ids.length === 0) {
     return NextResponse.json({ error: "No documents were attached." }, { status: 400 });
   }
-  if (files.length > MAX_FILES) {
+  if (ids.length > MAX_FILES) {
     return NextResponse.json({ error: `At most ${MAX_FILES} documents.` }, { status: 400 });
   }
-  for (const file of files) {
-    if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: `${file.name} is larger than 10 MB.` }, { status: 400 });
-    }
-    if (!ACCEPTED.includes(file.type)) {
+
+  // Every id must be this applicant's, and still in play. A removed or
+  // submitted document cannot be part of a new reading.
+  const stored: StoredIncomeDocument[] = [];
+  for (const id of ids) {
+    const doc = /^[0-9a-f-]{36}$/i.test(id) ? await getIncomeDocument(applicantId, id) : null;
+    if (!doc || (doc.status !== "uploaded" && doc.status !== "read")) {
       return NextResponse.json(
-        { error: `${file.name} is not a PDF, JPG or PNG.` },
-        { status: 400 },
+        { error: "One of those documents is no longer available. Please add it again." },
+        { status: 409 },
       );
     }
+    stored.push(doc);
   }
 
-  const documents: IncomeDocument[] = await Promise.all(
-    files.map(async (file) => ({
-      fileName: file.name,
-      mediaType: file.type,
-      bytes: Buffer.from(await file.arrayBuffer()),
-    })),
-  );
+  const documents: IncomeDocument[] = [];
+  for (const doc of stored) {
+    const bytes = await getDocumentBytes(doc.object_key);
+    if (!bytes) {
+      await logIncomeDocumentEvent({
+        applicantId,
+        documentId: doc.id,
+        event: "read_failed",
+        detail: { reason: "object missing from storage", objectKey: doc.object_key },
+      });
+      return NextResponse.json(
+        { error: `We could not find ${doc.file_name}. Please add it again.` },
+        { status: 409 },
+      );
+    }
+    documents.push({ fileName: doc.file_name, mediaType: doc.content_type, bytes });
+  }
 
   try {
     const outcome = await extractIncome(documents, { applicant: { name } });
 
     if (outcome.kind === "usable") {
+      const kindOf = (fileType: string) =>
+        fileType === "BANK_STATEMENT_OTHER_INCOME" ? "bank_statement" : outcome.source;
+      const reading = await insertIncomeReading({
+        applicantId,
+        incomeType: outcome.incomeType,
+        months: outcome.months,
+        average: outcome.months.reduce((sum, m) => sum + m.amount, 0) / outcome.months.length,
+        m1: outcome.m1,
+        m2: outcome.m2,
+        m3: outcome.m3,
+        advice: outcome.advice,
+        nameNotShown: outcome.nameNotShown,
+        documents: stored.map((doc, i) => ({
+          id: doc.id,
+          kind: kindOf(outcome.fileTypes[i] ?? outcome.incomeType),
+          fileType: outcome.fileTypes[i] ?? outcome.incomeType,
+        })),
+      });
       return NextResponse.json({
         status: "usable",
+        readingId: reading.id,
         months: outcome.months,
         m1: outcome.m1,
         m2: outcome.m2,
@@ -128,6 +173,12 @@ export async function POST(request: NextRequest) {
         advice: outcome.advice,
       });
     }
+
+    await logIncomeDocumentEvent({
+      applicantId,
+      event: "read_not_usable",
+      detail: { outcome: outcome.kind, reason: outcome.reason, documentIds: ids },
+    });
 
     // Both "unreadable" and "needs_review" come back the same way: figures
     // exist or they do not, and a human decides. The reason is written to be
@@ -145,6 +196,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("[apply/income/extract] extraction failed", err);
+    await logIncomeDocumentEvent({
+      applicantId,
+      event: "read_failed",
+      detail: { error: String(err), documentIds: ids },
+    });
     return NextResponse.json(
       {
         error: "extraction_failed",

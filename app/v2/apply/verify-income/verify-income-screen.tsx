@@ -29,6 +29,8 @@ export function VerifyIncomeScreen({
     isProcessing,
     isReading,
     startProcessing,
+    isUploading,
+    hasReadyFiles,
     finishProcessing,
     showResults,
     incomeMonths,
@@ -55,7 +57,7 @@ export function VerifyIncomeScreen({
     if (submitTask) return;
     setSubmitError(null);
     submitResultRef.current = null;
-    const task = submitIncome(incomeMonths, files).then((result) => {
+    const task = submitIncome().then((result) => {
       submitResultRef.current = result;
     });
     setSubmitTask({ waitUntil: task, key: Date.now() });
@@ -216,7 +218,13 @@ export function VerifyIncomeScreen({
                 <span className="max-w-[160px] truncate text-[13px] font-semibold text-[var(--v2-ink)]">
                   {file.name}
                 </span>
-                <span className="text-[12px] text-[var(--v2-ink-3)]">{file.size}</span>
+                <span className="text-[12px] text-[var(--v2-ink-3)]">
+                  {file.status === "uploading"
+                    ? "Uploading\u2026"
+                    : file.status === "failed"
+                      ? `${file.error ?? "Could not save this file."} Remove it and try again.`
+                      : file.size}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeFile(file.id)}
@@ -236,7 +244,11 @@ export function VerifyIncomeScreen({
         ) : null}
       </V2Body>
       <V2Footer note="One is enough to continue. Payslips, bank or earnings statements, up to 10 MB each.">
-        <Pill onClick={startProcessing} disabled={isProcessing} loading={isProcessing}>
+        <Pill
+          onClick={startProcessing}
+          disabled={isProcessing || isUploading || !hasReadyFiles}
+          loading={isProcessing}
+        >
           {isProcessing ? "Reading documents" : "Upload documents"}
         </Pill>
       </V2Footer>

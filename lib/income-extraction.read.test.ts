@@ -367,3 +367,42 @@ describe("extractIncome - the documents are the applicant's own", () => {
     expect(outcome.reason).toMatch(/Singapore bank/);
   });
 });
+
+describe("earnings statements that show no name", () => {
+  const unnamed = (index: number) => ({
+    index, kind: "earnings_statement" as const, holderName: "", issuer: "foodpanda",
+  });
+  const JUN = { start: "2026-08-01", end: "2026-08-31", gross: 626.47, net: 548.79, employer: "foodpanda" };
+
+  it("is let through, and recorded as accepted without a name", async () => {
+    const outcome = await read({ documents: [unnamed(1)], periods: [{ ...JUN, document: 1 }] });
+    expect(outcome.kind).toBe("usable");
+    if (outcome.kind === "usable") expect(outcome.nameNotShown).toEqual(["doc-1.pdf"]);
+  });
+
+  it("is still refused when it names someone else", async () => {
+    const outcome = await read({
+      documents: [{ ...unnamed(1), holderName: "LIM AH BENG" }],
+      periods: [{ ...JUN, document: 1 }],
+    });
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "usable") expect(outcome.reason).toContain("LIM AH BENG");
+  });
+
+  it("does not extend to a payslip, which always carries a name", async () => {
+    const outcome = await read({
+      documents: [{ index: 1, kind: "payslip", holderName: "", issuer: "Kimseng Food" }],
+      periods: [{ ...AUG, document: 1 }],
+    });
+    expect(outcome.kind).toBe("needs_review");
+  });
+
+  it("does not extend to a bank statement", async () => {
+    const outcome = await read({
+      documents: [{ index: 1, kind: "bank_statement", holderName: "", issuer: "OCBC Bank" }],
+      statements: [AUG_ST],
+      credits: [{ date: "2026-08-25", amount: 5000, payer: "Kimseng Food", category: "salary" }],
+    });
+    expect(outcome.kind).toBe("needs_review");
+  });
+});

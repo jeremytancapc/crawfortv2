@@ -1,10 +1,16 @@
 /**
  * POST /api/apply/income
  *
- * Submits the figures taken from an applicant's payslips against their
- * PENDING Ascend order, which re-scores it, and answers with where they go
- * next - the same three outcomes as submit, because income/credit returns the
- * same shape as apply/credit.
+ * Submits the figures taken from an applicant's income documents against
+ * their PENDING Ascend order, which re-scores it, and answers with where they
+ * go next - the same three outcomes as submit, because income/credit returns
+ * the same shape as apply/credit.
+ *
+ * The browser sends only the id of a reading. The figures, the income type
+ * and the file labels are the ones recorded when the documents were read, and
+ * the files are the stored copies - nothing the browser says can change what
+ * Ascend is told. The request is refused if the applicant's documents are no
+ * longer exactly the ones that reading came from.
  *
  * Only reachable in the PENDING case: an applicant whose CPF or NOA data
  * already satisfied Ascend never uploads anything.
@@ -29,10 +35,20 @@ import { ascendSubmitIncome, AscendError } from "@/lib/ascend/client";
 import { ascendConfig } from "@/lib/ascend/config";
 import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
 import { getAscendOrder, updateAscendOrderDecision } from "@/lib/db/ascend-orders";
+import { getApplicant } from "@/lib/db/applicants";
+import {
+  getIncomeReading,
+  listActiveIncomeDocuments,
+  logIncomeDocumentEvent,
+  markIncomeDocumentsSubmitted,
+} from "@/lib/db/income-documents";
 import { isDatabaseConfigured } from "@/lib/db/sql";
+import { fileUrlForAscend } from "@/lib/documents/ascend-file";
+import { getDocumentBytes } from "@/lib/documents/store";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { clearIncomeGateCookie } from "@/lib/apply-session";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
+import { recordNoteOnAscendOrder } from "@/lib/ascend/record-plan";
 
 export const runtime = "nodejs";
 
@@ -46,11 +62,7 @@ const UPLOADED_INCOME_TYPES = new Set([
   "BANK_STATEMENT_OTHER_INCOME",
 ]);
 
-type Body = {
-  months?: Array<{ amount?: number }>;
-  incomeType?: string;
-  files?: Array<{ fileType: string; fileName: string; fileUrl: string }>;
-};
+type Body = { readingId?: string };
 
 export async function POST(request: NextRequest) {
   if (!ascendConfig() || !isDatabaseConfigured()) {
@@ -78,38 +90,81 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  // Three months, most recent first - the shape the upload step produces and
-  // the shape Ascend wants as m1/m2/m3.
-  const amounts = (body.months ?? []).map((m) => Number(m.amount)).filter((n) => Number.isFinite(n) && n > 0);
-  if (amounts.length < 3) {
+  const readingId = typeof body.readingId === "string" ? body.readingId : "";
+  const reading = /^[0-9a-f-]{36}$/i.test(readingId)
+    ? await getIncomeReading(applicantId, readingId)
+    : null;
+  if (!reading) {
     return NextResponse.json(
-      { error: "Three months of income are needed." },
+      { error: "Please upload your income documents before submitting." },
       { status: 400 },
     );
   }
 
-  // Ascend rejects income with no documents behind it: `600: orderFile is
-  // required`. Refusing here rather than there keeps the failure legible -
-  // sending figures Ascend will not accept returns a 502 that reads like an
-  // outage rather than a missing upload.
-  //
-  // NOT YET WIRED: the verify-income page collects files in the browser and
-  // they are never uploaded. Reaching Ascend needs /openApi/file/upload
-  // first, then its returned URLs passed here as `files`.
-  const incomeType =
-    body.incomeType && UPLOADED_INCOME_TYPES.has(body.incomeType) ? body.incomeType : "NON_PANEL_PAYSLIP";
-  // Each file keeps its own type - a bank statement sent beside payslips is a
-  // bank statement - but only from the same list.
-  const files = (body.files ?? []).map((file) => ({
-    ...file,
-    fileType: UPLOADED_INCOME_TYPES.has(file.fileType) ? file.fileType : incomeType,
-  }));
-  if (files.length === 0) {
-    console.error("[apply/income] no documents to submit - file upload is not wired yet");
+  // The documents must still be exactly the ones this reading came from.
+  // Anything added or removed since means the figures describe different
+  // files, and submitting them would put someone else's evidence behind a
+  // credit decision.
+  const active = await listActiveIncomeDocuments(applicantId);
+  const unchanged =
+    active.length === reading.document_ids.length &&
+    active.every((doc) => doc.status === "read" && doc.reading_id === reading.id);
+  if (!unchanged) {
+    await logIncomeDocumentEvent({
+      applicantId,
+      readingId: reading.id,
+      event: "submit_failed",
+      detail: { reason: "documents changed since they were read" },
+    });
     return NextResponse.json(
-      { error: "Please attach your income documents before submitting." },
-      { status: 400 },
+      { error: "Your documents changed since they were read. Please check them again." },
+      { status: 409 },
     );
+  }
+
+  const applicant = await getApplicant(applicantId);
+  if (!applicant?.ascend_user_id) {
+    return NextResponse.json({ error: "No application in progress." }, { status: 400 });
+  }
+
+  // Three months, most recent first - what Ascend wants as m1/m2/m3, with any
+  // month not read already filled in when the reading was taken.
+  const amounts = [Number(reading.m1), Number(reading.m2), Number(reading.m3)];
+
+  const incomeType = UPLOADED_INCOME_TYPES.has(reading.income_type)
+    ? reading.income_type
+    : "NON_PANEL_PAYSLIP";
+
+  // Ascend rejects income with no documents behind it: `600: orderFile is
+  // required`. The documents are the stored copies, labelled as they were
+  // when read - a bank statement sent beside payslips stays a bank statement.
+  const files: Array<{ fileType: string; fileName: string; fileUrl: string }> = [];
+  for (const doc of active) {
+    const bytes = await getDocumentBytes(doc.object_key);
+    if (!bytes) {
+      await logIncomeDocumentEvent({
+        applicantId,
+        documentId: doc.id,
+        readingId: reading.id,
+        event: "submit_failed",
+        detail: { reason: "object missing from storage" },
+      });
+      return NextResponse.json(
+        { error: `We could not find ${doc.file_name}. Please add it again.` },
+        { status: 409 },
+      );
+    }
+    const { fileUrl } = await fileUrlForAscend({
+      doc,
+      bytes,
+      ascendUserId: applicant.ascend_user_id,
+      origin: request.nextUrl.origin,
+    });
+    files.push({
+      fileType: UPLOADED_INCOME_TYPES.has(doc.file_type ?? "") ? doc.file_type! : incomeType,
+      fileName: doc.file_name,
+      fileUrl,
+    });
   }
 
   try {
@@ -124,6 +179,23 @@ export async function POST(request: NextRequest) {
       incomeFile: true,
       files,
     }, { applicantId });
+
+    // Staff reviewing this order should know which evidence was taken without
+    // a name on it. Fire-and-forget: a missing note must not cost the
+    // applicant a step they have completed.
+    if (reading.name_not_shown_for.length > 0) {
+      void recordNoteOnAscendOrder(
+        applicantId,
+        `Income documents accepted without a name shown on them: ${reading.name_not_shown_for.join(", ")}. ` +
+          "Not matched to the Singpass name.",
+      );
+    }
+
+    await markIncomeDocumentsSubmitted(
+      applicantId,
+      reading.id,
+      active.map((doc) => doc.id),
+    );
 
     // income/credit answers immediately and Ascend settles afterwards, so ask
     // again before deciding where the applicant goes. A failed re-ask keeps
@@ -193,6 +265,12 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof AscendError) {
       console.error(`[apply/income] income/credit failed ${err.code}: ${err.msg}`);
+      await logIncomeDocumentEvent({
+        applicantId,
+        readingId: reading.id,
+        event: "submit_failed",
+        detail: { code: err.code, msg: err.msg },
+      });
       // 600 covers an order that has already moved past the income stage, among
       // other things - the message is the only thing that separates them.
       return NextResponse.json(

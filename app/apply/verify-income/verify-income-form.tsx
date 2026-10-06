@@ -49,6 +49,8 @@ export function VerifyIncomeForm({
     averageIncome,
     incomeAdvice,
     improveTips,
+    isUploading,
+    hasReadyFiles,
     submitIncome,
   } = useVerifyIncome(initialShowResults);
   const router = useRouter();
@@ -70,7 +72,7 @@ export function VerifyIncomeForm({
     if (submitTask) return;
     setSubmitError(null);
     submitResultRef.current = null;
-    const task = submitIncome(incomeMonths, files).then((result) => {
+    const task = submitIncome().then((result) => {
       submitResultRef.current = result;
     });
     setSubmitTask({ waitUntil: task, key: Date.now() });
@@ -302,8 +304,18 @@ export function VerifyIncomeForm({
                         <span className="block truncate text-[17px] leading-tight text-[var(--text-primary)]">
                           {file.name}
                         </span>
-                        <span className="mt-0.5 block text-[13px] text-[var(--text-secondary)]">
-                          {file.size}
+                        <span
+                          className={`mt-0.5 block text-[13px] ${
+                            file.status === "failed"
+                              ? "text-[var(--danger,#a92d3a)]"
+                              : "text-[var(--text-secondary)]"
+                          }`}
+                        >
+                          {file.status === "uploading"
+                            ? "Uploading\u2026"
+                            : file.status === "failed"
+                              ? `${file.error ?? "Could not save this file."} Remove it and try again.`
+                              : file.size}
                         </span>
                       </span>
                     </span>
@@ -360,8 +372,8 @@ export function VerifyIncomeForm({
             </PrimaryButton>
           )
         ) : (
-          <PrimaryButton onClick={handleUpload}>
-            Upload documents
+          <PrimaryButton onClick={handleUpload} disabled={isUploading || !hasReadyFiles}>
+            {isUploading ? "Saving your files\u2026" : "Upload documents"}
           </PrimaryButton>
         )}
       </StickyFooter>

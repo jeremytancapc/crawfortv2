@@ -442,6 +442,11 @@ export type ExtractionOutcome =
       incomeType: AscendIncomeType;
       fileTypes: AscendIncomeType[];
       advice: string | null;
+      /**
+       * Files accepted although they show no name. Recorded and passed on to
+       * staff, because nothing ties these to the applicant but the applicant.
+       */
+      nameNotShown: string[];
       periods: PayPeriod[];
       assembly: Assembly;
     })
@@ -471,9 +476,21 @@ type Reported = {
 type SeenDocument = Reported["documents"][number];
 
 /**
+ * An earnings statement that shows no name at all. Gig-app screens - Grab and
+ * foodpanda payments pages - often do not print one, so absence is not
+ * evidence against the applicant the way it is on a payslip or a bank
+ * statement, which always carry the holder's name. A name that IS shown and
+ * is not theirs is still refused; only silence is let through.
+ */
+function namesNobody(found: SeenDocument | undefined): boolean {
+  return found?.kind === "earnings_statement" && !found.holderName.trim();
+}
+
+/**
  * Why these documents cannot be taken as the applicant's, or null when they
- * can: each is an income document, each names them, and each bank statement
- * is from a Singapore bank.
+ * can: each is an income document, each names them (an earnings statement
+ * that names no one is let through - see namesNobody), and each bank
+ * statement is from a Singapore bank.
  */
 function documentProblem(
   documents: IncomeDocument[],
@@ -487,6 +504,7 @@ function documentProblem(
         "statement. Please remove it or upload the right document.";
     }
     if (!applicant) continue;
+    if (namesNobody(found)) continue;
     if (!found || !nameBelongsTo(found.holderName, applicant.name, applicant.aliases)) {
       return found?.holderName.trim()
         ? `${doc.fileName} is in the name of ${found.holderName.trim()}, which does not match ` +
@@ -686,6 +704,7 @@ export async function extractIncome(
     incomeType: typeOf(source),
     fileTypes: seen.map((d) => typeOf(d?.kind)),
     advice: plan.advice,
+    nameNotShown: documents.filter((_, i) => namesNobody(seen[i])).map((d) => d.fileName),
     periods,
     assembly,
   };

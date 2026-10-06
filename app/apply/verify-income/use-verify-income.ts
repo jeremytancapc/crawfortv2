@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
 import { uploadWindowLabel } from "@/lib/income-periods";
@@ -26,16 +26,23 @@ export const INCOME_SUBMIT_STATUSES = [
 ] as const;
 
 export type SelectedFile = {
+  /** Local key for the list; the server's id for the document is `documentId`. */
   id: string;
   name: string;
   size: string;
   /**
-   * The file itself, kept so it can be uploaded. Previously only the name and
-   * size survived selection and the document was discarded - which is why
-   * income submission had nothing to send, and Ascend refused it with
-   * `600: orderFile is required`.
+   * uploading  on its way to storage
+   * ready      stored - it can be read, and it is what will be submitted
+   * failed     did not reach storage; `error` says why
+   *
+   * A document is stored the moment it is added, and everything after - the
+   * reading, the submission - works from that stored copy by id. The browser
+   * never holds the only copy, and what was read can never differ from what
+   * is kept.
    */
-  file: File;
+  status: "uploading" | "ready" | "failed";
+  documentId?: string;
+  error?: string;
 };
 
 export interface IncomeMonth {
@@ -68,55 +75,30 @@ export type SubmitIncomeResult =
  * on: they have just uploaded documents, and silently landing them somewhere
  * else would look like the upload was lost.
  */
-export async function submitIncome(
-  months: IncomeMonth[],
-  selected: SelectedFile[],
-  incomeType = "NON_PANEL_PAYSLIP",
-  /** Each file's own type, in the order selected; incomeType where missing. */
-  fileTypes: string[] = [],
-): Promise<SubmitIncomeResult> {
-  if (months.length === 0) {
-    console.error("Income submission refused: no months were read");
-    return { ok: false, message: "We have no income figures to send. Please upload your payslips again." };
+export async function submitIncome(readingId: string | null): Promise<SubmitIncomeResult> {
+  if (!readingId) {
+    console.error("Income submission refused: nothing has been read");
+    return { ok: false, message: "We have no income figures to send. Please add your documents again." };
   }
 
   try {
-    // Documents first: Ascend refuses income with nothing behind it
-    // (`600: orderFile is required`), so a failed upload must stop here
-    // rather than submit figures that will be rejected.
-    const files: Array<{ fileType: string; fileName: string; fileUrl: string }> = [];
-    for (const [i, item] of selected.entries()) {
-      const form = new FormData();
-      form.append("file", item.file);
-
-      const upload = await fetch("/api/apply/income/upload", { method: "POST", body: form });
-      if (!upload.ok) {
-        console.error("Document upload failed", await upload.text());
-        return {
-          ok: false,
-          message: `We could not send ${item.name}. Your documents are still here - please try again, or contact us if it keeps failing.`,
-        };
-      }
-
-      const { fileUrl, fileName } = (await upload.json()) as { fileUrl: string; fileName: string };
-      files.push({ fileType: fileTypes[i] ?? incomeType, fileName, fileUrl });
-    }
-
+    // The figures and the files are the ones recorded when the documents were
+    // read; the server takes only this id.
     const res = await fetch("/api/apply/income", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        months: months.map((m) => ({ amount: m.amount })),
-        incomeType,
-        files,
-      }),
+      body: JSON.stringify({ readingId }),
     });
 
     if (!res.ok) {
-      console.error("Income submission failed", await res.text());
+      const detail = (await res.json().catch(() => null)) as { error?: string } | null;
+      console.error("Income submission failed", res.status, detail);
       return {
         ok: false,
-        message: "We could not submit your income just now. Please try again in a moment.",
+        message:
+          res.status === 409 && detail?.error
+            ? detail.error
+            : "We could not submit your income just now. Please try again in a moment.",
       };
     }
 
@@ -171,45 +153,116 @@ export function useVerifyIncome(initialShowResults = false) {
   /** What the documents were, in Ascend's words - set with the figures. */
   const [incomeType, setIncomeType] = useState("NON_PANEL_PAYSLIP");
   const [fileTypes, setFileTypes] = useState<string[]>([]);
+  /** The server's record of what was read - the only thing submit needs. */
+  const [readingId, setReadingId] = useState<string | null>(null);
+  const removedWhileUploading = useRef(new Set<string>());
   /** Which months would confirm the figure, when fewer than three were read. */
   const [incomeAdvice, setIncomeAdvice] = useState<string | null>(null);
   const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
   const uploadWindow = useMemo(() => uploadWindowLabel(), []);
 
-  // Everything read off the documents describes the files that were read. Any
-  // change to the files, or a failed re-read, drops it all together, so a
-  // figure, an income type and a list of file types can never describe
-  // different sets of files.
+  // Everything read off the documents describes the documents that were read.
+  // Any change to them, or a failed re-read, drops it all together, so a
+  // figure, an income type and a reading id can never describe different
+  // sets of files.
   const clearReading = useCallback(() => {
     setIncomeMonths([]);
     setAverageIncome(0);
     setIncomeType("NON_PANEL_PAYSLIP");
     setFileTypes([]);
     setIncomeAdvice(null);
+    setReadingId(null);
   }, []);
 
-  const addFiles = useCallback((incoming: FileList | File[]) => {
-    const next: SelectedFile[] = [];
-    for (const file of Array.from(incoming)) {
-      if (!ACCEPTED_TYPES.includes(file.type)) continue;
-      if (file.size > MAX_FILE_SIZE) continue;
-      next.push({
-        id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: file.name,
-        size: formatFileSize(file.size),
-        file,
-      });
-    }
-    if (next.length) {
-      clearReading();
-      setFiles((prev) => [...prev, ...next]);
-    }
-  }, [clearReading]);
+  /** Asks the server to delete a stored document. Failures are logged there. */
+  const deleteStored = useCallback((documentId: string) => {
+    void fetch(`/api/apply/income/documents/${documentId}`, { method: "DELETE" }).catch((err) =>
+      console.error("Could not delete a removed document", err),
+    );
+  }, []);
 
-  const removeFile = useCallback((id: string) => {
-    clearReading();
-    setFiles((prev) => prev.filter((file) => file.id !== id));
-  }, [clearReading]);
+  const uploadOne = useCallback(
+    async (localId: string, file: File) => {
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/apply/income/documents", { method: "POST", body: form });
+        const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+
+        if (!res.ok || !json.id) {
+          setFiles((prev) =>
+            prev.map((item) =>
+              item.id === localId
+                ? { ...item, status: "failed", error: json.error ?? "We could not save that file." }
+                : item,
+            ),
+          );
+          return;
+        }
+
+        // Removed while it was still uploading: it has just landed in
+        // storage with nothing left to use it, so it goes straight back out.
+        if (removedWhileUploading.current.delete(localId)) {
+          deleteStored(json.id);
+          return;
+        }
+        setFiles((prev) =>
+          prev.map((item) =>
+            item.id === localId ? { ...item, status: "ready", documentId: json.id } : item,
+          ),
+        );
+      } catch (err) {
+        console.error("Document upload failed", err);
+        setFiles((prev) =>
+          prev.map((item) =>
+            item.id === localId
+              ? { ...item, status: "failed", error: "We could not reach our servers. Please try again." }
+              : item,
+          ),
+        );
+      }
+    },
+    [deleteStored],
+  );
+
+  const addFiles = useCallback(
+    (incoming: FileList | File[]) => {
+      const accepted: Array<{ entry: SelectedFile; file: File }> = [];
+      for (const file of Array.from(incoming)) {
+        if (!ACCEPTED_TYPES.includes(file.type)) continue;
+        if (file.size > MAX_FILE_SIZE) continue;
+        accepted.push({
+          file,
+          entry: {
+            id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: file.name,
+            size: formatFileSize(file.size),
+            status: "uploading",
+          },
+        });
+      }
+      if (!accepted.length) return;
+
+      clearReading();
+      setFiles((prev) => [...prev, ...accepted.map((a) => a.entry)]);
+      for (const { entry, file } of accepted) void uploadOne(entry.id, file);
+    },
+    [clearReading, uploadOne],
+  );
+
+  const removeFile = useCallback(
+    (id: string) => {
+      // Decided from the current list, not inside the state updater: React may
+      // run an updater twice, and a request sent from one would go out twice.
+      const target = files.find((file) => file.id === id);
+      if (!target) return;
+      clearReading();
+      if (target.documentId) deleteStored(target.documentId);
+      else if (target.status === "uploading") removedWhileUploading.current.add(id);
+      setFiles((prev) => prev.filter((file) => file.id !== id));
+    },
+    [files, clearReading, deleteStored],
+  );
 
   const startProcessing = useCallback(() => {
     setIsProcessing(true);
@@ -223,13 +276,19 @@ export function useVerifyIncome(initialShowResults = false) {
     // landed and replaced it - a failure the applicant never actually had.
     void (async () => {
       try {
-        const body = new FormData();
-        for (const item of files) body.append("files", item.file);
-
-        const res = await fetch("/api/apply/income/extract", { method: "POST", body });
-        const outcome = incomeResultFrom((await res.json()) as ExtractResponse);
+        const documentIds = files.flatMap((item) =>
+          item.status === "ready" && item.documentId ? [item.documentId] : [],
+        );
+        const res = await fetch("/api/apply/income/extract", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ documentIds }),
+        });
+        const response = (await res.json()) as ExtractResponse;
+        const outcome = incomeResultFrom(response);
 
         if (outcome.kind === "read") {
+          setReadingId(response.readingId ?? null);
           setIncomeMonths(outcome.months);
           setAverageIncome(outcome.average);
           setIncomeType(outcome.incomeType);
@@ -286,8 +345,11 @@ export function useVerifyIncome(initialShowResults = false) {
     /** The months that can be uploaded, e.g. "June to August, or July to September". */
     uploadWindow,
     averageIncome,
-    submitIncome: (months: IncomeMonth[], selected: SelectedFile[]) =>
-      submitIncome(months, selected, incomeType, fileTypes),
+    submitIncome: () => submitIncome(readingId),
+    /** True while any document is still on its way to storage. */
+    isUploading: files.some((file) => file.status === "uploading"),
+    /** True when at least one document is stored and can be read. */
+    hasReadyFiles: files.some((file) => file.status === "ready"),
     incomeAdvice,
     /** How to strengthen the income just read. Empty when nothing would help. */
     improveTips: incomeMonths.length > 0 ? improveLimitTips(incomeType, fileTypes) : [],

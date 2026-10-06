@@ -11,7 +11,12 @@
  * that streams them.
  */
 
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 export type StoredDocument = {
   objectKey: string;
@@ -94,4 +99,33 @@ export async function getDocument(objectKey: string): Promise<FetchedDocument | 
     if ((err as { name?: string })?.name === "NoSuchKey") return null;
     throw err;
   }
+}
+
+/** The whole object as bytes, or null when it is not there. For reading it, not serving it. */
+export async function getDocumentBytes(objectKey: string): Promise<Buffer | null> {
+  const cfg = config();
+  if (!cfg) return null;
+
+  try {
+    const result = await s3(cfg.region).send(
+      new GetObjectCommand({ Bucket: cfg.bucket, Key: objectKey }),
+    );
+    if (!result.Body) return null;
+    return Buffer.from(await result.Body.transformToByteArray());
+  } catch (err) {
+    if ((err as { name?: string })?.name === "NoSuchKey") return null;
+    throw err;
+  }
+}
+
+/**
+ * Deletes the bytes. Deleting an object that is already gone succeeds - S3
+ * answers the same either way - so a retry after a half-finished removal is
+ * safe. Throws on any real failure: the caller records that the bytes are
+ * still there rather than claiming they are not.
+ */
+export async function deleteDocument(objectKey: string): Promise<void> {
+  const cfg = config();
+  if (!cfg) throw new Error("Document storage is not configured");
+  await s3(cfg.region).send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: objectKey }));
 }

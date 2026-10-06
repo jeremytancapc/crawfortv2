@@ -37,3 +37,23 @@ export async function recordPlanOnAscendOrder(
     }
   }
 }
+
+/**
+ * Puts a free-text note on the applicant's Ascend Order, for the staff who
+ * review it. Same rules as the plan note: never throws, never blocks.
+ */
+export async function recordNoteOnAscendOrder(applicantId: string, note: string): Promise<void> {
+  if (!ascendConfig() || !isDatabaseConfigured()) return;
+
+  try {
+    const order = await getAscendOrder(applicantId);
+    if (!order) return;
+    await ascendAddOrderComment({ orderId: order.order_id, comments: note });
+  } catch (err) {
+    if (err instanceof AscendError) {
+      console.error(`[ascend] order/comments failed ${err.code}: ${err.msg}`);
+    } else {
+      console.error("[ascend] order/comments failed", err);
+    }
+  }
+}
