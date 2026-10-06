@@ -51,6 +51,18 @@ say, the application goes to a person.
   income rests on an unnamed screenshot. For a stronger case, applicants can
   include their profile screen showing their name.
 
+### Banks we recognise
+
+A bank statement must name one of these Singapore banks, or it is refused:
+
+DBS, POSB, OCBC, UOB, Standard Chartered, HSBC, Citibank, Maybank, Bank of
+China, ICBC, CIMB, RHB, Trust Bank, GXS, MariBank, ANEXT.
+
+In **staging only**, `TEST_RECOGNISED_BANKS` can add fictional banks for tests
+(for example `HARBOURFRONT`). It is ignored on production and logs a warning
+each time a test bank is accepted. Test files use fictional banks on purpose:
+a statement naming a real bank would be a forgery of that bank's document.
+
 ## What the applicant is told
 
 On the results page we show the income we read, then a "Want a higher limit?"

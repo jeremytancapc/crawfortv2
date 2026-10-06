@@ -76,7 +76,43 @@ const SG_BANKS = [
   /TRUST BANK/, /\bGXS\b/, /\bMARI ?BANK\b/, /\bANEXT\b/,
 ];
 
-export function isRecognisedSgBank(name: string): boolean {
+/** The same banks, in words, for anyone who needs to see the list. */
+export const RECOGNISED_SG_BANK_NAMES = [
+  "DBS", "POSB", "OCBC", "UOB", "Standard Chartered", "HSBC", "Citibank", "Maybank",
+  "Bank of China", "ICBC", "CIMB", "RHB", "Trust Bank", "GXS", "MariBank", "ANEXT",
+] as const;
+
+/**
+ * Extra bank names accepted for TESTING, from TEST_RECOGNISED_BANKS
+ * (comma-separated, e.g. "HARBOURFRONT"). It exists so a fictional bank can
+ * stand in for a real one in staging - the alternative being a fake statement
+ * that names DBS or OCBC, which is a forged document rather than a fixture.
+ *
+ * Ignored on production, whatever it is set to: the real list is the whole
+ * point of this check. Names under four characters are ignored too, because a
+ * short token would match half the banks in the world.
+ */
+export function testBankNames(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (env.VERCEL_ENV === "production" || env.SINGPASS_ENV === "production") return [];
+  return (env.TEST_RECOGNISED_BANKS ?? "")
+    .split(",")
+    .map((name) => name.trim().toUpperCase())
+    .filter((name) => name.length >= 4);
+}
+
+/** Every bank name currently accepted - the real list plus any test banks. */
+export function acceptedBankNames(env: NodeJS.ProcessEnv = process.env): string[] {
+  return [...RECOGNISED_SG_BANK_NAMES, ...testBankNames(env).map((name) => `${name} (test)`)];
+}
+
+export function isRecognisedSgBank(name: string, env: NodeJS.ProcessEnv = process.env): boolean {
   const upper = name.toUpperCase();
-  return SG_BANKS.some((bank) => bank.test(upper));
+  if (SG_BANKS.some((bank) => bank.test(upper))) return true;
+
+  const test = testBankNames(env).find((bank) => upper.includes(bank));
+  if (test) {
+    console.warn(`[income-identity] accepted "${name}" as a TEST bank (${test}); not for production`);
+    return true;
+  }
+  return false;
 }

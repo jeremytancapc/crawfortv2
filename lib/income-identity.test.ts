@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isRecognisedSgBank, nameBelongsTo } from "./income-identity";
+import {
+  acceptedBankNames,
+  isRecognisedSgBank,
+  nameBelongsTo,
+  testBankNames,
+} from "./income-identity";
 
 describe("nameBelongsTo - is the name on a document the applicant's", () => {
   const applicant = "TAN CAKEN";
@@ -61,5 +66,36 @@ describe("isRecognisedSgBank", () => {
   it("refuses a bank it does not know, or none", () => {
     expect(isRecognisedSgBank("MERLION BANK")).toBe(false);
     expect(isRecognisedSgBank("")).toBe(false);
+  });
+});
+
+
+describe("test banks", () => {
+  const staging = { TEST_RECOGNISED_BANKS: "HARBOURFRONT, ab" } as unknown as NodeJS.ProcessEnv;
+
+  it("accepts a fictional bank in staging when listed", () => {
+    expect(isRecognisedSgBank("HARBOURFRONT BANK (FICTIONAL)", staging)).toBe(true);
+  });
+
+  it("refuses it when the variable is not set", () => {
+    expect(isRecognisedSgBank("HARBOURFRONT BANK (FICTIONAL)", {} as NodeJS.ProcessEnv)).toBe(false);
+  });
+
+  it("ignores the variable on production, however it is set", () => {
+    const vercel = { ...staging, VERCEL_ENV: "production" } as NodeJS.ProcessEnv;
+    const singpass = { ...staging, SINGPASS_ENV: "production" } as NodeJS.ProcessEnv;
+    expect(isRecognisedSgBank("HARBOURFRONT BANK", vercel)).toBe(false);
+    expect(isRecognisedSgBank("HARBOURFRONT BANK", singpass)).toBe(false);
+    expect(testBankNames(vercel)).toEqual([]);
+  });
+
+  it("ignores names too short to be safe", () => {
+    expect(testBankNames(staging)).toEqual(["HARBOURFRONT"]);
+    expect(isRecognisedSgBank("ABC BANK", staging)).toBe(false);
+  });
+
+  it("still accepts real banks, and lists test banks apart from them", () => {
+    expect(isRecognisedSgBank("DBS Bank Ltd", {} as NodeJS.ProcessEnv)).toBe(true);
+    expect(acceptedBankNames(staging)).toContain("HARBOURFRONT (test)");
   });
 });
