@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
+import { File, FileArrowUp, X } from "@phosphor-icons/react";
 
 import {
   Card,
@@ -48,6 +48,7 @@ export function VerifyIncomeForm({
     uploadWindow,
     averageIncome,
     incomeAdvice,
+    improveTips,
     submitIncome,
   } = useVerifyIncome(initialShowResults);
   const router = useRouter();
@@ -178,6 +179,28 @@ export function VerifyIncomeForm({
                   {incomeAdvice}
                 </p>
               ) : null}
+              {canSubmit && improveTips.length > 0 ? (
+                <div className="mt-3">
+                  <SectionLabel>Want a higher limit?</SectionLabel>
+                  <Card>
+                    {improveTips.map((tip) => (
+                      <CardRow key={tip.title}>
+                        <span className="min-w-0">
+                          <span className="block text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
+                            {tip.title}
+                          </span>
+                          <span className="mt-0.5 block text-[13px] leading-snug text-[var(--text-secondary)]">
+                            {tip.body}
+                          </span>
+                        </span>
+                      </CardRow>
+                    ))}
+                  </Card>
+                  <p className="mt-2 px-1 text-[13px] leading-snug text-[var(--text-secondary)]">
+                    Or carry on with what we have - you can submit now.
+                  </p>
+                </div>
+              ) : null}
             </section>
           </div>
         ) : (
@@ -187,7 +210,6 @@ export function VerifyIncomeForm({
               <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
                 Upload documents ({uploadWindow.short})
               </p>
-              <IncomeDocsHint />
             </div>
             <Card>
               <button
@@ -241,6 +263,24 @@ export function VerifyIncomeForm({
                 className="sr-only"
                 aria-label="Upload income documents"
               />
+            </Card>
+          </section>
+
+          <section>
+            <SectionLabel>What you can upload</SectionLabel>
+            <Card>
+              {INCOME_DOC_OPTIONS.map((option) => (
+                <CardRow key={option.title}>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
+                      {option.title}
+                    </span>
+                    <span className="mt-0.5 block text-[13px] leading-snug text-[var(--text-secondary)]">
+                      {option.detail}
+                    </span>
+                  </span>
+                </CardRow>
+              ))}
             </Card>
           </section>
 
@@ -300,9 +340,20 @@ export function VerifyIncomeForm({
           // routing the CTA there unconditionally would replace the call that
           // sends m1/m2/m3 to /openApi/income/credit.
           canSubmit ? (
-            <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
-              {isSubmitting ? "Submitting\u2026" : "Submit income"}
-            </PrimaryButton>
+            <div className="flex flex-col gap-2">
+              <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
+                {isSubmitting ? "Submitting\u2026" : "Submit income"}
+              </PrimaryButton>
+              {improveTips.length > 0 && !isSubmitting ? (
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  className="py-2 text-[15px] font-semibold text-[var(--accent)]"
+                >
+                  Add more documents
+                </button>
+              ) : null}
+            </div>
           ) : (
             <PrimaryButton onClick={() => window.history.back()}>
               Add documents
@@ -332,66 +383,20 @@ export function VerifyIncomeForm({
   );
 }
 
-const INCOME_DOC_HINTS = [
-  "Payslips for full-time employees",
-  "Monthly statements for PHV drivers",
-  "Bank statements for all other employment types",
+const INCOME_DOC_OPTIONS = [
+  {
+    title: "Payslips",
+    detail: "For full-time employees. Your latest 3 months.",
+  },
+  {
+    title: "Bank statements",
+    detail: "For everyone else, or alongside payslips to confirm them.",
+  },
+  {
+    title: "Platform earnings statements",
+    detail: "Grab and PHV drivers - monthly statements.",
+  },
 ] as const;
-
-function IncomeDocsHint() {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!wrapRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
-  const canHover =
-    typeof window !== "undefined" &&
-    window.matchMedia("(hover: hover)").matches;
-
-  return (
-    <span
-      ref={wrapRef}
-      className="relative inline-flex shrink-0 self-center"
-      onMouseEnter={() => {
-        if (canHover) setOpen(true);
-      }}
-      onMouseLeave={() => {
-        if (canHover) setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        aria-label="Accepted income documents"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors duration-150 hover:text-[var(--accent)]"
-      >
-        <Info size={18} weight="fill" />
-      </button>
-      {open ? (
-        <span
-          role="tooltip"
-          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,100%)] rounded-[var(--radius-md)] bg-gray-900 px-3.5 py-3 text-left shadow-2xl"
-        >
-          <ul className="flex list-disc flex-col gap-1.5 pl-4 text-[12px] leading-snug text-white">
-            {INCOME_DOC_HINTS.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </span>
-      ) : null}
-    </span>
-  );
-}
 
 /** Long enough that a fast read doesn't flash the sheet up and away. */
 const PROCESSING_MIN_MS = 1500;

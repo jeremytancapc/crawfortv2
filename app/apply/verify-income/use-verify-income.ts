@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApplyPath } from "@/app/use-apply-path";
 import { uploadWindowLabel } from "@/lib/income-periods";
 import { incomeResultFrom, type ExtractResponse } from "@/lib/income-result";
+import { improveLimitTips } from "@/lib/income-tips";
 import { nextPathAfterSubmit } from "@/lib/post-submit-nav";
 
 export const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -274,6 +275,8 @@ export function useVerifyIncome(initialShowResults = false) {
     submitIncome: (months: IncomeMonth[], selected: SelectedFile[]) =>
       submitIncome(months, selected, incomeType, fileTypes),
     incomeAdvice,
+    /** How to strengthen the income just read. Empty when nothing would help. */
+    improveTips: incomeMonths.length > 0 ? improveLimitTips(incomeType) : [],
     /**
      * What to ask the applicant for, when the documents did not yield three
      * months. Null once they have. Exactly one of this and `incomeMonths` is
