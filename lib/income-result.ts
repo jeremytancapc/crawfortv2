@@ -31,7 +31,10 @@ export type IncomeResult =
   | {
       kind: "read";
       months: IncomeMonthView[];
+      /** What Ascend will average: the three months, a missing one as S$0. */
       average: number;
+      /** Months with no document, shown as S$0 so the average is not a surprise. */
+      missing: Array<{ label: string; month: string; year: string }>;
       incomeType: string;
       /** Each uploaded file's type, in upload order. */
       fileTypes: string[];
@@ -45,6 +48,12 @@ export type ExtractResponse = {
   /** The server's record of this reading; submit needs only this. */
   readingId?: string;
   months?: Array<{ month: string; amount: number; employer: string | null }>;
+  /** What Ascend is sent for each of the three months, most recent first. */
+  m1?: number;
+  m2?: number;
+  m3?: number;
+  /** Months (YYYY-MM) with no document; each is sent as S$0. */
+  missing?: string[];
   /** Ascend's incomeType for what was read, e.g. BANK_STATEMENT_OTHER_INCOME. */
   incomeType?: string;
   fileTypes?: string[];
@@ -91,8 +100,14 @@ export function incomeResultFrom(response: ExtractResponse): IncomeResult {
       incomeType: response.incomeType || "NON_PANEL_PAYSLIP",
       fileTypes: response.fileTypes ?? [],
       advice: readableSentence(response.advice ?? undefined),
+      missing: (response.missing ?? []).map((month) => monthParts(month)),
+      // The three figures Ascend averages, so a missing month lowers this
+      // exactly as it will lower theirs. Older responses carry no m1-m3 and
+      // fall back to the months that were read.
       average: Math.round(
-        months.reduce((sum, month) => sum + month.amount, 0) / months.length,
+        response.m1 !== undefined && response.m2 !== undefined && response.m3 !== undefined
+          ? (response.m1 + response.m2 + response.m3) / 3
+          : months.reduce((sum, month) => sum + month.amount, 0) / months.length,
       ),
     };
   }

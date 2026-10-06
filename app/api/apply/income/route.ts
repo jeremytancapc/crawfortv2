@@ -37,10 +37,14 @@ import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-resp
 import { getAscendOrder, updateAscendOrderDecision } from "@/lib/db/ascend-orders";
 import { getApplicant } from "@/lib/db/applicants";
 import {
+  claimIncomeReading,
+  completeIncomeReading,
   getIncomeReading,
   listActiveIncomeDocuments,
   logIncomeDocumentEvent,
   markIncomeDocumentsSubmitted,
+  releaseIncomeReading,
+  setIncomeDocumentAscendUrl,
 } from "@/lib/db/income-documents";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { fileUrlForAscend } from "@/lib/documents/ascend-file";
@@ -127,6 +131,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No application in progress." }, { status: 400 });
   }
 
+  // One submission per reading. income/credit can take longer than an
+  // applicant will wait, and a second tap used to re-upload every file and
+  // call it again while the first was still going. Whoever takes this first
+  // submits; anyone else is told it is already under way.
+  const claimed = await claimIncomeReading(applicantId, reading.id);
+  if (!claimed) {
+    await logIncomeDocumentEvent({
+      applicantId,
+      readingId: reading.id,
+      event: "submit_failed",
+      detail: { reason: "already submitted or in progress" },
+    });
+    return NextResponse.json(
+      { error: "Your income is already being submitted. Please wait a moment." },
+      { status: 409 },
+    );
+  }
+
   // Three months, most recent first - what Ascend wants as m1/m2/m3, with any
   // month not read already filled in when the reading was taken.
   const amounts = [Number(reading.m1), Number(reading.m2), Number(reading.m3)];
@@ -139,32 +161,49 @@ export async function POST(request: NextRequest) {
   // required`. The documents are the stored copies, labelled as they were
   // when read - a bank statement sent beside payslips stays a bank statement.
   const files: Array<{ fileType: string; fileName: string; fileUrl: string }> = [];
-  for (const doc of active) {
-    const bytes = await getDocumentBytes(doc.object_key);
-    if (!bytes) {
-      await logIncomeDocumentEvent({
-        applicantId,
-        documentId: doc.id,
-        readingId: reading.id,
-        event: "submit_failed",
-        detail: { reason: "object missing from storage" },
+  // Only the files that fed the months. A March payslip sent in October is not
+  // evidence for this decision, and sending it only gives Ascend noise.
+  const toSend = active.filter(
+    (doc) => !reading.used_document_ids || reading.used_document_ids.includes(doc.id),
+  );
+  try {
+    for (const doc of toSend) {
+      // Already given a URL by an earlier attempt: use it rather than upload
+      // the file to Ascend a second time.
+      let fileUrl = doc.ascend_file_url;
+      if (!fileUrl) {
+        const bytes = await getDocumentBytes(doc.object_key);
+        if (!bytes) {
+          await releaseIncomeReading(reading.id);
+          await logIncomeDocumentEvent({
+            applicantId,
+            documentId: doc.id,
+            readingId: reading.id,
+            event: "submit_failed",
+            detail: { reason: "object missing from storage" },
+          });
+          return NextResponse.json(
+            { error: `We could not find ${doc.file_name}. Please add it again.` },
+            { status: 409 },
+          );
+        }
+        ({ fileUrl } = await fileUrlForAscend({
+          doc,
+          bytes,
+          ascendUserId: applicant.ascend_user_id,
+          origin: request.nextUrl.origin,
+        }));
+        await setIncomeDocumentAscendUrl(doc.id, fileUrl);
+      }
+      files.push({
+        fileType: UPLOADED_INCOME_TYPES.has(doc.file_type ?? "") ? doc.file_type! : incomeType,
+        fileName: doc.file_name,
+        fileUrl,
       });
-      return NextResponse.json(
-        { error: `We could not find ${doc.file_name}. Please add it again.` },
-        { status: 409 },
-      );
     }
-    const { fileUrl } = await fileUrlForAscend({
-      doc,
-      bytes,
-      ascendUserId: applicant.ascend_user_id,
-      origin: request.nextUrl.origin,
-    });
-    files.push({
-      fileType: UPLOADED_INCOME_TYPES.has(doc.file_type ?? "") ? doc.file_type! : incomeType,
-      fileName: doc.file_name,
-      fileUrl,
-    });
+  } catch (err) {
+    await releaseIncomeReading(reading.id);
+    throw err;
   }
 
   try {
@@ -194,8 +233,9 @@ export async function POST(request: NextRequest) {
     await markIncomeDocumentsSubmitted(
       applicantId,
       reading.id,
-      active.map((doc) => doc.id),
+      toSend.map((doc) => doc.id),
     );
+    await completeIncomeReading(reading.id);
 
     // income/credit answers immediately and Ascend settles afterwards, so ask
     // again before deciding where the applicant goes. A failed re-ask keeps
@@ -263,6 +303,9 @@ export async function POST(request: NextRequest) {
 
     return res;
   } catch (err) {
+    // Give the right back so the applicant can try again - unless income/credit
+    // already went through, which is the one case a retry must not repeat.
+    await releaseIncomeReading(reading.id);
     if (err instanceof AscendError) {
       console.error(`[apply/income] income/credit failed ${err.code}: ${err.msg}`);
       await logIncomeDocumentEvent({

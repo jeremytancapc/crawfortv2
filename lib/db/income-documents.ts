@@ -28,6 +28,7 @@ export type IncomeDocument = {
   submitted_at: string | null;
   removed_at: string | null;
   deleted_from_storage_at: string | null;
+  ascend_file_url: string | null;
 };
 
 export type IncomeReading = {
@@ -43,6 +44,9 @@ export type IncomeReading = {
   advice: string | null;
   document_ids: string[];
   name_not_shown_for: string[];
+  used_document_ids: string[] | null;
+  submitting_at: string | null;
+  submitted_at: string | null;
 };
 
 export type IncomeDocumentEvent =
@@ -157,14 +161,16 @@ export async function insertIncomeReading(input: {
   advice: string | null;
   /** File names accepted although they show no name. */
   nameNotShown: string[];
+  /** Ids of the documents that fed the months; the rest are not sent to Ascend. */
+  usedDocumentIds: string[];
   documents: Array<{ id: string; kind: string; fileType: string }>;
 }): Promise<IncomeReading> {
   const ids = input.documents.map((d) => d.id);
   const row = await sqlOne<IncomeReading>`
     insert into income_readings
-      (applicant_id, income_type, months, average, m1, m2, m3, advice, document_ids, name_not_shown_for)
+      (applicant_id, income_type, months, average, m1, m2, m3, advice, document_ids, name_not_shown_for, used_document_ids)
     values (${input.applicantId}, ${input.incomeType}, ${JSON.stringify(input.months)}::jsonb,
-            ${input.average}, ${input.m1}, ${input.m2}, ${input.m3}, ${input.advice}, ${ids}::uuid[], ${input.nameNotShown}::text[])
+            ${input.average}, ${input.m1}, ${input.m2}, ${input.m3}, ${input.advice}, ${ids}::uuid[], ${input.nameNotShown}::text[], ${input.usedDocumentIds}::uuid[])
     returning *`;
   if (!row) throw new Error("insertIncomeReading returned no row");
 
@@ -183,6 +189,7 @@ export async function insertIncomeReading(input: {
       months: input.months,
       documents: input.documents,
       nameNotShown: input.nameNotShown,
+      ignoredDocumentIds: ids.filter((id) => !input.usedDocumentIds.includes(id)),
     },
   });
   return row;
@@ -238,4 +245,35 @@ export async function markIncomeDocumentExpired(doc: IncomeDocument): Promise<vo
     event: "expired",
     detail: { fileName: doc.file_name, createdAt: doc.created_at },
   });
+}
+
+/**
+ * Takes the right to submit this reading, or returns null when someone else
+ * has it (a second tap, a retry while the first request is still waiting on
+ * Ascend) or it has already gone. A lock older than two minutes is taken
+ * over: the request that held it is not coming back.
+ */
+export function claimIncomeReading(
+  applicantId: string,
+  id: string,
+): Promise<IncomeReading | null> {
+  return sqlOne<IncomeReading>`
+    update income_readings set submitting_at = now()
+    where id = ${id} and applicant_id = ${applicantId}
+      and submitted_at is null
+      and (submitting_at is null or submitting_at < now() - interval '2 minutes')
+    returning *`;
+}
+
+/** Gives the right back after a failure, so the applicant can try again. */
+export async function releaseIncomeReading(id: string): Promise<void> {
+  await sql`update income_readings set submitting_at = null where id = ${id} and submitted_at is null`;
+}
+
+export async function completeIncomeReading(id: string): Promise<void> {
+  await sql`update income_readings set submitted_at = now() where id = ${id}`;
+}
+
+export async function setIncomeDocumentAscendUrl(id: string, url: string): Promise<void> {
+  await sql`update income_documents set ascend_file_url = ${url} where id = ${id}`;
 }

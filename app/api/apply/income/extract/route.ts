@@ -141,6 +141,19 @@ export async function POST(request: NextRequest) {
     if (outcome.kind === "usable") {
       const kindOf = (fileType: string) =>
         fileType === "BANK_STATEMENT_OTHER_INCOME" ? "bank_statement" : outcome.source;
+      const ignored = new Set(outcome.ignoredIndices);
+      const ignoredNames = stored.filter((_, i) => ignored.has(i)).map((doc) => doc.file_name);
+      // Said to the applicant, because a file they added that we did not use
+      // would otherwise look like it had been counted.
+      const advice =
+        ignoredNames.length > 0
+          ? [
+              outcome.advice,
+              `We did not use ${ignoredNames.join(" or ")} - ${ignoredNames.length === 1 ? "it is" : "they are"} outside the months we need, and ${ignoredNames.length === 1 ? "it" : "they"} will not be sent.`,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          : outcome.advice;
       const reading = await insertIncomeReading({
         applicantId,
         incomeType: outcome.incomeType,
@@ -149,8 +162,9 @@ export async function POST(request: NextRequest) {
         m1: outcome.m1,
         m2: outcome.m2,
         m3: outcome.m3,
-        advice: outcome.advice,
+        advice,
         nameNotShown: outcome.nameNotShown,
+        usedDocumentIds: stored.filter((_, i) => !ignored.has(i)).map((doc) => doc.id),
         documents: stored.map((doc, i) => ({
           id: doc.id,
           kind: kindOf(outcome.fileTypes[i] ?? outcome.incomeType),
@@ -160,6 +174,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         status: "usable",
         readingId: reading.id,
+        missing: outcome.missing,
         months: outcome.months,
         m1: outcome.m1,
         m2: outcome.m2,
@@ -169,8 +184,8 @@ export async function POST(request: NextRequest) {
         incomeType: outcome.incomeType,
         fileTypes: outcome.fileTypes,
         // Which months would confirm the figure, when fewer than three were
-        // read. Shown, never blocking.
-        advice: outcome.advice,
+        // read, and any file not used. Shown, never blocking.
+        advice,
       });
     }
 

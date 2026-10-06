@@ -19,7 +19,7 @@ describe("reviewExtraction", () => {
   it("accepts three consistent months", () => {
     const result = reviewExtraction(THREE, WINDOW);
 
-    expect(result).toMatchObject({ kind: "usable", m1: 4280, m2: 4150, m3: 4200, filled: [] });
+    expect(result).toMatchObject({ kind: "usable", m1: 4280, m2: 4150, m3: 4200, missing: [] });
   });
 
   it("orders by month, so m1 is the most recent whatever order they arrived in", () => {
@@ -29,22 +29,22 @@ describe("reviewExtraction", () => {
     expect(result).toMatchObject({ m1: 4280, m2: 4150, m3: 4200 });
   });
 
-  it("goes ahead on one month, sending it as the income for the months not read", () => {
-    // The applicant is told we went with the one payslip. Ascend averages
-    // m1-m3, so a zero for each unread month would cut their income to a
-    // third of what the payslip says - the figure they were shown.
+  it("goes ahead on one month, sending S$0 for the months with no document", () => {
+    // Not the average: that would be assuming what they earned. Ascend
+    // averages m1-m3, so the applicant is told each missing month counts as
+    // nothing, before they submit.
     const result = reviewExtraction([THREE[0]], WINDOW);
 
     expect(result).toMatchObject({
-      kind: "usable", m1: 4280, m2: 4280, m3: 4280, filled: ["2026-06", "2026-07"],
+      kind: "usable", m1: 4280, m2: 0, m3: 0, missing: ["2026-06", "2026-07"],
     });
     if (result.kind === "usable") expect(result.months).toHaveLength(1);
   });
 
-  it("fills a missing month with the average of the ones read", () => {
+  it("sends S$0, not the average, for a month in the middle", () => {
     const result = reviewExtraction([THREE[0], THREE[2]], WINDOW);
 
-    expect(result).toMatchObject({ m1: 4280, m2: 4240, m3: 4200, filled: ["2026-07"] });
+    expect(result).toMatchObject({ m1: 4280, m2: 0, m3: 4200, missing: ["2026-07"] });
   });
 
   it("refuses nothing read at all", () => {

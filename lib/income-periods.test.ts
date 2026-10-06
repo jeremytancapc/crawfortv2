@@ -162,8 +162,8 @@ describe("planIncomeMonths - the latest payslip, and the two months before it", 
       held: ["2026-09"],
       missing: ["2026-07", "2026-08"],
       advice:
-        "We'll go with your September 2026 payslip. Adding your July and August 2026 payslips " +
-        "helps us confirm your income.",
+        "We'll go with your September 2026 payslip. We have no payslip for July and August 2026, " +
+        "so those months count as S$0 and lowers your average. Add them to include them.",
     });
   });
 

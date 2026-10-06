@@ -78,12 +78,24 @@ describe("extractIncome - payslips", () => {
     });
   });
 
-  it("goes ahead on one September payslip, and says which months would confirm it", async () => {
+  it("goes ahead on one September payslip, counting the months with no payslip as S$0", async () => {
     const outcome = await read({ documents: [payslip(1)], periods: [SEP] });
 
-    expect(outcome).toMatchObject({ kind: "usable", m1: 5200, m2: 5200, m3: 5200 });
+    // Not 5200 for all three: we do not know what they earned in July and
+    // August, so we do not put a figure there.
+    expect(outcome).toMatchObject({ kind: "usable", m1: 5200, m2: 0, m3: 0 });
     if (outcome.kind !== "usable") return;
-    expect(outcome.advice).toContain("July and August 2026 payslips");
+    expect(outcome.missing).toEqual(["2026-07", "2026-08"]);
+    expect(outcome.advice).toContain("July and August 2026");
+    expect(outcome.advice).toContain("S$0");
+  });
+
+  it("accepts a payslip for the current month, as well as last month or the one before", async () => {
+    // Today is 2 Oct 2026: October, September and August are all recent enough.
+    const OCT = { start: "2026-10-01", end: "2026-10-31", gross: 5300, net: 4240, employer: "Kimseng Food" };
+    const outcome = await read({ documents: [payslip(1)], periods: [OCT] });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 5300, m2: 0, m3: 0 });
   });
 
   it("asks for September or August when the latest payslip is older", async () => {
@@ -217,7 +229,8 @@ describe("extractIncome - bank statements alone count everything coming in", () 
 
     expect(outcome.kind).toBe("usable");
     if (outcome.kind !== "usable") return;
-    expect(outcome.advice).toContain("July 2026 bank statement");
+    expect(outcome.advice).toContain("July 2026");
+    expect(outcome.advice).toContain("S$0");
   });
 });
 
@@ -404,5 +417,39 @@ describe("earnings statements that show no name", () => {
       credits: [{ date: "2026-08-25", amount: 5000, payer: "Kimseng Food", category: "salary" }],
     });
     expect(outcome.kind).toBe("needs_review");
+  });
+});
+
+
+describe("files that fed none of the months", () => {
+  const MAR = { start: "2026-03-01", end: "2026-03-31", gross: 3800, net: 3040, employer: "Kimseng Food" };
+
+  it("reports a March payslip sent in October as ignored, and keeps the rest", async () => {
+    const outcome = await read({
+      documents: [payslip(1), payslip(2), payslip(3)],
+      periods: [
+        { ...MAR, document: 1 },
+        { ...AUG, document: 2 },
+        { ...SEP, document: 3 },
+      ],
+    });
+    expect(outcome.kind).toBe("usable");
+    if (outcome.kind === "usable") expect(outcome.ignoredIndices).toEqual([0]);
+  });
+
+  it("calls nothing unused when every file feeds a month", async () => {
+    const outcome = await read({
+      documents: [payslip(1), payslip(2)],
+      periods: [{ ...AUG, document: 1 }, { ...SEP, document: 2 }],
+    });
+    if (outcome.kind === "usable") expect(outcome.ignoredIndices).toEqual([]);
+  });
+
+  it("drops nothing when the reader did not say which file a period came from", async () => {
+    const outcome = await read({
+      documents: [payslip(1), payslip(2), payslip(3)],
+      periods: [MAR, AUG, SEP],
+    });
+    if (outcome.kind === "usable") expect(outcome.ignoredIndices).toEqual([]);
   });
 });

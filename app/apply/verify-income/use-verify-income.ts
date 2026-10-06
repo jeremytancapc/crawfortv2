@@ -150,6 +150,8 @@ export function useVerifyIncome(initialShowResults = false) {
   // a figure on this screen means a figure off a payslip.
   const [incomeMonths, setIncomeMonths] = useState<IncomeMonth[]>([]);
   const [averageIncome, setAverageIncome] = useState(0);
+  /** Months with no document - counted as S$0 and shown as such. */
+  const [missingMonths, setMissingMonths] = useState<Array<{ label: string; month: string; year: string }>>([]);
   /** What the documents were, in Ascend's words - set with the figures. */
   const [incomeType, setIncomeType] = useState("NON_PANEL_PAYSLIP");
   const [fileTypes, setFileTypes] = useState<string[]>([]);
@@ -168,6 +170,7 @@ export function useVerifyIncome(initialShowResults = false) {
   const clearReading = useCallback(() => {
     setIncomeMonths([]);
     setAverageIncome(0);
+    setMissingMonths([]);
     setIncomeType("NON_PANEL_PAYSLIP");
     setFileTypes([]);
     setIncomeAdvice(null);
@@ -291,6 +294,7 @@ export function useVerifyIncome(initialShowResults = false) {
           setReadingId(response.readingId ?? null);
           setIncomeMonths(outcome.months);
           setAverageIncome(outcome.average);
+          setMissingMonths(outcome.missing);
           setIncomeType(outcome.incomeType);
           setFileTypes(outcome.fileTypes);
           setIncomeAdvice(outcome.advice);
@@ -345,6 +349,7 @@ export function useVerifyIncome(initialShowResults = false) {
     /** The months that can be uploaded, e.g. "June to August, or July to September". */
     uploadWindow,
     averageIncome,
+    missingMonths,
     submitIncome: () => submitIncome(readingId),
     /** True while any document is still on its way to storage. */
     isUploading: files.some((file) => file.status === "uploading"),

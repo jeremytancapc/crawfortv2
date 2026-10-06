@@ -47,6 +47,7 @@ export function VerifyIncomeForm({
     canSubmit,
     uploadWindow,
     averageIncome,
+    missingMonths,
     incomeAdvice,
     improveTips,
     isUploading,
@@ -166,9 +167,24 @@ export function VerifyIncomeForm({
                     </span>
                   </CardRow>
                 ))}
+                {missingMonths.map((month) => (
+                  <CardRow key={`missing-${month.month}-${month.year}`}>
+                    <span className="min-w-0">
+                      <span className="ios-income-fit-label block leading-tight text-[var(--text-secondary)]">
+                        {month.month} {month.year}
+                      </span>
+                      <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
+                        No document - counts as $0
+                      </span>
+                    </span>
+                    <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-secondary)]">
+                      {formatCurrency(0)}
+                    </span>
+                  </CardRow>
+                ))}
                 <div className="ios-income-fit-avg flex items-center justify-between gap-3 bg-brand-teal/14 px-4">
                   <span className="ios-income-fit-avg-label font-semibold leading-tight text-[var(--brand-blue-hex)]">
-                    Monthly average
+                    Monthly average (3 months)
                   </span>
                   <span className="ios-income-fit-avg-value font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
                     {formatCurrency(averageIncome)}

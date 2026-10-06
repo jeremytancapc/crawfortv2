@@ -445,8 +445,9 @@ export function planIncomeMonths(
     advice:
       missing.length === 0
         ? null
-        : `We'll go with your ${listMonths(held)} ${noun(source, held.length)}. Adding your ` +
-          `${listMonths(missing)} ${noun(source, missing.length)} helps us confirm your income.`,
+        : `We'll go with your ${listMonths(held)} ${noun(source, held.length)}. We have no ` +
+          `${noun(source, 1)} for ${listMonths(missing)}, so ${missing.length === 1 ? "that month counts" : "those months count"} ` +
+          `as S$0 and lowers your average. Add ${missing.length === 1 ? "it" : "them"} to include ${missing.length === 1 ? "it" : "them"}.`,
   };
 }
 

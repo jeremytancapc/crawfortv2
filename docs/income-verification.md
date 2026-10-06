@@ -23,13 +23,21 @@ earnings statements.
 
 ## Which months count
 
-The latest document must be for last month or the one before (in October:
-September or August). We then ask for the two months before it.
+The latest document must be for this month, last month or the one before (in
+October: October, September or August). We then ask for the two months before
+it, so the three months we look at always end on that latest month.
 
-One month is enough to go ahead. Any month we could not read is filled in as
-the average of the months we did read, so a missing document does not drag the
-applicant's income down. **Undecided:** whether a missing month should instead
-count as zero, or whether all three should be required.
+One month is enough to go ahead. **A month with no document is counted as
+S$0.** We never assume what someone earned, so we do not fill the gap with an
+average. Ascend averages the three months, so each missing month lowers the
+applicant's average by a third. The results page shows the missing month as
+"No document - counts as $0" and shows the three-month average, so the
+applicant sees exactly what we send before they submit, and can add the
+document to include that month.
+
+A file that fed none of the three months (for example a March payslip sent in
+October) is not used and is not sent to Ascend. The applicant is told which
+file was left out.
 
 ## Which figure we take
 
@@ -76,6 +84,12 @@ card:
 We say "can increase", never "will": Ascend decides the limit. The applicant
 can always carry on with what we read - "Submit income" is the main button.
 
+## Submitting
+
+Each reading can be submitted once. If an applicant taps Submit again while
+Ascend is still answering, the second tap is told it is already under way, and
+nothing is sent twice. Each file is sent to Ascend once, even after a retry.
+
 ## What we keep, and for how long
 
 - Files are saved the moment they are added, and everything after works from
@@ -91,6 +105,5 @@ can always carry on with what we read - "Submit income" is the main button.
 
 - Whether foodpanda gives riders a downloadable or emailed statement. Not
   confirmed; check with a rider. Until then screenshots are the fallback.
-- The missing-month rule above.
 - The year on a screenshot that only says "June" can be misread; the
   latest-month rule catches the worst cases.

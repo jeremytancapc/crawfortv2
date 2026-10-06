@@ -32,8 +32,8 @@ export type ExtractionReview =
       m3: number;
       /** The months actually read, most recent first. */
       months: ExtractedMonth[];
-      /** Window months not read, sent as the average of those that were. */
-      filled: string[];
+      /** Window months with no document. Sent to Ascend as S$0, never as a guess. */
+      missing: string[];
     }
   | {
       kind: "needs_review";
@@ -52,12 +52,11 @@ const YTD_RATIO = 6;
  * Checks the months read inside `window` (oldest first, three months) and
  * puts them in Ascend's shape.
  *
- * One month is enough. The applicant is told their income was taken from the
- * documents they gave and which months would confirm it; each month not read
- * is sent as the average of those that were - the figure the applicant was
- * shown - because Ascend averages m1-m3 and a zero would cut it by a third
- * for every missing payslip. `filled` records which months that was, so the
- * submission can be explained afterwards.
+ * One month is enough to go ahead. A month with no document is sent as S$0:
+ * we do not know what they earned, so we do not put a figure there - not the
+ * average of the others, which would be assuming their salary. Ascend averages
+ * m1-m3, so each missing month lowers the average by a third, and the
+ * applicant is told so before they submit. `missing` records which months.
  */
 export function reviewExtraction(months: ExtractedMonth[], window: string[]): ExtractionReview {
   const read = months
@@ -85,9 +84,8 @@ export function reviewExtraction(months: ExtractedMonth[], window: string[]): Ex
     };
   }
 
-  const average = Math.round((amounts.reduce((sum, a) => sum + a, 0) / amounts.length) * 100) / 100;
   const byMonth = new Map(read.map((m) => [m.month, m.amount]));
-  const [m1, m2, m3] = [...window].reverse().map((month) => byMonth.get(month) ?? average);
+  const [m1, m2, m3] = [...window].reverse().map((month) => byMonth.get(month) ?? 0);
 
   return {
     kind: "usable",
@@ -95,7 +93,7 @@ export function reviewExtraction(months: ExtractedMonth[], window: string[]): Ex
     m2,
     m3,
     months: read,
-    filled: window.filter((month) => !byMonth.has(month)),
+    missing: window.filter((month) => !byMonth.has(month)),
   };
 }
 
@@ -447,6 +445,12 @@ export type ExtractionOutcome =
        * staff, because nothing ties these to the applicant but the applicant.
        */
       nameNotShown: string[];
+      /**
+       * Positions (in the order uploaded) of files that fed none of the three
+       * months - a March payslip sent in October. They are not evidence for
+       * this decision and are not sent to Ascend.
+       */
+      ignoredIndices: number[];
       periods: PayPeriod[];
       assembly: Assembly;
     })
@@ -697,10 +701,31 @@ export async function extractIncome(
   const typeOf = (kind: DocumentKind | undefined): AscendIncomeType =>
     kind === "payslip" || kind === "earnings_statement" ? payslipType : "BANK_STATEMENT_OTHER_INCOME";
 
+  // A file counts as used when one of its pay periods touches a month in the
+  // window. Only worked out when every period says which file it came from -
+  // if the reader left that out, nothing is called unused, because wrongly
+  // dropping a real document is worse than keeping an extra one. Bank
+  // statements are always kept: they corroborate rather than supply months.
+  const windowMonths = new Set(plan.window);
+  const everyPeriodNamesItsFile =
+    source !== "bank_statement" && reported.periods.every((p) => Number.isInteger(p.document));
+  const usedFiles = new Set<number>();
+  if (everyPeriodNamesItsFile) {
+    for (const p of reported.periods) {
+      if (windowMonths.has(p.start.slice(0, 7)) || windowMonths.has(p.end.slice(0, 7))) {
+        usedFiles.add((p.document as number) - 1);
+      }
+    }
+  }
+  const ignoredIndices = everyPeriodNamesItsFile
+    ? documents.flatMap((_, i) => (seen[i]?.kind === "bank_statement" || usedFiles.has(i) ? [] : [i]))
+    : [];
+
   return {
     ...review,
     note,
     source,
+    ignoredIndices,
     incomeType: typeOf(source),
     fileTypes: seen.map((d) => typeOf(d?.kind)),
     advice: plan.advice,
