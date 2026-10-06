@@ -344,7 +344,7 @@ describe("extractIncome - the documents are the applicant's own", () => {
     expect(outcome.kind).toBe("usable");
   });
 
-  it("refuses a payslip in someone else's name, and says which file", async () => {
+  it("refuses a payslip in someone else's name, says which file, and does not name the other person", async () => {
     const outcome = await read({
       documents: [payslip(1), { ...payslip(2), holderName: "LIM WEI JIE" }],
       periods: [SEP, AUG],
@@ -353,7 +353,8 @@ describe("extractIncome - the documents are the applicant's own", () => {
     expect(outcome).toMatchObject({ kind: "needs_review", months: [] });
     if (outcome.kind !== "needs_review") return;
     expect(outcome.reason).toContain("doc-2.pdf");
-    expect(outcome.reason).toContain("Singpass");
+    expect(outcome.reason).toContain("someone else");
+    expect(outcome.reason).not.toContain("LIM WEI JIE");
   });
 
   it("refuses a document the reader gave no name for", async () => {
@@ -399,7 +400,7 @@ describe("earnings statements that show no name", () => {
       periods: [{ ...JUN, document: 1 }],
     });
     expect(outcome.kind).toBe("needs_review");
-    if (outcome.kind !== "usable") expect(outcome.reason).toContain("LIM AH BENG");
+    if (outcome.kind !== "usable") expect(outcome.reason).toContain("someone else");
   });
 
   it("does not extend to a payslip, which always carries a name", async () => {
@@ -451,5 +452,37 @@ describe("files that fed none of the months", () => {
       periods: [MAR, AUG, SEP],
     });
     if (outcome.kind === "usable") expect(outcome.ignoredIndices).toEqual([]);
+  });
+});
+
+describe("extractIncome - a salary on a bank statement is taken back up to gross", () => {
+  const statements = {
+    documents: [statement(1), statement(2), statement(3)],
+    statements: [JUL_ST, AUG_ST, SEP_ST],
+  };
+  const deposits = [
+    salary("2026-07-31", 3040), salary("2026-08-31", 3040), salary("2026-09-30", 3040),
+    { date: "2026-08-10", amount: 200, payer: "A FRIEND", category: "transfer_from_others" as const },
+  ];
+
+  it("counts 3,040 deposited as the 3,800 it was paid, for a citizen under 55", async () => {
+    const outcome = await extractIncome(files(3), {
+      client: reporting({ ...statements, periods: [], credits: deposits }),
+      today: TODAY,
+      applicant: APPLICANT,
+      cpf: { dob: "2000-03-03", paysCpf: true },
+    });
+    // The 200 from a friend has no CPF on it and is added as it came.
+    expect(outcome).toMatchObject({ kind: "usable", m1: 3800, m2: 4000, m3: 3800 });
+  });
+
+  it("counts the deposit as it came when there is no CPF to put back", async () => {
+    const outcome = await extractIncome(files(3), {
+      client: reporting({ ...statements, periods: [], credits: deposits }),
+      today: TODAY,
+      applicant: APPLICANT,
+      cpf: { dob: "1999-12-01", paysCpf: false },
+    });
+    expect(outcome).toMatchObject({ kind: "usable", m1: 3040, m2: 3240, m3: 3040 });
   });
 });

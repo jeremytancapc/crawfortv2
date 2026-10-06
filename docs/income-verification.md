@@ -46,6 +46,16 @@ $626.47, not the $548.79 paid out). Weekly or part-month pay periods are split
 by day into calendar months. We never guess: if the documents do not clearly
 say, the application goes to a person.
 
+**Bank statements on their own.** A salary deposit has already had the
+employee's CPF taken off, so it is taken back up to the gross it came from
+(a S$3,040 deposit is S$3,800 pay). Otherwise someone with only a bank
+statement would be measured at about 80% of the same person with a payslip.
+The rate is the employee share for their age (20% up to 55, then 15%, 9.5%,
+7%, 5%), stopping at the monthly CPF wage ceiling (S$8,000). It applies only
+to deposits we read as salary, and only to Singapore citizens and PRs.
+PayNow transfers, cash deposits and platform payouts have no CPF taken off
+and are counted as they arrive.
+
 ## Is it the applicant's own document?
 
 - **Payslips and bank statements:** the name on the document must match the

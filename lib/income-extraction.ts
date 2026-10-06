@@ -99,6 +99,7 @@ export function reviewExtraction(months: ExtractedMonth[], window: string[]): Ex
 
 // ── Reading the documents ─────────────────────────────────────────────────
 
+import { grossUpSalary, type CpfProfile } from "@/lib/income-cpf";
 import Anthropic from "@anthropic-ai/sdk";
 
 import { isRecognisedSgBank, nameBelongsTo } from "./income-identity";
@@ -341,10 +342,16 @@ PAYSLIPS
 EARNINGS STATEMENTS (ride-hailing, delivery and other platform work)
 - Report them as periods, like payslips: the dates the statement covers and
   the earnings for them.
-- Report what the worker earned after the costs the statement takes off:
+- GROSS is what the worker earned after the costs the statement takes off:
   the platform's commission or service fee, vehicle rental, and any other
-  charge deducted from their earnings. Put that figure in both gross and net.
-  Leave out cash collected from customers that is not earnings.
+  charge deducted from their earnings. It is BEFORE any CPF: a line such as
+  "Withheld earnings for CPF" or "CPF contribution" is the worker's own money
+  set aside, not a cost, so it is not taken off gross. A statement with income
+  of 1,542.50, CPF withheld of 191.27 and a net payment of 1,351.23 has gross
+  1,542.50.
+- NET is what was actually paid out to them, after everything including CPF
+  withheld (1,351.23 in that example). If nothing is withheld, net equals gross.
+- Leave out cash collected from customers that is not earnings.
 
 BANK STATEMENTS
 - Report the dates each statement covers, as printed.
@@ -511,8 +518,8 @@ function documentProblem(
     if (namesNobody(found)) continue;
     if (!found || !nameBelongsTo(found.holderName, applicant.name, applicant.aliases)) {
       return found?.holderName.trim()
-        ? `${doc.fileName} is in the name of ${found.holderName.trim()}, which does not match ` +
-            "your Singpass name. Please upload documents in your own name."
+        ? `${doc.fileName} appears to belong to someone else, and we do not accept ` +
+            "documents for another person. Please upload documents in your own name."
         : `We could not find your name on ${doc.fileName}. Please upload documents that show ` +
             "your name as it appears in Singpass.";
     }
@@ -543,6 +550,12 @@ export async function extractIncome(
      * applicant to check against, never on the upload step.
      */
     applicant?: { name: string; aliases?: string[] };
+    /**
+     * Their CPF position. A salary deposit on a bank statement is after the
+     * employee's CPF, so it is taken back up to gross (see lib/income-cpf.ts).
+     * Omitted, deposits are counted as they arrive.
+     */
+    cpf?: CpfProfile;
   },
 ): Promise<ExtractionOutcome> {
   const refuse = (
@@ -643,7 +656,13 @@ export async function extractIncome(
       reported.statements,
       reported.credits
         .filter((c) => COUNTED_CREDITS.has(c.category))
-        .map((c) => ({ date: c.date, amount: c.amount, payer: c.payer || null })),
+        .map((c) => ({
+          date: c.date,
+          // Only a salary has CPF taken off it. Transfers, cash and platform
+          // payouts arrive whole.
+          amount: c.category === "salary" ? grossUpSalary(c.amount, options?.cpf, today) : c.amount,
+          payer: c.payer || null,
+        })),
     ));
   } else {
     periods = reported.periods.map((p) => ({

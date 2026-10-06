@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { getApplicant } from "@/lib/db/applicants";
+import { getMyinfoProfile } from "@/lib/db/myinfo-profiles";
 import {
   getIncomeDocument,
   insertIncomeReading,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/db/income-documents";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { getDocumentBytes } from "@/lib/documents/store";
+import type { CpfProfile } from "@/lib/income-cpf";
 import { extractIncome, type IncomeDocument } from "@/lib/income-extraction";
 import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
@@ -49,6 +51,20 @@ async function applicantName(request: NextRequest): Promise<string | null> {
     }
   }
   return session.fullName?.trim() || null;
+}
+
+/** What is known of the applicant's CPF, or undefined when MyInfo is not on file. */
+async function cpfProfileOf(applicantId: string): Promise<CpfProfile | undefined> {
+  if (!isDatabaseConfigured()) return undefined;
+  try {
+    const profile = await getMyinfoProfile(applicantId);
+    const dob = (profile?.processed_payload as { dob?: string } | undefined)?.dob ?? "";
+    if (!profile || !dob) return undefined;
+    return { dob, paysCpf: ["singaporean", "pr", "C", "P"].includes(profile.residential_status ?? "") };
+  } catch (err) {
+    console.error("[apply/income/extract] CPF profile lookup failed", err);
+    return undefined;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -136,7 +152,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const outcome = await extractIncome(documents, { applicant: { name } });
+    const outcome = await extractIncome(documents, { applicant: { name }, cpf: await cpfProfileOf(applicantId) });
 
     if (outcome.kind === "usable") {
       const kindOf = (fileType: string) =>
