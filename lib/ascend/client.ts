@@ -222,6 +222,16 @@ export function toRiskStatus(wire: AscendRiskStatus): "passed" | "pending" | "re
 }
 
 /**
+ * Which risk stage a call belongs to. The guide makes it required on
+ * apply/credit and income/credit: 1 is the CREATE-stage check - the flow the
+ * app has always run, and the documented default - and 2 the ELIGIBILITY
+ * stage, "reserved for future business". We stop at 1 everywhere, so it is a
+ * constant here rather than a parameter: nothing should be able to pick 2 by
+ * accident.
+ */
+const RISK_STEP_CREATE = 1;
+
+/**
  * The credit decision. NOT a quote - it creates an Order.
  *
  * Call once per applicant, guarded by the persisted orderId (ADR-0001). Takes
@@ -241,7 +251,11 @@ export function ascendApplyCredit(
   if (!input.myinfo && !input.userId) {
     throw new Error("ascendApplyCredit needs either myinfo or userId");
   }
-  return callAscend<AscendCreditResult>("/openApi/apply/credit", { ...input }, options);
+  return callAscend<AscendCreditResult>(
+    "/openApi/apply/credit",
+    { ...input, riskStep: RISK_STEP_CREATE },
+    options,
+  );
 }
 
 /** Re-checks an order left PENDING, which means Ascend has no income on file. */
@@ -298,6 +312,7 @@ export function ascendSubmitIncome(
         yearlyIncome: Number((monthlyIncome * 12).toFixed(2)),
       },
       orderFile: input.files,
+      riskStep: RISK_STEP_CREATE,
     },
     options,
   );
