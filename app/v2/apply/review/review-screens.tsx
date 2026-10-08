@@ -17,7 +17,6 @@ import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@
 import { trackDisplayStep } from "@/lib/analytics";
 import { SHOW_BANKRUPTCY_DECLARATION } from "@/lib/apply-progress";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
-import { buildDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { formatCurrency, type LoanFormData } from "@/lib/loan-form";
 
 const ID_TYPE_OPTIONS = [
@@ -88,20 +87,19 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
     [],
   );
 
-  const demo = useMemo(() => buildDemoReviewMyInfo(), []);
-  const dob = formData.dob || (isSingpass ? demo.dob : "");
-  const noaRecords = useMemo(() => {
-    const rows = formData.noaHistory.length > 0 ? formData.noaHistory : demo.noaHistory;
-    return [...rows].sort((a, b) => b.yearOfAssessment.localeCompare(a.yearOfAssessment));
-  }, [formData.noaHistory, demo.noaHistory]);
-  const cpfRecords = useMemo(() => {
-    const rows =
-      formData.cpfContributions.length > 0 ? formData.cpfContributions : demo.cpfContributions;
-    return [...rows].sort((a, b) => {
-      const byPaid = b.paidOn.localeCompare(a.paidOn);
-      return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
-    });
-  }, [formData.cpfContributions, demo.cpfContributions]);
+  const dob = formData.dob;
+  const noaRecords = useMemo(
+    () => [...formData.noaHistory].sort((a, b) => b.yearOfAssessment.localeCompare(a.yearOfAssessment)),
+    [formData.noaHistory],
+  );
+  const cpfRecords = useMemo(
+    () =>
+      [...formData.cpfContributions].sort((a, b) => {
+        const byPaid = b.paidOn.localeCompare(a.paidOn);
+        return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
+      }),
+    [formData.cpfContributions],
+  );
 
   const identityValid =
     formData.idType !== "" &&
@@ -276,6 +274,9 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
                 }
               />
             </Rows>
+            {isSingpass && noaRecords.length === 0 ? (
+              <p className="v2-note mt-5">No Notice of Assessment was retrieved from Singpass.</p>
+            ) : null}
             {noaRecords.length > 0 ? (
               <div className="mt-5">
                 <span className="v2-label">Notice of assessment</span>
@@ -300,6 +301,9 @@ export function ReviewScreens({ initialData }: { initialData: LoanFormData }) {
                   ))}
                 </Rows>
               </div>
+            ) : null}
+            {isSingpass && cpfRecords.length === 0 ? (
+              <p className="v2-note mt-5">No CPF contributions were retrieved from Singpass.</p>
             ) : null}
             {cpfRecords.length > 0 ? (
               <div className="mt-5">

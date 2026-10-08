@@ -4,7 +4,6 @@ import { decodeMyinfoCookie, MYINFO_COOKIE } from "@/lib/apply-myinfo-cookie";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session-codec";
 import type { LoanFormData } from "@/lib/loan-form";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
-import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import {
   loadMyinfoProcessedPayload,
   processedPayloadFromRetrieval,
@@ -87,15 +86,16 @@ export async function loadSingpassRecords(
 }
 
 /**
- * The review page's data: the real records where the session or cookie held
- * them, and demo records filled in for display otherwise. Pass `loaded` when
- * the caller has already called loadSingpassRecords, to save the round trip.
+ * The review page's data: the applicant's real CPF and NOA exactly as
+ * Singpass returned them, or the session unchanged when none was found. It
+ * never fills in or assumes a field - a foreigner with NOA and no CPF is
+ * shown that, not a fixture. Pass `loaded` when the caller has already called
+ * loadSingpassRecords, to save the round trip.
  */
 export async function hydrateSingpassReviewSession(
   session: Partial<LoanFormData> | null,
   loaded?: Awaited<ReturnType<typeof loadSingpassRecords>>,
 ): Promise<Partial<LoanFormData> | null> {
   const records = loaded === undefined ? await loadSingpassRecords(session) : loaded;
-  if (records && !records.fromStore) return records.data;
-  return withDemoReviewMyInfo(records?.data ?? session);
+  return records?.data ?? session;
 }

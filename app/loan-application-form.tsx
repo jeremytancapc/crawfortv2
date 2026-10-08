@@ -9,7 +9,6 @@ import {
   formatCurrency,
   MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER,
 } from "@/lib/loan-form";
-import { buildDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
@@ -2279,25 +2278,23 @@ export function Step8_Review({
     onModalOpenChange?.(false);
   }, [onModalOpenChange]);
 
-  const demoMyInfo = useMemo(() => buildDemoReviewMyInfo(), []);
-  const noaRecords = useMemo(() => {
-    const rows =
-      formData.noaHistory.length > 0 ? formData.noaHistory : demoMyInfo.noaHistory;
-    return [...rows].sort((a, b) =>
-      b.yearOfAssessment.localeCompare(a.yearOfAssessment),
-    );
-  }, [formData.noaHistory, demoMyInfo.noaHistory]);
-  const cpfRecords = useMemo(() => {
-    const rows =
-      formData.cpfContributions.length > 0
-        ? formData.cpfContributions
-        : demoMyInfo.cpfContributions;
-    return [...rows].sort((a, b) => {
-      const byPaid = b.paidOn.localeCompare(a.paidOn);
-      return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
-    });
-  }, [formData.cpfContributions, demoMyInfo.cpfContributions]);
-  const reviewDob = formData.dob || demoMyInfo.dob;
+  const noaRecords = useMemo(
+    () =>
+      [...formData.noaHistory].sort((a, b) =>
+        b.yearOfAssessment.localeCompare(a.yearOfAssessment),
+      ),
+    [formData.noaHistory],
+  );
+  const cpfRecords = useMemo(
+    () =>
+      [...formData.cpfContributions].sort((a, b) => {
+        const byPaid = b.paidOn.localeCompare(a.paidOn);
+        return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
+      }),
+    [formData.cpfContributions],
+  );
+  const reviewDob = formData.dob;
+  const isSingpassReview = formData.authMethod === "singpass";
 
   const dobLabel = reviewDob
     ? new Date(`${reviewDob}T00:00:00`).toLocaleDateString("en-SG", {
@@ -2346,6 +2343,14 @@ export function Step8_Review({
           </Card>
         </section>
 
+        {isSingpassReview && noaRecords.length === 0 && (
+          <section>
+            <SectionLabel>Notice of Assessment</SectionLabel>
+            <p className="px-1 text-[15px] text-[var(--text-secondary)]">
+              No Notice of Assessment was retrieved from Singpass.
+            </p>
+          </section>
+        )}
         {noaRecords.length > 0 && (
           <section>
             <SectionLabel>Notice of Assessment</SectionLabel>
@@ -2405,6 +2410,14 @@ export function Step8_Review({
           </section>
         )}
 
+        {isSingpassReview && cpfRecords.length === 0 && (
+          <section>
+            <SectionLabel>CPF contribution history</SectionLabel>
+            <p className="px-1 text-[15px] text-[var(--text-secondary)]">
+              No CPF contributions were retrieved from Singpass.
+            </p>
+          </section>
+        )}
         {cpfRecords.length > 0 && (
           <section>
             <SectionLabel>CPF contribution history</SectionLabel>

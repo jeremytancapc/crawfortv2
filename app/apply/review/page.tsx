@@ -2,7 +2,6 @@ import type { Viewport } from "next";
 import { initialLoanFormData, type LoanFormData } from "@/lib/loan-form";
 import { getApplySession } from "@/lib/apply-session";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
-import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { suggestEmploymentType } from "@/lib/ascend/borrower-derive";
 import { hydrateSingpassReviewSession, loadSingpassRecords } from "@/lib/singpass-session-hydrate";
 
@@ -41,11 +40,11 @@ export default async function ReviewPage() {
         })
       : null;
 
-  const initialData: LoanFormData = withDemoReviewMyInfo({
+  const initialData: LoanFormData = {
     ...initialLoanFormData,
     ...hydrated,
     ...(employmentSuggestion ? { employmentStatus: employmentSuggestion.value } : {}),
-  });
+  };
 
   // Staging-only, one-click CPF/NOA removal for this application's own
   // retrieval - without a rid there is nothing to edit. Gated by

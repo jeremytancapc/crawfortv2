@@ -1,7 +1,6 @@
 import { initialLoanFormData, type LoanFormData } from "@/lib/loan-form";
 import { getApplySession } from "@/lib/apply-session";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
-import { withDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { hydrateSingpassReviewSession } from "@/lib/singpass-session-hydrate";
 
 import { ReviewScreens } from "./review-screens";
@@ -13,10 +12,10 @@ export default async function V2ReviewPage() {
 
   const session = await getApplySession();
   const hydrated = await hydrateSingpassReviewSession(session);
-  const initialData: LoanFormData = withDemoReviewMyInfo({
+  const initialData: LoanFormData = {
     ...initialLoanFormData,
     ...hydrated,
-  });
+  };
 
   return <ReviewScreens initialData={initialData} />;
 }
