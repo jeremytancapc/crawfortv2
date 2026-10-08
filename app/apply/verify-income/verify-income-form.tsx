@@ -18,8 +18,8 @@ import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
 import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { CircleLoader } from "@/components/ui/circle-loader";
-import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
+import { VerifyIncomeResults } from "@/app/apply/verify-income/verify-income-results";
 import {
   ACCEPTED_TYPES,
   INCOME_SUBMIT_STATUSES,
@@ -36,6 +36,8 @@ export function VerifyIncomeForm({
   const {
     files,
     addFiles,
+    addMoreFiles,
+    addNote,
     removeFile,
     isProcessing,
     isReading,
@@ -140,87 +142,29 @@ export function VerifyIncomeForm({
         }
       >
         {showResults ? (
-          <div key="results" className="ios-income-fit w-full animate-fade-up">
-            <section>
-              {!canSubmit ? (
-                <Card>
-                  <div className="px-4 py-5">
-                    <p className="ios-income-fit-label leading-snug text-[var(--text-primary)]">
-                      {extractionAsk}
-                    </p>
-                  </div>
-                </Card>
-              ) : (
+          canSubmit ? (
+            <VerifyIncomeResults
+              months={incomeMonths}
+              missingMonths={missingMonths}
+              average={averageIncome}
+              advice={incomeAdvice}
+              tips={improveTips}
+              files={files}
+              addNote={addNote}
+              busy={isProcessing || isUploading || isSubmitting}
+              onAdd={addMoreFiles}
+            />
+          ) : (
+            <div key="results" className="ios-income-fit w-full animate-fade-up">
               <Card>
-                {incomeMonths.map((month) => (
-                  <CardRow key={month.label}>
-                    <span className="min-w-0">
-                      <span className="ios-income-fit-label block leading-tight text-[var(--text-primary)]">
-                        {month.month} {month.year}
-                      </span>
-                      <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
-                        {month.employer}
-                      </span>
-                    </span>
-                    <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
-                      {formatCurrency(month.amount)}
-                    </span>
-                  </CardRow>
-                ))}
-                {missingMonths.map((month) => (
-                  <CardRow key={`missing-${month.month}-${month.year}`}>
-                    <span className="min-w-0">
-                      <span className="ios-income-fit-label block leading-tight text-[var(--text-secondary)]">
-                        {month.month} {month.year}
-                      </span>
-                      <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
-                        No document - counts as $0
-                      </span>
-                    </span>
-                    <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-secondary)]">
-                      {formatCurrency(0)}
-                    </span>
-                  </CardRow>
-                ))}
-                <div className="ios-income-fit-avg flex items-center justify-between gap-3 bg-brand-teal/14 px-4">
-                  <span className="ios-income-fit-avg-label font-semibold leading-tight text-[var(--brand-blue-hex)]">
-                    Monthly average (3 months)
-                  </span>
-                  <span className="ios-income-fit-avg-value font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
-                    {formatCurrency(averageIncome)}
-                  </span>
-                </div>
-              </Card>
-              )}
-              {canSubmit && incomeAdvice ? (
-                <p className="mt-3 px-1 text-[13px] leading-snug text-[var(--text-secondary)]">
-                  {incomeAdvice}
-                </p>
-              ) : null}
-              {canSubmit && improveTips.length > 0 ? (
-                <div className="mt-3">
-                  <SectionLabel>Want a higher limit?</SectionLabel>
-                  <Card>
-                    {improveTips.map((tip) => (
-                      <CardRow key={tip.title}>
-                        <span className="min-w-0">
-                          <span className="block text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-                            {tip.title}
-                          </span>
-                          <span className="mt-0.5 block text-[13px] leading-snug text-[var(--text-secondary)]">
-                            {tip.body}
-                          </span>
-                        </span>
-                      </CardRow>
-                    ))}
-                  </Card>
-                  <p className="mt-2 px-1 text-[13px] leading-snug text-[var(--text-secondary)]">
-                    Or carry on with what we have - you can submit now.
+                <div className="px-4 py-5">
+                  <p className="ios-income-fit-label leading-snug text-[var(--text-primary)]">
+                    {extractionAsk}
                   </p>
                 </div>
-              ) : null}
-            </section>
-          </div>
+              </Card>
+            </div>
+          )
         ) : (
         <div className="animate-fade-up flex flex-col gap-6">
           <section>
@@ -368,20 +312,12 @@ export function VerifyIncomeForm({
           // routing the CTA there unconditionally would replace the call that
           // sends m1/m2/m3 to /openApi/income/credit.
           canSubmit ? (
-            <div className="flex flex-col gap-2">
-              <PrimaryButton onClick={handleSubmitIncome} disabled={isSubmitting}>
-                {isSubmitting ? "Submitting\u2026" : "Submit income"}
-              </PrimaryButton>
-              {improveTips.length > 0 && !isSubmitting ? (
-                <button
-                  type="button"
-                  onClick={() => window.history.back()}
-                  className="py-2 text-[15px] font-semibold text-[var(--accent)]"
-                >
-                  Add more documents
-                </button>
-              ) : null}
-            </div>
+            <PrimaryButton
+              onClick={handleSubmitIncome}
+              disabled={isSubmitting || isProcessing || isUploading}
+            >
+              {isSubmitting ? "Submitting\u2026" : "Submit income"}
+            </PrimaryButton>
           ) : (
             <PrimaryButton onClick={() => window.history.back()}>
               Add documents

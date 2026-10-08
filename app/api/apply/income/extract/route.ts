@@ -26,12 +26,13 @@ import { isDatabaseConfigured } from "@/lib/db/sql";
 import { getDocumentBytes } from "@/lib/documents/store";
 import type { CpfProfile } from "@/lib/income-cpf";
 import { extractIncome, type IncomeDocument } from "@/lib/income-extraction";
+import { MAX_INCOME_FILES } from "@/lib/income-add-more";
 import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 
 export const runtime = "nodejs";
 
-const MAX_FILES = 6;
+const MAX_FILES = MAX_INCOME_FILES;
 
 /**
  * The name the documents must carry: the one on the application Ascend is

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
+import { afterReread, roomForMore } from "@/lib/income-add-more";
 import { uploadWindowLabel } from "@/lib/income-periods";
 import { incomeResultFrom, type ExtractResponse } from "@/lib/income-result";
 import { improveLimitTips } from "@/lib/income-tips";
@@ -161,6 +162,15 @@ export function useVerifyIncome(initialShowResults = false) {
   /** Which months would confirm the figure, when fewer than three were read. */
   const [incomeAdvice, setIncomeAdvice] = useState<string | null>(null);
   const [extractionAsk, setExtractionAsk] = useState<string | null>(null);
+  /**
+   * Said beside the figures on the results page: why a document just added
+   * did not count, or that some were left out. The figures themselves stay.
+   */
+  const [limitNote, setLimitNote] = useState<string | null>(null);
+  const [readNote, setReadNote] = useState<string | null>(null);
+  const addNote = [readNote, limitNote].filter(Boolean).join(" ") || null;
+  /** Documents added on the results page that are not yet read. */
+  const [awaitingRead, setAwaitingRead] = useState<string[]>([]);
   const uploadWindow = useMemo(() => uploadWindowLabel(), []);
 
   // Everything read off the documents describes the documents that were read.
@@ -228,8 +238,14 @@ export function useVerifyIncome(initialShowResults = false) {
     [deleteStored],
   );
 
-  const addFiles = useCallback(
-    (incoming: FileList | File[]) => {
+  /**
+   * Validates and stores the files. `keepReading` is for the results page,
+   * where the figures stay on screen while the new documents are saved and
+   * read; on the upload page any change to the documents drops the reading.
+   * Returns the local ids it started uploading.
+   */
+  const stageFiles = useCallback(
+    (incoming: FileList | File[], keepReading: boolean): string[] => {
       const accepted: Array<{ entry: SelectedFile; file: File }> = [];
       for (const file of Array.from(incoming)) {
         if (!ACCEPTED_TYPES.includes(file.type)) continue;
@@ -244,13 +260,33 @@ export function useVerifyIncome(initialShowResults = false) {
           },
         });
       }
-      if (!accepted.length) return;
+      if (!accepted.length) return [];
 
-      clearReading();
+      if (!keepReading) clearReading();
       setFiles((prev) => [...prev, ...accepted.map((a) => a.entry)]);
       for (const { entry, file } of accepted) void uploadOne(entry.id, file);
+      return accepted.map((a) => a.entry.id);
     },
     [clearReading, uploadOne],
+  );
+
+  const addFiles = useCallback((incoming: FileList | File[]) => void stageFiles(incoming, false), [stageFiles]);
+
+  /**
+   * Adding from the results page: the figures stay, the new documents are
+   * saved and then read together with the old ones, and nothing is removed.
+   * Files beyond the limit are left out and the applicant is told.
+   */
+  const addMoreFiles = useCallback(
+    (incoming: FileList | File[]) => {
+      const list = Array.from(incoming);
+      const { accept, message } = roomForMore(files.length, list.length);
+      setLimitNote(message);
+      if (accept === 0) return;
+      const ids = stageFiles(list.slice(0, accept), true);
+      if (ids.length) setAwaitingRead((prev) => [...prev, ...ids]);
+    },
+    [files.length, stageFiles],
   );
 
   const removeFile = useCallback(
@@ -267,10 +303,17 @@ export function useVerifyIncome(initialShowResults = false) {
     [files, clearReading, deleteStored],
   );
 
-  const startProcessing = useCallback(() => {
+  /**
+   * Reads the stored documents. From the upload page a failure shows what is
+   * missing; from the results page (`hadReading`) it leaves the earlier
+   * figures standing and says why the new documents did not count.
+   */
+  const readDocuments = useCallback(() => {
     setIsProcessing(true);
     setIsReading(true);
     setExtractionAsk(null);
+    setReadNote(null);
+    const hadReading = readingId !== null;
 
     // Reading runs while the processing sheet is up, and the sheet stays up
     // until it has finished. It used to close on its own 3-second timer: a
@@ -289,8 +332,9 @@ export function useVerifyIncome(initialShowResults = false) {
         });
         const response = (await res.json()) as ExtractResponse;
         const outcome = incomeResultFrom(response);
+        const next = afterReread({ hadReading, readUsable: outcome.kind === "read" });
 
-        if (outcome.kind === "read") {
+        if (outcome.kind === "read" && next === "replace") {
           setReadingId(response.readingId ?? null);
           setIncomeMonths(outcome.months);
           setAverageIncome(outcome.average);
@@ -303,25 +347,49 @@ export function useVerifyIncome(initialShowResults = false) {
 
         // Read, but not enough of it to put into a credit decision - or not
         // attempted at all. The ask names the payslip that would finish it.
+        const ask = outcome.kind === "not_read" ? outcome.ask : null;
+        if (next === "keep_previous") {
+          setReadNote(ask ?? "We could not use the documents you just added.");
+          return;
+        }
         clearReading();
-        setExtractionAsk(outcome.ask);
+        setExtractionAsk(ask);
       } catch (err) {
         console.error("Income extraction failed", err);
-        clearReading();
-        setExtractionAsk(
-          "We could not read those documents just now. Please try uploading them again.",
-        );
+        const message = "We could not read those documents just now. Please try uploading them again.";
+        if (hadReading) {
+          setReadNote(message);
+        } else {
+          clearReading();
+          setExtractionAsk(message);
+        }
       } finally {
         setIsReading(false);
       }
     })();
-  }, [files, clearReading]);
+  }, [files, readingId, clearReading]);
+
+  const startProcessing = readDocuments;
+
+  // Once the documents added on the results page have settled, read them. A
+  // file that failed to save is not read, and if every added file failed
+  // there is nothing new to read - the failure shows on its own row.
+  useEffect(() => {
+    if (!showResults || awaitingRead.length === 0 || isProcessing) return;
+    const added = files.filter((file) => awaitingRead.includes(file.id));
+    if (added.some((file) => file.status === "uploading")) return;
+    setAwaitingRead([]);
+    if (added.some((file) => file.status === "ready")) readDocuments();
+  }, [showResults, awaitingRead, files, isProcessing, readDocuments]);
 
   const finishProcessing = useCallback(() => {
     setIsProcessing(false);
+    // Already on the results page (documents added there): read again in
+    // place, without stacking another history entry for Back to walk through.
+    if (showResults) return;
     setShowResults(true);
     window.history.pushState({ view: "results" }, "", applyHref(RESULTS_PATH));
-  }, [applyHref]);
+  }, [applyHref, showResults]);
 
   useEffect(() => {
     const syncFromUrl = () => {
@@ -339,6 +407,9 @@ export function useVerifyIncome(initialShowResults = false) {
   return {
     files,
     addFiles,
+    addMoreFiles,
+    /** Why a document just added did not count, or that some were left out. */
+    addNote,
     removeFile,
     isProcessing,
     isReading,
