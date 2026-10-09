@@ -547,6 +547,16 @@ describe("extractIncome - what a bank statement counts depends on the employment
     }
   });
 
+  it("still sends it to Ascend as a bank statement - CPF LIFE is our label, not their income type", async () => {
+    const outcome = await readAs("UNEMPLOYED WITH INCOME");
+
+    expect(outcome).toMatchObject({
+      kind: "usable",
+      incomeType: "BANK_STATEMENT_OTHER_INCOME",
+      fileTypes: ["BANK_STATEMENT_OTHER_INCOME", "BANK_STATEMENT_OTHER_INCOME", "BANK_STATEMENT_OTHER_INCOME"],
+    });
+  });
+
   it("does not change what payslips count for", async () => {
     const outcome = await extractIncome(files(3), {
       client: reporting({ documents: [payslip(1), payslip(2), payslip(3)], periods: [SEP, AUG, JUL] }),
