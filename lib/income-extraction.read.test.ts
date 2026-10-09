@@ -11,7 +11,7 @@ import { extractIncome, type IncomeDocument } from "./income-extraction";
  */
 type Kind = "payslip" | "bank_statement" | "earnings_statement" | "other";
 type Category =
-  | "salary" | "platform_payout" | "transfer_from_others" | "cash_deposit" | "government_payout"
+  | "salary" | "platform_payout" | "transfer_from_others" | "cash_deposit" | "government_payout" | "cpf_life"
   | "own_account_transfer" | "interest" | "refund_or_reversal" | "loan_disbursement" | "other";
 
 type Report = {
@@ -484,5 +484,77 @@ describe("extractIncome - a salary on a bank statement is taken back up to gross
       cpf: { dob: "1999-12-01", paysCpf: false },
     });
     expect(outcome).toMatchObject({ kind: "usable", m1: 3040, m2: 3240, m3: 3040 });
+  });
+});
+
+describe("extractIncome - what a bank statement counts depends on the employment status they chose", () => {
+  type Credit = NonNullable<Report["credits"]>[number];
+  const month = (m: string): Credit[] => [
+    salary(`${m}-25`, 3000),
+    { date: `${m}-03`, amount: 200, payer: "TAN WEI LING", category: "transfer_from_others" as const },
+    { date: `${m}-10`, amount: 400, payer: "", category: "cash_deposit" as const },
+    { date: `${m}-15`, amount: 1100, payer: "CPF BOARD", category: "cpf_life" as const },
+  ];
+  const statements = [JUL_ST, AUG_ST, SEP_ST];
+  const credits = [...month("2026-07"), ...month("2026-08"), ...month("2026-09")];
+  const documents = [statement(1), statement(2), statement(3)];
+
+  const readAs = (employmentType: string | undefined, over: Partial<Report> = {}) =>
+    extractIncome(files(3), {
+      client: reporting({ documents, statements, credits, ...over }),
+      today: TODAY,
+      applicant: APPLICANT,
+      employmentType,
+    });
+
+  it("counts everything coming in when they are employed", async () => {
+    const outcome = await readAs("EMPLOYED");
+
+    // 3,000 salary + 200 from a person + 400 cash + 1,100 CPF LIFE
+    expect(outcome).toMatchObject({ kind: "usable", m1: 4700, m2: 4700, m3: 4700 });
+  });
+
+  it("counts only the CPF payout when they are unemployed with income", async () => {
+    const outcome = await readAs("UNEMPLOYED WITH INCOME");
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 1100, m2: 1100, m3: 1100 });
+  });
+
+  it("does not count other government payments, such as a GST voucher, for them either", async () => {
+    const outcome = await readAs("UNEMPLOYED WITH INCOME", {
+      credits: credits.concat([
+        { date: "2026-09-20", amount: 300, payer: "GOVT", category: "government_payout" as const },
+      ]),
+    });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 1100 });
+  });
+
+  it("says what is missing when an unemployed applicant's statement has no CPF payout", async () => {
+    const outcome = await readAs("UNEMPLOYED WITH INCOME", {
+      credits: credits.filter((c) => c.category !== "cpf_life"),
+    });
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toMatch(/CPF/);
+  });
+
+  it("keeps the usual rule for every other status, and when none is known", async () => {
+    for (const status of ["SELF EMPLOYED", "FULL TIME PLATFORM WORKER", undefined]) {
+      const outcome = await readAs(status);
+      expect(outcome).toMatchObject({ kind: "usable", m1: 4700 });
+    }
+  });
+
+  it("does not change what payslips count for", async () => {
+    const outcome = await extractIncome(files(3), {
+      client: reporting({ documents: [payslip(1), payslip(2), payslip(3)], periods: [SEP, AUG, JUL] }),
+      today: TODAY,
+      applicant: APPLICANT,
+      employmentType: "UNEMPLOYED WITH INCOME",
+    });
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 5200 });
   });
 });

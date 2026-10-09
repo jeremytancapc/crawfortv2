@@ -35,23 +35,30 @@ export const runtime = "nodejs";
 const MAX_FILES = MAX_INCOME_FILES;
 
 /**
- * The name the documents must carry: the one on the application Ascend is
- * scoring, as Singpass gave it, or the signed session's copy where the
- * database has none.
+ * Who the documents must belong to, and what they said their employment is.
+ *
+ * The name is the one on the application Ascend is scoring, as Singpass gave
+ * it, or the signed session's copy where the database has none. The employment
+ * status is what they chose on the review step; it decides which bank-statement
+ * credits count as income.
  */
-async function applicantName(request: NextRequest): Promise<string | null> {
+async function applicantOf(
+  request: NextRequest,
+): Promise<{ name: string; employmentType: string | undefined } | null> {
   const session = decodeSession(request.cookies.get(SESSION_COOKIE)?.value ?? "") ?? {};
   const leadId = (session as { leadId?: string }).leadId ?? "";
 
   if (isDatabaseConfigured() && looksLikeLeadUuid(leadId)) {
     try {
-      const stored = (await getApplicant(leadId))?.full_name?.trim();
-      if (stored) return stored;
+      const stored = await getApplicant(leadId);
+      const name = stored?.full_name?.trim();
+      if (name) return { name, employmentType: stored?.employment_status?.trim() || undefined };
     } catch (err) {
       console.error("[apply/income/extract] applicant lookup failed", err);
     }
   }
-  return session.fullName?.trim() || null;
+  const name = session.fullName?.trim();
+  return name ? { name, employmentType: session.employmentStatus?.trim() || undefined } : null;
 }
 
 /** What is known of the applicant's CPF, or undefined when MyInfo is not on file. */
@@ -87,8 +94,8 @@ export async function POST(request: NextRequest) {
   }
 
   // No name, no reading: a payslip cannot be checked as theirs against nobody.
-  const name = await applicantName(request);
-  if (!name) {
+  const applicant = await applicantOf(request);
+  if (!applicant) {
     return NextResponse.json(
       {
         error: "no_applicant",
@@ -153,7 +160,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const outcome = await extractIncome(documents, { applicant: { name }, cpf: await cpfProfileOf(applicantId) });
+    const outcome = await extractIncome(documents, {
+      applicant: { name: applicant.name },
+      employmentType: applicant.employmentType,
+      cpf: await cpfProfileOf(applicantId),
+    });
 
     if (outcome.kind === "usable") {
       const kindOf = (fileType: string) =>

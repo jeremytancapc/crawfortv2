@@ -182,6 +182,7 @@ const CREDIT_CATEGORIES = [
   "platform_payout",
   "transfer_from_others",
   "cash_deposit",
+  "cpf_life",
   "government_payout",
   "own_account_transfer",
   "interest",
@@ -207,9 +208,23 @@ const COUNTED_CREDITS = new Set<CreditCategory>([
   "platform_payout",
   "transfer_from_others",
   "cash_deposit",
+  "cpf_life",
   "government_payout",
   "other",
 ]);
+
+/**
+ * Someone who says they are not working but have income lives on something
+ * other than a wage - and the one thing a bank statement shows that we can
+ * tell is theirs is the CPF payout. So for them it is the only credit that
+ * counts, whatever else is paid in. Everyone else keeps COUNTED_CREDITS.
+ */
+const UNEMPLOYED_WITH_INCOME = "UNEMPLOYED WITH INCOME";
+const CPF_ONLY = new Set<CreditCategory>(["cpf_life"]);
+
+function creditsCountedFor(employmentType: string | undefined): Set<CreditCategory> {
+  return employmentType === UNEMPLOYED_WITH_INCOME ? CPF_ONLY : COUNTED_CREDITS;
+}
 
 const REPORT_INCOME_TOOL: Anthropic.Tool = {
   name: "report_income",
@@ -363,8 +378,10 @@ BANK STATEMENTS
     transfer_from_others   PayNow, FAST or GIRO from another person or company
                            that is not salary
     cash_deposit           cash paid in at a machine or counter
-    government_payout      CPF LIFE, CPF withdrawals, GST Voucher and other
-                           government payments
+    cpf_life               a CPF LIFE payout (monthly annuity from the CPF
+                           Board), however the line describes it
+    government_payout      any other government payment: CPF withdrawals,
+                           GST Voucher and similar
     own_account_transfer   a transfer from another account in the account
                            holder's own name
     interest               interest or bonus interest from the bank
@@ -556,6 +573,12 @@ export async function extractIncome(
      * Omitted, deposits are counted as they arrive.
      */
     cpf?: CpfProfile;
+    /**
+     * What they said their employment is, in Ascend's words. Decides which
+     * bank-statement credits are income: for UNEMPLOYED WITH INCOME only the
+     * CPF payout; for anyone else, everything that is money in.
+     */
+    employmentType?: string;
   },
 ): Promise<ExtractionOutcome> {
   const refuse = (
@@ -655,7 +678,7 @@ export async function extractIncome(
     ({ periods, withoutIncome } = bankStatementMonths(
       reported.statements,
       reported.credits
-        .filter((c) => COUNTED_CREDITS.has(c.category))
+        .filter((c) => creditsCountedFor(options?.employmentType).has(c.category))
         .map((c) => ({
           date: c.date,
           // Only a salary has CPF taken off it. Transfers, cash and platform
@@ -702,8 +725,12 @@ export async function extractIncome(
   if (empty.length > 0) {
     const names = empty.map((m) => monthParts(m).label).join(" and ");
     return notReady(
-      `We could not find any money coming in during ${names}. If you were paid into ` +
-        "another account, please upload that account's statements, or upload your payslips instead.",
+      options?.employmentType === UNEMPLOYED_WITH_INCOME
+        ? `We could not find a CPF payout in ${names}. For your employment status we count ` +
+            "only your CPF payout. If it is paid into another account, please upload that " +
+            "account's statements."
+        : `We could not find any money coming in during ${names}. If you were paid into ` +
+            "another account, please upload that account's statements, or upload your payslips instead.",
     );
   }
 
