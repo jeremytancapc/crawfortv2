@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { File, FileArrowUp, X } from "@phosphor-icons/react";
+import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
 import {
   Card,
@@ -40,6 +40,9 @@ export function VerifyIncomeForm({
     addMoreFiles,
     addNote,
     unreadNew,
+    countedIds,
+    pendingIds,
+    removeUnusedFile,
     removeFile,
     isProcessing,
     isReading,
@@ -122,14 +125,14 @@ export function VerifyIncomeForm({
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="ios-type-title">
           {!showResults
-            ? "Upload your income proof"
+            ? "Income Documents Required"
             : canSubmit
               ? "Confirm your income"
               : "We need a bit more"}
         </h1>
         <p className="ios-type-subtitle mt-1.5">
           {!showResults
-            ? "Payslips, bank statements and platform earnings statements."
+            ? "Payslips for full-time employees, or monthly statements for PHV drivers."
             : canSubmit
               ? "Check the income we read from your documents."
               : "Here is what is still missing."}
@@ -152,9 +155,12 @@ export function VerifyIncomeForm({
               advice={incomeAdvice}
               tips={improveTips}
               files={files}
+              countedIds={countedIds}
+              pendingIds={pendingIds}
               addNote={addNote}
               busy={isProcessing || isUploading || isSubmitting}
               onAdd={addMoreFiles}
+              onRemove={removeUnusedFile}
             />
           ) : (
             <div key="results" className="ios-income-fit w-full animate-fade-up">
@@ -176,6 +182,13 @@ export function VerifyIncomeForm({
               </p>
             </div>
             <Card>
+              <p
+                role="note"
+                className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
+              >
+                <Info size={18} weight="fill" aria-hidden className="shrink-0 text-[var(--accent)]" />
+                Documents must match your Singpass name.
+              </p>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -231,20 +244,23 @@ export function VerifyIncomeForm({
           </section>
 
           <section>
-            <SectionLabel>What you can upload</SectionLabel>
+            <SectionLabel>Upload your Bank statements</SectionLabel>
             <Card>
-              {INCOME_DOC_OPTIONS.map((option) => (
-                <CardRow key={option.title}>
-                  <span className="min-w-0">
-                    <span className="block text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-                      {option.title}
-                    </span>
-                    <span className="mt-0.5 block text-[13px] leading-snug text-[var(--text-secondary)]">
-                      {option.detail}
-                    </span>
+              <CardRow>
+                <span className="min-w-0">
+                  <span className="block text-[15px] leading-snug text-[var(--text-primary)]">
+                    For freelancers, self-employed and all other employment types.
                   </span>
-                </CardRow>
-              ))}
+                  <ul className="mt-2 flex flex-col gap-1.5 text-[13px] leading-snug text-[var(--text-secondary)]">
+                    {BANK_STATEMENT_RULES.map((rule) => (
+                      <li key={rule} className="flex gap-2">
+                        <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+                        <span>{rule}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </span>
+              </CardRow>
             </Card>
           </section>
 
@@ -365,19 +381,9 @@ export function VerifyIncomeForm({
   );
 }
 
-const INCOME_DOC_OPTIONS = [
-  {
-    title: "Payslips",
-    detail: "For full-time employees. Your latest 3 months.",
-  },
-  {
-    title: "Bank statements",
-    detail: "For everyone else, or alongside payslips to confirm them.",
-  },
-  {
-    title: "Platform earnings statements",
-    detail: "Grab and PHV drivers - monthly statements.",
-  },
+const BANK_STATEMENT_RULES = [
+  "Upload the full bank statement, including your name, the month, the bank logo and all pages.",
+  "No partial statements or screenshots.",
 ] as const;
 
 /** Long enough that a fast read doesn't flash the sheet up and away. */
