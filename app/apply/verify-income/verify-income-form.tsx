@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { CheckCircle, File, FileArrowUp, Warning, X } from "@phosphor-icons/react";
+import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
 
 import {
   Card,
@@ -178,20 +178,17 @@ export function VerifyIncomeForm({
           <section>
             <div className="mb-2 flex items-center gap-0.5 px-1">
               <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
-                Upload documents ({uploadWindow.short})
+                Upload up to 3 months of documents ({uploadWindow.short})
               </p>
             </div>
             <Card>
-              <div
+              <p
                 role="note"
-                className="flex items-start gap-2.5 bg-[#FFF4DD] px-3.5 py-3 text-[#6B4300]"
+                className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
               >
-                <Warning size={20} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-[#E08A00]" />
-                <p className="text-[14px] leading-snug">
-                  <span className="block font-semibold">Documents must match your Singpass name.</span>
-                  <span className="block">Bank statements: all pages, no screenshots.</span>
-                </p>
-              </div>
+                <Info size={18} weight="fill" aria-hidden className="shrink-0 text-[var(--accent)]" />
+                Documents must match your Singpass name.
+              </p>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -244,10 +241,6 @@ export function VerifyIncomeForm({
                 aria-label="Upload income documents"
               />
             </Card>
-            <p className="mt-3 flex items-start gap-2 rounded-[14px] bg-[#E6F6EC] px-3.5 py-2.5 text-[14px] leading-snug text-[#17613A]">
-              <CheckCircle size={18} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-[#1FA971]" />
-              <span>No payslips? Bank statements work too. One recent month is enough to continue.</span>
-            </p>
           </section>
 
           {files.length > 0 && (
