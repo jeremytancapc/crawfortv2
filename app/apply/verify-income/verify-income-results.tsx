@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CheckCircle, File, FileArrowUp } from "@phosphor-icons/react";
+import { CheckCircle, File, FileArrowUp, X } from "@phosphor-icons/react";
 
 import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
 import { ACCEPTED_TYPES, type IncomeMonth, type SelectedFile } from "@/app/apply/verify-income/use-verify-income";
-import { MAX_INCOME_FILES } from "@/lib/income-add-more";
+import { MAX_INCOME_FILES, canRemoveOnResults } from "@/lib/income-add-more";
 import type { IncomeTip } from "@/lib/income-tips";
 import { formatCurrency } from "@/lib/loan-form";
 
@@ -24,9 +24,12 @@ export function VerifyIncomeResults({
   advice,
   tips,
   files,
+  countedIds,
+  pendingIds,
   addNote,
   busy,
   onAdd,
+  onRemove,
 }: {
   months: IncomeMonth[];
   missingMonths: Array<{ month: string; year: string }>;
@@ -34,15 +37,22 @@ export function VerifyIncomeResults({
   advice: string | null;
   tips: IncomeTip[];
   files: SelectedFile[];
+  /** The documents the figures above were read from. */
+  countedIds: string[];
+  /** Documents added here and not yet read. */
+  pendingIds: string[];
   /** Why a document just added did not count, or that some were left out. */
   addNote: string | null;
   /** Saving or reading documents - adding more waits for it. */
   busy: boolean;
   onAdd: (files: FileList) => void;
+  /** Removes a document that did not count. Never offered for one that did. */
+  onRemove: (id: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const full = files.length >= MAX_INCOME_FILES;
+  const counted = new Set(countedIds);
 
   return (
     <div key="results" className="ios-income-fit w-full animate-fade-up">
@@ -132,16 +142,30 @@ export function VerifyIncomeResults({
                       }`}
                     >
                       {file.status === "uploading"
-                        ? "Saving…"
+                        ? "Saving\u2026"
                         : file.status === "failed"
                           ? (file.error ?? "We could not save this file.")
-                          : file.size}
+                          : file.documentId && counted.has(file.documentId)
+                            ? file.size
+                            : file.documentId && pendingIds.includes(file.id)
+                              ? "New - tap Update my income to include it"
+                              : "Not used for your income - remove it to continue"}
                     </span>
                   </span>
                 </span>
-                {file.status === "ready" ? (
-                  <CheckCircle size={20} weight="fill" className="shrink-0 text-[var(--accent)]" aria-label="Saved" />
-                ) : null}
+                {canRemoveOnResults(file, counted) ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(file.id)}
+                    disabled={busy}
+                    aria-label={`Remove ${file.name}`}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-secondary)] disabled:opacity-50"
+                  >
+                    <X size={12} weight="bold" />
+                  </button>
+                ) : (
+                  <CheckCircle size={20} weight="fill" className="shrink-0 text-[var(--accent)]" aria-label="Counted" />
+                )}
               </CardRow>
             ))}
             <button

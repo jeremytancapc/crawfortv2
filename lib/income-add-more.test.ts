@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_INCOME_FILES, afterReread, footerAction, pendingNote, roomForMore } from "./income-add-more";
+import { MAX_INCOME_FILES, afterReread, canRemoveOnResults, footerAction, pendingNote, roomForMore } from "./income-add-more";
 
 /**
  * On the results page an applicant can add more documents but not take any
@@ -70,5 +70,29 @@ describe("pendingNote", () => {
   it("tells the applicant the new documents are not counted yet", () => {
     expect(pendingNote(1)).toBe("1 new document added. Tap Update my income to include it.");
     expect(pendingNote(3)).toBe("3 new documents added. Tap Update my income to include them.");
+  });
+});
+
+describe("canRemoveOnResults - a document that did not count can be taken out; one that did cannot", () => {
+  const counted = new Set(["doc-a", "doc-b"]);
+
+  it("keeps a document the figures were read from", () => {
+    expect(canRemoveOnResults({ status: "ready", documentId: "doc-a" }, counted)).toBe(false);
+  });
+
+  it("lets a refused document go - it is not in the figures, and left in it blocks every later reading", () => {
+    expect(canRemoveOnResults({ status: "ready", documentId: "doc-z" }, counted)).toBe(true);
+  });
+
+  it("lets a file that failed to save go", () => {
+    expect(canRemoveOnResults({ status: "failed" }, counted)).toBe(true);
+  });
+
+  it("lets a file still saving go", () => {
+    expect(canRemoveOnResults({ status: "uploading" }, counted)).toBe(true);
+  });
+
+  it("lets anything go when nothing was read yet - no figures depend on it", () => {
+    expect(canRemoveOnResults({ status: "ready", documentId: "doc-a" }, new Set())).toBe(true);
   });
 });

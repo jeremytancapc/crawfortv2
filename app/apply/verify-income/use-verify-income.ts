@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
-import { afterReread, pendingNote, roomForMore } from "@/lib/income-add-more";
+import { afterReread, canRemoveOnResults, pendingNote, roomForMore } from "@/lib/income-add-more";
 import { uploadWindowLabel } from "@/lib/income-periods";
 import { incomeResultFrom, type ExtractResponse } from "@/lib/income-result";
 import { improveLimitTips } from "@/lib/income-tips";
@@ -170,6 +170,8 @@ export function useVerifyIncome(initialShowResults = false) {
   const [readNote, setReadNote] = useState<string | null>(null);
   /** Documents added on the results page that are not yet read. */
   const [awaitingRead, setAwaitingRead] = useState<string[]>([]);
+  /** The stored documents the figures on screen were read from. */
+  const [countedIds, setCountedIds] = useState<string[]>([]);
   const uploadWindow = useMemo(() => uploadWindowLabel(), []);
 
   // Everything read off the documents describes the documents that were read.
@@ -184,6 +186,7 @@ export function useVerifyIncome(initialShowResults = false) {
     setFileTypes([]);
     setIncomeAdvice(null);
     setReadingId(null);
+    setCountedIds([]);
   }, []);
 
   /** Asks the server to delete a stored document. Failures are logged there. */
@@ -349,6 +352,7 @@ export function useVerifyIncome(initialShowResults = false) {
           setIncomeType(outcome.incomeType);
           setFileTypes(outcome.fileTypes);
           setIncomeAdvice(outcome.advice);
+          setCountedIds(documentIds);
           return;
         }
 
@@ -378,6 +382,28 @@ export function useVerifyIncome(initialShowResults = false) {
 
   const startProcessing = readDocuments;
 
+  /**
+   * Removing from the results page, which keeps the figures: only a document
+   * that did not count can go (see canRemoveOnResults), so nothing the figures
+   * are read from changes. Without this a refused document stayed in the list
+   * and was read again with everything added after it, so no later reading
+   * could ever succeed.
+   */
+  const removeUnusedFile = useCallback(
+    (id: string) => {
+      const target = files.find((file) => file.id === id);
+      if (!target || !canRemoveOnResults(target, new Set(countedIds))) return;
+      if (target.documentId) deleteStored(target.documentId);
+      else if (target.status === "uploading") removedWhileUploading.current.add(id);
+      setFiles((prev) => prev.filter((file) => file.id !== id));
+      setAwaitingRead((prev) => prev.filter((awaiting) => awaiting !== id));
+      // The note was about this document.
+      setReadNote(null);
+      setLimitNote(null);
+    },
+    [files, countedIds, deleteStored],
+  );
+
   const finishProcessing = useCallback(() => {
     setIsProcessing(false);
     // Already on the results page (documents added there): read again in
@@ -406,6 +432,11 @@ export function useVerifyIncome(initialShowResults = false) {
     addMoreFiles,
     /** Why a document just added did not count, or that some were left out. */
     addNote,
+    /** Ids of the stored documents the figures on screen were read from. */
+    countedIds,
+    /** Ids of documents added on the results page and not yet read. */
+    pendingIds: awaitingRead,
+    removeUnusedFile,
     /** Saved documents the figures on screen were not read from. */
     unreadNew,
     removeFile,

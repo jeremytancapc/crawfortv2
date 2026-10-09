@@ -68,3 +68,19 @@ export function pendingNote(unreadNew: number): string | null {
     ? "1 new document added. Tap Update my income to include it."
     : `${unreadNew} new documents added. Tap Update my income to include them.`;
 }
+
+/**
+ * Whether a document can be taken out from the results page.
+ *
+ * A document the figures were read from stays: removing it would change what
+ * the figures above describe. One that did not count - refused for the wrong
+ * name, outside the months, or failed to save - is not in the figures at all,
+ * and must be removable: it would otherwise sit in the list and be read again
+ * with every document added afterwards, refusing each reading for good.
+ */
+export function canRemoveOnResults(
+  file: { status: "uploading" | "ready" | "failed"; documentId?: string },
+  counted: ReadonlySet<string>,
+): boolean {
+  return !(file.status === "ready" && file.documentId !== undefined && counted.has(file.documentId));
+}
