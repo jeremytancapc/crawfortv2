@@ -66,3 +66,88 @@ describe("creditAfterIncome", () => {
     expect(out.creditScore.creditLimit).toBeFalsy();
   });
 });
+
+describe("creditAfterIncome - a PASS whose limit has not arrived yet", () => {
+  // Observed 2026-10-09 (order 1558084373801472000): income/credit answered
+  // PASS with creditScore {}, and query/credit moments later carried
+  // creditLimit 700, level D. Reading the first answer as final sent an
+  // approved applicant to the pending page.
+  const passNoLimit = () => result({ risk: { riskStatus: "PASS" }, creditScore: {} });
+  const passWithLimit = () =>
+    result({ risk: { riskStatus: "PASS" }, creditScore: { creditLimit: 700, creditLevel: "D" } });
+  const noWait = () => Promise.resolve();
+
+  it("asks again, and returns the limit once it is there", async () => {
+    const query = vi.fn().mockResolvedValue(passWithLimit());
+
+    const out = await creditAfterIncome(ORDER, passNoLimit(), { query, wait: noWait });
+
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(out.creditScore.creditLimit).toBe(700);
+  });
+
+  it("keeps asking while the limit is still missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce(passNoLimit())
+      .mockResolvedValueOnce(passNoLimit())
+      .mockResolvedValueOnce(passWithLimit());
+
+    const out = await creditAfterIncome(ORDER, passNoLimit(), { query, wait: noWait });
+
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(out.creditScore.creditLimit).toBe(700);
+  });
+
+  it("gives up after a few tries and returns the PASS as it stands", async () => {
+    const query = vi.fn().mockResolvedValue(passNoLimit());
+
+    const out = await creditAfterIncome(ORDER, passNoLimit(), { query, wait: noWait });
+
+    expect(query.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(out.risk.riskStatus).toBe("PASS");
+    expect(out.creditScore.creditLimit).toBeFalsy();
+  });
+
+  it("waits between tries rather than asking back to back", async () => {
+    const waits: number[] = [];
+    const query = vi.fn().mockResolvedValue(passNoLimit());
+
+    await creditAfterIncome(ORDER, passNoLimit(), {
+      query,
+      wait: (ms) => {
+        waits.push(ms);
+        return Promise.resolve();
+      },
+    });
+
+    expect(waits.length).toBeGreaterThan(0);
+    expect(waits.every((ms) => ms >= 1000)).toBe(true);
+  });
+
+  it("does not ask when the PASS already carries its limit", async () => {
+    const query = vi.fn();
+
+    const out = await creditAfterIncome(ORDER, passWithLimit(), { query, wait: noWait });
+
+    expect(query).not.toHaveBeenCalled();
+    expect(out.creditScore.creditLimit).toBe(700);
+  });
+
+  it("keeps the PASS it has when a later ask fails", async () => {
+    const query = vi.fn().mockRejectedValue(new Error("timeout"));
+    const submitted = passNoLimit();
+
+    const out = await creditAfterIncome(ORDER, submitted, { query, wait: noWait });
+
+    expect(out).toBe(submitted);
+  });
+
+  it("does not turn a REJECT into anything else", async () => {
+    const query = vi.fn();
+    const rejected = result({ risk: { riskStatus: "REJECT" } });
+
+    expect(await creditAfterIncome(ORDER, rejected, { query, wait: noWait })).toBe(rejected);
+    expect(query).not.toHaveBeenCalled();
+  });
+});
