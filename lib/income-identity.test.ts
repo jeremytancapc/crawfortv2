@@ -45,6 +45,29 @@ describe("nameBelongsTo - is the name on a document the applicant's", () => {
     expect(nameBelongsTo("TAN", applicant)).toBe(false);
   });
 
+  it("ignores an employee number printed beside the name", () => {
+    // Payslip headers often read "NAME (100257)". The reader sometimes reports
+    // the number with the name, and it is not part of the name.
+    expect(nameBelongsTo("TAN CAKEN (100257)", applicant)).toBe(true);
+    expect(nameBelongsTo("100257 TAN CAKEN", applicant)).toBe(true);
+    expect(nameBelongsTo("CHRISTOPHER DAVID LEE (300771)", "CHRISTOPHER DAVID LEE")).toBe(true);
+  });
+
+  it("ignores a masked ID printed beside the name", () => {
+    expect(nameBelongsTo("TAN CAKEN *****083H", applicant)).toBe(true);
+    expect(nameBelongsTo("TAN CAKEN (S****083H)", applicant)).toBe(true);
+  });
+
+  it("still refuses someone else, whatever number follows", () => {
+    expect(nameBelongsTo("LIM WEI JIE (200418)", applicant)).toBe(false);
+    expect(nameBelongsTo("TAN AH KOW (100257)", applicant)).toBe(false);
+  });
+
+  it("does not treat a number alone as a name", () => {
+    expect(nameBelongsTo("100257", applicant)).toBe(false);
+    expect(nameBelongsTo("(100257)", applicant)).toBe(false);
+  });
+
   it("refuses a document with no name on it", () => {
     expect(nameBelongsTo("", applicant)).toBe(false);
   });

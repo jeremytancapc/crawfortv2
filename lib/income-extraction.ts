@@ -336,7 +336,9 @@ documents say. The arithmetic is done elsewhere.
 EVERY DOCUMENT
 - Each document is labelled with a number. For every one, say what kind it
   is, the name of the employee or account holder exactly as printed, and who
-  issued it. Do not correct, complete or reorder a name.
+  issued it. Do not correct, complete or reorder a name. Report the name only:
+  leave out an employee number, staff ID, or any other number printed beside it
+  (for "TAN CAKEN (100257)" report "TAN CAKEN").
 
 PAYSLIPS
 - Report the pay PERIOD as printed - its first and last day. Do not convert it

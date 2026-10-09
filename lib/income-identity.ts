@@ -20,7 +20,14 @@ function words(name: string): string[] {
   return name
     .toUpperCase()
     .replace(/\b([SD])\/O\b/g, "$1O")
-    .replace(/[^A-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    // Anything with a digit in it is a number printed beside the name, not part
+    // of it: an employee ID "(100257)", a masked NRIC "S****083H". Dropped
+    // whole, before punctuation is stripped - otherwise "S****083H" leaves a
+    // lone "S" behind, which reads as an initial.
+    .filter((token) => token && !/\d/.test(token))
+    .join(" ")
+    .replace(/[^A-Z\s]/g, " ")
     .split(/\s+/)
     .filter((word) => word && !TITLES.has(word) && !CONNECTORS.has(word));
 }
