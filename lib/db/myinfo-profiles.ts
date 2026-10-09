@@ -49,6 +49,26 @@ export async function upsertMyinfoProfile(
       processed_payload = excluded.processed_payload`;
 }
 
+/**
+ * Replaces just the CPF/NOA we keep for an applicant - nothing else on the
+ * row. Used by the staging editor, which changes figures after the retrieval
+ * and must not blank the name, address and the rest alongside them. Returns
+ * whether a row existed to change.
+ */
+export async function updateMyinfoProcessed(
+  applicantId: string,
+  processedPayload: Record<string, unknown>,
+  monthlyIncomeNoa: number | null,
+): Promise<boolean> {
+  const rows = await sql`
+    update myinfo_profiles
+       set processed_payload = ${JSON.stringify(processedPayload)}::jsonb,
+           monthly_income_noa = ${monthlyIncomeNoa}
+     where applicant_id = ${applicantId}
+     returning applicant_id`;
+  return rows.length > 0;
+}
+
 export function getMyinfoProfile(applicantId: string): Promise<MyinfoProfile | null> {
   return sqlOne<MyinfoProfile>`
     select * from myinfo_profiles where applicant_id = ${applicantId}`;

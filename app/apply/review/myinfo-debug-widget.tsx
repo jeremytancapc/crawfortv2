@@ -2,6 +2,9 @@
 
 import { useCallback, useState } from "react";
 
+import { MyinfoEditSheet } from "@/app/apply/review/myinfo-edit-sheet";
+import type { CpfRow, NoaRow } from "@/lib/myinfo-edit";
+
 type FieldState = "idle" | "saving" | "done" | "error";
 
 /**
@@ -9,13 +12,24 @@ type FieldState = "idle" | "saving" | "done" | "error";
  * application - no separate page, no manual save. /api/dev/myinfo-strip does
  * the read-edit-write server-side; this just fires it and shows the result.
  *
+ * Remove marks a field unavailable; Edit opens a panel to change the figures
+ * themselves, starting from what the application has now or a default.
+ *
  * The full editor at /auth/callback-result still exists for hand-editing
  * anything else in the payload - this widget only ever covers the two
  * fields testers actually reach for.
  */
-export function MyinfoDebugWidget({ rid }: { rid: string }) {
+export function MyinfoDebugWidget({
+  rid,
+  current,
+}: {
+  rid: string;
+  /** What the application holds now, so the editor starts from it. */
+  current: { cpf: CpfRow[]; noa: NoaRow[] };
+}) {
   const [cpf, setCpf] = useState<FieldState>("idle");
   const [noa, setNoa] = useState<FieldState>("idle");
+  const [editing, setEditing] = useState(false);
 
   const strip = useCallback(
     async (field: "cpfcontributions" | "noahistory", setState: (s: FieldState) => void) => {
@@ -58,6 +72,14 @@ export function MyinfoDebugWidget({ rid }: { rid: string }) {
       >
         {label("Remove NOA", noa)}
       </button>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="rounded-lg border border-amber-600 bg-amber-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-amber-700"
+      >
+        Edit NOA / CPF…
+      </button>
+      {editing ? <MyinfoEditSheet rid={rid} current={current} onClose={() => setEditing(false)} /> : null}
     </div>
   );
 }

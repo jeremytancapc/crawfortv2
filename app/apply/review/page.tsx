@@ -58,7 +58,21 @@ export default async function ReviewPage() {
 
   return (
     <>
-      {showMyinfoDebug && rid && <MyinfoDebugWidget rid={rid} />}
+      {showMyinfoDebug && rid && (
+        <MyinfoDebugWidget
+          rid={rid}
+          current={{
+            cpf: (hydrated?.cpfContributions ?? []).map((c) => ({ month: c.month, amount: c.amount, employer: c.employer })),
+            noa: (hydrated?.noaHistory ?? []).map((n) => ({
+              yearOfAssessment: n.yearOfAssessment,
+              employmentIncome: n.employmentIncome,
+              tradeIncome: n.tradeIncome,
+              rentIncome: n.rentIncome,
+              interestIncome: n.interestIncome,
+            })),
+          }}
+        />
+      )}
       <ReviewForm initialData={initialData} employmentSuggestion={employmentSuggestion} />
     </>
   );
