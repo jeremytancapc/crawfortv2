@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { File, FileArrowUp, Info, X } from "@phosphor-icons/react";
+import { CheckCircle, File, FileArrowUp, Warning, X } from "@phosphor-icons/react";
 
 import {
   Card,
@@ -182,13 +182,16 @@ export function VerifyIncomeForm({
               </p>
             </div>
             <Card>
-              <p
+              <div
                 role="note"
-                className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
+                className="flex items-start gap-2.5 bg-[#FFF4DD] px-3.5 py-3 text-[#6B4300]"
               >
-                <Info size={18} weight="fill" aria-hidden className="shrink-0 text-[var(--accent)]" />
-                Documents must match your Singpass name.
-              </p>
+                <Warning size={20} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-[#E08A00]" />
+                <p className="text-[14px] leading-snug">
+                  <span className="block font-semibold">Documents must match your Singpass name.</span>
+                  <span className="block">Bank statements: all pages, no screenshots.</span>
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -241,27 +244,10 @@ export function VerifyIncomeForm({
                 aria-label="Upload income documents"
               />
             </Card>
-          </section>
-
-          <section>
-            <SectionLabel>Upload your Bank statements</SectionLabel>
-            <Card>
-              <CardRow>
-                <span className="min-w-0">
-                  <span className="block text-[15px] leading-snug text-[var(--text-primary)]">
-                    For freelancers, self-employed and all other employment types.
-                  </span>
-                  <ul className="mt-2 flex flex-col gap-1.5 text-[13px] leading-snug text-[var(--text-secondary)]">
-                    {BANK_STATEMENT_RULES.map((rule) => (
-                      <li key={rule} className="flex gap-2">
-                        <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
-                        <span>{rule}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </span>
-              </CardRow>
-            </Card>
+            <p className="mt-3 flex items-start gap-2 rounded-[14px] bg-[#E6F6EC] px-3.5 py-2.5 text-[14px] leading-snug text-[#17613A]">
+              <CheckCircle size={18} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-[#1FA971]" />
+              <span>No payslips? Bank statements work too. One recent month is enough to continue.</span>
+            </p>
           </section>
 
           {files.length > 0 && (
@@ -380,11 +366,6 @@ export function VerifyIncomeForm({
     </div>
   );
 }
-
-const BANK_STATEMENT_RULES = [
-  "Upload the full bank statement, including your name, the month, the bank logo and all pages.",
-  "No partial statements or screenshots.",
-] as const;
 
 /** Long enough that a fast read doesn't flash the sheet up and away. */
 const PROCESSING_MIN_MS = 1500;
