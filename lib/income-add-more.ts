@@ -47,3 +47,24 @@ export function afterReread(args: {
   if (args.readUsable) return "replace";
   return args.hadReading ? "keep_previous" : "show_ask";
 }
+
+/**
+ * What the main button does on the results page.
+ *
+ * Adding a document only saves it. The figures on screen are still the ones
+ * read before, so submitting now would send income that ignores what was just
+ * added - the button reads the new documents first, and submits only when
+ * nothing has changed since the figures were read.
+ */
+export function footerAction(args: { saving: boolean; unreadNew: number }): "saving" | "update" | "submit" {
+  if (args.saving) return "saving";
+  return args.unreadNew > 0 ? "update" : "submit";
+}
+
+/** Shown beside the document list while saved documents are not yet counted. */
+export function pendingNote(unreadNew: number): string | null {
+  if (unreadNew <= 0) return null;
+  return unreadNew === 1
+    ? "1 new document added. Tap Update my income to include it."
+    : `${unreadNew} new documents added. Tap Update my income to include them.`;
+}

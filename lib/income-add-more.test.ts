@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_INCOME_FILES, afterReread, roomForMore } from "./income-add-more";
+import { MAX_INCOME_FILES, afterReread, footerAction, pendingNote, roomForMore } from "./income-add-more";
 
 /**
  * On the results page an applicant can add more documents but not take any
@@ -44,5 +44,31 @@ describe("afterReread - what the page does with a second reading", () => {
 
   it("shows what is missing when there was never a reading to keep", () => {
     expect(afterReread({ hadReading: false, readUsable: false })).toBe("show_ask");
+  });
+});
+
+describe("footerAction - what the main button does on the results page", () => {
+  it("submits when nothing has changed since the figures were read", () => {
+    expect(footerAction({ saving: false, unreadNew: 0 })).toBe("submit");
+  });
+
+  it("offers to update the income once new documents are saved - it does not submit stale figures", () => {
+    expect(footerAction({ saving: false, unreadNew: 2 })).toBe("update");
+  });
+
+  it("waits while a document is still being saved", () => {
+    expect(footerAction({ saving: true, unreadNew: 0 })).toBe("saving");
+    expect(footerAction({ saving: true, unreadNew: 1 })).toBe("saving");
+  });
+});
+
+describe("pendingNote", () => {
+  it("says nothing when there is nothing new", () => {
+    expect(pendingNote(0)).toBeNull();
+  });
+
+  it("tells the applicant the new documents are not counted yet", () => {
+    expect(pendingNote(1)).toBe("1 new document added. Tap Update my income to include it.");
+    expect(pendingNote(3)).toBe("3 new documents added. Tap Update my income to include them.");
   });
 });

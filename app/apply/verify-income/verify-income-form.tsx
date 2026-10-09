@@ -19,6 +19,7 @@ import { useApplyPath } from "@/app/use-apply-path";
 import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
+import { footerAction } from "@/lib/income-add-more";
 import { VerifyIncomeResults } from "@/app/apply/verify-income/verify-income-results";
 import {
   ACCEPTED_TYPES,
@@ -38,6 +39,7 @@ export function VerifyIncomeForm({
     addFiles,
     addMoreFiles,
     addNote,
+    unreadNew,
     removeFile,
     isProcessing,
     isReading,
@@ -312,12 +314,28 @@ export function VerifyIncomeForm({
           // routing the CTA there unconditionally would replace the call that
           // sends m1/m2/m3 to /openApi/income/credit.
           canSubmit ? (
-            <PrimaryButton
-              onClick={handleSubmitIncome}
-              disabled={isSubmitting || isProcessing || isUploading}
-            >
-              {isSubmitting ? "Submitting\u2026" : "Submit income"}
-            </PrimaryButton>
+            // Adding a document only saves it. With new documents the button
+            // reads them again and shows the updated figures; submitting is
+            // for when nothing has changed since the figures were read.
+            (() => {
+              const action = footerAction({ saving: isUploading, unreadNew });
+              return action === "update" ? (
+                <PrimaryButton onClick={handleUpload} disabled={isProcessing || isSubmitting}>
+                  Update my income
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton
+                  onClick={handleSubmitIncome}
+                  disabled={action === "saving" || isSubmitting || isProcessing}
+                >
+                  {action === "saving"
+                    ? "Saving your files\u2026"
+                    : isSubmitting
+                      ? "Submitting\u2026"
+                      : "Submit income"}
+                </PrimaryButton>
+              );
+            })()
           ) : (
             <PrimaryButton onClick={() => window.history.back()}>
               Add documents

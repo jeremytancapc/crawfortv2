@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApplyPath } from "@/app/use-apply-path";
-import { afterReread, roomForMore } from "@/lib/income-add-more";
+import { afterReread, pendingNote, roomForMore } from "@/lib/income-add-more";
 import { uploadWindowLabel } from "@/lib/income-periods";
 import { incomeResultFrom, type ExtractResponse } from "@/lib/income-result";
 import { improveLimitTips } from "@/lib/income-tips";
@@ -168,7 +168,6 @@ export function useVerifyIncome(initialShowResults = false) {
    */
   const [limitNote, setLimitNote] = useState<string | null>(null);
   const [readNote, setReadNote] = useState<string | null>(null);
-  const addNote = [readNote, limitNote].filter(Boolean).join(" ") || null;
   /** Documents added on the results page that are not yet read. */
   const [awaitingRead, setAwaitingRead] = useState<string[]>([]);
   const uploadWindow = useMemo(() => uploadWindowLabel(), []);
@@ -289,6 +288,12 @@ export function useVerifyIncome(initialShowResults = false) {
     [files.length, stageFiles],
   );
 
+  // Saved, but the figures on screen were read without them. A file that
+  // failed to save is not counted: it can never be read, so it is not "new".
+  const unreadNew = files.filter((file) => awaitingRead.includes(file.id) && file.status === "ready").length;
+  const addNote =
+    [readNote, limitNote, pendingNote(unreadNew)].filter(Boolean).join(" ") || null;
+
   const removeFile = useCallback(
     (id: string) => {
       // Decided from the current list, not inside the state updater: React may
@@ -313,6 +318,8 @@ export function useVerifyIncome(initialShowResults = false) {
     setIsReading(true);
     setExtractionAsk(null);
     setReadNote(null);
+    // Whatever was added is read now, whether or not it turns out to count.
+    setAwaitingRead([]);
     const hadReading = readingId !== null;
 
     // Reading runs while the processing sheet is up, and the sheet stays up
@@ -371,17 +378,6 @@ export function useVerifyIncome(initialShowResults = false) {
 
   const startProcessing = readDocuments;
 
-  // Once the documents added on the results page have settled, read them. A
-  // file that failed to save is not read, and if every added file failed
-  // there is nothing new to read - the failure shows on its own row.
-  useEffect(() => {
-    if (!showResults || awaitingRead.length === 0 || isProcessing) return;
-    const added = files.filter((file) => awaitingRead.includes(file.id));
-    if (added.some((file) => file.status === "uploading")) return;
-    setAwaitingRead([]);
-    if (added.some((file) => file.status === "ready")) readDocuments();
-  }, [showResults, awaitingRead, files, isProcessing, readDocuments]);
-
   const finishProcessing = useCallback(() => {
     setIsProcessing(false);
     // Already on the results page (documents added there): read again in
@@ -410,6 +406,8 @@ export function useVerifyIncome(initialShowResults = false) {
     addMoreFiles,
     /** Why a document just added did not count, or that some were left out. */
     addNote,
+    /** Saved documents the figures on screen were not read from. */
+    unreadNew,
     removeFile,
     isProcessing,
     isReading,
