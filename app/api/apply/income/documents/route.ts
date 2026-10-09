@@ -1,4 +1,10 @@
 /**
+ * GET /api/apply/income/documents
+ *
+ * What is stored for this applicant right now. The screen asks on load, so a
+ * reload shows the documents that are really there - including ones from an
+ * earlier visit, which count against the limit and were invisible before.
+ *
  * POST /api/apply/income/documents
  *
  * Stores one income document the moment the applicant adds it, and answers
@@ -21,6 +27,7 @@ import {
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { documentKey } from "@/lib/documents/links";
 import { documentsConfigured, putDocument } from "@/lib/documents/store";
+import { findDuplicate } from "@/lib/income-document-rules";
 import { applicantIdFromRequest } from "@/lib/income-session";
 
 export const runtime = "nodejs";
@@ -57,12 +64,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `${file.name} is not a PDF, JPG or PNG.` }, { status: 400 });
   }
 
-  if ((await listActiveIncomeDocuments(applicantId)).length >= MAX_FILES) {
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+
+  // The same file again reuses the first. It is checked before the limit: a
+  // copy of something already stored is not a new document, and refusing it
+  // for the count would tell someone they have too many for a file they have
+  // already added.
+  const active = await listActiveIncomeDocuments(applicantId);
+  const existing = findDuplicate(active, sha256);
+  if (existing) {
+    return NextResponse.json({
+      id: existing.id,
+      name: existing.file_name,
+      bytes: existing.bytes,
+      duplicate: true,
+    });
+  }
+  if (active.length >= MAX_FILES) {
     return NextResponse.json({ error: `At most ${MAX_FILES} documents.` }, { status: 400 });
   }
 
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const sha256 = createHash("sha256").update(bytes).digest("hex");
   const objectKey = documentKey(applicantId, file.name);
 
   try {
@@ -90,4 +112,23 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ id: doc.id, name: doc.file_name, bytes: doc.bytes });
+}
+
+export async function GET(request: NextRequest) {
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ documents: [] });
+  }
+  const applicantId = applicantIdFromRequest(request);
+  if (!applicantId) return NextResponse.json({ documents: [] });
+
+  const active = await listActiveIncomeDocuments(applicantId);
+  return NextResponse.json({
+    documents: active.map((doc) => ({
+      id: doc.id,
+      name: doc.file_name,
+      bytes: doc.bytes,
+      status: doc.status,
+      readingId: doc.reading_id,
+    })),
+  });
 }

@@ -202,7 +202,11 @@ export function useVerifyIncome(initialShowResults = false) {
         const form = new FormData();
         form.append("file", file);
         const res = await fetch("/api/apply/income/documents", { method: "POST", body: form });
-        const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+        const json = (await res.json().catch(() => ({}))) as {
+          id?: string;
+          error?: string;
+          duplicate?: boolean;
+        };
 
         if (!res.ok || !json.id) {
           setFiles((prev) =>
@@ -212,6 +216,15 @@ export function useVerifyIncome(initialShowResults = false) {
                 : item,
             ),
           );
+          return;
+        }
+
+        // The server already holds this exact file and answered with it. It is
+        // in the list already, so this second row is dropped rather than shown
+        // twice - removing either would delete the one stored copy.
+        if (json.duplicate) {
+          setLimitNote("That document is already added.");
+          setFiles((prev) => prev.filter((item) => item.id !== localId));
           return;
         }
 
@@ -412,6 +425,40 @@ export function useVerifyIncome(initialShowResults = false) {
     setShowResults(true);
     window.history.pushState({ view: "results" }, "", applyHref(RESULTS_PATH));
   }, [applyHref, showResults]);
+
+  // What is stored for this applicant, shown on load. The list used to start
+  // empty on every visit while the server kept the documents from earlier
+  // ones: they counted against the limit and could not be seen, let alone
+  // removed. Only fills an empty list, so nothing just added is replaced.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/apply/income/documents");
+        if (!res.ok) return;
+        const { documents } = (await res.json()) as {
+          documents?: Array<{ id: string; name: string; bytes: number }>;
+        };
+        if (cancelled || !documents?.length) return;
+        setFiles((prev) =>
+          prev.length > 0
+            ? prev
+            : documents.map((doc) => ({
+                id: `stored-${doc.id}`,
+                name: doc.name,
+                size: formatFileSize(doc.bytes),
+                status: "ready" as const,
+                documentId: doc.id,
+              })),
+        );
+      } catch (err) {
+        console.error("Could not load the stored documents", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const syncFromUrl = () => {

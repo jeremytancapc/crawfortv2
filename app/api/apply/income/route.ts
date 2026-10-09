@@ -52,6 +52,7 @@ import { getDocumentBytes } from "@/lib/documents/store";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { clearIncomeGateCookie } from "@/lib/apply-session";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
+import { readingStillHolds } from "@/lib/income-document-rules";
 import { recordNoteOnAscendOrder } from "@/lib/ascend/record-plan";
 
 export const runtime = "nodejs";
@@ -105,15 +106,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // The documents must still be exactly the ones this reading came from.
-  // Anything added or removed since means the figures describe different
-  // files, and submitting them would put someone else's evidence behind a
-  // credit decision.
+  // The documents the figures were read from must still be there. Others that
+  // happen to be stored are not in the figures and are not sent, so they do
+  // not matter (see readingStillHolds).
   const active = await listActiveIncomeDocuments(applicantId);
-  const unchanged =
-    active.length === reading.document_ids.length &&
-    active.every((doc) => doc.status === "read" && doc.reading_id === reading.id);
-  if (!unchanged) {
+  if (!readingStillHolds(reading, active)) {
     await logIncomeDocumentEvent({
       applicantId,
       readingId: reading.id,
@@ -163,8 +160,12 @@ export async function POST(request: NextRequest) {
   const files: Array<{ fileType: string; fileName: string; fileUrl: string }> = [];
   // Only the files that fed the months. A March payslip sent in October is not
   // evidence for this decision, and sending it only gives Ascend noise.
+  // Never a document outside the reading: others may be stored beside it (see
+  // readingStillHolds), and none of them is evidence for these figures.
   const toSend = active.filter(
-    (doc) => !reading.used_document_ids || reading.used_document_ids.includes(doc.id),
+    (doc) =>
+      reading.document_ids.includes(doc.id) &&
+      (!reading.used_document_ids || reading.used_document_ids.includes(doc.id)),
   );
   try {
     for (const doc of toSend) {
