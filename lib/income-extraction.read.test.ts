@@ -520,6 +520,25 @@ describe("extractIncome - what a bank statement counts depends on the employment
     expect(outcome).toMatchObject({ kind: "usable", m1: 1100, m2: 1100, m3: 1100 });
   });
 
+  it("counts only the CPF payout when they are unemployed without income too", async () => {
+    // Saying there is no income and then uploading a bank statement full of
+    // deposits is no reason to count the deposits: the one line that is
+    // theirs is the CPF payout.
+    const outcome = await readAs("UNEMPLOYED WITHOUT INCOME");
+
+    expect(outcome).toMatchObject({ kind: "usable", m1: 1100, m2: 1100, m3: 1100 });
+  });
+
+  it("tells an applicant who is unemployed without income that the CPF payout is what is missing", async () => {
+    const outcome = await readAs("UNEMPLOYED WITHOUT INCOME", {
+      credits: credits.filter((c) => c.category !== "cpf_life"),
+    });
+
+    expect(outcome.kind).toBe("needs_review");
+    if (outcome.kind !== "needs_review") return;
+    expect(outcome.reason).toMatch(/CPF/);
+  });
+
   it("does not count other government payments, such as a GST voucher, for them either", async () => {
     const outcome = await readAs("UNEMPLOYED WITH INCOME", {
       credits: credits.concat([
