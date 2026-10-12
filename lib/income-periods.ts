@@ -492,14 +492,21 @@ const MAX_STATEMENT_DAYS = 400;
 export function bankStatementMonths(
   statements: StatementPeriod[],
   credits: IncomeCredit[],
+  today?: Date,
 ): { periods: PayPeriod[]; withoutIncome: string[] } {
+  // A statement can be dated to the end of the month on the 12th, but it cannot
+  // hold transactions that have not happened. Days after today are never
+  // covered, so a month that has not ended is not a whole month - counting it
+  // as one with only what has arrived so far understates the applicant.
+  const lastKnownDay = today ? Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) : Infinity;
+
   const covered = new Set<string>();
   for (const statement of statements) {
     const start = parseDay(statement.start);
     const end = parseDay(statement.end);
     if (start === null || end === null || end < start) continue;
     if (inclusiveDays(start, end) > MAX_STATEMENT_DAYS) continue;
-    for (let day = start; day <= end; day += DAY_MS) covered.add(isoDay(day));
+    for (let day = start; day <= end && day <= lastKnownDay; day += DAY_MS) covered.add(isoDay(day));
   }
 
   const byMonth = new Map<string, Map<string, number>>();

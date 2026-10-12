@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assembleMonths, planIncomeMonths, uploadWindowLabel, type PayPeriod } from "./income-periods";
+import { assembleMonths, bankStatementMonths, planIncomeMonths, uploadWindowLabel, type PayPeriod } from "./income-periods";
 
 /** A whole calendar month, the shape a monthly payslip produces. */
 function monthly(start: string, end: string, gross: number): PayPeriod {
@@ -335,5 +335,39 @@ describe("assembleMonths with more than one employer", () => {
     ]);
 
     expect(assembly.months).toMatchObject([{ month: "2026-08", amount: 3500 }]);
+  });
+});
+
+describe("bankStatementMonths - a month that has not ended is not a whole month", () => {
+  // A statement can be dated to the end of the month on the 12th, but it cannot
+  // hold transactions that have not happened. October on 12 October is not a
+  // finished month, and counting it as one with only what has arrived so far
+  // understates the applicant's income.
+  const TODAY = new Date("2026-10-12T00:00:00Z");
+  const statements = [
+    { start: "2026-08-01", end: "2026-08-31" },
+    { start: "2026-09-01", end: "2026-09-30" },
+    { start: "2026-10-01", end: "2026-10-31" },
+  ];
+  const credits = [
+    { date: "2026-08-20", amount: 3000, payer: null },
+    { date: "2026-09-20", amount: 2900, payer: null },
+    { date: "2026-10-05", amount: 430, payer: null },
+  ];
+
+  it("leaves the current month out until it is over", () => {
+    const { periods } = bankStatementMonths(statements, credits, TODAY);
+
+    expect(periods.map((p) => p.start.slice(0, 7)).sort()).toEqual(["2026-08", "2026-09"]);
+  });
+
+  it("counts it once its last day has come", () => {
+    const { periods } = bankStatementMonths(statements, credits, new Date("2026-10-31T00:00:00Z"));
+
+    expect(periods.map((p) => p.start.slice(0, 7)).sort()).toEqual(["2026-08", "2026-09", "2026-10"]);
+  });
+
+  it("behaves as before when no date is given", () => {
+    expect(bankStatementMonths(statements, credits).periods).toHaveLength(3);
   });
 });

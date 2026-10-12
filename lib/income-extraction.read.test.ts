@@ -568,3 +568,45 @@ describe("extractIncome - what a bank statement counts depends on the employment
     expect(outcome).toMatchObject({ kind: "usable", m1: 5200 });
   });
 });
+
+describe("extractIncome - a self-employed applicant's bank statement, as seen on 12 October", () => {
+  // The case that was refused: Aug 3,082.73 / Sep 2,880.41 / Oct 432.73 - an
+  // October statement dated to the 31st, read on the 12th.
+  const TODAY_12 = new Date("2026-10-12T00:00:00Z");
+  const credit = (date: string, amount: number, category: Category) =>
+    ({ date, amount, payer: "", category });
+
+  const readOn12 = (employmentType: string) =>
+    extractIncome(files(1), {
+      client: reporting({
+        documents: [statement(1, "DBS/POSB")],
+        statements: [AUG_ST, SEP_ST, { start: "2026-10-01", end: "2026-10-31" }],
+        credits: [
+          credit("2026-08-05", 1800, "transfer_from_others"),
+          credit("2026-08-12", 850, "government_payout"),
+          credit("2026-08-20", 432.73, "cpf_life"),
+          credit("2026-09-05", 2447.68, "transfer_from_others"),
+          credit("2026-09-20", 432.73, "cpf_life"),
+          credit("2026-10-05", 432.73, "cpf_life"),
+        ],
+      }),
+      today: TODAY_12,
+      applicant: APPLICANT,
+      employmentType,
+    });
+
+  it("is read, not refused as a year-to-date misread", async () => {
+    const outcome = await readOn12("SELF EMPLOYED");
+
+    expect(outcome.kind).toBe("usable");
+  });
+
+  it("does not count October, which is not over, as a month", async () => {
+    const outcome = await readOn12("SELF EMPLOYED");
+
+    expect(outcome.kind).toBe("usable");
+    if (outcome.kind !== "usable") return;
+    expect(outcome.months.map((m) => m.month)).toEqual(["2026-09", "2026-08"]);
+    expect(outcome.months.map((m) => m.amount)).toEqual([2880.41, 3082.73]);
+  });
+});

@@ -72,6 +72,25 @@ describe("reviewExtraction", () => {
     expect(result.kind).toBe("usable");
   });
 
+  it("does not apply the year-to-date check to money in a bank account, which is naturally uneven", () => {
+    // 3,082 against 432 is 7x - the sign of a year-to-date misread on a
+    // payslip, but ordinary for a freelancer's deposits.
+    const lumpy = [
+      { month: "2026-08", amount: 3082.73, employer: null },
+      { month: "2026-07", amount: 432.73, employer: null },
+      { month: "2026-06", amount: 2880.41, employer: null },
+    ];
+
+    expect(reviewExtraction(lumpy, WINDOW, { checkYearToDate: false }).kind).toBe("usable");
+    expect(reviewExtraction(lumpy, WINDOW).kind).toBe("needs_review");
+  });
+
+  it("still refuses a zero month whether or not the year-to-date check applies", () => {
+    expect(
+      reviewExtraction([{ ...THREE[0], amount: 0 }, THREE[1], THREE[2]], WINDOW, { checkYearToDate: false }).kind,
+    ).toBe("needs_review");
+  });
+
   it("ignores a month outside the window", () => {
     const result = reviewExtraction(
       [...THREE, { month: "2026-05", amount: 99000, employer: null }],

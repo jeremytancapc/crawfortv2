@@ -58,7 +58,19 @@ const YTD_RATIO = 6;
  * m1-m3, so each missing month lowers the average by a third, and the
  * applicant is told so before they submit. `missing` records which months.
  */
-export function reviewExtraction(months: ExtractedMonth[], window: string[]): ExtractionReview {
+export function reviewExtraction(
+  months: ExtractedMonth[],
+  window: string[],
+  options?: {
+    /**
+     * Whether a month far above the rest is taken for a year-to-date misread.
+     * True for payslips, where that is the commonest way to misread one. False
+     * for money in a bank account, which is uneven by nature: a freelancer's
+     * deposits can differ sevenfold from one month to the next.
+     */
+    checkYearToDate?: boolean;
+  },
+): ExtractionReview {
   const read = months
     .filter((m) => window.includes(m.month))
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -74,7 +86,7 @@ export function reviewExtraction(months: ExtractedMonth[], window: string[]): Ex
 
   const highest = Math.max(...amounts);
   const lowest = Math.min(...amounts);
-  if (highest / lowest > YTD_RATIO) {
+  if ((options?.checkYearToDate ?? true) && highest / lowest > YTD_RATIO) {
     return {
       kind: "needs_review",
       reason:
@@ -688,6 +700,7 @@ export async function extractIncome(
           amount: c.category === "salary" ? grossUpSalary(c.amount, options?.cpf, today) : c.amount,
           payer: c.payer || null,
         })),
+      today,
     ));
   } else {
     periods = reported.periods.map((p) => ({
@@ -738,7 +751,7 @@ export async function extractIncome(
 
   if (plan.kind === "ask") return notReady(plan.ask);
 
-  const review = reviewExtraction(months, plan.window);
+  const review = reviewExtraction(months, plan.window, { checkYearToDate: source !== "bank_statement" });
   if (review.kind === "needs_review") return notReady(review.reason);
 
   const payslipType: AscendIncomeType =
