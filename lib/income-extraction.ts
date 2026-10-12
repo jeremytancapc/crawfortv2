@@ -226,22 +226,16 @@ const COUNTED_CREDITS = new Set<CreditCategory>([
 ]);
 
 /**
- * Someone who says they are not working lives on something other than a wage
- * - and the one thing a bank statement shows that we can tell is theirs is the
- * CPF payout. So for them it is the only credit that counts, whatever else is
- * paid in. That holds whether they said they have income or not: declaring no
- * income and then uploading a statement full of deposits is no reason to count
- * the deposits. Everyone else keeps COUNTED_CREDITS.
+ * Someone who says they are not working but have income lives on something
+ * other than a wage - and the one thing a bank statement shows that we can
+ * tell is theirs is the CPF payout. So for them it is the only credit that
+ * counts, whatever else is paid in. Everyone else keeps COUNTED_CREDITS.
  */
-const UNEMPLOYED = new Set(["UNEMPLOYED WITH INCOME", "UNEMPLOYED WITHOUT INCOME"]);
+const UNEMPLOYED_WITH_INCOME = "UNEMPLOYED WITH INCOME";
 const CPF_ONLY = new Set<CreditCategory>(["cpf_life"]);
 
-function isUnemployed(employmentType: string | undefined): boolean {
-  return employmentType !== undefined && UNEMPLOYED.has(employmentType);
-}
-
 function creditsCountedFor(employmentType: string | undefined): Set<CreditCategory> {
-  return isUnemployed(employmentType) ? CPF_ONLY : COUNTED_CREDITS;
+  return employmentType === UNEMPLOYED_WITH_INCOME ? CPF_ONLY : COUNTED_CREDITS;
 }
 
 const REPORT_INCOME_TOOL: Anthropic.Tool = {
@@ -595,7 +589,7 @@ export async function extractIncome(
     cpf?: CpfProfile;
     /**
      * What they said their employment is, in Ascend's words. Decides which
-     * bank-statement credits are income: for either unemployed status only the
+     * bank-statement credits are income: for UNEMPLOYED WITH INCOME only the
      * CPF payout; for anyone else, everything that is money in.
      */
     employmentType?: string;
@@ -746,7 +740,7 @@ export async function extractIncome(
   if (empty.length > 0) {
     const names = empty.map((m) => monthParts(m).label).join(" and ");
     return notReady(
-      isUnemployed(options?.employmentType)
+      options?.employmentType === UNEMPLOYED_WITH_INCOME
         ? `We could not find a CPF payout in ${names}. For your employment status we count ` +
             "only your CPF payout. If it is paid into another account, please upload that " +
             "account's statements."
