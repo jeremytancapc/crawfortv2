@@ -1,0 +1,51 @@
+{
+  "id": "payslip-classic-ytd-netpay",
+  "description": "Net pay printed beside a year-to-date total, paid a month after the period. Gross is for the month, before CPF.",
+  "origin": [
+    "header comment lib/income-extraction.ts (2026-09-17)"
+  ],
+  "tags": [
+    "payslip",
+    "ytd-column",
+    "payment-date"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-classic-ytd.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE",
+          "issuer": "SAMPLE LOGISTICS"
+        }
+      ],
+      "periods": [
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-30",
+          "gross": 7050,
+          "net": 5640
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 7050,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

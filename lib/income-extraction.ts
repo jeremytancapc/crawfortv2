@@ -234,7 +234,7 @@ const COUNTED_CREDITS = new Set<CreditCategory>([
 const UNEMPLOYED_WITH_INCOME = "UNEMPLOYED WITH INCOME";
 const CPF_ONLY = new Set<CreditCategory>(["cpf_life"]);
 
-function creditsCountedFor(employmentType: string | undefined): Set<CreditCategory> {
+export function creditsCountedFor(employmentType: string | undefined): Set<CreditCategory> {
   return employmentType === UNEMPLOYED_WITH_INCOME ? CPF_ONLY : COUNTED_CREDITS;
 }
 

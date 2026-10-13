@@ -1,0 +1,153 @@
+{
+  "id": "bank-employed-mixed-credits",
+  "description": "Employed. Salary, a PayNow from a person and cash count; interest, a refund, money from their own account and a loan do not.",
+  "origin": [
+    "de9b5d3",
+    "4ca6a8c"
+  ],
+  "tags": [
+    "bank",
+    "credit-categories"
+  ],
+  "today": "2026-10-02",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/bank-employed-mixed.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "bank_statement",
+          "holderName": "LIM WEI JIE",
+          "issuer": "HARBOURFRONT"
+        }
+      ],
+      "credits": [
+        {
+          "date": "2026-07-25",
+          "amount": 3000,
+          "category": "salary"
+        },
+        {
+          "date": "2026-07-03",
+          "amount": 200,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-07-10",
+          "amount": 400,
+          "category": "cash_deposit"
+        },
+        {
+          "date": "2026-07-28",
+          "amount": 0.31,
+          "category": "interest"
+        },
+        {
+          "date": "2026-07-18",
+          "amount": 36.9,
+          "category": "refund_or_reversal"
+        },
+        {
+          "date": "2026-07-08",
+          "amount": 1500,
+          "category": "own_account_transfer"
+        },
+        {
+          "date": "2026-07-20",
+          "amount": 5000,
+          "category": "loan_disbursement"
+        },
+        {
+          "date": "2026-08-25",
+          "amount": 3000,
+          "category": "salary"
+        },
+        {
+          "date": "2026-08-03",
+          "amount": 200,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-08-10",
+          "amount": 400,
+          "category": "cash_deposit"
+        },
+        {
+          "date": "2026-08-28",
+          "amount": 0.31,
+          "category": "interest"
+        },
+        {
+          "date": "2026-08-18",
+          "amount": 36.9,
+          "category": "refund_or_reversal"
+        },
+        {
+          "date": "2026-08-08",
+          "amount": 1500,
+          "category": "own_account_transfer"
+        },
+        {
+          "date": "2026-08-20",
+          "amount": 5000,
+          "category": "loan_disbursement"
+        },
+        {
+          "date": "2026-09-25",
+          "amount": 3000,
+          "category": "salary"
+        },
+        {
+          "date": "2026-09-03",
+          "amount": 200,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-09-10",
+          "amount": 400,
+          "category": "cash_deposit"
+        },
+        {
+          "date": "2026-09-28",
+          "amount": 0.31,
+          "category": "interest"
+        },
+        {
+          "date": "2026-09-18",
+          "amount": 36.9,
+          "category": "refund_or_reversal"
+        },
+        {
+          "date": "2026-09-08",
+          "amount": 1500,
+          "category": "own_account_transfer"
+        },
+        {
+          "date": "2026-09-20",
+          "amount": 5000,
+          "category": "loan_disbursement"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "BANK_STATEMENT_OTHER_INCOME",
+      "m1": 3600,
+      "m2": 3600,
+      "m3": 3600
+    }
+  }
+}
