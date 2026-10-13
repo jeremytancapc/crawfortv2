@@ -691,7 +691,7 @@ export async function readDocuments(documents: IncomeDocument[], options?: ReadO
  */
 export function decide(
   documents: IncomeDocument[],
-  read: Pick<ModelRead, "reported">,
+  read: Pick<ModelRead, "reported"> & { stopReason?: string | null },
   options?: DecideOptions,
 ): ExtractionOutcome {
   const refuse = (
@@ -706,9 +706,13 @@ export function decide(
 
   const reported = read.reported;
   if (!reported) {
+    // Running out of room is our limit, not a fault in their documents, so it
+    // does not tell them to upload clearer ones.
     return refuse(
       "unreadable",
-      "The documents could not be read. Please upload clear payslips or bank statements.",
+      read.stopReason === "max_tokens"
+        ? "We could not finish reading these documents. Please try again, or upload fewer documents at a time."
+        : "The documents could not be read. Please upload clear payslips or bank statements.",
     );
   }
 
@@ -858,13 +862,37 @@ export function decide(
  * `extractIncome` below is the same without the read, for callers that only
  * want the decision.
  */
+/**
+ * The model stopped without making the report: it ran out of room, or answered
+ * in words instead of calling the tool. Either can pass on a second go. A
+ * refusal is not on this list - asking a model to reconsider a refusal is not a
+ * retry.
+ */
+const RETRY_WHEN_STOPPED = new Set(["max_tokens", "end_turn"]);
+
 export async function readAndDecide(
   documents: IncomeDocument[],
   options?: ReadOptions & DecideOptions,
-): Promise<{ outcome: ExtractionOutcome; read: ModelRead | null }> {
-  if (documents.length === 0) return { outcome: decide(documents, { reported: null }, options), read: null };
-  const read = await readDocuments(documents, options);
-  return { outcome: decide(documents, read, options), read };
+): Promise<{
+  outcome: ExtractionOutcome;
+  /** The call the decision was made from; null when no call was made. */
+  read: ModelRead | null;
+  /** Calls that made no report and were asked again, oldest first. Kept so a run of them shows. */
+  earlier: ModelRead[];
+}> {
+  if (documents.length === 0) return { outcome: decide(documents, { reported: null }, options), read: null, earlier: [] };
+
+  const earlier: ModelRead[] = [];
+  let read = await readDocuments(documents, options);
+
+  // Once, and only when there was no report. A reading that came back is never
+  // read again: two answers to the same document are two chances to disagree.
+  if (read.reported === null && read.stopReason !== null && RETRY_WHEN_STOPPED.has(read.stopReason)) {
+    earlier.push(read);
+    read = await readDocuments(documents, options);
+  }
+
+  return { outcome: decide(documents, read, options), read, earlier };
 }
 
 export async function extractIncome(

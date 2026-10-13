@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     // The date is fixed here, once, so the rules and the record of the call
     // use the same one - a month window can only be reproduced from it.
     const today = new Date();
-    const { outcome, read } = await readAndDecide(documents, {
+    const { outcome, read, earlier } = await readAndDecide(documents, {
       today,
       applicant: { name: applicant.name },
       employmentType: applicant.employmentType,
@@ -174,8 +174,21 @@ export async function POST(request: NextRequest) {
     // Kept for every call, usable or refused: the model's raw report, the
     // prompt and model it was made under, and what we decided from it. Never
     // allowed to fail the step (see recordIncomeModelCall).
-    const record = (readingId: string | null) =>
-      recordIncomeModelCall({
+    const record = async (readingId: string | null) => {
+      // A call that made no report and was asked again still happened, and
+      // cost something. Recording it is how a run of them is noticed.
+      for (const attempt of earlier) {
+        await recordIncomeModelCall({
+          applicantId,
+          documentIds: ids,
+          readingId: null,
+          read: attempt,
+          readToday: today,
+          employmentType: applicant.employmentType,
+          outcome: { kind: "unreadable", reason: `No report (${attempt.stopReason}); asked again` },
+        });
+      }
+      await recordIncomeModelCall({
         applicantId,
         documentIds: ids,
         readingId,
@@ -184,6 +197,7 @@ export async function POST(request: NextRequest) {
         employmentType: applicant.employmentType,
         outcome,
       });
+    };
 
     if (outcome.kind === "usable") {
       const kindOf = (fileType: string) =>

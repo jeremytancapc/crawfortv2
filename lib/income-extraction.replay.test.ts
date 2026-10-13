@@ -118,3 +118,76 @@ describe("readAndDecide", () => {
     expect(read?.reported).toEqual(wrongName);
   });
 });
+
+describe("when the model makes no report", () => {
+  /** A client that answers with each of `replies` in turn. */
+  function sequence(...replies: Array<{ input: unknown | null; stop: string }>) {
+    const create = vi.fn();
+    for (const r of replies) {
+      create.mockResolvedValueOnce({
+        content: r.input === null ? [{ type: "text", text: "..." }] : [{ type: "tool_use", id: "t", name: "report_income", input: r.input }],
+        stop_reason: r.stop,
+        usage: { input_tokens: 10, output_tokens: 5 },
+      });
+    }
+    return { client: { messages: { create } } as unknown as Anthropic, create };
+  }
+
+  it("asks once more when it ran out of room, and uses the second answer", async () => {
+    const { client, create } = sequence({ input: null, stop: "max_tokens" }, { input: REPORT, stop: "tool_use" });
+
+    const { outcome, read, earlier } = await readAndDecide([DOC], { ...OPTIONS, client });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(outcome.kind).toBe("usable");
+    expect(read?.reported).toEqual(REPORT);
+    // The first, failed call is kept too: it is how a run of failures shows up.
+    expect(earlier.map((e) => e.stopReason)).toEqual(["max_tokens"]);
+  });
+
+  it("asks once more when it answered in words instead of making the report", async () => {
+    const { client, create } = sequence({ input: null, stop: "end_turn" }, { input: REPORT, stop: "tool_use" });
+
+    const { outcome } = await readAndDecide([DOC], { ...OPTIONS, client });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(outcome.kind).toBe("usable");
+  });
+
+  it("does not ask a third time", async () => {
+    const { client, create } = sequence({ input: null, stop: "max_tokens" }, { input: null, stop: "max_tokens" });
+
+    const { outcome, earlier } = await readAndDecide([DOC], { ...OPTIONS, client });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(outcome.kind).toBe("unreadable");
+    expect(earlier).toHaveLength(1);
+  });
+
+  it("does not ask again after a refusal - asking a model to reconsider a refusal is not a retry", async () => {
+    const { client, create } = sequence({ input: null, stop: "refusal" });
+
+    const { outcome } = await readAndDecide([DOC], { ...OPTIONS, client });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(outcome.kind).toBe("unreadable");
+  });
+
+  it("does not ask again when the first answer was good", async () => {
+    const { client, create } = sequence({ input: REPORT, stop: "tool_use" });
+
+    const { earlier } = await readAndDecide([DOC], { ...OPTIONS, client });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(earlier).toEqual([]);
+  });
+
+  it("tells the applicant it was on our side when it ran out of room, not that their documents are unclear", () => {
+    const cut = decide([DOC], { reported: null, stopReason: "max_tokens" }, OPTIONS);
+    const refused = decide([DOC], { reported: null, stopReason: "refusal" }, OPTIONS);
+
+    expect(cut.kind === "unreadable" && cut.reason).toMatch(/try again|fewer/i);
+    expect(cut.kind === "unreadable" && cut.reason).not.toMatch(/clear/i);
+    expect(refused.kind === "unreadable" && refused.reason).toMatch(/clear/i);
+  });
+});
