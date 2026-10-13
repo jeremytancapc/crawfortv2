@@ -116,8 +116,10 @@ nothing is sent twice. Each file is sent to Ascend once, even after a retry.
   rules were run against, and what we decided and told the applicant. The
   decision can be made again from it (`decide()` in `lib/income-extraction.ts`)
   without another call - re-running the model on the files is not a replay, its
-  answer can differ. Each row carries `retain_until` (five years from the call;
-  finance to confirm) and nothing deletes it yet. It holds names and amounts,
+  answer can differ. Each row carries `retain_until` (five years from the call,
+  as confirmed by finance) and nothing deletes it yet: the earliest row reaches
+  that date in October 2031, so the clean-up that deletes rows past it is still
+  to be built. It holds names and amounts,
   and it outlives the applicant's own row on purpose.
 
 ## Open questions

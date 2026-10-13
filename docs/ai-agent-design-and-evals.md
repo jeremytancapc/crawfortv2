@@ -83,7 +83,7 @@ Whether our setup meets [S11] is a question for the business owner and complianc
 
 ### A5. Idempotency and replay
 
-> **Done 13 Oct 2026.** `extractIncome` is split into `readDocuments()` (the only model call) and a pure `decide()`; every call, usable or refused, is written to `income_model_calls` (migration `0009`) with the raw report, model id, prompt version, stop reason, usage and the date the rules ran against, kept five years (finance to confirm). The text below describes the gap as it was found.
+> **Done 13 Oct 2026.** `extractIncome` is split into `readDocuments()` (the only model call) and a pure `decide()`; every call, usable or refused, is written to `income_model_calls` (migration `0009`) with the raw report, model id, prompt version, stop reason, usage and the date the rules ran against, kept five years (confirmed by finance). The text below describes the gap as it was found.
 
 What `insertIncomeReading` stores (`lib/db/income-documents.ts`): `income_type`, `months`, `average`, `m1`-`m3`, `advice`, document ids, `name_not_shown_for`, `used_document_ids`. Files are kept after submission (`docs/income-verification.md`). Submit-once is enforced (`submitting_at`, `submitted_at`).
 
@@ -311,7 +311,7 @@ Real payslips and statements carry names, NRIC fragments, salaries and account n
 | Who owns the golden set and labels expected values? | The labeller must not be the AI that wrote the prompt, or the blind spot of layer 1 returns [S7: two experts agree] | Needs a named human, plus a second reviewer |
 | Acceptable flake rate in production | Proposed 0% on critical fields in regression cases; the true rate is unknown until C6 step 2 | Product + engineering |
 | Read twice in production (A3)? | Halves a class of errors, doubles cost and latency | Engineering |
-| Raw reply retention period | Contains personal data; interacts with the current rules (unsubmitted deleted after 7 days, submitted kept) | Compliance |
+| Raw reply retention period | **Decided: five years, confirmed by finance.** Contains personal data; still to build: the clean-up that deletes rows past `retain_until` (earliest due October 2031). | Done; clean-up to schedule |
 | Model choice: Opus 5, Opus 5.5 or Sonnet 5.5? | Cost differs by 2-3x [S14]; let the eval decide | Engineering, after the first baseline |
 | Latency and cost budgets | Not measured today | Set after C6 step 2 |
 | What the applicant sees on refusal or `max_tokens` | Today it says "upload clearer documents" | Product |
