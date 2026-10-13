@@ -4,6 +4,8 @@
  *   npx tsx --env-file=.env.local evals/run.mts --n 5
  *   npx tsx --env-file=.env.local evals/run.mts --case payslip-empno-3months --n 12
  *   npx tsx --env-file=.env.local evals/run.mts --lib /path/to/older/checkout --n 12
+ *   npx tsx --env-file=.env.local evals/run.mts --model claude-sonnet-5-5 --n 5
+ *   npx tsx --env-file=.env.local evals/run.mts --n 5 --write-baseline
  *
  * Costs real money: every run is a model call on the documents. The summary
  * ends with what the run cost. `--lib` runs the same cases against another
@@ -15,7 +17,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -24,8 +26,16 @@ import { gradePipeline, gradeReader, percentile, type ExpectedPipeline, type Exp
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
 
-/** List price per million tokens for claude-opus-5. Output includes thinking. Check the pricing page. */
-const PRICE = { inputPerM: 5, outputPerM: 25 };
+/**
+ * List price per million tokens, from platform.claude.com/docs/en/about-claude/pricing
+ * (checked 13 Oct 2026). Output includes thinking. A model missing here has no
+ * cost column rather than a wrong one.
+ */
+const PRICES: Record<string, { inputPerM: number; outputPerM: number }> = {
+  "claude-opus-5": { inputPerM: 5, outputPerM: 25 },
+  "claude-opus-5-5": { inputPerM: 4, outputPerM: 20 },
+  "claude-sonnet-5-5": { inputPerM: 2, outputPerM: 10 },
+};
 
 type Case = {
   id: string;
@@ -68,6 +78,19 @@ const CONCURRENCY = Number(arg("concurrency", "4"));
 const ONLY = arg("case")?.split(",");
 const LIB = path.resolve(arg("lib", ROOT)!);
 const LABEL = arg("label", path.basename(LIB));
+/** Run on another model than the reader's own. The reader's code is unchanged. */
+const MODEL = arg("model");
+const WRITE_BASELINE = process.argv.includes("--write-baseline");
+const BASELINE_FILE = path.join(HERE, "baseline.json");
+
+if (MODEL && !PRICES[MODEL]) {
+  console.error(`No price known for ${MODEL}. Add it to PRICES in evals/run.mts.`);
+  process.exit(2);
+}
+if (WRITE_BASELINE && (MODEL || ONLY || LIB !== ROOT)) {
+  console.error("--write-baseline records the reader as it is: all cases, its own model, this checkout.");
+  process.exit(2);
+}
 
 // ── Cases ─────────────────────────────────────────────────────────────────
 
@@ -98,9 +121,16 @@ for (const c of cases) {
 // ── One run ───────────────────────────────────────────────────────────────
 
 const real = new Anthropic();
-const { extractIncome } = (await import(pathToFileURL(path.join(LIB, "lib/income-extraction.ts")).href)) as {
+const { extractIncome, PROMPT_VERSION } = (await import(pathToFileURL(path.join(LIB, "lib/income-extraction.ts")).href)) as {
   extractIncome: (documents: unknown[], options: unknown) => Promise<{ kind: string; reason?: string }>;
+  PROMPT_VERSION?: string;
 };
+let modelUsed = MODEL ?? "";
+
+function costOf(model: string, input: number, output: number): number {
+  const price = PRICES[model];
+  return price ? (input * price.inputPerM + output * price.outputPerM) / 1_000_000 : 0;
+}
 
 async function runOnce(c: Case, run: number): Promise<RunResult> {
   let reply: unknown = null;
@@ -114,6 +144,8 @@ async function runOnce(c: Case, run: number): Promise<RunResult> {
     messages: {
       create: async (request: Anthropic.MessageCreateParamsNonStreaming) => {
         const started = Date.now();
+        if (MODEL) request = { ...request, model: MODEL };
+        modelUsed = request.model;
         const response = await real.messages.create(request);
         latencyMs = Date.now() - started;
         usage = { input: response.usage.input_tokens, output: response.usage.output_tokens };
@@ -161,7 +193,7 @@ async function runOnce(c: Case, run: number): Promise<RunResult> {
     latencyMs,
     inputTokens: usage.input,
     outputTokens: usage.output,
-    costUsd: (usage.input * PRICE.inputPerM + usage.output * PRICE.outputPerM) / 1_000_000,
+    costUsd: costOf(modelUsed, usage.input, usage.output),
     stopReason,
     outcome,
     reply: input,
@@ -209,6 +241,66 @@ for (const c of cases) {
       `${pad(percentile(latencies, 50).toFixed(1), 6)} ${pad(percentile(latencies, 95).toFixed(1), 6)} ${pad((mine.reduce((s, r) => s + r.costUsd, 0) / mine.length).toFixed(2), 6)}`,
   );
 }
+
+// ── Against the committed baseline ────────────────────────────────────────
+
+type Baseline = {
+  recordedAt: string;
+  model: string;
+  promptVersion: string | null;
+  runsPerCase: number;
+  cases: Record<string, { passed: number; runs: number }>;
+  costUsd: number;
+  latencyP50s: number;
+  latencyP95s: number;
+};
+
+const rate = (c: { passed: number; runs: number }) => (c.runs ? c.passed / c.runs : 0);
+const perCase = Object.fromEntries(
+  cases.map((c) => {
+    const mine = results.filter((r) => r.caseId === c.id);
+    return [c.id, { passed: mine.filter((r) => r.pass).length, runs: mine.length }];
+  }),
+);
+const reportedModel = MODEL ?? modelUsed;
+
+if (WRITE_BASELINE) {
+  const baseline: Baseline = {
+    recordedAt: new Date().toISOString().slice(0, 10),
+    model: reportedModel,
+    promptVersion: PROMPT_VERSION ?? null,
+    runsPerCase: N,
+    cases: perCase,
+    costUsd: Number(results.reduce((s, r) => s + r.costUsd, 0).toFixed(2)),
+    latencyP50s: Number(percentile(results.map((r) => r.latencyMs / 1000), 50).toFixed(1)),
+    latencyP95s: Number(percentile(results.map((r) => r.latencyMs / 1000), 95).toFixed(1)),
+  };
+  writeFileSync(BASELINE_FILE, JSON.stringify(baseline, null, 2) + "\n");
+  console.log(`\nbaseline written: ${path.relative(ROOT, BASELINE_FILE)}`);
+} else if (existsSync(BASELINE_FILE)) {
+  const baseline = JSON.parse(readFileSync(BASELINE_FILE, "utf8")) as Baseline;
+  console.log(`\nAgainst baseline (${baseline.model}, ${baseline.recordedAt}, ${baseline.runsPerCase} runs a case):`);
+  if (baseline.promptVersion && PROMPT_VERSION && baseline.promptVersion !== PROMPT_VERSION) {
+    console.log(`  note: the prompt or tool schema changed since (${baseline.promptVersion} -> ${PROMPT_VERSION})`);
+  }
+  if (baseline.model !== reportedModel) console.log(`  note: this run is on ${reportedModel}`);
+  let regressions = 0;
+  for (const c of cases) {
+    const before = baseline.cases[c.id];
+    const now = perCase[c.id];
+    if (!before) {
+      console.log(`  ${c.id}: new case, no baseline`);
+    } else if (rate(now) < rate(before)) {
+      regressions += 1;
+      console.log(`  WORSE   ${c.id}: ${now.passed}/${now.runs}, baseline ${before.passed}/${before.runs}`);
+    } else if (rate(now) > rate(before)) {
+      console.log(`  better  ${c.id}: ${now.passed}/${now.runs}, baseline ${before.passed}/${before.runs}`);
+    }
+  }
+  console.log(regressions ? `  ${regressions} case(s) worse than baseline` : "  no case is worse than baseline");
+}
+
+if (!PRICES[reportedModel]) console.log(`\nwarning: no price for ${reportedModel}; cost shows 0. Add it to PRICES.`);
 
 const failures = new Map<string, number>();
 for (const r of results) for (const m of r.critical) failures.set(`${r.caseId}: ${m}`, (failures.get(`${r.caseId}: ${m}`) ?? 0) + 1);

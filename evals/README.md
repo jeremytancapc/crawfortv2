@@ -12,7 +12,15 @@ grade both halves. Why this exists and how it fits together:
 npx tsx --env-file=.env.local evals/run.mts --n 5                       # everything, 5 runs each
 npx tsx --env-file=.env.local evals/run.mts --case payslip-empno-3months --n 12
 npx tsx --env-file=.env.local evals/run.mts --lib /path/to/older/checkout --n 12   # an older reader
+npx tsx --env-file=.env.local evals/run.mts --n 5 --model claude-sonnet-5-5       # another model, same reader code
+npx tsx --env-file=.env.local evals/run.mts --n 5 --write-baseline                # record this run as the baseline
 ```
+
+Every run ends by comparing each case with [`baseline.json`](baseline.json): `WORSE` for a
+case that passes less often than recorded, `better` for one that passes more. It also says
+when the prompt or tool schema changed since the baseline. Re-record the baseline only after
+a run you accept, on all cases with the reader's own model; the file is committed so a change
+to it shows in review.
 
 **It costs money.** Each run is a model call. Measured on 13 Oct 2026 at list
 price: about **$0.05 a run**, so the whole suite at 12 runs each (120 calls) was
@@ -37,7 +45,12 @@ failing case even though one green run looks fine. Warnings (a label that change
 no total, an extra credit) are listed, never fail a run.
 
 Raw replies go to `evals/results/` - **git-ignored**, because they contain names
-and amounts.
+and amounts. `identifiers.test.ts` guards the other direction: it runs with the normal
+tests and fails if any committed file under `evals/` (cases, generator, README, and the
+text of every PDF) holds an NRIC, email, Singapore phone or bank account number, or a
+PDF that is not marked SAMPLE or "not a real payslip". An invented number that must stay
+goes in `FICTIONAL_NUMBERS` in `identifiers.ts`, by hand. This repo has no CI pipeline yet,
+so the check runs wherever `npx vitest run` does.
 
 ## The cases
 
@@ -76,6 +89,29 @@ $5.41 list price, p50 5.8 s and p95 8.7 s a call. Each of the 13 added cases was
 fail when the rule it guards is broken on purpose (weekly pay accepted, the bank never
 confirming a payslip, the payout tolerance set to zero, a same-period duplicate not refused,
 an empty bank month ignored): the failure lands in the `rules` column and nowhere else.
+
+## Which model reads
+
+Same 23 cases, same reader code, 5 runs each, 13 Oct 2026, list price
+(`--model` swaps only the model name sent):
+
+| Model | Passed | Cases clean | Cost | $/run | p50 | p95 |
+|---|---|---|---|---|---|---|
+| `claude-opus-5` (in use; the baseline) | 115/115 | 23/23 | $5.41 | $0.047 | 5.8 s | 8.7 s |
+| `claude-opus-5-5` | 115/115 | 23/23 | $4.24 | $0.037 | 4.5 s | 9.3 s |
+| `claude-sonnet-5-5` | 113/115 | 22/23 | $2.10 | $0.018 | 3.7 s | 6.9 s |
+
+* **Sonnet 5.5 is 61% cheaper and faster, but missed `letter-platform-payout` in 2 of 5 runs**:
+  it called a platform's pay-out letter `other` rather than an earnings statement, so our
+  rules asked the applicant to re-upload. Every other case, including the name, the bank and
+  the unemployed rules, was clean. That is a real applicant being told to resubmit a valid
+  document, so it does not meet the rule that every case passes every run. Five runs is also
+  a small sample: it says Sonnet is close, not that the gap is exactly 2 in 5.
+* **Opus 5.5 matched the baseline on every run for 22% less.** It is the candidate to move to.
+  Before changing `MODEL_ID` in `lib/income-extraction.ts`, run it at `--n 12` on the cases
+  that have ever flaked (`payslip-empno-3months`, `bank-freelancer-future-dated`,
+  `letter-platform-payout`), then once at `--n 5` on all.
+* Prices are from the pricing page on the date above; update `PRICES` in `run.mts` when they change.
 
 ## Add a case from a failure
 
