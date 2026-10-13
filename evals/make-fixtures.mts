@@ -63,8 +63,13 @@ function appPayslip(a: {
   ytdNett: number;
   bank?: string;
   skew?: boolean;
+  /** An explicit period - half a month, or a week crossing a month end. Default: the whole month. */
+  period?: { start: string; end: string };
 }) {
   const last = lastDay(a.year, a.month);
+  const periodStart = a.period?.start ?? iso(a.year, a.month, 1);
+  const periodEnd = a.period?.end ?? iso(a.year, a.month, last);
+  const show = (d: string) => `${d.slice(8, 10)} ${MONTH[Number(d.slice(5, 7))]} ${d.slice(0, 4)}`;
   const gross = a.earnings.reduce((s, [, n]) => s + n, 0);
   const claims = (a.claims ?? []).reduce((s, [, n]) => s + n, 0);
   const nett = gross + claims;
@@ -82,7 +87,7 @@ h1{color:#4a6fa5;font-size:21px;margin:0 0 22px}.l{font-size:14px;margin-bottom:
 <h1>${a.header}</h1>
 <div class=grid><div><div class=l>Department</div><div class=v>OPERATIONS</div></div><div><div class=l>Designation</div><div class=v>EXECUTIVE</div></div></div>
 <div class=l>Company Name</div><div class=v>${a.employer}</div>
-<div class=l>Pay Period</div><div class=v>01 ${MONTH[a.month]} ${a.year} to ${last} ${MONTH[a.month]} ${a.year}</div>
+<div class=l>Pay Period</div><div class=v>${show(periodStart)} to ${show(periodEnd)}</div>
 <div class=box>${rows}</div>
 <div class="box grid" style="row-gap:4px">
 <div><div class=l>Nett Wages</div><div class=v style="margin-bottom:8px">${money(nett)} / ${money(a.ytdNett)}</div></div>
@@ -90,7 +95,7 @@ h1{color:#4a6fa5;font-size:21px;margin:0 0 22px}.l{font-size:14px;margin-bottom:
 <div class=foot><span>Salary Credited To</span><span>BANK</span></div>
 <div class=foot><span>Bank account</span><span>${a.bank ?? "HARBOURFRONT BANK - 0000000000"}</span></div>
 <div class=note>${SAMPLE}</div></div></body></html>`;
-  return { html, gross, nett, start: iso(a.year, a.month, 1), end: iso(a.year, a.month, last) };
+  return { html, gross, nett, start: periodStart, end: periodEnd };
 }
 
 /** The older table layout: net pay beside a year-to-date figure, paid a month later. */
@@ -172,6 +177,48 @@ function letter(a: { bank: string; holder: string }) {
 <p><b>${a.bank}</b></p><p>Date: 3 October 2026</p><p>To whom it may concern,</p>
 <p>This letter confirms that <b>${a.holder}</b> holds a savings account with us and has done so since 2019. This letter is not a statement of account and shows no transactions or balances.</p>
 <p>Yours faithfully,<br>Customer Service</p><p style="color:#888;font-size:10px">${SAMPLE}</p></body></html>`;
+}
+
+/** A ride-hailing style earnings statement: fares, less commission and rental, = earnings. */
+function earningsStatement(a: { platform: string; name: string; year: number; month: number; fares: number; commission: number; rental: number }) {
+  const last = lastDay(a.year, a.month);
+  const earnings = a.fares - a.commission - a.rental;
+  const html = `<html><head><style>body{font-family:Arial,sans-serif;font-size:12px;margin:40px}h1{font-size:18px}table{width:100%;border-collapse:collapse;margin-top:14px}
+td{padding:7px 8px;border-bottom:1px solid #ddd}.n{text-align:right}.t td{font-weight:700;background:#eef6ee}.s{color:#888;margin-top:22px;font-size:10px}</style></head><body>
+<h1>${a.platform} - Driver Earnings Statement</h1>
+<p>Driver: <b>${a.name}</b><br>Statement period: 01 ${MONTH[a.month]} ${a.year} to ${last} ${MONTH[a.month]} ${a.year}</p>
+<table><tr><td>Total fares collected</td><td class=n>${money(a.fares)}</td></tr>
+<tr><td>Platform commission</td><td class=n>-${money(a.commission)}</td></tr>
+<tr><td>Vehicle rental</td><td class=n>-${money(a.rental)}</td></tr>
+<tr class=t><td>Net earnings for the period</td><td class=n>${money(earnings)}</td></tr></table>
+<p class=s>${SAMPLE}</p></body></html>`;
+  return { html, earnings, start: iso(a.year, a.month, 1), end: iso(a.year, a.month, last) };
+}
+
+/** A bank statement printed for periods that do not follow the calendar (15th to 14th). */
+function bankStatementPeriods(a: { bank: string; holder: string; periods: Array<{ start: string; end: string; credits: Array<{ date: string; amount: number; category: string }> }> }) {
+  const sections = a.periods
+    .map(({ start, end, credits }, i) => {
+      const rows = credits
+        .map((c) => `<tr><td>${c.date.slice(8, 10)} ${MONTH[Number(c.date.slice(5, 7))]}</td><td>${DESCRIPTIONS[c.category]}</td><td class=n></td><td class=n>${money(c.amount)}</td></tr>`)
+        .join("");
+      const show = (d: string) => `${d.slice(8, 10)} ${MONTH[Number(d.slice(5, 7))]} ${d.slice(0, 4)}`;
+      return `<section style="${i ? "page-break-before:always;" : ""}"><h1>${a.bank} - Statement of Account</h1><p>${a.holder}<br>Blk 55 Sample Road #03-12, Singapore 000000</p>
+<p><b>Statement period:</b> ${show(start)} to ${show(end)}<br><b>Account:</b> Savings 301-000555-1 (SGD)</p>
+<table><tr><th>Date</th><th>Description</th><th class=n>Withdrawal</th><th class=n>Deposit</th></tr>${rows}</table><p class=s>${SAMPLE}</p></section>`;
+    })
+    .join("");
+  return `<html><head><style>body{font-family:Arial;font-size:11px;margin:32px}h1{font-size:16px}table{width:100%;border-collapse:collapse;margin-top:14px}
+td,th{border-bottom:1px solid #ccc;padding:5px;text-align:left}.n{text-align:right}.s{color:#888;margin-top:20px}</style></head><body>${sections}</body></html>`;
+}
+
+function platformLetter(a: { platform: string; holder: string; month: string; amount: number }) {
+  return `<html><head><style>body{font-family:Georgia,serif;font-size:13px;margin:56px;line-height:1.55}</style></head><body>
+<p><b>${a.platform}</b></p><p>Date: 8 October 2026</p><p>To Person(s)-In Charge,</p>
+<p>This is a letter of engagement for ${a.holder}, who is presently a Freelance Care Professional of ${a.platform}, providing personal home care services.</p>
+<p>This is a breakdown of the total pay-out for the care visits completed with us, for the period requested:</p>
+<p>${a.month}: $${money(a.amount)}</p>
+<p>Yours sincerely,<br>Head of Operations<br>${a.platform}</p><p style="color:#888;font-size:10px">${SAMPLE}</p></body></html>`;
 }
 
 // ── Cases ─────────────────────────────────────────────────────────────────
@@ -510,6 +557,262 @@ const BANK = "HARBOURFRONT BANK";
         periods: [{ start: p.start, end: p.end, gross: 4800, net: 4800 }],
       },
       pipeline: { kind: "usable", incomeType: "NON_PANEL_PAYSLIP", m1: 4800, m2: 0, m3: 0 },
+    },
+  });
+}
+
+// ── Cases 11-23: the rules the first ten did not reach ───────────────────
+
+/** A payslip written to a file, with the figures its case will expect. */
+function slip(file: string, a: Parameters<typeof appPayslip>[0]) {
+  const p = appPayslip(a);
+  render(p.html, path.join(FIXTURES, file), "pdf");
+  return p;
+}
+const READ_OK = (name: string, issuer: string, n: number) => ({
+  readable: true,
+  documents: Array.from({ length: n }, (_, i) => ({ index: i + 1, kind: "payslip", holderName: name, issuer })),
+});
+
+// 11. Paid twice a month: September arrives as two half-month payslips.
+{
+  const name = "LIM WEI JIE";
+  const base = { header: `${name} (200418)`, employer: "SAMPLE LOGISTICS PTE LTD", year: 2026, ytdGross: 40000, ytdNett: 40000 };
+  const h1 = slip("payslip-semimonthly-sep1.pdf", { ...base, month: 9, earnings: [["BASIC PAY", 2400]], period: { start: "2026-09-01", end: "2026-09-15" } });
+  const h2 = slip("payslip-semimonthly-sep2.pdf", { ...base, month: 9, earnings: [["BASIC PAY", 2600]], period: { start: "2026-09-16", end: "2026-09-30" } });
+  const aug = slip("payslip-semimonthly-aug.pdf", { ...base, month: 8, earnings: [["BASIC PAY", 4900]] });
+  const jul = slip("payslip-semimonthly-jul.pdf", { ...base, month: 7, earnings: [["BASIC PAY", 4800]] });
+  cases.push({
+    id: "payslip-semimonthly",
+    description: "September as two half-month payslips (1-15 and 16-30), plus monthly August and July. The halves add up to September.",
+    origin: ["docs/income-verification.md - which months count"],
+    tags: ["payslip", "half-month"],
+    today: "2026-10-09", applicant: { name }, employmentType: "EMPLOYED",
+    documents: files(["payslip-semimonthly-sep2.pdf", "payslip-semimonthly-sep1.pdf", "payslip-semimonthly-aug.pdf", "payslip-semimonthly-jul.pdf"]),
+    expect: {
+      reader: { ...READ_OK(name, "SAMPLE LOGISTICS", 4), periods: [h1, h2, aug, jul].map((p) => ({ start: p.start, end: p.end, gross: p.gross, net: p.nett })) },
+      pipeline: { kind: "usable", incomeType: "NON_PANEL_PAYSLIP", m1: 5000, m2: 4900, m3: 4800 },
+    },
+  });
+}
+
+// 12. Only the second half of September: ask for the first half, by date.
+{
+  const name = "LIM WEI JIE";
+  slip("payslip-half-only.pdf", { header: `${name} (200418)`, employer: "SAMPLE LOGISTICS PTE LTD", year: 2026, month: 9, earnings: [["BASIC PAY", 2600]], ytdGross: 20000, ytdNett: 20000, period: { start: "2026-09-16", end: "2026-09-30" } });
+  cases.push({
+    id: "payslip-half-month-only",
+    description: "Only 16-30 September. Must ask for the missing days by date rather than ask for everything again.",
+    origin: ["docs/income-verification.md - which months count"],
+    tags: ["payslip", "half-month", "ask"],
+    today: "2026-10-09", applicant: { name }, employmentType: "EMPLOYED",
+    documents: files(["payslip-half-only.pdf"]),
+    expect: { reader: { readable: true }, pipeline: { kind: "needs_review", reasonMatches: "1 to 15 September" } },
+  });
+}
+
+// 13. Two jobs in one month: both payslips count, added together.
+{
+  const name = "NURUL AINA BINTE YUSOF";
+  const a = slip("payslip-job-a.pdf", { header: `${name} (A-1042)`, employer: "SAMPLE RETAIL PTE LTD", year: 2026, month: 9, earnings: [["BASIC PAY", 3200]], ytdGross: 28800, ytdNett: 28800 });
+  const b = slip("payslip-job-b.pdf", { header: `${name} (B-77)`, employer: "SAMPLE CAFE PTE LTD", year: 2026, month: 9, earnings: [["PART-TIME WAGES", 1100]], ytdGross: 9900, ytdNett: 9900 });
+  cases.push({
+    id: "payslip-two-employers",
+    description: "Two employers' payslips for September. Both count, added together; they are not refused as the same month twice.",
+    origin: ["d428225"],
+    tags: ["payslip", "two-jobs"],
+    today: "2026-10-09", applicant: { name }, employmentType: "EMPLOYED",
+    documents: files(["payslip-job-a.pdf", "payslip-job-b.pdf"]),
+    expect: {
+      reader: { readable: true, documents: [{ index: 1, kind: "payslip", holderName: name, issuer: "SAMPLE RETAIL" }, { index: 2, kind: "payslip", holderName: name, issuer: "SAMPLE CAFE" }], periods: [] },
+      pipeline: { kind: "usable", incomeType: "NON_PANEL_PAYSLIP", m1: 4300, m2: 0, m3: 0 },
+    },
+  });
+  void a; void b;
+}
+
+// 14. A payslip that is too old to start from.
+{
+  const name = "LIM WEI JIE";
+  slip("payslip-june-only.pdf", { header: `${name} (200418)`, employer: "SAMPLE LOGISTICS PTE LTD", year: 2026, month: 6, earnings: [["BASIC PAY", 4800]], ytdGross: 28800, ytdNett: 28800 });
+  cases.push({
+    id: "payslip-too-old",
+    description: "Only a June payslip, read on 9 October. The latest must be for September or August; it says so.",
+    origin: ["docs/income-verification.md - which months count"],
+    tags: ["payslip", "window", "ask"],
+    today: "2026-10-09", applicant: { name }, employmentType: "EMPLOYED",
+    documents: files(["payslip-june-only.pdf"]),
+    expect: { reader: { readable: true }, pipeline: { kind: "needs_review", reasonMatches: "latest payslip" } },
+  });
+}
+
+// 15. Weekly payslips: only monthly payslips are used.
+{
+  const name = "LIM WEI JIE";
+  const weeks = [["2026-08-31", "2026-09-06"], ["2026-09-07", "2026-09-13"], ["2026-09-14", "2026-09-20"], ["2026-09-21", "2026-09-27"], ["2026-09-28", "2026-10-04"]];
+  const names = weeks.map((_, i) => `payslip-weekly-${i + 1}.pdf`);
+  weeks.forEach(([start, end], i) => slip(names[i], { header: `${name} (200418)`, employer: "SAMPLE LOGISTICS PTE LTD", year: 2026, month: 9, earnings: [["WEEKLY WAGES", 1100]], ytdGross: 40000, ytdNett: 40000, period: { start, end } }));
+  cases.push({
+    id: "payslip-weekly",
+    description: "Five weekly payslips that cover September. Only a monthly payslip is used, so it must ask for one.",
+    origin: ["MONTHLY_ONLY policy, lib/income-extraction.ts"],
+    tags: ["payslip", "weekly", "ask"],
+    today: "2026-10-09", applicant: { name }, employmentType: "EMPLOYED",
+    documents: files(names),
+    expect: { reader: { readable: true, documents: names.map((_, i) => ({ index: i + 1, kind: "payslip", holderName: name })) }, pipeline: { kind: "needs_review", reasonMatches: "monthly payslip" } },
+  });
+}
+
+// 16. The same period twice from one employer.
+{
+  const name = "LIM WEI JIE";
+  const base = { header: `${name} (200418)`, employer: "SAMPLE LOGISTICS PTE LTD", year: 2026, month: 9, ytdGross: 43200, ytdNett: 43200 };
+  slip("payslip-sep-original.pdf", { ...base, earnings: [["BASIC PAY", 4800]] });
+  slip("payslip-sep-revised.pdf", { ...base, earnings: [["BASIC PAY", 4900]] });
+  cases.push({
+    id: "payslip-same-period-twice",
+    description: "An original and a 'revised' payslip for the same September from the same employer. They cover the same days, so one must be chosen - it must not add them or pick one silently.",
+    origin: ["lib/income-periods.ts - overlaps"],
+    tags: ["payslip", "overlap", "ask"],
+    today: "2026-10-09", applicant: { name }, employmentType: "EMPLOYED",
+    documents: files(["payslip-sep-original.pdf", "payslip-sep-revised.pdf"]),
+    expect: { reader: { readable: true }, pipeline: { kind: "needs_review", reasonMatches: "same days" } },
+  });
+}
+
+// 17 + 18. A bank statement that shows the pay arriving makes the payslip panel; one that does not, does not.
+for (const [id, credited, type, text] of [
+  ["payslip-bank-confirms-panel", "net", "PANEL_PAYSLIP", "The bank statement shows the payslip's take-home pay arriving, so the payslip is confirmed (panel)."],
+  ["payslip-bank-no-match", 3000, "NON_PANEL_PAYSLIP", "The bank statement shows a different amount arriving, so the payslip stays unconfirmed (non-panel)."],
+] as const) {
+  const name = "TEO AH HOCK";
+  const p = slip(`${id}-slip.pdf`, { header: `${name} (300112)`, employer: "SAMPLE FOODS PTE LTD", year: 2026, month: 9, earnings: [["BASIC PAY", 5200]], ytdGross: 46800, ytdNett: 46800 });
+  // What the bank shows must be the payslip's PRINTED net pay to confirm it. (The
+  // first version hard-coded 4,160, which this payslip does not print - a fixture
+  // error, not a reader one.) `credited` is "net" or a different amount.
+  const paidIn = credited === "net" ? p.nett : credited;
+  render(bankStatement({ bank: BANK, holder: name, months: [{ year: 2026, month: 9, credits: [credit(28, paidIn, "salary")] }] }), path.join(FIXTURES, `${id}-bank.pdf`), "pdf");
+  cases.push({
+    id,
+    description: text,
+    origin: ["de9b5d3"],
+    tags: ["payslip", "bank", "panel"],
+    today: "2026-10-09", env: { TEST_RECOGNISED_BANKS: "HARBOURFRONT" }, applicant: { name }, employmentType: "EMPLOYED",
+    documents: files([`${id}-slip.pdf`, `${id}-bank.pdf`]),
+    expect: {
+      reader: { readable: true, documents: [{ index: 1, kind: "payslip", holderName: name }, { index: 2, kind: "bank_statement", holderName: name, issuer: "HARBOURFRONT" }] },
+      pipeline: { kind: "usable", incomeType: type, m1: 5200, m2: 0, m3: 0 },
+    },
+  });
+}
+
+// 19 + 20. A ride-hailing platform's earnings: after commission and rental; panel when the cash-outs add up.
+{
+  const name = "RAJESH KUMAR S/O MURUGAN";
+  const e = earningsStatement({ platform: "ZOOMRIDE PTE LTD", name, year: 2026, month: 9, fares: 4200, commission: 630, rental: 170 });
+  render(e.html, path.join(FIXTURES, "earnings-zoomride-sep.pdf"), "pdf");
+  const payouts = [[7, 850], [14, 830], [21, 860], [28, 840]] as const;
+  render(
+    bankStatement({
+      bank: BANK, holder: name,
+      months: [{ year: 2026, month: 9, credits: payouts.map(([d, n]) => credit(d, n, "platform_payout", "ZOOMRIDE PTE LTD PAYOUT")) }],
+    }),
+    path.join(FIXTURES, "bank-zoomride-payouts.pdf"), "pdf",
+  );
+  const earningsExpect = { readable: true, periods: [{ start: e.start, end: e.end, gross: 3400, net: 3400 }] };
+  cases.push({
+    id: "earnings-statement-alone",
+    description: "A platform earnings statement: earnings are taken after the platform's commission and the vehicle rental (3,400), and it is sent as a payslip, unconfirmed.",
+    origin: ["f1137d9"],
+    tags: ["earnings-statement", "platform"],
+    today: "2026-10-09", applicant: { name }, employmentType: "FULL TIME PLATFORM WORKER",
+    documents: files(["earnings-zoomride-sep.pdf"]),
+    expect: { reader: { ...earningsExpect, documents: [{ index: 1, kind: "earnings_statement", holderName: name, issuer: "ZOOMRIDE" }] }, pipeline: { kind: "usable", incomeType: "NON_PANEL_PAYSLIP", m1: 3400, m2: 0, m3: 0 } },
+  });
+  cases.push({
+    id: "earnings-statement-multi-cashout-panel",
+    description: "The same earnings, paid out in four weekly cash-outs totalling 3,380 (within 10%). The cash-outs together confirm the earnings, so it is panel.",
+    origin: ["9472b1f"],
+    tags: ["earnings-statement", "bank", "panel", "multi-payout"],
+    today: "2026-10-09", env: { TEST_RECOGNISED_BANKS: "HARBOURFRONT" }, applicant: { name }, employmentType: "FULL TIME PLATFORM WORKER",
+    documents: files(["earnings-zoomride-sep.pdf", "bank-zoomride-payouts.pdf"]),
+    expect: {
+      reader: { ...earningsExpect, documents: [{ index: 1, kind: "earnings_statement", holderName: name }, { index: 2, kind: "bank_statement", holderName: name, issuer: "HARBOURFRONT" }] },
+      pipeline: { kind: "usable", incomeType: "PANEL_PAYSLIP", m1: 3400, m2: 0, m3: 0 },
+    },
+  });
+}
+
+// 21. Statements cut on the 15th: only a month covered end to end counts.
+{
+  const holder = "LIM WEI JIE";
+  render(
+    bankStatementPeriods({
+      bank: BANK, holder,
+      periods: [
+        { start: "2026-08-15", end: "2026-09-14", credits: [{ date: "2026-08-25", amount: 3000, category: "salary" }, { date: "2026-09-10", amount: 200, category: "transfer_from_others" }] },
+        { start: "2026-09-15", end: "2026-10-14", credits: [{ date: "2026-09-25", amount: 3000, category: "salary" }, { date: "2026-10-03", amount: 300, category: "transfer_from_others" }] },
+      ],
+    }),
+    path.join(FIXTURES, "bank-cut-mid-month.pdf"), "pdf",
+  );
+  cases.push({
+    id: "bank-cut-mid-month",
+    description: "Two statements cut on the 15th. September is covered end to end by the two together (3,200); August is only half covered and October is not over, so neither counts.",
+    origin: ["de9b5d3", "7d89ee6"],
+    tags: ["bank", "mid-month", "future-dated"],
+    today: "2026-10-09", env: { TEST_RECOGNISED_BANKS: "HARBOURFRONT" }, applicant: { name: holder }, employmentType: "EMPLOYED",
+    documents: files(["bank-cut-mid-month.pdf"]),
+    expect: {
+      reader: {
+        readable: true,
+        documents: [{ index: 1, kind: "bank_statement", holderName: holder, issuer: "HARBOURFRONT" }],
+        statements: [{ start: "2026-08-15", end: "2026-09-14" }, { start: "2026-09-15", end: "2026-10-14" }],
+      },
+      pipeline: { kind: "usable", incomeType: "BANK_STATEMENT_OTHER_INCOME", m1: 3200, m2: 0, m3: 0 },
+    },
+  });
+}
+
+// 22. A month with nothing coming in is said so, not asked for again.
+{
+  const holder = "LIM WEI JIE";
+  render(
+    bankStatement({
+      bank: BANK, holder,
+      months: [
+        { year: 2026, month: 7, credits: [credit(25, 3000, "salary")] },
+        { year: 2026, month: 8, credits: [credit(28, 0.31, "interest")] },
+        { year: 2026, month: 9, credits: [credit(25, 3000, "salary")] },
+      ],
+    }),
+    path.join(FIXTURES, "bank-month-without-income.pdf"), "pdf",
+  );
+  cases.push({
+    id: "bank-month-without-income",
+    description: "August shows only interest. For an employed applicant that month has nothing coming in; it must say so, not ask for the same statement again.",
+    origin: ["de9b5d3"],
+    tags: ["bank", "ask", "empty-month"],
+    today: "2026-10-09", env: { TEST_RECOGNISED_BANKS: "HARBOURFRONT" }, applicant: { name: holder }, employmentType: "EMPLOYED",
+    documents: files(["bank-month-without-income.pdf"]),
+    expect: { reader: { readable: true }, pipeline: { kind: "needs_review", reasonMatches: "money coming in" } },
+  });
+}
+
+// 23. A letter from a platform that states what was paid out, which is how a freelancer often shows income.
+{
+  const holder = "LIM WEI JIE";
+  render(platformLetter({ platform: "SAMPLE CARE PLATFORM PTE LTD", holder, month: "Sep 2026", amount: 2548.62 }), path.join(FIXTURES, "letter-platform-payout.pdf"), "pdf");
+  cases.push({
+    id: "letter-platform-payout",
+    description: "A platform's letter stating one month's pay-out. It is treated as an earnings statement - a payslip, unconfirmed - and the other two months count as nothing.",
+    origin: ["Homage letter question, 8 Oct 2026"],
+    tags: ["earnings-statement", "letter"],
+    today: "2026-10-09", applicant: { name: holder }, employmentType: "SELF EMPLOYED",
+    documents: files(["letter-platform-payout.pdf"]),
+    expect: {
+      reader: { readable: true, documents: [{ index: 1, kind: "earnings_statement", holderName: holder, issuer: "SAMPLE CARE PLATFORM" }] },
+      pipeline: { kind: "usable", incomeType: "NON_PANEL_PAYSLIP", m1: 2548.62, m2: 0, m3: 0 },
     },
   });
 }

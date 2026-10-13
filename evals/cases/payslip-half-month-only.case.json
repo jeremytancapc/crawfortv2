@@ -1,0 +1,32 @@
+{
+  "id": "payslip-half-month-only",
+  "description": "Only 16-30 September. Must ask for the missing days by date rather than ask for everything again.",
+  "origin": [
+    "docs/income-verification.md - which months count"
+  ],
+  "tags": [
+    "payslip",
+    "half-month",
+    "ask"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-half-only.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true
+    },
+    "pipeline": {
+      "kind": "needs_review",
+      "reasonMatches": "1 to 15 September"
+    }
+  }
+}

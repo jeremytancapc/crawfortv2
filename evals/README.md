@@ -41,22 +41,41 @@ and amounts.
 
 ## The cases
 
-Ten, all synthetic (fictional people, a fictional bank, every document stamped
+Twenty-three, all synthetic (fictional people, a fictional bank, every document stamped
 SAMPLE). Each case's expected answer is generated from the same numbers printed on
 its document, in `make-fixtures.mts`.
 
 | Case | What it guards |
 |---|---|
-| `payslip-empno-3months` | the name flake: header `NAME (employee no.)` returned inside the name |
+| `payslip-empno-3months` | the name flake: header `NAME (employee no.)` returned inside the name (the original files, newest first) |
 | `payslip-masked-id-name` | a masked NRIC after the name; a `BINTE` name |
 | `payslip-classic-ytd-netpay` | net pay beside a year-to-date total, paid a month later |
 | `payslip-scanned-skewed` | a skewed, soft image: the note must be a sentence, never markup |
+| `payslip-semimonthly` | September as two half-month payslips; they add up |
+| `payslip-half-month-only` | only 16-30 September: ask for the missing days by date |
+| `payslip-two-employers` | two jobs in one month: both count, added together |
+| `payslip-too-old` | only a June payslip on 9 Oct: the latest must be September or August |
+| `payslip-weekly` | five weekly payslips: only a monthly payslip is used, so ask for one |
+| `payslip-same-period-twice` | an original and a "revised" payslip for the same period: refuse, do not add or pick |
+| `payslip-bank-confirms-panel` | the bank shows the payslip's net pay arriving: panel |
+| `payslip-bank-no-match` | the bank shows a different amount: not panel |
+| `earnings-statement-alone` | a platform statement: earnings after commission and rental, unconfirmed |
+| `earnings-statement-multi-cashout-panel` | four weekly cash-outs within 10% of the earnings: panel |
+| `letter-platform-payout` | a platform's letter stating one month's pay-out, treated as an earnings statement |
 | `bank-freelancer-future-dated` | uneven months; a month printed to the 31st, read on the 12th |
+| `bank-cut-mid-month` | statements cut on the 15th: only a month covered end to end counts |
 | `bank-employed-mixed-credits` | what counts as income for an employed applicant |
 | `bank-unemployed-cpf-life` | unemployed with income: only the CPF payout counts |
+| `bank-month-without-income` | a month with only interest: say so, do not ask for the statement again |
 | `bank-wrong-name` | someone else's statement must be refused |
 | `bank-unrecognised-bank` | a bank that is not a recognised Singapore bank must be refused |
 | `letter-not-income` | a letter that is no income document must be refused |
+
+**Baseline, 13 Oct 2026:** all 23 cases pass every run, 115 of 115 (5 runs each), at
+$5.41 list price, p50 5.8 s and p95 8.7 s a call. Each of the 13 added cases was shown to
+fail when the rule it guards is broken on purpose (weekly pay accepted, the bank never
+confirming a payslip, the payout tolerance set to zero, a same-period duplicate not refused,
+an empty bank month ignored): the failure lands in the `rules` column and nowhere else.
 
 ## Add a case from a failure
 
@@ -82,6 +101,13 @@ fails**; see below.
 * **A fixture can hide a wrong expectation.** `letter-not-income` first "failed" because it
   demanded one specific refusal route. Both routes are correct refusals; the grader accepts
   either.
+
+* **Two of the 13 new cases first failed, and neither was a product bug.** One bank statement
+  credited an amount the payslip did not print as its net pay (a fixture error: "confirms" means
+  the bank shows the payslip's *printed* net). One note of `;` beside a good reading failed a
+  grader that was stricter than production, which throws such a note away; it now only matters
+  when the document could not be read and the note is shown. Check a failing case's own
+  expectation before blaming the model or the rules.
 
 ## Before changing the prompt, the tool schema or the model
 

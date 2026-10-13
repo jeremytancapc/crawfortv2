@@ -140,6 +140,15 @@ describe("gradeReader - statements and the note", () => {
     expect(gradeReader({ readable: false }, r).critical.join(" ")).toMatch(/note/);
   });
 
+  it("only warns about a junk note on a document that was read - it is never shown", () => {
+    // The note reaches an applicant only when a document could not be read. A
+    // stray ";" beside a good reading is thrown away by applicantSafeNote.
+    const grade = gradeReader({ readable: true }, reported({ readable: true, note: ";" }));
+
+    expect(grade.critical).toEqual([]);
+    expect(grade.warnings.join(" ")).toMatch(/note/);
+  });
+
   it("passes a plain-sentence note", () => {
     const r = reported({ readable: false, note: "The image is too blurry to read." });
     expect(gradeReader({ readable: false }, r).critical).toEqual([]);

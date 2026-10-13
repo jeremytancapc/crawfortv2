@@ -64,11 +64,14 @@ export function gradeReader(
     critical.push(`readable: expected ${expected.readable}, got ${reply.readable}`);
   }
 
-  // Whatever the model writes for an applicant to read must be a sentence. Two
+  // What the model writes for an applicant to read must be a sentence. Two
   // scanned payslips once came back with the model's own tool-call syntax here.
+  // It only reaches an applicant when the document could not be read, so that is
+  // when it is critical; beside a good reading it is thrown away, so only noted.
   const note = (reply.note ?? "").trim();
   if (note && applicantSafeNote(note) !== note) {
-    critical.push(`note is not a plain sentence: ${JSON.stringify(note.slice(0, 80))}`);
+    const message = `note is not a plain sentence: ${JSON.stringify(note.slice(0, 80))}`;
+    (reply.readable === false ? critical : warnings).push(message);
   }
 
   for (const want of expected.documents ?? []) {

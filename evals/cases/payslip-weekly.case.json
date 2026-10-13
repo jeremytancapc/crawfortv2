@@ -1,0 +1,75 @@
+{
+  "id": "payslip-weekly",
+  "description": "Five weekly payslips that cover September. Only a monthly payslip is used, so it must ask for one.",
+  "origin": [
+    "MONTHLY_ONLY policy, lib/income-extraction.ts"
+  ],
+  "tags": [
+    "payslip",
+    "weekly",
+    "ask"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-weekly-1.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-weekly-2.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-weekly-3.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-weekly-4.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-weekly-5.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE"
+        },
+        {
+          "index": 2,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE"
+        },
+        {
+          "index": 3,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE"
+        },
+        {
+          "index": 4,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE"
+        },
+        {
+          "index": 5,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "needs_review",
+      "reasonMatches": "monthly payslip"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": "earnings-statement-multi-cashout-panel",
+  "description": "The same earnings, paid out in four weekly cash-outs totalling 3,380 (within 10%). The cash-outs together confirm the earnings, so it is panel.",
+  "origin": [
+    "9472b1f"
+  ],
+  "tags": [
+    "earnings-statement",
+    "bank",
+    "panel",
+    "multi-payout"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "RAJESH KUMAR S/O MURUGAN"
+  },
+  "employmentType": "FULL TIME PLATFORM WORKER",
+  "documents": [
+    {
+      "file": "fixtures/earnings-zoomride-sep.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/bank-zoomride-payouts.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "periods": [
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-30",
+          "gross": 3400,
+          "net": 3400
+        }
+      ],
+      "documents": [
+        {
+          "index": 1,
+          "kind": "earnings_statement",
+          "holderName": "RAJESH KUMAR S/O MURUGAN"
+        },
+        {
+          "index": 2,
+          "kind": "bank_statement",
+          "holderName": "RAJESH KUMAR S/O MURUGAN",
+          "issuer": "HARBOURFRONT"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "PANEL_PAYSLIP",
+      "m1": 3400,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}
