@@ -564,7 +564,7 @@ function documentProblem(
 }
 
 /** The model that reads the documents. Stored with every reply. */
-const MODEL_ID = "claude-opus-5";
+const MODEL_ID = "claude-opus-5-5";
 
 /** Which prompt and tool schema are in force - stored with every reply. */
 export const PROMPT_VERSION = versionOf(SYSTEM, REPORT_INCOME_TOOL);

@@ -49,8 +49,8 @@ and amounts. `identifiers.test.ts` guards the other direction: it runs with the 
 tests and fails if any committed file under `evals/` (cases, generator, README, and the
 text of every PDF) holds an NRIC, email, Singapore phone or bank account number, or a
 PDF that is not marked SAMPLE or "not a real payslip". An invented number that must stay
-goes in `FICTIONAL_NUMBERS` in `identifiers.ts`, by hand. This repo has no CI pipeline yet,
-so the check runs wherever `npx vitest run` does.
+goes in `FICTIONAL_NUMBERS` in `identifiers.ts`, by hand. It runs on every pull request
+and on pushes to `stg` and `stg-caken` (`.github/workflows/tests.yml`).
 
 ## The cases
 
@@ -84,8 +84,9 @@ its document, in `make-fixtures.mts`.
 | `bank-unrecognised-bank` | a bank that is not a recognised Singapore bank must be refused |
 | `letter-not-income` | a letter that is no income document must be refused |
 
-**Baseline, 13 Oct 2026:** all 23 cases pass every run, 115 of 115 (5 runs each), at
-$5.41 list price, p50 5.8 s and p95 8.7 s a call. Each of the 13 added cases was shown to
+**Baseline, 13 Oct 2026 (on Opus 5.5):** all 23 cases pass every run, 115 of 115 (5 runs each), at
+$4.24 list price, p50 4.5 s and p95 9.3 s a call. (On Opus 5 it was $5.41, 5.8 s and 8.7 s;
+the rule mutations below were shown on Opus 5.) Each of the 13 added cases was shown to
 fail when the rule it guards is broken on purpose (weekly pay accepted, the bank never
 confirming a payslip, the payout tolerance set to zero, a same-period duplicate not refused,
 an empty bank month ignored): the failure lands in the `rules` column and nowhere else.
@@ -97,8 +98,8 @@ Same 23 cases, same reader code, 5 runs each, 13 Oct 2026, list price
 
 | Model | Passed | Cases clean | Cost | $/run | p50 | p95 |
 |---|---|---|---|---|---|---|
-| `claude-opus-5` (in use; the baseline) | 115/115 | 23/23 | $5.41 | $0.047 | 5.8 s | 8.7 s |
-| `claude-opus-5-5` | 115/115 | 23/23 | $4.24 | $0.037 | 4.5 s | 9.3 s |
+| `claude-opus-5` (used until 13 Oct) | 115/115 | 23/23 | $5.41 | $0.047 | 5.8 s | 8.7 s |
+| `claude-opus-5-5` (in use from 13 Oct; the baseline) | 115/115 | 23/23 | $4.24 | $0.037 | 4.5 s | 9.3 s |
 | `claude-sonnet-5-5` | 113/115 | 22/23 | $2.10 | $0.018 | 3.7 s | 6.9 s |
 
 * **Sonnet 5.5 is 61% cheaper and faster, but missed `letter-platform-payout` in 2 of 5 runs**:
@@ -107,10 +108,9 @@ Same 23 cases, same reader code, 5 runs each, 13 Oct 2026, list price
   the unemployed rules, was clean. That is a real applicant being told to resubmit a valid
   document, so it does not meet the rule that every case passes every run. Five runs is also
   a small sample: it says Sonnet is close, not that the gap is exactly 2 in 5.
-* **Opus 5.5 matched the baseline on every run for 22% less.** It is the candidate to move to.
-  Before changing `MODEL_ID` in `lib/income-extraction.ts`, run it at `--n 12` on the cases
-  that have ever flaked (`payslip-empno-3months`, `bank-freelancer-future-dated`,
-  `letter-platform-payout`), then once at `--n 5` on all.
+* **Opus 5.5 matched Opus 5 on every run for 22% less, and is now the reader's model.** Beyond the
+  115/115 above, it passed 36/36 at `--n 12` on the three cases that have ever flaked
+  (`payslip-empno-3months`, `bank-freelancer-future-dated`, `letter-platform-payout`): 151 runs, no failure.
 * Prices are from the pricing page on the date above; update `PRICES` in `run.mts` when they change.
 
 ## Add a case from a failure

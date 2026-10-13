@@ -41,7 +41,7 @@ describe("readDocuments - only the model call, and how it was made", () => {
     const read = await readDocuments([DOC], { client });
 
     expect(read.reported).toEqual(REPORT);
-    expect(read.modelId).toBe("claude-opus-5");
+    expect(read.modelId).toBe("claude-opus-5-5");
     expect(read.promptVersion).toMatch(/^[0-9a-f]{12}$/);
     expect(read.stopReason).toBe("tool_use");
     expect(read.usage).toEqual({ inputTokens: 1200, outputTokens: 340 });

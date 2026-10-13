@@ -1,6 +1,6 @@
 {
   "recordedAt": "2026-10-13",
-  "model": "claude-opus-5",
+  "model": "claude-opus-5-5",
   "promptVersion": "1b864de39dcf",
   "runsPerCase": 5,
   "cases": {
@@ -97,7 +97,7 @@
       "runs": 5
     }
   },
-  "costUsd": 5.41,
-  "latencyP50s": 5.8,
-  "latencyP95s": 8.7
+  "costUsd": 4.24,
+  "latencyP50s": 4.5,
+  "latencyP95s": 9.3
 }
