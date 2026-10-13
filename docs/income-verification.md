@@ -110,6 +110,15 @@ nothing is sent twice. Each file is sent to Ascend once, even after a retry.
 - Submitted: kept, as the record behind the credit decision.
 - Every step (added, read, removed, deleted, submitted, refused) is written to
   an audit log, per applicant.
+- **Every call to the reading model is kept** in `income_model_calls`, whether
+  it was usable or refused: the model's raw report, the model and a short hash
+  of the prompt it was made under, why it stopped, tokens used, the date the
+  rules were run against, and what we decided and told the applicant. The
+  decision can be made again from it (`decide()` in `lib/income-extraction.ts`)
+  without another call - re-running the model on the files is not a replay, its
+  answer can differ. Each row carries `retain_until` (five years from the call;
+  finance to confirm) and nothing deletes it yet. It holds names and amounts,
+  and it outlives the applicant's own row on purpose.
 
 ## Open questions
 

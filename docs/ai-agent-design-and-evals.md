@@ -83,6 +83,8 @@ Whether our setup meets [S11] is a question for the business owner and complianc
 
 ### A5. Idempotency and replay
 
+> **Done 13 Oct 2026.** `extractIncome` is split into `readDocuments()` (the only model call) and a pure `decide()`; every call, usable or refused, is written to `income_model_calls` (migration `0009`) with the raw report, model id, prompt version, stop reason, usage and the date the rules ran against, kept five years (finance to confirm). The text below describes the gap as it was found.
+
 What `insertIncomeReading` stores (`lib/db/income-documents.ts`): `income_type`, `months`, `average`, `m1`-`m3`, `advice`, document ids, `name_not_shown_for`, `used_document_ids`. Files are kept after submission (`docs/income-verification.md`). Submit-once is enforced (`submitting_at`, `submitted_at`).
 
 **Not stored:** the raw `report_income` input, the model id, the prompt text or a version, `stop_reason`, token usage, and the `today` used to pick the window. The comment above `ExtractionOutcome` says `periods` and `assembly` "are what make it replayable", but the route (`app/api/apply/income/extract/route.ts`) does not save them.

@@ -115,6 +115,7 @@ import { grossUpSalary, type CpfProfile } from "@/lib/income-cpf";
 import Anthropic from "@anthropic-ai/sdk";
 
 import { isRecognisedSgBank, nameBelongsTo } from "./income-identity";
+import { versionOf } from "./prompt-version";
 import {
   assembleMonths,
   bankStatementMonths,
@@ -506,7 +507,7 @@ const EMPTY_ASSEMBLY: Assembly = { months: [], incomplete: [], overlapping: [] }
 
 type DocumentKind = IncomeSource | "other";
 
-type Reported = {
+export type Reported = {
   readable: boolean;
   note: string;
   documents: Array<{ index: number; kind: DocumentKind; holderName: string; issuer: string }>;
@@ -562,49 +563,64 @@ function documentProblem(
   return null;
 }
 
+/** The model that reads the documents. Stored with every reply. */
+const MODEL_ID = "claude-opus-5";
+
+/** Which prompt and tool schema are in force - stored with every reply. */
+export const PROMPT_VERSION = versionOf(SYSTEM, REPORT_INCOME_TOOL);
+
 /**
- * Reads the documents and returns figures that have been checked.
+ * What the model call produced, and how it was made.
  *
- * Never throws for a bad reading - an unreadable payslip is an outcome the
- * caller has to show the applicant, not an exception. It does throw if the
- * API itself is unreachable, which is a different problem with a different
- * answer.
+ * `reported` is the model's `report_income` input exactly as it came back, or
+ * null when it made no such call (a refusal, or it ran out of tokens - see
+ * `stopReason`). Kept whole, with the rest, so the decision made from it can
+ * be explained or made again later: re-running the model on the same files is
+ * not a replay, because its answer can differ.
  */
-export async function extractIncome(
-  documents: IncomeDocument[],
-  options?: {
-    client?: Anthropic;
-    today?: Date;
-    /**
-     * Whose documents these should be. Every document must name them, or
-     * nothing is read off any of them. Omitted only where there is no
-     * applicant to check against, never on the upload step.
-     */
-    applicant?: { name: string; aliases?: string[] };
-    /**
-     * Their CPF position. A salary deposit on a bank statement is after the
-     * employee's CPF, so it is taken back up to gross (see lib/income-cpf.ts).
-     * Omitted, deposits are counted as they arrive.
-     */
-    cpf?: CpfProfile;
-    /**
-     * What they said their employment is, in Ascend's words. Decides which
-     * bank-statement credits are income: for UNEMPLOYED WITH INCOME only the
-     * CPF payout; for anyone else, everything that is money in.
-     */
-    employmentType?: string;
-  },
-): Promise<ExtractionOutcome> {
-  const refuse = (
-    kind: "needs_review" | "unreadable",
-    reason: string,
-    source: IncomeSource = "payslip",
-  ): ExtractionOutcome => ({ kind, reason, source, months: [], periods: [], assembly: EMPTY_ASSEMBLY });
+export type ModelRead = {
+  reported: Reported | null;
+  modelId: string;
+  promptVersion: string;
+  stopReason: string | null;
+  usage: { inputTokens: number; outputTokens: number } | null;
+  latencyMs: number;
+};
 
-  if (documents.length === 0) return refuse("unreadable", "No documents were provided.");
+export type ReadOptions = { client?: Anthropic };
 
+export type DecideOptions = {
+  today?: Date;
+  /**
+   * Whose documents these should be. Every document must name them, or
+   * nothing is read off any of them. Omitted only where there is no
+   * applicant to check against, never on the upload step.
+   */
+  applicant?: { name: string; aliases?: string[] };
+  /**
+   * Their CPF position. A salary deposit on a bank statement is after the
+   * employee's CPF, so it is taken back up to gross (see lib/income-cpf.ts).
+   * Omitted, deposits are counted as they arrive.
+   */
+  cpf?: CpfProfile;
+  /**
+   * What they said their employment is, in Ascend's words. Decides which
+   * bank-statement credits are income: for UNEMPLOYED WITH INCOME only the
+   * CPF payout; for anyone else, everything that is money in.
+   */
+  employmentType?: string;
+};
+
+/**
+ * Asks the model to read the documents. The only function here that calls it,
+ * and it decides nothing: what is wrong with a document, whose it is, which
+ * months count - all of that is `decide`, from the report this returns.
+ *
+ * Throws if the API itself is unreachable, which is a different problem with a
+ * different answer from a document that could not be read.
+ */
+export async function readDocuments(documents: IncomeDocument[], options?: ReadOptions): Promise<ModelRead> {
   const client = options?.client ?? new Anthropic();
-  const today = options?.today ?? new Date();
 
   // Each file is numbered so the reader can say what each one is and whose
   // name is on it, and a refusal can name the file to replace.
@@ -634,8 +650,9 @@ export async function extractIncome(
     text: `Read the ${documents.length} document(s) above and report the income on them.`,
   });
 
+  const started = Date.now();
   const response = await client.messages.create({
-    model: "claude-opus-5",
+    model: MODEL_ID,
     max_tokens: 16000,
     // Reading a payslip correctly is worth thinking about: the YTD column and
     // the month's pay sit next to each other and look alike. A bank statement
@@ -650,14 +667,50 @@ export async function extractIncome(
     (block): block is Anthropic.ToolUseBlock =>
       block.type === "tool_use" && block.name === "report_income",
   );
-  if (!call) {
+
+  return {
+    reported: call ? (call.input as Reported) : null,
+    modelId: MODEL_ID,
+    promptVersion: PROMPT_VERSION,
+    stopReason: response.stop_reason ?? null,
+    usage: response.usage
+      ? { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
+      : null,
+    latencyMs: Date.now() - started,
+  };
+}
+
+/**
+ * Decides, from what the model reported, what the documents show: figures that
+ * have been checked, or the sentence an applicant needs to fix them.
+ *
+ * Pure: no model call, no clock (pass `today`), no database. Run it again over
+ * a stored report with a changed rule or date to see what would have changed.
+ * Never throws for a bad reading - an unreadable payslip is an outcome the
+ * caller shows the applicant, not an exception.
+ */
+export function decide(
+  documents: IncomeDocument[],
+  read: Pick<ModelRead, "reported">,
+  options?: DecideOptions,
+): ExtractionOutcome {
+  const refuse = (
+    kind: "needs_review" | "unreadable",
+    reason: string,
+    source: IncomeSource = "payslip",
+  ): ExtractionOutcome => ({ kind, reason, source, months: [], periods: [], assembly: EMPTY_ASSEMBLY });
+
+  if (documents.length === 0) return refuse("unreadable", "No documents were provided.");
+
+  const today = options?.today ?? new Date();
+
+  const reported = read.reported;
+  if (!reported) {
     return refuse(
       "unreadable",
       "The documents could not be read. Please upload clear payslips or bank statements.",
     );
   }
-
-  const reported = call.input as Reported;
 
   if (!reported.readable) {
     return refuse(
@@ -794,6 +847,31 @@ export async function extractIncome(
     periods,
     assembly,
   };
+}
+
+
+/**
+ * Reads the documents and returns figures that have been checked, with the
+ * model's read so the caller can keep it. `read` is null when no model call
+ * was made (nothing to read).
+ *
+ * `extractIncome` below is the same without the read, for callers that only
+ * want the decision.
+ */
+export async function readAndDecide(
+  documents: IncomeDocument[],
+  options?: ReadOptions & DecideOptions,
+): Promise<{ outcome: ExtractionOutcome; read: ModelRead | null }> {
+  if (documents.length === 0) return { outcome: decide(documents, { reported: null }, options), read: null };
+  const read = await readDocuments(documents, options);
+  return { outcome: decide(documents, read, options), read };
+}
+
+export async function extractIncome(
+  documents: IncomeDocument[],
+  options?: ReadOptions & DecideOptions,
+): Promise<ExtractionOutcome> {
+  return (await readAndDecide(documents, options)).outcome;
 }
 
 /**

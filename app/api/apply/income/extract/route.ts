@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { getApplicant } from "@/lib/db/applicants";
 import { getMyinfoProfile } from "@/lib/db/myinfo-profiles";
+import { recordIncomeModelCall } from "@/lib/db/income-model-calls";
 import {
   getIncomeDocument,
   insertIncomeReading,
@@ -25,7 +26,7 @@ import {
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { getDocumentBytes } from "@/lib/documents/store";
 import type { CpfProfile } from "@/lib/income-cpf";
-import { extractIncome, type IncomeDocument } from "@/lib/income-extraction";
+import { readAndDecide, type IncomeDocument } from "@/lib/income-extraction";
 import { MAX_INCOME_FILES } from "@/lib/income-add-more";
 import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
@@ -160,11 +161,29 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const outcome = await extractIncome(documents, {
+    // The date is fixed here, once, so the rules and the record of the call
+    // use the same one - a month window can only be reproduced from it.
+    const today = new Date();
+    const { outcome, read } = await readAndDecide(documents, {
+      today,
       applicant: { name: applicant.name },
       employmentType: applicant.employmentType,
       cpf: await cpfProfileOf(applicantId),
     });
+
+    // Kept for every call, usable or refused: the model's raw report, the
+    // prompt and model it was made under, and what we decided from it. Never
+    // allowed to fail the step (see recordIncomeModelCall).
+    const record = (readingId: string | null) =>
+      recordIncomeModelCall({
+        applicantId,
+        documentIds: ids,
+        readingId,
+        read,
+        readToday: today,
+        employmentType: applicant.employmentType,
+        outcome,
+      });
 
     if (outcome.kind === "usable") {
       const kindOf = (fileType: string) =>
@@ -199,6 +218,7 @@ export async function POST(request: NextRequest) {
           fileType: outcome.fileTypes[i] ?? outcome.incomeType,
         })),
       });
+      await record(reading.id);
       return NextResponse.json({
         status: "usable",
         readingId: reading.id,
@@ -217,6 +237,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    await record(null);
     await logIncomeDocumentEvent({
       applicantId,
       event: "read_not_usable",
