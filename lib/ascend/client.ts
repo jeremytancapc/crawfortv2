@@ -9,6 +9,7 @@
 import type { AscendConfig } from "./config";
 import { buildSignedRequest } from "./sign";
 import { logExternalApi } from "@/lib/external-api-logger";
+import { reportShape } from "./shape-report";
 import { redactAscendRequest } from "./redact";
 
 /** Ascend returns `"10000"` for success - a string, and not `"200"`. */
@@ -146,6 +147,9 @@ export async function callAscend<T = unknown>(
   }
 
   record(response.status, true, text);
+  // Watches how Ascend answers, so a change in it shows up the day it starts.
+  // Observation only: it cannot throw or change what is returned.
+  reportShape(path, url, envelope.data, options?.applicantId);
   return envelope.data;
 }
 

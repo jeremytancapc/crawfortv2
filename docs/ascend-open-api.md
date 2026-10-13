@@ -226,3 +226,33 @@ payslip figures.
   5000 returned a limit of 8000. Never show the requested figure as though it
   were the offer.
 - **(observed)** `creditScore` is fractional (588.26), not an integer.
+
+## Watching how Ascend answers
+
+Ascend has changed its replies without telling us: from 8 Oct 2026 a PASS from
+`income/credit` came back with an empty `creditScore`, where every earlier PASS
+carried the limit. We found out from testers on the pending page.
+
+Every reply from `apply/credit`, `income/credit` and `query/credit` is now checked
+against the shapes seen so far (`lib/ascend/shape.ts`). A departure is written to
+`api_logs` under the tag `[ascend-shape]`, with the codes in `error`, and as a
+server-log warning:
+
+```sql
+select created_at, error as codes, response_body
+  from api_logs where tag = '[ascend-shape]' order by created_at desc;
+```
+
+| Kind | Codes | Meaning |
+|---|---|---|
+| watch | `pass_without_limit`, `pass_without_mlcb_max` | Known, and handled (the limit is asked for again). Counted. |
+| alert | `unknown_risk_status`, `missing_risk`, `missing_order_id`, `unexpected_fields`, `not_an_object` | Never seen. Look at it. |
+
+Run over everything logged so far, it finds 12 PASS-without-limit replies (first
+seen 8 Oct) and 2 PASS-without-MLCB-maximum (12 Oct): the change would have shown
+on the day it began. When a new field is looked at and found harmless, add it to
+the known lists in `shape.ts`.
+
+`GET /api/cron/ascend-shape` (guarded by `CRON_SECRET`) summarises the last 24
+hours and answers **500** when anything other than a watch item appeared. It needs a
+scheduler to call it daily: `vercel.json` has no cron entries yet.
