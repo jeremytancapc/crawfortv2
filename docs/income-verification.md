@@ -1,7 +1,7 @@
 # Income verification - how it works, in plain language
 
 For marketing and support. Describes what the product does today (branch
-`stg-caken`), not what is planned. Where a rule is still undecided it says so.
+`stg`), not what is planned. Where a rule is still undecided it says so.
 
 ## When an applicant sees this step
 

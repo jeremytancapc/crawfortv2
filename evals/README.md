@@ -50,7 +50,7 @@ tests and fails if any committed file under `evals/` (cases, generator, README, 
 text of every PDF) holds an NRIC, email, Singapore phone or bank account number, or a
 PDF that is not marked SAMPLE or "not a real payslip". An invented number that must stay
 goes in `FICTIONAL_NUMBERS` in `identifiers.ts`, by hand. It runs on every pull request
-and on pushes to `stg` and `stg-caken` (`.github/workflows/tests.yml`).
+and on pushes to `stg` (`.github/workflows/tests.yml`).
 
 ## The cases
 
