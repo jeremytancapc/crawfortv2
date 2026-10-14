@@ -67,6 +67,22 @@ interface SignaturePadProps {
    */
   onSigned: (dataUrl: string) => void;
   onCleared?: () => void;
+  /** Card heading before signing. */
+  title?: string;
+  /** Line under the heading before signing. */
+  description?: string;
+  /** Label of the button that seals the drawn signature. */
+  confirmLabel?: string;
+  /** Placeholder inside the drawing area while `disabled`. */
+  disabledHint?: string;
+  /** Sets the heading in the coloured banner, so it is the card's header. */
+  headingInBanner?: boolean;
+  /** Height of the drawing area in px. */
+  canvasHeight?: number;
+  /** Height of the coloured banner in px; defaults to a compact 48. */
+  bannerHeight?: number;
+  /** Stretch the card with unused pane space. Off when the card should keep a gap around it. */
+  absorbPaneSpace?: boolean;
 }
 
 export function SignaturePad({
@@ -74,6 +90,14 @@ export function SignaturePad({
   invalid = false,
   onSigned,
   onCleared,
+  title = "Your signature is required",
+  description = "Draw your signature below to accept this offer.",
+  confirmLabel = "Confirm signature",
+  disabledHint = "Tick the boxes above first",
+  headingInBanner = false,
+  canvasHeight = 176,
+  bannerHeight,
+  absorbPaneSpace = true,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -231,29 +255,41 @@ export function SignaturePad({
         className="accept-terms-card flex w-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white"
         style={{ boxShadow: "0 18px 40px oklch(0.24 0.02 80 / 0.10)" }}
       >
-        <div className="deck-card-banner relative isolate h-12 overflow-hidden">
+        <div
+          className={`deck-card-banner relative isolate h-12 overflow-hidden${
+            headingInBanner ? " flex items-center px-6" : ""
+          }`}
+          style={bannerHeight ? { height: bannerHeight } : undefined}
+        >
           <BannerIcon
             aria-hidden
             weight="fill"
             size={104}
             className="deck-card-watermark pointer-events-none"
           />
+          {headingInBanner ? (
+            <h2 className="deck-card-banner-title relative z-10 min-w-0 truncate text-[22px] font-bold leading-[1.15] tracking-[-0.03em]">
+              {isSigned ? "Signature captured" : title}
+            </h2>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-2 px-6 pb-2 pt-3">
-          <h2
-            className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]"
-            style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-primary)" }}
-          >
-            {isSigned ? "Signature captured" : "Your signature is required"}
-          </h2>
+          {headingInBanner ? null : (
+            <h2
+              className="min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]"
+              style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-primary)" }}
+            >
+              {isSigned ? "Signature captured" : title}
+            </h2>
+          )}
           <p
             className={`text-[16px] font-medium leading-snug${isSigned ? " whitespace-nowrap" : ""}`}
             style={{ color: needsDraw ? "var(--ios-danger)" : "var(--text-secondary)" }}
           >
             {isSigned
               ? "Re-sign below to change it."
-              : "Draw your signature below to accept this offer."}
+              : description}
           </p>
         </div>
 
@@ -296,7 +332,7 @@ export function SignaturePad({
               aria-hidden="true"
             >
               <span className="text-[11px] font-medium tracking-wide" style={{ color: "var(--text-tertiary)" }}>
-                {disabled ? "Tick the boxes above first" : "Sign here with your finger or mouse"}
+                {disabled ? disabledHint : "Sign here with your finger or mouse"}
               </span>
             </div>
           )}
@@ -304,7 +340,7 @@ export function SignaturePad({
           <canvas
             ref={canvasRef}
             className="block w-full touch-none"
-            style={{ height: 176, cursor: disabled || isSigned ? "default" : "crosshair" }}
+            style={{ height: canvasHeight, cursor: disabled || isSigned ? "default" : "crosshair" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -427,7 +463,7 @@ export function SignaturePad({
                 type="button"
                 onClick={handleClear}
                 disabled={isEmpty || isSigning}
-                className="text-[11px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-30"
+                className="text-[16px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-30"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Clear
@@ -436,24 +472,26 @@ export function SignaturePad({
                 type="button"
                 onClick={handleConfirm}
                 disabled={isEmpty || isSigning}
-                className="rounded-[var(--radius-sm)] px-3.5 py-1.5 text-[11px] font-bold tracking-wide transition-all duration-150 disabled:opacity-30"
+                className="rounded-[var(--radius-sm)] px-4 py-2 text-[16px] font-bold tracking-wide transition-all duration-150 disabled:opacity-30"
                 style={{
                   background: "var(--brand-blue-hex)",
                   color: "#ffffff",
                   boxShadow: needsConfirm ? "0 0 0 2px var(--ios-danger)" : undefined,
                 }}
               >
-                {isSigning ? "Signing…" : "Confirm signature"}
+                {isSigning ? "Signing…" : confirmLabel}
               </button>
             </>
           )}
         </div>
       </div>
-        <div
-          aria-hidden
-          className="shrink-0"
-          style={{ height: "var(--apply-fit-leftover, 0px)" }}
-        />
+        {absorbPaneSpace ? (
+          <div
+            aria-hidden
+            className="shrink-0"
+            style={{ height: "var(--apply-fit-leftover, 0px)" }}
+          />
+        ) : null}
       </div>
       {needsDraw || needsConfirm ? (
         <p

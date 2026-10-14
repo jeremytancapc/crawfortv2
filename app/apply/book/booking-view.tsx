@@ -75,7 +75,7 @@ export function BookingView({ formData }: Props) {
     >
       <div className="apply-book-fit apply-headline-to-wordmark shrink-0 px-3 pb-3 pt-6 sm:px-5 sm:pb-4 sm:pt-7 lg:!pt-12 lg:!pb-6 xl:!pt-16">
         <h1 className="ios-type-title">
-          Book your appointment
+          Collect your funds
         </h1>
         <p className="ios-type-subtitle mt-1.5 lg:mt-4">
           The visit only takes around 30 minutes.

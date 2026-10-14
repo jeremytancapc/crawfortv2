@@ -623,7 +623,8 @@ input[type="range"]::-moz-range-thumb {
   animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
 }
 
-.booking-field--invalid {
+.booking-field--invalid,
+.ios-card--invalid {
   border-color: var(--ios-danger);
   box-shadow: 0 0 0 2px var(--ios-danger);
   animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
@@ -642,7 +643,8 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .plan-lane--invalid .plan-lane-card,
   .signature-pad--invalid,
-  .booking-field--invalid {
+  .booking-field--invalid,
+  .ios-card--invalid {
     animation: none;
   }
 }
@@ -1321,17 +1323,21 @@ body:has(.theme-fresh)::before {
   font-weight: 600;
 }
 
-/* Solid teal banner on accept term cards. Depth comes from the oversized
-   watermark glyph, not from a second colour or a frosted overlay. */
+/* Off-black banner on accept cards. Depth comes from the oversized watermark
+   glyph, not from a second colour or a frosted overlay. */
 .theme-ios .deck-card-banner {
-  background: var(--brand-teal-hex, #06dec0);
+  background: #1c1c1e;
+}
+
+.theme-ios .deck-card-banner-title {
+  color: #fff;
 }
 
 .theme-ios .deck-card-watermark {
   position: absolute;
   right: -1.25rem;
   top: -1.75rem;
-  color: rgb(255 255 255 / 0.4);
+  color: rgb(255 255 255 / 0.22);
 }
 
 /* Seal sits more in-frame than the term-card glyphs, which read at the corner. */
@@ -1370,10 +1376,11 @@ body:has(.theme-fresh)::before {
   font-size: clamp(11.5px, 3.5vw, 17px);
 }
 
-/* Long labels stack as Next: / rest instead of shrinking past readability. */
+/* Long labels stack as Next: / rest. Keep the same 17px as a one-line footer
+   label; the second line is what makes the long copy fit. */
 .theme-ios .ios-footer-cta .ios-type-cta--stacked {
   white-space: normal;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.15;
 }
 
@@ -2078,6 +2085,33 @@ input[type="range"].ios-slider::-moz-range-thumb {
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
 }
 
+/* Optional row above the progress strip. It has no tint of its own, so it
+   reads as part of the page. The bottom padding is the gap under a skip link,
+   and the slot grows by the row's height so fitted content never slides under it. */
+.ios-sticky-footer-above {
+  padding: 8px 20px 24px;
+  background: var(--surface-primary);
+  text-align: center;
+  container-type: inline-size;
+}
+
+/* One line. 16px on the upload card; the footer row is narrower, so it
+   shrinks there just enough to stay on one line. */
+.ios-skip-link {
+  font-size: min(16px, 4.2cqw);
+}
+
+/* Name-match note on the upload card: always one line. The type size follows
+   the card's width (minus padding, icon and gap) so it shrinks on phones and
+   tops out at 16px on the desktop rail. The divisor is the note's width in em. */
+.ios-doc-card {
+  container-type: inline-size;
+}
+
+.ios-doc-note {
+  font-size: min(16px, calc((100cqw - 56px) / 21));
+}
+
 /* Pin the action bar to the visible viewport on phones so it cannot sit
    under the browser chrome the way an in-flow 100dvh footer does. */
 @media (max-width: 1023.98px) {
@@ -2096,6 +2130,11 @@ input[type="range"].ios-slider::-moz-range-thumb {
     height: 108px;
   }
 
+  .ios-apply-sheet:has(.ios-sticky-footer--progress.ios-sticky-footer--above)
+    .ios-apply-footer-slot {
+    height: 176px;
+  }
+
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {
     height: 105px;
   }
@@ -2105,6 +2144,10 @@ input[type="range"].ios-slider::-moz-range-thumb {
 @media (min-width: 1024px) {
   .ios-apply-footer-slot {
     height: 84px;
+  }
+
+  .ios-apply-sheet:has(.ios-sticky-footer--above) .ios-apply-footer-slot {
+    height: 138px;
   }
 
   .ios-apply-sheet:has(.ios-sticky-footer--bannered) .ios-apply-footer-slot {

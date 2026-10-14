@@ -141,6 +141,7 @@ function ApplyPaneFit({
   maxWidth,
   scaleToFit = true,
   maxScale = APPLY_FIT_MAX_SCALE,
+  minScale: minScaleOverride,
   lockAfterFit = true,
 }: {
   children: ReactNode;
@@ -150,6 +151,9 @@ function ApplyPaneFit({
   /** Cap how far a short step grows. Defaults to 1× so desktop type stays
    *  aligned with the sidebar instead of filling the pane by zooming. */
   maxScale?: number;
+  /** Lowest scale before the pane scrolls instead of shrinking. Overrides the
+   *  desktop/phone defaults for a step that must always fit on one screen. */
+  minScale?: number;
   /** After the first layout, ignore content mutations so swiping cards
    *  or picking a date cannot rescale the column. */
   lockAfterFit?: boolean;
@@ -220,8 +224,8 @@ function ApplyPaneFit({
       // Designed column width only. A terms-card swipe translates the
       // outgoing face past the edge; scrollWidth then reads ~2× wide,
       // the scale floor kicks in, and leftover stays 0 until remount.
-      const contentW = designW;
-      const contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
+      let contentW = designW;
+      let contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
       if (contentH < 8) {
         inner.style.setProperty("--apply-fit-leftover", prevLeftover);
         inner.style.transform = prevTransform;
@@ -238,7 +242,8 @@ function ApplyPaneFit({
       // stops being worth it far sooner. Once a phone would need to shrink
       // more than ~10%, scroll the rest instead of shrinking text and the
       // gauge down toward two-thirds size just to keep it above the fold.
-      const minScale = isDesktopRail ? APPLY_FIT_MIN_SCALE : APPLY_FIT_PHONE_MIN_SCALE;
+      const minScale =
+        minScaleOverride ?? (isDesktopRail ? APPLY_FIT_MIN_SCALE : APPLY_FIT_PHONE_MIN_SCALE);
       const overflowing = raw < minScale;
       // Phone: the column already spans the pane. Scaling with leftover
       // height blows type and gauges up. Tablet/desktop can still grow
@@ -247,6 +252,18 @@ function ApplyPaneFit({
       const scale = overflowing
         ? minScale
         : Math.min(Math.max(raw, minScale), cap);
+      // A phone column that had to shrink would sit narrower than the pane,
+      // leaving dead gutters either side. Design it wider by the same factor
+      // so the scaled column spans the pane edge to edge (type stays at the
+      // shrunk size; the wider column also wraps a little less). Only for a
+      // step that sets its own floor, i.e. one built to be zoomed out.
+      if (minScaleOverride !== undefined && !isDesktopRail && scale < 0.995) {
+        contentW = availW / scale;
+        inner.style.width = `${contentW}px`;
+        inner.style.maxWidth = `${contentW}px`;
+        void inner.offsetHeight;
+        contentH = Math.max(inner.scrollHeight, inner.offsetHeight);
+      }
       const leftover = overflowing ? 0 : Math.max(0, fitH / scale - contentH);
       inner.style.setProperty("--apply-fit-leftover", `${leftover}px`);
       inner.style.transform = `scale(${scale})`;
@@ -319,7 +336,7 @@ function ApplyPaneFit({
       ro.disconnect();
       mo.disconnect();
     };
-  }, [maxWidth, maxScale, scaleToFit, lockAfterFit]);
+  }, [maxWidth, maxScale, minScaleOverride, scaleToFit, lockAfterFit]);
 
   // Choose-plan (and other wide steps) skip scale, so leftover used to stay
   // 0 and the cards sat in a short island. Measure the unused pane once and
@@ -424,6 +441,7 @@ export function MobileGateSheet({
   fitMaxWidth = 560,
   scaleToFit = true,
   fitMaxScale,
+  fitMinScale,
   lockAfterFit = true,
 }: {
   children: ReactNode;
@@ -432,6 +450,8 @@ export function MobileGateSheet({
   /** Set false to keep native size and scroll instead of shrinking to the pane. */
   scaleToFit?: boolean;
   fitMaxScale?: number;
+  /** Lowest scale before the pane scrolls; see `ApplyPaneFit`. */
+  fitMinScale?: number;
   lockAfterFit?: boolean;
 }) {
   const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
@@ -444,6 +464,7 @@ export function MobileGateSheet({
             maxWidth={fitMaxWidth}
             scaleToFit={scaleToFit}
             maxScale={fitMaxScale}
+            minScale={fitMinScale}
             lockAfterFit={lockAfterFit}
           >
             {children}
@@ -1141,14 +1162,18 @@ export function StepperRow({
  *  to the bar's top edge and spans the whole right pane on desktop. */
 export function StickyFooter({
   banner,
+  above,
   nav,
   children,
 }: {
   banner?: ReactNode;
+  /** Low-emphasis row (e.g. a skip link) that sits flush on top of the bar. */
+  above?: ReactNode;
   nav?: StepNavControls;
   children?: ReactNode;
 }) {
   const hasBanner = banner != null;
+  const hasAbove = above != null && above !== false;
   const hasAction = children != null && children !== false;
   const hasNav = nav != null;
   const liveStep = useApplyProgressStep(0);
@@ -1162,10 +1187,12 @@ export function StickyFooter({
           "ios-sticky-footer",
           hasBanner ? "ios-sticky-footer--bannered" : "",
           showProgressBanner ? "ios-sticky-footer--progress" : "",
+          hasAbove ? "ios-sticky-footer--above" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
+        {hasAbove ? <div className="ios-sticky-footer-above">{above}</div> : null}
         {hasBanner || showProgressBanner ? (
           <div className="ios-sticky-footer-banner">
             {hasBanner ? banner : <ApplyProgressFooterStrip current={liveStep} />}

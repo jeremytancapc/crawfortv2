@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
-  ArrowRight,
   CheckCircle,
   ClockCountdown,
   Copy,
@@ -145,7 +144,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
                 1
               </span>
               <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
-                Setup the Crawfort App from App store
+                Install the Crawfort App from App store
               </p>
             </li>
             <li className="flex items-start gap-2.5">
@@ -153,19 +152,22 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
                 2
               </span>
               <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
-                Sign in the app using Singpass to manage your queue, loan details and repayment
+                Sign in via{" "}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/singpass_logo_fullcolours.svg"
+                  alt="Singpass"
+                  width={467}
+                  height={81}
+                  className="inline-block h-[1.05em] w-auto translate-y-[1.5px] align-middle"
+                />{" "}
+                to view all your loans, future drawdowns and loan repayment
               </p>
             </li>
           </ol>
         </div>
 
-        <div className="flex items-center gap-2 border-y border-dashed border-white/25 bg-black px-5 py-2.5">
-          <ArrowRight size={17} weight="bold" className="shrink-0 text-white" />
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-            Download the App
-          </p>
-        </div>
-        <div className="bg-[var(--surface-elevated)] px-5 py-2">
+        <div className="border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-2">
           <AppStoreBadges />
         </div>
       </section>
