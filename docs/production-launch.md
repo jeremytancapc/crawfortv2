@@ -17,10 +17,10 @@ AirConnect, AXS.
 | # | Item | Owner |
 |---|---|---|
 | 0.1 | Confirm in the Vercel dashboard that this project's **Production branch is `main`** and add `get.crawfort.com` to it. (`apply.crawfort.com` is a different app and is not touched.) | Ops |
-| 0.2 | Privacy sign-off: applicants' payslips and bank statements (names, NRIC details) are sent to Anthropic's API. PDPA overseas-transfer check, data-handling terms or zero-retention setting, privacy notice update, and whether applicants are told an AI reads their documents. | Biz / DPO |
-| 0.3 | A named person confirms each income rule (Wenting's 30 Sep rules, unemployed-with-income counts the CPF payout only, bank statements count all money in for others). | Biz |
-| 0.4 | Foreigners: proof of residence was never built. Build it, or launch knowing foreigners cannot prove residence. | Biz + Dev |
-| 0.5 | Jeremy's self-declare path was removed in the merge. Confirm nobody needs it at launch (an applicant with no documents at all). | Biz |
+| 0.2 | Privacy. **Disclosure is covered:** the website terms already say applicants' documents are processed this way before they onboard (Caken, 15 Oct). Still unchecked: Anthropic's data-handling terms for the API (what they keep, and for how long) against our own retention. | Biz / DPO |
+| 0.3 | Income rules signed off by name: every rule in [income-rules-signoff.md](income-rules-signoff.md) has an owner and a date. | Biz |
+| 0.4 | Foreigners: proof of residence is deferred (Caken, 15 Oct: "we will wait first"). Launch with foreigners going through the same steps as everyone else. | Biz |
+| 0.5 | Applicants with no documents are **not allowed to pass** (Caken, 15 Oct). Jeremy's skip and self-declare are removed; the form has no skip. | Decided |
 
 ## 1. Build the production side
 
