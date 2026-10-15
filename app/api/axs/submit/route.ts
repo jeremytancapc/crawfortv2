@@ -272,7 +272,10 @@ export async function POST(request: NextRequest) {
     tenure: requestedTenure,
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL ?? "https://apply.crawfort.com";
+  // The booking link must point at the app that sent it. Falling back to another
+  // domain would send an applicant to the wrong app, so fall back to this
+  // request's own address instead.
+  const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim() || new URL(request.url).origin;
   const bookingUrl = `${baseUrl}/axs/book?token=${token}`;
 
   const decision = (assessment.isEligible && approvedAmount > 0) ? "approved" : "rejected";

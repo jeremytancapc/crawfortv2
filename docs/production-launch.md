@@ -16,7 +16,7 @@ AirConnect, AXS.
 
 | # | Item | Owner |
 |---|---|---|
-| 0.1 | Confirm in the Vercel dashboard that this project's **Production branch is `main`** and add `get.crawfort.com` to it. (`apply.crawfort.com` is a different app and is not touched.) | Ops |
+| 0.1 | `get.crawfort.com` is already attached to this project (15 Oct: it resolves to Vercel and serves the old `main` build). Confirm in the Vercel dashboard that the **Production branch is `main`**. (`apply.crawfort.com` is a different app and is not touched.) | Ops |
 | 0.2 | Privacy. **Disclosure is covered:** the website terms already say applicants' documents are processed this way before they onboard (Caken, 15 Oct). Still unchecked: Anthropic's data-handling terms for the API (what they keep, and for how long) against our own retention. | Biz / DPO |
 | 0.3 | Income rules signed off by name: every rule in [income-rules-signoff.md](income-rules-signoff.md) has an owner and a date. | Biz |
 | 0.4 | Foreigners: proof of residence is deferred (Caken, 15 Oct: "we will wait first"). Launch with foreigners going through the same steps as everyone else. | Biz |
@@ -36,13 +36,13 @@ Each item has its own production value. **Nothing is shared with staging.**
 | 1.6 | **AirConnect and AXS** | Production `AIRCONNECT_API_KEY`, `AIRCONNECT_APPOINTMENTS_URL`, `AIRCONNECT_LEADS_URL`, `AXS_PARTNER_API_KEY`, `AXS_TOKEN_SECRET`. | Ops + Ext |
 | 1.7 | **App secrets and flags** | `APPLY_SESSION_SECRET` (32+ random characters, unique to production), `CRON_SECRET`, `NEXT_PUBLIC_APP_BASE_URL=https://get.crawfort.com`. **Off:** `MYINFO_EDITOR_ENABLED=false`, `MYINFO_CAPTURE_ENABLED=false`. **Empty:** `TEST_RECOGNISED_BANKS`. App store links if booking uses them. | Dev |
 | 1.8 | **Vercel** | Set every variable above in the Production scope only. Add `get.crawfort.com` to the project. In DNS add a record for `get` pointing where Vercel's domain screen says (`apply` uses a Vercel CNAME that is not proxied, so use the same kind of record). Wait for the certificate. | Ops |
-| 1.9 | **Cron jobs** | `vercel.json` has none. Schedule `/api/cron/income-documents` (deletes documents added but never submitted, after 7 days) and `/api/cron/ascend-shape` (reports when Ascend changes how it answers). Both need `CRON_SECRET`. Decide where the Ascend alert goes. | Dev |
+| 1.9 | **Cron jobs** - scheduled in `vercel.json` (done 15 Oct): `/api/cron/income-documents` daily 03:00 Singapore time (deletes documents added but never submitted, after 7 days) and `/api/cron/ascend-shape` daily 09:00 (reports when Ascend changes how it answers; returns an error on a new problem). Both refuse without `CRON_SECRET`, which Vercel sends automatically once it is set. Still to decide: where the Ascend alert goes. | Dev + Ops |
 
 ## 2. Code to settle before the release
 
 | # | Item |
 |---|---|
-| 2.1 | `app/api/axs/submit/route.ts` falls back to `https://apply.crawfort.com` when `NEXT_PUBLIC_APP_BASE_URL` is unset. A missing variable would send booking links to the old app. Make it fail loudly instead. |
+| 2.1 | Done 15 Oct: the booking link in `app/api/axs/submit/route.ts` no longer falls back to `apply.crawfort.com`; without `NEXT_PUBLIC_APP_BASE_URL` it uses the request's own address. |
 | 2.2 | `npm run check:env` passes (it did on 14 Oct), then `npx vitest run`, `npx next build`. |
 | 2.3 | Run the evals once on the exact code being released: `npx tsx --env-file=.env.local evals/run.mts --n 5` (about $4). It must say no case is worse than baseline. |
 | 2.4 | The 31 type errors in test files (`lib/credit-score.test.ts`, `lib/singpass-session-budget.test.ts`). They do not affect the build; fix when convenient. |
