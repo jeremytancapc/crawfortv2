@@ -5,6 +5,8 @@ import type { LoanFormData } from "./loan-form";
 export const SESSION_COOKIE = "apply_session";
 export const GATE_COOKIE = "apply_gate";
 export const REVIEW_GATE_COOKIE = "review_gate";
+/** Set when Ascend asks for income, cleared once income is accepted. */
+export const INCOME_GATE_COOKIE = "income_gate";
 /** Carries the in-progress lead UUID from activate/draft to submit. Invisible to funnel logic. */
 export const DRAFT_LEAD_COOKIE = "draft_lead";
 /** Gzipped CPF/NOA blob so review can hydrate on serverless after the session is slimmed. */
@@ -71,6 +73,20 @@ export function reviewGateCookieValue(maxAgeSec = COOKIE_BASE_OPTS.maxAge) {
     ...COOKIE_BASE_OPTS,
     maxAge: maxAgeSec,
   };
+}
+
+export function incomeGateCookieValue(maxAgeSec = COOKIE_BASE_OPTS.maxAge) {
+  return {
+    name: INCOME_GATE_COOKIE,
+    value: "1",
+    ...COOKIE_BASE_OPTS,
+    maxAge: maxAgeSec,
+  };
+}
+
+/** Cleared by expiry, so the income step stops being where the applicant belongs. */
+export function clearIncomeGateCookie() {
+  return { name: INCOME_GATE_COOKIE, value: "", ...COOKIE_BASE_OPTS, maxAge: 0 };
 }
 
 export function draftLeadCookieValue(leadId: string) {

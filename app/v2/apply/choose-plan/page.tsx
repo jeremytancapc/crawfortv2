@@ -15,11 +15,15 @@ export default async function V2ChoosePlanPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   await enforceApplyFunnel("/apply/choose-plan", sp);
 
-  const formData = await loadApprovalFormData();
-  const { withdrawToday } = approvalOfferDisplay(formData);
+  const { formData, limits } = await loadApprovalFormData();
+  const { withdrawToday } = approvalOfferDisplay(formData, limits);
   const initialWithdrawAmount = parseWithdrawAmountParam(sp.amount, withdrawToday);
 
   return (
-    <PlanScreen formData={formData} initialWithdrawAmount={initialWithdrawAmount ?? undefined} />
+    <PlanScreen
+      formData={formData}
+      limits={limits}
+      initialWithdrawAmount={initialWithdrawAmount ?? undefined}
+    />
   );
 }

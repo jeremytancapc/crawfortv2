@@ -1,0 +1,35 @@
+{
+  "id": "bank-month-without-income",
+  "description": "August shows only interest. For an employed applicant that month has nothing coming in; it must say so, not ask for the same statement again.",
+  "origin": [
+    "de9b5d3"
+  ],
+  "tags": [
+    "bank",
+    "ask",
+    "empty-month"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/bank-month-without-income.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true
+    },
+    "pipeline": {
+      "kind": "needs_review",
+      "reasonMatches": "money coming in"
+    }
+  }
+}

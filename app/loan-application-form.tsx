@@ -9,12 +9,17 @@ import {
   formatCurrency,
   MONTHLY_REPAYMENT_ESTIMATE_DISCLAIMER,
 } from "@/lib/loan-form";
-import { buildDemoReviewMyInfo } from "@/lib/demo-review-myinfo";
 import { createPortal } from "react-dom";
 import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
 import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
 import { SHOW_BANKRUPTCY_DECLARATION } from "@/lib/apply-progress";
+import {
+  DISCHARGE_BANDS,
+  EMPLOYMENT_TYPE_LABELS,
+  EMPLOYMENT_TYPE_OPTIONS,
+} from "@/lib/ascend/borrower-info";
+import type { EmploymentSuggestion } from "@/lib/ascend/borrower-derive";
 import {
   CheckCircle,
   ShieldCheck,
@@ -1913,6 +1918,81 @@ function DeclarationChoiceCard({
   );
 }
 
+/**
+ * Employment type, which Ascend requires and MyInfo cannot answer.
+ *
+ * Sits with the bankruptcy declaration on the mobile-number step: both are
+ * things only the applicant can state, and putting them on their own screen
+ * would add a step to a funnel people already leave.
+ *
+ * EMPLOYED is offered first because that is nearly everyone. When the
+ * applicant's CPF or NOA points one way it arrives pre-ticked (see
+ * suggestEmploymentType), and the note under the question says what it was
+ * read from - so the answer on the record is still one they saw and kept.
+ */
+export function Step7_EmploymentType({
+  formData,
+  updateField,
+  suggestion = null,
+}: {
+  formData: FormData;
+  updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
+  suggestion?: EmploymentSuggestion | null;
+}) {
+  const showSuggestion = suggestion !== null && formData.employmentStatus === suggestion.value;
+  return (
+    <div>
+      <p className="ios-type-label mb-2.5 text-[var(--text-secondary)]">
+        What is your employment status?
+      </p>
+      {showSuggestion ? (
+        <p className="-mt-1 mb-2.5 text-[13px] leading-snug text-[var(--text-tertiary)]">
+          {suggestion.reason === "cpf"
+            ? "Selected from your CPF records. Change it if it's not right."
+            : "Selected from your latest tax assessment. Change it if it's not right."}
+        </p>
+      ) : null}
+      <div
+        className="flex flex-col gap-2"
+        role="group"
+        aria-label="Employment status"
+      >
+        {EMPLOYMENT_TYPE_OPTIONS.map((option) => {
+          const selected = formData.employmentStatus === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => updateField("employmentStatus", option)}
+              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
+              style={{
+                borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
+                background: selected ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+              }}
+            >
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                style={{
+                  borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
+                  background: selected ? "var(--brand-blue-hex)" : "transparent",
+                }}
+              >
+                {selected && <CheckCircle size={14} weight="fill" color="white" />}
+              </span>
+              <span
+                className="ios-type-option"
+                style={{ color: selected ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
+              >
+                {EMPLOYMENT_TYPE_LABELS[option]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function Step7_BankruptcyDeclaration({
   formData,
   updateField,
@@ -1921,8 +2001,11 @@ export function Step7_BankruptcyDeclaration({
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
 }) {
   const isClear      = formData.bankruptcyDeclaration === "clear";
-  const isDischarged = formData.bankruptcyDeclaration === "discharged_lt5";
   const isActive     = formData.bankruptcyDeclaration === "active";
+  // Ascend recognises four discharge bands. One question covering the whole
+  // under-five-years span meant someone discharged four years ago had to be
+  // sent as though discharged last year.
+  const isDischarged = DISCHARGE_BANDS.some((b) => b.value === formData.bankruptcyDeclaration);
   const hasRecord    = isDischarged || isActive;
 
   // The record sub-options stay revealed once one of them is chosen, even if
@@ -1970,32 +2053,39 @@ export function Step7_BankruptcyDeclaration({
 
             {expanded && (
               <div className="animate-fade-up flex flex-col gap-2">
-                {/* Discharged bankrupt option - blue when selected */}
-                <button
-                  type="button"
-                  onClick={() => updateField("bankruptcyDeclaration", "discharged_lt5")}
-                  className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
-                  style={{
-                    borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-subtle)",
-                    background:  isDischarged ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
-                  }}
-                >
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
-                    style={{
-                      borderColor: isDischarged ? "var(--brand-blue-hex)" : "var(--border-medium)",
-                      background:  isDischarged ? "var(--brand-blue-hex)" : "transparent",
-                    }}
-                  >
-                    {isDischarged && <CheckCircle size={14} weight="fill" color="white" />}
-                  </span>
-                  <span
-                    className="ios-type-option"
-                    style={{ color: isDischarged ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
-                  >
-                    I have previously been discharged from bankruptcy (within the last 5 years).
-                  </span>
-                </button>
+                {/* One button per discharge band, so the answer is the
+                    applicant's rather than the nearest we could infer. */}
+                {DISCHARGE_BANDS.map((band) => {
+                  const selected = formData.bankruptcyDeclaration === band.value;
+                  return (
+                    <button
+                      key={band.value}
+                      type="button"
+                      onClick={() => updateField("bankruptcyDeclaration", band.value)}
+                      className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
+                      style={{
+                        borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
+                        background:  selected ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+                      }}
+                    >
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
+                        style={{
+                          borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
+                          background:  selected ? "var(--brand-blue-hex)" : "transparent",
+                        }}
+                      >
+                        {selected && <CheckCircle size={14} weight="fill" color="white" />}
+                      </span>
+                      <span
+                        className="ios-type-option"
+                        style={{ color: selected ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
+                      >
+                        {band.label}
+                      </span>
+                    </button>
+                  );
+                })}
 
                 {isDischarged && (
                   <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
@@ -2188,25 +2278,23 @@ export function Step8_Review({
     onModalOpenChange?.(false);
   }, [onModalOpenChange]);
 
-  const demoMyInfo = useMemo(() => buildDemoReviewMyInfo(), []);
-  const noaRecords = useMemo(() => {
-    const rows =
-      formData.noaHistory.length > 0 ? formData.noaHistory : demoMyInfo.noaHistory;
-    return [...rows].sort((a, b) =>
-      b.yearOfAssessment.localeCompare(a.yearOfAssessment),
-    );
-  }, [formData.noaHistory, demoMyInfo.noaHistory]);
-  const cpfRecords = useMemo(() => {
-    const rows =
-      formData.cpfContributions.length > 0
-        ? formData.cpfContributions
-        : demoMyInfo.cpfContributions;
-    return [...rows].sort((a, b) => {
-      const byPaid = b.paidOn.localeCompare(a.paidOn);
-      return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
-    });
-  }, [formData.cpfContributions, demoMyInfo.cpfContributions]);
-  const reviewDob = formData.dob || demoMyInfo.dob;
+  const noaRecords = useMemo(
+    () =>
+      [...formData.noaHistory].sort((a, b) =>
+        b.yearOfAssessment.localeCompare(a.yearOfAssessment),
+      ),
+    [formData.noaHistory],
+  );
+  const cpfRecords = useMemo(
+    () =>
+      [...formData.cpfContributions].sort((a, b) => {
+        const byPaid = b.paidOn.localeCompare(a.paidOn);
+        return byPaid !== 0 ? byPaid : b.month.localeCompare(a.month);
+      }),
+    [formData.cpfContributions],
+  );
+  const reviewDob = formData.dob;
+  const isSingpassReview = formData.authMethod === "singpass";
 
   const dobLabel = reviewDob
     ? new Date(`${reviewDob}T00:00:00`).toLocaleDateString("en-SG", {
@@ -2255,6 +2343,14 @@ export function Step8_Review({
           </Card>
         </section>
 
+        {isSingpassReview && noaRecords.length === 0 && (
+          <section>
+            <SectionLabel>Notice of Assessment</SectionLabel>
+            <p className="px-1 text-[15px] text-[var(--text-secondary)]">
+              No Notice of Assessment was retrieved from Singpass.
+            </p>
+          </section>
+        )}
         {noaRecords.length > 0 && (
           <section>
             <SectionLabel>Notice of Assessment</SectionLabel>
@@ -2314,6 +2410,14 @@ export function Step8_Review({
           </section>
         )}
 
+        {isSingpassReview && cpfRecords.length === 0 && (
+          <section>
+            <SectionLabel>CPF contribution history</SectionLabel>
+            <p className="px-1 text-[15px] text-[var(--text-secondary)]">
+              No CPF contributions were retrieved from Singpass.
+            </p>
+          </section>
+        )}
         {cpfRecords.length > 0 && (
           <section>
             <SectionLabel>CPF contribution history</SectionLabel>

@@ -13,6 +13,6 @@ export default async function V2ApprovalPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   await enforceApplyFunnel("/apply/approval", sp);
 
-  const formData = await loadApprovalFormData();
-  return <ApprovalScreen formData={formData} />;
+  const { formData, limits } = await loadApprovalFormData();
+  return <ApprovalScreen formData={formData} limits={limits} />;
 }

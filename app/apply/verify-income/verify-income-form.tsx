@@ -16,78 +16,96 @@ import {
 } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
+import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { CircleLoader } from "@/components/ui/circle-loader";
-import { formatCurrency } from "@/lib/loan-form";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
-import { useDeclaredIncome } from "@/lib/declared-income";
-import {
-  DeclarationPromptModal,
-  DeclareIncomeStep,
-} from "@/app/apply/verify-income/declare-income-step";
-import {
-  INCOME_DOC_STEPS,
-  type IncomeDocStep,
-  type IncomeSource,
-} from "@/app/apply/verify-income/income-doc-steps";
-import { NoIncomeDataModal } from "@/app/apply/verify-income/no-income-data-modal";
-import { useIncomeDeclaration } from "@/app/apply/verify-income/use-income-declaration";
+import { footerAction } from "@/lib/income-add-more";
+import { VerifyIncomeResults } from "@/app/apply/verify-income/verify-income-results";
 import {
   ACCEPTED_TYPES,
+  INCOME_SUBMIT_STATUSES,
   PROCESSING_STATUSES,
   useVerifyIncome,
+  type SubmitIncomeResult,
 } from "@/app/apply/verify-income/use-verify-income";
 
 export function VerifyIncomeForm({
   initialShowResults = false,
-  initialStep = 1,
-  initialSource = "documents",
 }: {
   initialShowResults?: boolean;
-  initialStep?: IncomeDocStep;
-  initialSource?: IncomeSource;
 }) {
   const {
-    docStep,
     files,
     addFiles,
+    addMoreFiles,
+    addNote,
+    unreadNew,
+    countedIds,
+    pendingIds,
+    removeUnusedFile,
     removeFile,
     isProcessing,
+    isReading,
     startProcessing: handleUpload,
     finishProcessing: handleProcessingDone,
-    finishDeclaration,
-    skipStep,
-    stepBack,
     showResults,
-    resultsSource,
     incomeMonths,
+    extractionAsk,
+    canSubmit,
+    uploadWindow,
     averageIncome,
-  } = useVerifyIncome(initialShowResults, initialStep, initialSource);
-  const declaration = useIncomeDeclaration(finishDeclaration);
-  const declaredIncome = useDeclaredIncome();
-  const isDeclaredResults =
-    showResults && resultsSource === "declared" && declaredIncome !== null;
+    missingMonths,
+    incomeAdvice,
+    improveTips,
+    isUploading,
+    hasReadyFiles,
+    submitIncome,
+  } = useVerifyIncome(initialShowResults);
   const router = useRouter();
   const applyHref = useApplyPath();
   const [isDragOver, setIsDragOver] = useState(false);
-  // Explains why documents are being asked for; only on arrival at the first
-  // upload step, so stepping back to it later does not raise it again.
-  const [hasSeenNoDataNotice, setHasSeenNoDataNotice] = useState(
-    initialStep !== 1 || initialShowResults,
+
+  const [submitTask, setSubmitTask] = useState<{ waitUntil: Promise<unknown>; key: number } | null>(
+    null,
   );
+  const submitResultRef = useRef<SubmitIncomeResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const isSubmitting = submitTask !== null;
+
+  // Uploading three documents and Ascend re-scoring took 18 seconds on
+  // staging (2026-09-23), with "Submitting…" on the button as the only sign
+  // anything was happening. The full loading screen holds until the next page
+  // takes over, the same as submitting the application does.
+  function handleSubmitIncome() {
+    if (submitTask) return;
+    setSubmitError(null);
+    submitResultRef.current = null;
+    const task = submitIncome().then((result) => {
+      submitResultRef.current = result;
+    });
+    setSubmitTask({ waitUntil: task, key: Date.now() });
+  }
+
+  function handleSubmitSettled() {
+    const result = submitResultRef.current;
+    if (result?.ok) {
+      window.location.assign(result.nextPath);
+      return;
+    }
+    // Stays on this page when submission fails. The applicant has just
+    // uploaded documents; moving them on silently would look like the upload
+    // was lost - and seeing nothing at all, they have no reason to try again.
+    setSubmitTask(null);
+    setSubmitError(
+      result && !result.ok
+        ? result.message
+        : "We could not submit your income just now. Please try again in a moment.",
+    );
+  }
+
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Staging: walk the "bad case" demo chain (pending → rejected → existing
-  // customer) before the Singpass handoff, so every outcome can be shown.
-  // The real handoff (`continueToReview`) now lives at the end of that
-  // chain - see app/apply/existing-customer/existing-customer-view.tsx.
-  const goToBadCaseChain = () => {
-    router.push(applyHref("/apply/pending-review"));
-  };
-
-  const stepConfig = INCOME_DOC_STEPS[docStep];
-
-  // Inside this page the arrows walk the upload steps before leaving it.
-  const applyNav = useApplyStepNav("verify", { onBack: stepBack });
+  const applyNav = useApplyStepNav("verify");
 
   const stepNav = {
     back: {
@@ -103,17 +121,21 @@ export function VerifyIncomeForm({
   return (
     <div className="theme-ios ios-apply-frame flex min-h-0 flex-1 flex-col">
       <MobileGateHeader progressStep={APPLY_PROGRESS.verifyOrIdentity} />
-      <MobileGateSheet fitMinScale={docStep === 3 && !showResults ? 0.85 : undefined}>
+      <MobileGateSheet>
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="ios-type-title">
-          {showResults ? "Confirm your income" : stepConfig.title}
+          {!showResults
+            ? "Income Documents Required"
+            : canSubmit
+              ? "Confirm your income"
+              : "We need a bit more"}
         </h1>
         <p className="ios-type-subtitle mt-1.5">
-          {showResults
-            ? isDeclaredResults
-              ? "This is the income you declared and signed for."
-              : "Check the last 3 months we read from your documents."
-            : stepConfig.subtitle}
+          {!showResults
+            ? "Payslips for full-time employees, or monthly statements for PHV drivers."
+            : canSubmit
+              ? "Check the income we read from your documents."
+              : "Here is what is still missing."}
         </p>
       </div>
 
@@ -124,116 +146,49 @@ export function VerifyIncomeForm({
             : "flex-1 px-5 pb-8"
         }
       >
-        {isDeclaredResults ? (
-          <div key="results-declared" className="ios-income-fit flex w-full animate-fade-up flex-col gap-4">
-            <section>
+        {showResults ? (
+          canSubmit ? (
+            <VerifyIncomeResults
+              months={incomeMonths}
+              missingMonths={missingMonths}
+              average={averageIncome}
+              advice={incomeAdvice}
+              tips={improveTips}
+              files={files}
+              countedIds={countedIds}
+              pendingIds={pendingIds}
+              addNote={addNote}
+              busy={isProcessing || isUploading || isSubmitting}
+              onAdd={addMoreFiles}
+              onRemove={removeUnusedFile}
+            />
+          ) : (
+            <div key="results" className="ios-income-fit w-full animate-fade-up">
               <Card>
-                <CardRow>
-                  <span className="min-w-0">
-                    <span className="ios-income-fit-label block leading-tight text-[var(--text-primary)]">
-                      Self-declared monthly income
-                    </span>
-                    <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
-                      Signed {formatSignedDate(declaredIncome.signedAt)}
-                    </span>
-                  </span>
-                  <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
-                    {formatCurrency(declaredIncome.monthlyIncome)}
-                  </span>
-                </CardRow>
-              </Card>
-            </section>
-            <p
-              role="note"
-              className="flex items-start gap-2 px-1 text-[14px] leading-snug text-[var(--text-secondary)]"
-            >
-              <Info
-                size={18}
-                weight="fill"
-                aria-hidden
-                className="mt-px shrink-0 text-[var(--accent)]"
-              />
-              Your loan amount will be limited because this income isn&rsquo;t backed by documents.
-            </p>
-          </div>
-        ) : showResults ? (
-          <div key="results" className="ios-income-fit w-full animate-fade-up">
-            <section>
-              <Card>
-                {incomeMonths.map((month) => (
-                  <CardRow key={month.label}>
-                    <span className="min-w-0">
-                      <span className="ios-income-fit-label block leading-tight text-[var(--text-primary)]">
-                        {month.month} {month.year}
-                      </span>
-                      <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
-                        {month.employer}
-                      </span>
-                    </span>
-                    <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
-                      {formatCurrency(month.amount)}
-                    </span>
-                  </CardRow>
-                ))}
-                <div className="ios-income-fit-avg flex items-center justify-between gap-3 bg-brand-teal/14 px-4">
-                  <span className="ios-income-fit-avg-label min-w-0 font-semibold leading-tight text-[var(--brand-blue-hex)]">
-                    Monthly Average Income (Gross)
-                  </span>
-                  <span className="ios-income-fit-avg-value shrink-0 font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
-                    {formatCurrency(averageIncome)}
-                  </span>
-                </div>
-              </Card>
-            </section>
-          </div>
-        ) : docStep === 3 ? (
-          <DeclareIncomeStep key="declare" declaration={declaration} />
-        ) : (
-        <div key={`upload-${docStep}`} className="animate-fade-up flex flex-col gap-6">
-          <section>
-            <Card className="ios-doc-card">
-              {docStep === 2 ? (
-                <div
-                  role="note"
-                  className="bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-2.5 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
-                >
-                  <p className="flex items-start gap-2">
-                    <Info
-                      size={18}
-                      weight="fill"
-                      aria-hidden
-                      className="mt-0.5 shrink-0 text-[var(--accent)]"
-                    />
-                    Documents must match your Singpass name.
+                <div className="px-4 py-5">
+                  <p className="ios-income-fit-label leading-snug text-[var(--text-primary)]">
+                    {extractionAsk}
                   </p>
-                  <ul className="mt-1.5 flex flex-col gap-1 pl-[26px]">
-                    <li className="flex gap-2">
-                      <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
-                      <span>
-                        Upload the full bank statement, including your name, the month, the bank
-                        logo and all pages.
-                      </span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
-                      <span>No partial statements or screenshots.</span>
-                    </li>
-                  </ul>
                 </div>
-              ) : (
-                <p
-                  role="note"
-                  className="ios-doc-note flex items-center gap-2 whitespace-nowrap bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 font-semibold leading-snug text-[var(--brand-blue-hex)]"
-                >
-                  <Info
-                    size={18}
-                    weight="fill"
-                    aria-hidden
-                    className="shrink-0 text-[var(--accent)]"
-                  />
-                  Documents must match your Singpass name.
-                </p>
-              )}
+              </Card>
+            </div>
+          )
+        ) : (
+        <div className="animate-fade-up flex flex-col gap-6">
+          <section>
+            <div className="mb-2 flex items-center gap-0.5 px-1">
+              <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
+                Upload up to 3 months of documents ({uploadWindow.short})
+              </p>
+            </div>
+            <Card>
+              <p
+                role="note"
+                className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
+              >
+                <Info size={18} weight="fill" aria-hidden className="shrink-0 text-[var(--accent)]" />
+                Documents must match your Singpass name.
+              </p>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -286,14 +241,6 @@ export function VerifyIncomeForm({
                 aria-label="Upload income documents"
               />
             </Card>
-            <button
-              type="button"
-              onClick={skipStep}
-              disabled={isProcessing}
-              className="ios-skip-link mx-auto mt-5 block whitespace-nowrap text-center font-semibold leading-snug text-red-700 underline underline-offset-2 transition-opacity hover:opacity-80 disabled:opacity-50"
-            >
-              {stepConfig.skipLabel}
-            </button>
           </section>
 
           {files.length > 0 && (
@@ -314,8 +261,18 @@ export function VerifyIncomeForm({
                         <span className="block truncate text-[17px] leading-tight text-[var(--text-primary)]">
                           {file.name}
                         </span>
-                        <span className="mt-0.5 block text-[13px] text-[var(--text-secondary)]">
-                          {file.size}
+                        <span
+                          className={`mt-0.5 block text-[13px] ${
+                            file.status === "failed"
+                              ? "text-[var(--danger,#a92d3a)]"
+                              : "text-[var(--text-secondary)]"
+                          }`}
+                        >
+                          {file.status === "uploading"
+                            ? "Uploading\u2026"
+                            : file.status === "failed"
+                              ? `${file.error ?? "Could not save this file."} Remove it and try again.`
+                              : file.size}
                         </span>
                       </span>
                     </span>
@@ -336,57 +293,87 @@ export function VerifyIncomeForm({
         )}
       </div>
 
-      <StickyFooter
-        nav={stepNav}
-        above={
-          showResults || docStep !== 3 ? null : (
-            <button
-              type="button"
-              onClick={skipStep}
-              disabled={isProcessing}
-              className="ios-skip-link mx-auto block whitespace-nowrap text-center font-semibold leading-snug text-red-700 underline underline-offset-2 transition-opacity hover:opacity-80 disabled:opacity-50"
-            >
-              {stepConfig.skipLabel}
-            </button>
-          )
-        }
-      >
+      {submitError ? (
+        <p
+          role="alert"
+          className="ios-apply-gutter pb-1 text-[13px] font-semibold leading-snug text-[var(--danger,#a92d3a)]"
+        >
+          {submitError}
+        </p>
+      ) : null}
+      <StickyFooter nav={stepNav}>
         {showResults ? (
-          <PrimaryButton onClick={goToBadCaseChain}>I confirm my income is correct</PrimaryButton>
-        ) : docStep === 3 ? (
-          <PrimaryButton onClick={declaration.requestContinue}>Continue</PrimaryButton>
+          // Submits for real rather than walking main's staging demo chain
+          // (pending-review → rejected → existing-customer). Those screens are
+          // adopted as designed and reached from the outcomes that mean them;
+          // routing the CTA there unconditionally would replace the call that
+          // sends m1/m2/m3 to /openApi/income/credit.
+          canSubmit ? (
+            // Adding a document only saves it. With new documents the button
+            // reads them again and shows the updated figures; submitting is
+            // for when nothing has changed since the figures were read.
+            (() => {
+              const action = footerAction({ saving: isUploading, unreadNew });
+              return action === "update" ? (
+                <PrimaryButton onClick={handleUpload} disabled={isProcessing || isSubmitting}>
+                  Update my income
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton
+                  onClick={handleSubmitIncome}
+                  disabled={action === "saving" || isSubmitting || isProcessing}
+                >
+                  {action === "saving"
+                    ? "Saving your files\u2026"
+                    : isSubmitting
+                      ? "Submitting\u2026"
+                      : "Submit income"}
+                </PrimaryButton>
+              );
+            })()
+          ) : (
+            <PrimaryButton onClick={() => window.history.back()}>
+              Add documents
+            </PrimaryButton>
+          )
         ) : (
-          <PrimaryButton onClick={handleUpload} disabled={files.length === 0}>
-            Upload documents
+          <PrimaryButton onClick={handleUpload} disabled={isUploading || !hasReadyFiles}>
+            {isUploading ? "Saving your files\u2026" : "Upload documents"}
           </PrimaryButton>
         )}
       </StickyFooter>
 
-      {!hasSeenNoDataNotice ? (
-        <NoIncomeDataModal onContinue={() => setHasSeenNoDataNotice(true)} />
-      ) : null}
       {isProcessing && (
-        <ProcessingDocumentsModal onComplete={handleProcessingDone} />
+        <ProcessingDocumentsModal reading={isReading} onComplete={handleProcessingDone} />
       )}
-      {declaration.isPromptOpen && !showResults && docStep === 3 ? (
-        <DeclarationPromptModal declaration={declaration} />
+
+      {submitTask ? (
+        <LoanLoadingScreen
+          key={submitTask.key}
+          waitUntil={submitTask.waitUntil}
+          messages={INCOME_SUBMIT_STATUSES}
+          onComplete={handleSubmitSettled}
+        />
       ) : null}
       </MobileGateSheet>
     </div>
   );
 }
 
-function formatSignedDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-SG", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
-}
+/** Long enough that a fast read doesn't flash the sheet up and away. */
+const PROCESSING_MIN_MS = 1500;
 
-function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
+function ProcessingDocumentsModal({
+  reading,
+  onComplete,
+}: {
+  /** The documents are still being read - the sheet stays until they're done. */
+  reading: boolean;
+  onComplete: () => void;
+}) {
   const [statusIndex, setStatusIndex] = useState(0);
   const [domReady, setDomReady] = useState(false);
+  const [minShown, setMinShown] = useState(false);
   const finishedRef = useRef(false);
 
   useEffect(() => {
@@ -408,16 +395,19 @@ function ProcessingDocumentsModal({ onComplete }: { onComplete: () => void }) {
         Math.min(index + 1, PROCESSING_STATUSES.length - 1),
       );
     }, 1000);
-    const close = window.setTimeout(() => {
-      if (finishedRef.current) return;
-      finishedRef.current = true;
-      onComplete();
-    }, 3000);
+    const minimum = window.setTimeout(() => setMinShown(true), PROCESSING_MIN_MS);
     return () => {
       window.clearInterval(cycle);
-      window.clearTimeout(close);
+      window.clearTimeout(minimum);
     };
-  }, [onComplete]);
+  }, []);
+
+  // Closes when the reading is actually done, not on a timer.
+  useEffect(() => {
+    if (!minShown || reading || finishedRef.current) return;
+    finishedRef.current = true;
+    onComplete();
+  }, [minShown, reading, onComplete]);
 
   if (!domReady) return null;
 

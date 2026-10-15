@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   approvalOfferCookieValue,
+  clearApprovalOfferCookie,
   storedApprovalOfferFromForm,
 } from "@/lib/approval-offer";
 import { applyClearApplyCookiesOnResponse } from "@/lib/clear-apply-cookies-response";
@@ -23,23 +24,51 @@ import {
   POST_SUBMIT_COOKIE_MAX_AGE_SEC,
   sessionCookieValue,
   reviewGateCookieValue,
+  incomeGateCookieValue,
+  clearIncomeGateCookie,
+  REVIEW_GATE_COOKIE,
   SESSION_COOKIE,
 } from "@/lib/apply-session";
 import { initialLoanFormData } from "@/lib/loan-form";
 import type { LoanFormData } from "@/lib/loan-form";
 import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
-import { createAdminClient } from "@/lib/db/client";
+import {
+  getApplicant,
+  insertApplicant,
+  markAirConnectLeadPushed,
+  setAscendIdentity,
+  setApplicantStatus,
+  updateApplicantDetails,
+  type NewApplicant,
+} from "@/lib/db/applicants";
+import { upsertCreditAssessment } from "@/lib/db/credit-assessments";
+import type { AuthMethod, BankruptcyDeclaration, IdType } from "@/lib/db/types";
 import { buildPostSubmitSession } from "@/lib/apply-session-slim";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
 import { clearMyinfoCookie, decodeMyinfoCookie, MYINFO_COOKIE } from "@/lib/apply-myinfo-cookie";
 import {
   loadMyinfoProcessedPayload,
-  processedPayloadFromAuthStore,
-  upsertMyinfoProfileForLead,
+  processedPayloadFromRetrieval,
+  upsertMyinfoProfileForApplicant,
 } from "@/lib/myinfo-profile";
-import { checkLeadEligibility } from "@/lib/eligibility-check";
+import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
+import { decideSubmission } from "@/lib/apply-outcome";
+import { requestAscendDecision } from "@/lib/ascend/decision";
+import {
+  DuplicateAscendOrderError,
+  getAscendOrder,
+  orderAsCreditResult,
+  recordAscendOrder,
+} from "@/lib/db/ascend-orders";
+import { isDatabaseConfigured } from "@/lib/db/sql";
+import { resolveAscendIdentity } from "@/lib/ascend/identity";
+import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-info";
+import { deriveBorrowerFields } from "@/lib/ascend/borrower-derive";
+import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
+import { myinfoPersonData } from "@/lib/myinfo";
+import { toSgE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -76,66 +105,60 @@ export async function POST(request: NextRequest) {
   // Read the draft lead ID from the dedicated draft_lead cookie.
   // This cookie is set by /api/apply/activate (Singpass) or /api/apply/draft
   // (manual). It is separate from the session so the funnel is never affected.
-  const draftLeadId = (request.cookies.get(DRAFT_LEAD_COOKIE)?.value ?? "").trim();
+  // The draft_lead cookie first, then the session. Activate writes the id to
+  // both, because the cookie is set on a cross-site redirect from the Lambda
+  // and does not always survive it. Without either, submit cannot tell an
+  // applicant who just finished MyInfo from a new one and inserts a second
+  // row, stranding the first as `in_progress`.
+  const draftLeadId = (
+    request.cookies.get(DRAFT_LEAD_COOKIE)?.value ||
+    (sessionData as { leadId?: string }).leadId ||
+    ""
+  ).trim();
 
-  const admin = createAdminClient();
-
-  // ── 1. Save lead (UPDATE if partial lead exists, INSERT otherwise) ─────────
-  const leadFields = {
-    loan_amount: formData.amount,
-    loan_tenure: formData.tenure,
-    loan_purpose: formData.loanPurpose || null,
+  // ── 1. Save the applicant (UPDATE if a partial row exists, INSERT otherwise) ─
+  const applicantFields: NewApplicant = {
+    desiredAmount: formData.amount,
+    loanTenure: formData.tenure,
+    loanPurpose: formData.loanPurpose || null,
     urgency: formData.urgency || null,
-    auth_method: (formData.authMethod || null) as "manual" | "singpass" | null,
-    id_type: (formData.idType || null) as "singaporean" | "pr" | "foreigner" | null,
-    full_name: formData.fullName || null,
+    authMethod: (formData.authMethod as AuthMethod | undefined) || null,
+    idType: (formData.idType as IdType | undefined) || null,
+    fullName: formData.fullName || null,
     nric: formData.nric || null,
     email: formData.email || null,
     mobile: formData.mobile || null,
-    secondary_mobile: formData.secondaryMobile || null,
-    postal_code: formData.postalCode || null,
+    secondaryMobile: formData.secondaryMobile || null,
+    postalCode: formData.postalCode || null,
     address: formData.address || null,
-    mailing_address: formData.mailingAddress || null,
-    employment_status: formData.employmentStatus || null,
-    monthly_income: formData.monthlyIncome || null,
-    work_industry: formData.workIndustry || null,
+    mailingAddress: formData.mailingAddress || null,
+    employmentStatus: formData.employmentStatus || null,
+    monthlyIncome: formData.monthlyIncome || null,
+    workIndustry: formData.workIndustry || null,
     position: formData.position || null,
-    employment_duration: formData.employmentDuration || null,
-    office_phone: formData.officePhone || null,
-    marital_status: formData.maritalStatus || null,
-    bankruptcy_declaration: (formData.bankruptcyDeclaration || null) as "clear" | "discharged_lt5" | "active" | null,
-    moneylender_no_loans: formData.moneylenderNoLoans,
-    moneylender_loan_amount: formData.moneylenderLoanAmount || null,
-    moneylender_payment_history: formData.moneylenderPaymentHistory || null,
-    status: "new" as const,
+    employmentDuration: formData.employmentDuration || null,
+    officePhone: formData.officePhone || null,
+    maritalStatus: formData.maritalStatus || null,
+    bankruptcyDeclaration: (formData.bankruptcyDeclaration as BankruptcyDeclaration | undefined) || null,
+    moneylenderNoLoans: formData.moneylenderNoLoans,
+    moneylenderLoanAmount: formData.moneylenderLoanAmount || null,
+    moneylenderPaymentHistory: formData.moneylenderPaymentHistory || null,
+    status: "new",
   };
 
   let leadId: string;
 
-  if (looksLikeLeadUuid(draftLeadId)) {
-    // Partial lead created at activate (Singpass) or draft (manual) - update it.
-    const { error: updateError } = await admin
-      .from("leads")
-      .update(leadFields)
-      .eq("id", draftLeadId);
-
-    if (updateError) {
-      console.error("Failed to update lead:", updateError);
-      return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
+  try {
+    if (looksLikeLeadUuid(draftLeadId)) {
+      // Partial row created at activate (Singpass) or draft (manual).
+      await updateApplicantDetails(draftLeadId, applicantFields);
+      leadId = draftLeadId;
+    } else {
+      leadId = await insertApplicant(applicantFields);
     }
-    leadId = draftLeadId;
-  } else {
-    const { data: lead, error: leadError } = await admin
-      .from("leads")
-      .insert(leadFields)
-      .select("id")
-      .single();
-
-    if (leadError || !lead) {
-      console.error("Failed to save lead:", leadError);
-      return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
-    }
-    leadId = lead.id as string;
+  } catch (err) {
+    console.error("Failed to save applicant:", err);
+    return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
   }
 
   // ── 2. MyInfo profile (Singpass) - upsert; hydrate CPF/NOA from DB if cookie was slim ─
@@ -154,11 +177,11 @@ export async function POST(request: NextRequest) {
             fromMyinfoCookie.noaHistory.length > 0),
       );
       const fromDb = looksLikeLeadUuid(leadId)
-        ? await loadMyinfoProcessedPayload(admin, leadId)
+        ? await loadMyinfoProcessedPayload(leadId)
         : null;
       const fromStore =
         !fromDb && formData.singpassRawKey
-          ? processedPayloadFromAuthStore(formData.singpassRawKey)
+          ? await processedPayloadFromRetrieval(formData.singpassRawKey)
           : null;
       const fallback = (cookieHasBulk ? fromMyinfoCookie : null) ?? fromDb ?? fromStore;
       if (fallback) {
@@ -169,7 +192,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await upsertMyinfoProfileForLead(admin, leadId, {
+      await upsertMyinfoProfileForApplicant(leadId, {
         ...formData,
         cpfContributions,
         noaHistory,
@@ -186,27 +209,9 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 3. Run credit scoring ─────────────────────────────────────────────────
-  // First, check eligibility against Crawford/AirConnect systems
-  const e164Phone = formData.mobile
-    ? (formData.mobile.startsWith("+") ? formData.mobile : `+65${formData.mobile}`)
-    : "";
-  const eligibility = await checkLeadEligibility({
-    phoneNumber: e164Phone,
-    idNumber: formData.authMethod === "singpass" && formData.nric ? formData.nric : undefined,
-    leadId,
-  });
+  const e164Phone = toSgE164(formData.mobile);
 
-  // Save eligibility result to the lead
-  await admin
-    .from("leads")
-    .update({
-      eligibility_status: eligibility.status,
-      eligibility_notes: eligibility.notes,
-      eligibility_reloan_reason: eligibility.reloanReason,
-    })
-    .eq("id", leadId);
-
-  // Always run credit scoring (for analytics even if rejected)
+  // Always run credit scoring.
   const assessment = assessCredit({
     dob: formData.dob,
     idType: formData.idType,
@@ -220,120 +225,240 @@ export async function POST(request: NextRequest) {
     authMethod: formData.authMethod,
   });
 
-  // Singpass identity is simulated locally (no real Singpass/AirConnect backing it),
-  // so it must never present as "pending"/rejected - always a success outcome.
-  const isSimulatedSingpass = formData.authMethod === "singpass";
-
-  // If NOT ELIGIBLE (blacklisted) or RELOAN per AirConnect, reject but save real income data
-  if (!isSimulatedSingpass && (eligibility.status === "NOT_ELIGIBLE" || eligibility.status === "RELOAN")) {
-    const rejectionReason = eligibility.status === "RELOAN"
-      ? "airconnect_reloan"
-      : "airconnect_not_eligible";
-
-    // Save credit assessment with real income data for analytics
-    await admin.from("credit_assessments").insert({
-      lead_id: leadId,
-      income_source: assessment.incomeSource,
-      verified_monthly_income: assessment.verifiedMonthlyIncome,
-      approved_loan_amount: 0,
-      max_eligible_loan: assessment.maxEligibleLoan,
-      is_eligible: false,
-      credit_rejection_reason: rejectionReason,
-      age_at_application: assessment.age || null,
-      existing_loans: assessment.existingLoans,
-      moneylender_loan_amount: assessment.existingLoans > 0 ? assessment.existingLoans : null,
-      moneylender_payment_history: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
-      explanation: `AirConnect: ${eligibility.notes}${eligibility.reloanReason ? ` (reloan: ${eligibility.reloanReason})` : ""} | Income: ${assessment.explanation}`,
-      raw_assessment: { eligibility: eligibility.raw, assessment } as unknown as Record<string, unknown>,
-    });
-
-    // Update lead status
-    await admin.from("leads").update({ status: "rejected" }).eq("id", leadId);
-
-    const rejectRes = NextResponse.json({
-      leadId,
-      approvedLoanAmount: 0,
-      verifiedMonthlyIncome: assessment.verifiedMonthlyIncome,
-      incomeSource: assessment.incomeSource,
-      isEligible: false,
-      maxEligibleLoan: 0,
-      explanation: `We're unable to process your application at this time.`,
-      eligibilityStatus: eligibility.status,
-      eligibilityNotes: eligibility.notes,
-      reloanReason: eligibility.reloanReason,
-    });
-    rejectRes.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
-    applyClearApplyCookiesOnResponse(rejectRes);
-    return rejectRes;
-  }
-
-  // Simulated Singpass applicants always clear underwriting - clamp the
-  // real engine's output to a guaranteed approval instead of letting an
-  // edge case (e.g. a bad moneylender declaration) send them to /apply/pending.
-  const guaranteedApprovedAmount = Math.max(500, Math.floor(formData.amount / 100) * 100);
-  const finalAssessment =
-    isSimulatedSingpass && !(assessment.isEligible && assessment.approvedLoanAmount > 0)
-      ? {
-          ...assessment,
-          isEligible: true,
-          approvedLoanAmount: guaranteedApprovedAmount,
-          maxEligibleLoan: Math.max(assessment.maxEligibleLoan, guaranteedApprovedAmount),
-          explanation: `${assessment.explanation} (Singpass-verified applicant - approved.)`,
-        }
-      : assessment;
+  // The guaranteed-approval clamp that used to sit here is gone. It forced
+  // every Singpass applicant to approval with a $500 floor, so the Singpass
+  // path could not decline anyone - which was right while the identity was
+  // simulated, and is wrong now that Ascend decides. It would override a
+  // genuine REJECT (ADR-0001).
+  //
+  // The engine still runs. Its Underwritten Cap is still persisted below, for
+  // comparison against what Ascend returns. It no longer decides anything.
+  const finalAssessment = assessment;
 
   const creditRejectionReason = deriveCreditRejectionReason(finalAssessment);
 
-  // ── 4. Save credit assessment ─────────────────────────────────────────────
-  await admin.from("credit_assessments").insert({
-    lead_id: leadId,
-    income_source: finalAssessment.incomeSource,
-    verified_monthly_income: finalAssessment.verifiedMonthlyIncome,
-    approved_loan_amount: finalAssessment.approvedLoanAmount,
-    max_eligible_loan: finalAssessment.maxEligibleLoan,
-    is_eligible: finalAssessment.isEligible,
-    credit_rejection_reason: creditRejectionReason,
-    age_at_application: finalAssessment.age || null,
-    existing_loans: finalAssessment.existingLoans,
-    moneylender_loan_amount: finalAssessment.existingLoans > 0 ? finalAssessment.existingLoans : null,
-    moneylender_payment_history: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
+  // ── 4. Save what the engine made of it ───────────────────────────────────
+  //
+  // Persisted, not acted on. Since ADR-0001 these numbers exist so they can
+  // be compared against Ascend's - the only way anyone would notice Ascend
+  // mis-reading, say, a platform worker's CPF.
+  await upsertCreditAssessment(leadId, {
+    incomeSource: finalAssessment.incomeSource,
+    verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+    underwrittenCap: finalAssessment.maxEligibleLoan,
+    engineOfferAmount: finalAssessment.approvedLoanAmount,
+    isEligible: finalAssessment.isEligible,
+    creditRejectionReason,
+    ageAtApplication: finalAssessment.age || null,
+    existingLoans: finalAssessment.existingLoans,
+    moneylenderLoanAmount: finalAssessment.existingLoans > 0 ? finalAssessment.existingLoans : null,
+    moneylenderPaymentHistory: formData.moneylenderNoLoans ? null : (formData.moneylenderPaymentHistory || null),
     explanation: finalAssessment.explanation,
-    raw_assessment: assessment as unknown as Record<string, unknown>,
+    rawAssessment: assessment as unknown as Record<string, unknown>,
   });
 
-  // ── 5. Update session with approval result (slim cookie - no CPF/NOA blobs) ─
-  const updatedSession = buildPostSubmitSession(sessionData, leadId, {
-    approvedLoanAmount: finalAssessment.approvedLoanAmount,
-    verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
-    incomeSource: finalAssessment.incomeSource,
+  // ── 4a. Identify the applicant to Ascend, before spending a credit pull ───
+  //
+  // ADR-0001: a Reloan Customer goes to the mobile app and never reaches
+  // /openApi/apply/credit. This also yields the userId that the credit call
+  // and every later document upload are addressed by.
+  const identity = await resolveAscendIdentity({
+    idNumber: formData.authMethod === "singpass" ? formData.nric : null,
+    phone: e164Phone,
+    applicantId: leadId,
   });
-  const encoded = encodeSession(updatedSession);
+
+  if (identity) {
+    await setAscendIdentity(leadId, {
+      ascendUserId: identity.userId,
+      newCustomer: identity.kind === "continue",
+      // What Ascend said, not what we chose to send.
+      hasMyinfo: identity.kind === "continue" && identity.hasMyinfo,
+    }).catch((err) => console.error("[apply/submit] could not record identity", err));
+  }
+
+  // A returning borrower stops here. Continuing would create an Order for
+  // someone who is being redirected anyway, which is the exact cost ADR-0001
+  // exists to avoid.
+  if (identity?.kind === "reloan") {
+    await setApplicantStatus(leadId, "new").catch(() => {});
+    const reloanRes = NextResponse.json({
+      leadId,
+      destination: identity.destination,
+      outcome: "reloan",
+      isEligible: false,
+      explanation: "Existing customer - continue in the Crawfort app.",
+    });
+    reloanRes.cookies.set({
+      ...sessionCookieValue(sessionData),
+      value: encodeSession(
+        buildPostSubmitSession(sessionData, leadId, {
+          // A reloan is redirected, not offered: there is no assessed amount
+          // to carry, and zero here means "none", not "declined for zero".
+          approvedLoanAmount: 0,
+          verifiedMonthlyIncome: 0,
+          incomeSource: "",
+        }),
+      ),
+    });
+    return reloanRes;
+  }
+
+  // ── 4b. Ask Ascend, which owns the borrowable amount (ADR-0001) ───────────
+  //
+  // Not a quote: this creates an Order, once per applicant, guarded by the
+  // UNIQUE constraint on ascend_orders.applicant_id. When Ascend is not
+  // configured the call is skipped and `null` flows into the decision, which
+  // resolves to a failure state rather than an offer - there is no amount to
+  // show without it.
+  // The five answers MyInfo cannot give: two the applicant stated, three
+  // worked out from what MyInfo did provide. Built before the call so a bad
+  // value fails here, with the applicant still on the page, rather than
+  // arriving at Ascend as a rejected credit application.
+  let borrowerMyInfo: Record<string, unknown> | undefined;
+  try {
+    // The same retrieval the credit call sends, read for the two fields the
+    // derivation needs: cpfemployers for how long they have been there, and
+    // occupation for their position.
+    const stored = formData.singpassRawKey
+      ? await getMyinfoRetrieval(formData.singpassRawKey)
+      : null;
+    const person = stored ? myinfoPersonData(stored) : {};
+    borrowerMyInfo = buildBorrowerMyInfo(
+      {
+        ...deriveBorrowerFields(person),
+        employmentType: formData.employmentStatus as never,
+        bankruptcyDeclaration: ascendBankruptcy(
+          formData.bankruptcyDeclaration as never,
+        ),
+      },
+      { passExpiryDate: (person.passexpirydate as { value?: string })?.value },
+    );
+  } catch (err) {
+    // Not fatal: Ascend documents borrowerMyInfo as required but currently
+    // accepts a call without it. Sending nothing beats sending a value it
+    // will reject, and the log says which applicant to look at.
+    console.error("[apply/submit] could not build borrowerMyInfo", err);
+  }
+
+  // One order per application, decided once (ADR-0001). A resubmit - a
+  // double tap, a retry, a second tab - used to call apply/credit again and
+  // only find the first order when saving the second failed as a duplicate:
+  // the credit pull already bought, and the applicant sent wherever the
+  // *new* answer pointed rather than the one on record.
+  const existingOrder = isDatabaseConfigured() ? await getAscendOrder(leadId) : null;
+
+  const ascendResult = existingOrder
+    ? orderAsCreditResult(existingOrder)
+    : await requestAscendDecision({
+        desiredAmount: formData.amount,
+        singpassRawKey: formData.singpassRawKey,
+        // Once Ascend holds this person's MyInfo, the userId alone is accepted and
+        // the whole payload no longer has to travel.
+        ascendUserId:
+          identity?.kind === "continue" && identity.creditCallUses === "userId"
+            ? identity.userId
+            : null,
+        applicantId: leadId,
+        borrowerMyInfo,
+      });
+
+  const decision = decideSubmission({ ascend: ascendResult });
+
+  // AirConnect needs to know about this lead once Ascend opens an order for
+  // them - don't wait for a booking that may never happen.
+  const pushLeadToAirConnectOnce = async () => {
+    const pushed = await pushNewLeadToAirConnect({
+      applicantId: leadId,
+      customerName: formData.fullName,
+      phoneNumber: e164Phone,
+      idNumber: formData.authMethod === "singpass" && formData.nric ? formData.nric : undefined,
+    });
+    if (pushed) await markAirConnectLeadPushed(leadId);
+  };
+
+  // A resubmit must never send AirConnect the same lead twice - only push if
+  // the earlier attempt never did.
+  const pushIfNeverPushed = async () => {
+    const existingApplicant = await getApplicant(leadId);
+    if (existingApplicant && !existingApplicant.airconnect_lead_pushed_at) {
+      await pushLeadToAirConnectOnce();
+    }
+  };
+
+  if (existingOrder) {
+    // Nothing new to record - this is the order already on file.
+    await pushIfNeverPushed();
+  } else if (ascendResult && isDatabaseConfigured()) {
+    try {
+      // Ascend's own user id, needed before any document can be uploaded
+      // against this applicant - files hang off its user, not our id.
+      await setAscendIdentity(leadId, {
+        ascendUserId: ascendResult.userId,
+        newCustomer: ascendResult.newCustomer,
+        hasMyinfo: true,
+      });
+      await recordAscendOrder(leadId, ascendResult);
+      await pushLeadToAirConnectOnce();
+    } catch (err) {
+      if (err instanceof DuplicateAscendOrderError) {
+        // Two submits raced past the guard above. The first one's order
+        // stands; this answer is already spent.
+        console.warn("[apply/submit] order already exists, keeping the first", leadId);
+        await pushIfNeverPushed();
+      } else {
+        console.error("[apply/submit] could not record Ascend order", err);
+      }
+    }
+  }
 
   const res = NextResponse.json({
     leadId,
-    approvedLoanAmount: finalAssessment.approvedLoanAmount,
+    // Ascend's amount, not the engine's: a rejected applicant's response
+    // used to carry the engine's offer here, which nothing routes on today
+    // but anything reading it later would take as an approval.
+    approvedLoanAmount: decision.kind === "approved" ? decision.aCardLimit : 0,
     verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
     incomeSource: finalAssessment.incomeSource,
-    isEligible: finalAssessment.isEligible,
-    maxEligibleLoan: finalAssessment.maxEligibleLoan,
-    explanation: finalAssessment.explanation,
-    eligibilityStatus: isSimulatedSingpass ? "ELIGIBLE" : eligibility.status,
-    eligibilityNotes: eligibility.notes,
-    reloanReason: isSimulatedSingpass ? null : eligibility.reloanReason,
+    // Ascend decides where the applicant goes. `isEligible` stays for the
+    // analytics event the client still fires, but it no longer picks a page.
+    destination: decision.destination,
+    outcome: decision.kind,
+    isEligible: decision.kind === "approved",
+    aCardLimit: decision.kind === "approved" ? decision.aCardLimit : null,
+    maximumLoanQuantum: decision.kind === "approved" ? decision.maximumLoanQuantum : null,
   });
 
   // Clear draft_lead + MyInfo blobs - no longer needed after full submit.
   res.cookies.set({ name: DRAFT_LEAD_COOKIE, value: "", maxAge: 0, path: "/" });
   res.cookies.set(clearMyinfoCookie());
 
-  if (finalAssessment.isEligible && finalAssessment.approvedLoanAmount > 0) {
-    const sc = sessionCookieValue(updatedSession);
-    res.cookies.set({ ...sc, value: encoded });
+  // ── 5. Cookies follow Ascend's decision, never the local engine's ─────────
+  //
+  // These used to be granted when the local engine said eligible - and it
+  // says eligible far more often than Ascend does. Every applicant on
+  // staging on 2026-09-23 was locally eligible, including the two Ascend
+  // rejected, so both left with an approval_offer cookie saying they had
+  // been offered $1,000 and $5,000. The funnel guard reads that cookie as
+  // "approved", and on the next refresh sent a rejected applicant to choose
+  // a loan plan (ADR-0001: the engine no longer decides anything).
+  const sessionAfter = (approvedLoanAmount: number) => {
+    const next = buildPostSubmitSession(sessionData, leadId, {
+      approvedLoanAmount,
+      verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
+      incomeSource: finalAssessment.incomeSource,
+    });
+    return { ...sessionCookieValue(next), value: encodeSession(next) };
+  };
+
+  if (decision.kind === "approved") {
+    res.cookies.set(sessionAfter(decision.aCardLimit));
+    res.cookies.set(clearIncomeGateCookie());
     res.cookies.set(reviewGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
     res.cookies.set(
       approvalOfferCookieValue(
         storedApprovalOfferFromForm(leadId, formData, {
-          approvedLoanAmount: finalAssessment.approvedLoanAmount,
+          approvedLoanAmount: decision.aCardLimit,
           verifiedMonthlyIncome: finalAssessment.verifiedMonthlyIncome,
           incomeSource: finalAssessment.incomeSource,
         }),
@@ -342,6 +467,23 @@ export async function POST(request: NextRequest) {
     return res;
   }
 
+  if (decision.kind === "needs_income") {
+    // The session has to survive this one: the upload and income steps both
+    // find the application through the session's leadId. It used to survive
+    // only when the local engine also said eligible - a locally ineligible
+    // applicant Ascend asked for payslips had their session cleared below,
+    // and every upload after that answered "No application in progress".
+    res.cookies.set(sessionAfter(0));
+    res.cookies.set(incomeGateCookieValue(POST_SUBMIT_COOKIE_MAX_AGE_SEC));
+    res.cookies.set(clearApprovalOfferCookie());
+    res.cookies.set({ name: REVIEW_GATE_COOKIE, value: "", maxAge: 0, path: "/" });
+    return res;
+  }
+
+  // Declined, unresolved, or Ascend unreachable. Nothing left to continue,
+  // and nothing may say otherwise. The destination carries ?leadId=, so the
+  // page they land on does not need the session to find them.
+  res.cookies.set(clearIncomeGateCookie());
   applyClearApplyCookiesOnResponse(res);
   return res;
 }

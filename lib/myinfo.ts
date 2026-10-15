@@ -39,7 +39,53 @@ const MARITAL_CODES: Record<string, string> = {
   "5": "Divorced",
 };
 
-export function buildMyInfoPatch(myinfo: Record<string, unknown>): Partial<LoanFormData> {
+/**
+ * Finds the person data, whichever shape the payload arrived in.
+ *
+ * FAPI 2.0 (Myinfo v5) nests it under `person_info`, alongside `sub`, `iss`
+ * and `aud`. The legacy v3/v4 response put the same fields at the top level.
+ * Both reach this codebase - the two Lambdas speak to different Singpass APIs
+ * - and the difference is otherwise silent: reading `uinfin` off a v5 payload
+ * gives undefined, every field maps to empty, and the applicant continues
+ * with a blank application while nothing raises an error.
+ */
+export function myinfoPersonData(payload: Record<string, unknown>): Record<string, unknown> {
+  const nested = payload.person_info;
+  if (nested && typeof nested === "object") return nested as Record<string, unknown>;
+  return payload;
+}
+
+/**
+ * The MyInfo object as Ascend expects it.
+ *
+ * Ascend was built against the legacy MyInfo shape, which is flat: the
+ * person's fields at the top level, alongside the JWT claims iss, sub, aud
+ * and iat. FAPI 2.0 nests the person under `person_info` and keeps the claims
+ * outside it, so unwrapping alone gets the person to the right level but
+ * leaves the claims behind.
+ *
+ * `sub` is the one that matters. Ascend resolves its user from `sub` rather
+ * than `uinfin` - established by submitting a payload with a changed NRIC but
+ * the original sub, which came back as the original user. Sending the person
+ * without it hands Ascend everything except the field it identifies people by.
+ *
+ * The person wins any collision. A claim sharing a name with a MyInfo field
+ * would be a curiosity; losing the MyInfo field would be a real loss.
+ */
+export function myinfoAscendPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const person = myinfoPersonData(payload);
+  if (person === payload) return payload;
+
+  const claims: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (key !== "person_info") claims[key] = value;
+  }
+
+  return { ...claims, ...person };
+}
+
+export function buildMyInfoPatch(payload: Record<string, unknown>): Partial<LoanFormData> {
+  const myinfo = myinfoPersonData(payload);
   const patch: Partial<LoanFormData> = {};
 
   if (myinfo.name)   patch.fullName = str(myinfo.name);
@@ -121,7 +167,7 @@ export function buildMyInfoPatch(myinfo: Record<string, unknown>): Partial<LoanF
           const amount = Number(row.amount?.value   ?? 0);
           // Employer name is truncated to 50 chars in the session cookie to stay
           // within the 4 KB browser limit. The full name is preserved in the raw
-          // MyInfo payload saved to the DB via the auth-callback-store.
+          // MyInfo payload saved to myinfo_retrievals.
           const employer = String(row.employer?.value ?? "");
           return month && amount > 0
             ? {

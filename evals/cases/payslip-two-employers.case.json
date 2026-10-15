@@ -1,0 +1,53 @@
+{
+  "id": "payslip-two-employers",
+  "description": "Two employers' payslips for September. Both count, added together; they are not refused as the same month twice.",
+  "origin": [
+    "d428225"
+  ],
+  "tags": [
+    "payslip",
+    "two-jobs"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "NURUL AINA BINTE YUSOF"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-job-a.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-job-b.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "NURUL AINA BINTE YUSOF",
+          "issuer": "SAMPLE RETAIL"
+        },
+        {
+          "index": 2,
+          "kind": "payslip",
+          "holderName": "NURUL AINA BINTE YUSOF",
+          "issuer": "SAMPLE CAFE"
+        }
+      ],
+      "periods": []
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 4300,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

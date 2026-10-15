@@ -1,0 +1,103 @@
+{
+  "recordedAt": "2026-10-13",
+  "model": "claude-opus-5-5",
+  "promptVersion": "1b864de39dcf",
+  "runsPerCase": 5,
+  "cases": {
+    "bank-cut-mid-month": {
+      "passed": 5,
+      "runs": 5
+    },
+    "bank-employed-mixed-credits": {
+      "passed": 5,
+      "runs": 5
+    },
+    "bank-freelancer-future-dated": {
+      "passed": 5,
+      "runs": 5
+    },
+    "bank-month-without-income": {
+      "passed": 5,
+      "runs": 5
+    },
+    "bank-unemployed-cpf-life": {
+      "passed": 5,
+      "runs": 5
+    },
+    "bank-unrecognised-bank": {
+      "passed": 5,
+      "runs": 5
+    },
+    "bank-wrong-name": {
+      "passed": 5,
+      "runs": 5
+    },
+    "earnings-statement-alone": {
+      "passed": 5,
+      "runs": 5
+    },
+    "earnings-statement-multi-cashout-panel": {
+      "passed": 5,
+      "runs": 5
+    },
+    "letter-not-income": {
+      "passed": 5,
+      "runs": 5
+    },
+    "letter-platform-payout": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-bank-confirms-panel": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-bank-no-match": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-classic-ytd-netpay": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-empno-3months": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-half-month-only": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-masked-id-name": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-same-period-twice": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-scanned-skewed": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-semimonthly": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-too-old": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-two-employers": {
+      "passed": 5,
+      "runs": 5
+    },
+    "payslip-weekly": {
+      "passed": 5,
+      "runs": 5
+    }
+  },
+  "costUsd": 4.24,
+  "latencyP50s": 4.5,
+  "latencyP95s": 9.3
+}

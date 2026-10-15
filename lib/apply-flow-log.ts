@@ -1,12 +1,12 @@
 /**
- * Persist apply / Singpass funnel diagnostics to in-memory `apply_flow_events`.
+ * Persist apply / Singpass funnel diagnostics to `apply_flow_events`.
  * Used to debug customer complaints without storing full PII.
  */
 
 import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 
-import { createAdminClient } from "@/lib/db/client";
+import { insertApplyFlowEvent } from "@/lib/db/events";
 import type { LoanFormData } from "@/lib/loan-form";
 
 export const APPLY_TRACE_ID_KEY = "applyTraceId";
@@ -15,6 +15,14 @@ export type ApplyFlowEventName =
   | "singpass_gate_saved"
   | "manual_gate_saved"
   | "auth_callback_received"
+  // A payload arrived and none of it could be read - almost always a shape
+  // change. Distinct from "no payload": this one looks fine everywhere else.
+  | "myinfo_unusable"
+  // Payload diverted to the inspector instead of the funnel, which only
+  // happens while MYINFO_CAPTURE_ENABLED is on.
+  | "auth_callback_captured"
+  // Forwarded to the Lambda that owns the Singpass round trip.
+  | "singpass_redirected"
   | "singpass_simulated"
   | "activate_merged";
 
@@ -121,7 +129,6 @@ function runtimeMeta() {
  */
 export async function logApplyFlowEvent(input: ApplyFlowLogInput): Promise<void> {
   try {
-    const db = createAdminClient();
     const mergedBytes = input.cookieMergedBytes ?? null;
     const suffixes = lookupSuffixes(input.sessionAfter, input.sessionBefore);
 
@@ -152,11 +159,19 @@ export async function logApplyFlowEvent(input: ApplyFlowLogInput): Promise<void>
       },
     };
 
-    const { error } = await db.from("apply_flow_events").insert(row);
-    if (error) {
-      console.error("[apply-flow-log] insert failed", error.message, { event: input.event });
-    }
+    await insertApplyFlowEvent(row);
   } catch (err) {
     console.error("[apply-flow-log] unexpected error", err);
   }
+}
+
+/**
+ * The short reference an applicant can quote to support.
+ *
+ * Same shape as the CFH5 reference the pending and booked pages already
+ * show, so there is one format staff recognise rather than two. Derived from
+ * the trace id, so the row is findable from the reference alone.
+ */
+export function supportRef(id: string): string {
+  return `CFH5-${id.replace(/-/g, "").slice(-8).toUpperCase()}`;
 }

@@ -1,0 +1,42 @@
+{
+  "id": "letter-platform-payout",
+  "description": "A platform's letter stating one month's pay-out. It is treated as an earnings statement - a payslip, unconfirmed - and the other two months count as nothing.",
+  "origin": [
+    "Homage letter question, 8 Oct 2026"
+  ],
+  "tags": [
+    "earnings-statement",
+    "letter"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "SELF EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/letter-platform-payout.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "earnings_statement",
+          "holderName": "LIM WEI JIE",
+          "issuer": "SAMPLE CARE PLATFORM"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 2548.62,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

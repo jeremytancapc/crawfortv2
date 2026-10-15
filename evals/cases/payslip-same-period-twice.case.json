@@ -1,0 +1,36 @@
+{
+  "id": "payslip-same-period-twice",
+  "description": "An original and a 'revised' payslip for the same September from the same employer. They cover the same days, so one must be chosen - it must not add them or pick one silently.",
+  "origin": [
+    "lib/income-periods.ts - overlaps"
+  ],
+  "tags": [
+    "payslip",
+    "overlap",
+    "ask"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-sep-original.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-sep-revised.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true
+    },
+    "pipeline": {
+      "kind": "needs_review",
+      "reasonMatches": "same days"
+    }
+  }
+}

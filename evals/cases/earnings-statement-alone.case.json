@@ -1,0 +1,50 @@
+{
+  "id": "earnings-statement-alone",
+  "description": "A platform earnings statement: earnings are taken after the platform's commission and the vehicle rental (3,400), and it is sent as a payslip, unconfirmed.",
+  "origin": [
+    "f1137d9"
+  ],
+  "tags": [
+    "earnings-statement",
+    "platform"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "RAJESH KUMAR S/O MURUGAN"
+  },
+  "employmentType": "FULL TIME PLATFORM WORKER",
+  "documents": [
+    {
+      "file": "fixtures/earnings-zoomride-sep.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "periods": [
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-30",
+          "gross": 3400,
+          "net": 3400
+        }
+      ],
+      "documents": [
+        {
+          "index": 1,
+          "kind": "earnings_statement",
+          "holderName": "RAJESH KUMAR S/O MURUGAN",
+          "issuer": "ZOOMRIDE"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 3400,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

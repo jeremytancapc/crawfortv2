@@ -1,0 +1,98 @@
+{
+  "id": "bank-freelancer-future-dated",
+  "description": "Self-employed, three uneven months, the October statement printed to 31 Oct but read on 12 Oct. Neither the uneven months nor the unfinished month may cause a refusal; October is left out.",
+  "origin": [
+    "7d89ee6"
+  ],
+  "tags": [
+    "regression",
+    "bank",
+    "uneven-months",
+    "future-dated"
+  ],
+  "today": "2026-10-12",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "SITI DON ASHIM"
+  },
+  "employmentType": "SELF EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/bank-freelancer-aug-oct.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "bank_statement",
+          "holderName": "SITI DON ASHIM",
+          "issuer": "HARBOURFRONT"
+        }
+      ],
+      "statements": [
+        {
+          "start": "2026-08-01",
+          "end": "2026-08-31"
+        },
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-30"
+        },
+        {
+          "start": "2026-10-01",
+          "end": "2026-10-31"
+        }
+      ],
+      "credits": [
+        {
+          "date": "2026-08-14",
+          "amount": 1800,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-08-18",
+          "amount": 850,
+          "category": "government_payout"
+        },
+        {
+          "date": "2026-08-20",
+          "amount": 432.73,
+          "category": "cpf_life"
+        },
+        {
+          "date": "2026-09-08",
+          "amount": 2447.68,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-09-20",
+          "amount": 432.73,
+          "category": "cpf_life"
+        },
+        {
+          "date": "2026-09-30",
+          "amount": 0.62,
+          "category": "interest"
+        },
+        {
+          "date": "2026-10-03",
+          "amount": 432.73,
+          "category": "cpf_life"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "BANK_STATEMENT_OTHER_INCOME",
+      "m1": 2880.41,
+      "m2": 3082.73,
+      "m3": 0
+    }
+  }
+}

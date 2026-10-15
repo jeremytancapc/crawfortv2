@@ -30,6 +30,13 @@ The Singpass-provided personal and income data for an applicant, retrieved with
 that applicant's consent.
 _Avoid_: Singpass data (Singpass is the identity provider; MyInfo is the data)
 
+**MyInfo Retrieval**:
+One consented fetch of an applicant's MyInfo data, held verbatim exactly as
+Singpass returned it. It exists only long enough to bridge the Singpass
+callback to the applicant record that follows, and then expires. What we keep
+beyond that is the mapped MyInfo, never the retrieval.
+_Avoid_: Raw payload, callback payload, MyInfo blob
+
 **SCCB**:
 The consumer credit bureau record for an applicant.
 
@@ -82,3 +89,9 @@ whether an applicant is eligible to apply at all.
 **Eligibility**:
 Whether an applicant may proceed through the funnel at all — age, residency,
 income floor, and blacklisting. Decided before any credit decision.
+
+**Order**:
+The record Ascend creates when an applicant's credit application is made. It
+is not a quote: it is created once per applicant and is what signing and
+disbursement later consume. An applicant has at most one.
+_Avoid_: Application, credit check, quote

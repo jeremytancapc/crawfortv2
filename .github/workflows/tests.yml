@@ -1,0 +1,24 @@
+name: Tests
+
+# Runs the unit tests, which include the eval-file guard (evals/identifiers.test.ts).
+# No secrets are needed and the model is never called: the evals that call it are
+# run by hand (evals/README.md). Database tests skip themselves without TEST_DATABASE_URL.
+on:
+  pull_request:
+  push:
+    branches: [stg]
+
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # The identifier guard reads the text of every PDF fixture with pdftotext.
+      # Without it those checks would skip, so it is installed here.
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - run: npm ci
+      - run: npx vitest run

@@ -1,0 +1,32 @@
+{
+  "id": "payslip-too-old",
+  "description": "Only a June payslip, read on 9 October. The latest must be for September or August; it says so.",
+  "origin": [
+    "docs/income-verification.md - which months count"
+  ],
+  "tags": [
+    "payslip",
+    "window",
+    "ask"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-june-only.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true
+    },
+    "pipeline": {
+      "kind": "needs_review",
+      "reasonMatches": "latest payslip"
+    }
+  }
+}

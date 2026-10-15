@@ -1,0 +1,55 @@
+{
+  "id": "payslip-bank-confirms-panel",
+  "description": "The bank statement shows the payslip's take-home pay arriving, so the payslip is confirmed (panel).",
+  "origin": [
+    "de9b5d3"
+  ],
+  "tags": [
+    "payslip",
+    "bank",
+    "panel"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "TEO AH HOCK"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-bank-confirms-panel-slip.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-bank-confirms-panel-bank.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "TEO AH HOCK"
+        },
+        {
+          "index": 2,
+          "kind": "bank_statement",
+          "holderName": "TEO AH HOCK",
+          "issuer": "HARBOURFRONT"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "PANEL_PAYSLIP",
+      "m1": 5200,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

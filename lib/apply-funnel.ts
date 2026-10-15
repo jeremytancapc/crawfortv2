@@ -19,6 +19,7 @@ import {
   decodeSession,
   GATE_COOKIE,
   REVIEW_GATE_COOKIE,
+  INCOME_GATE_COOKIE,
   SESSION_COOKIE,
 } from "@/lib/apply-session-codec";
 import type { LoanFormData } from "@/lib/loan-form";
@@ -29,6 +30,8 @@ import { postSubmitUrl } from "@/lib/post-submit-nav";
 export type ApplyFunnelStage =
   | "landing"
   | "review"
+  /** Ascend answered PENDING and asked for income. */
+  | "verify"
   | "approval"
   | "book"
   | "booked"
@@ -40,6 +43,13 @@ export type ApplyFunnelContext = {
   hasApplyGate: boolean;
   /** Set after eligible submit - allows /apply/book (not the review page). */
   hasReviewGate: boolean;
+  /**
+   * Set when Ascend answered PENDING and asked for income, cleared once income
+   * is accepted. Without it the income step is not a place anyone belongs, and
+   * the lock would send a pending applicant to the pending page - away from
+   * the one screen that can move them forward.
+   */
+  hasIncomeGate: boolean;
   approvalOffer: StoredApprovalOffer | null;
   hasBookingConfirm: boolean;
   queryLeadId: string | null;
@@ -92,6 +102,16 @@ export function canEnterReview(session: Partial<LoanFormData> | null): boolean {
   return true;
 }
 
+/**
+ * Whether this applicant has actually been through submit.
+ *
+ * Each of these is written only on the far side of it, so none of them can be
+ * true for someone who has merely finished MyInfo.
+ */
+function hasSubmitted(ctx: ApplyFunnelContext): boolean {
+  return ctx.hasReviewGate || ctx.hasIncomeGate || Boolean(ctx.approvalOffer) || ctx.hasBookingConfirm;
+}
+
 export function resolveApplyFunnelStage(ctx: ApplyFunnelContext): ApplyFunnelStage {
   const path = normalizePath(ctx.pathname);
 
@@ -110,14 +130,21 @@ export function resolveApplyFunnelStage(ctx: ApplyFunnelContext): ApplyFunnelSta
       if (path.startsWith("/apply/book") && hasPostSubmitAccess(ctx)) return "book";
       return "approval";
     }
-    return "pending";
+    // Asked for income and not yet approved: the income step is the only
+    // thing that can move this applicant on, so it outranks pending.
+    if (ctx.hasIncomeGate) return "verify";
+    // A leadId alone no longer means "submitted". `activate` writes one into
+    // the session the moment MyInfo returns, so reading it as post-submit sent
+    // applicants from MyInfo straight to the pending page - never reaching
+    // review, never being assessed at all.
+    if (hasSubmitted(ctx)) return "pending";
   }
 
   if (ctx.hasApplyGate && canEnterReview(ctx.session)) {
     return "review";
   }
 
-  return "landing";
+  return leadId ? "pending" : "landing";
 }
 
 export function canonicalPathForStage(
@@ -135,6 +162,8 @@ export function canonicalPathForStage(
       return postSubmitUrl("/apply/pending", leadId);
     case "review":
       return "/apply/review";
+    case "verify":
+      return "/apply/verify-income";
     default:
       return "/";
   }
@@ -156,6 +185,8 @@ function pathMatchesStage(path: string, stage: ApplyFunnelStage): boolean {
       return path.startsWith("/apply/pending");
     case "review":
       return path.startsWith("/apply/review");
+    case "verify":
+      return path.startsWith("/apply/verify-income");
     case "landing":
       return LANDING_PATHS.has(path) || path === "/apply";
     default:
@@ -167,6 +198,13 @@ function pathMatchesStage(path: string, stage: ApplyFunnelStage): boolean {
  * If the user is on the wrong page for their cookie state, return the URL they should be on.
  * Otherwise return null (allow request).
  */
+/** Static staging screens, outside the funnel and holding none of its state. */
+const BAD_CASE_PATHS = [
+  "/apply/pending-review",
+  "/apply/rejected",
+  "/apply/existing-customer",
+] as const;
+
 export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
   const variant = variantFromPathname(ctx.pathname);
   const path = normalizePath(ctx.pathname);
@@ -195,6 +233,23 @@ export function getFunnelRedirectUrl(ctx: ApplyFunnelContext): string | null {
     return null;
   }
 
+  // The staging bad-case screens - pending-review, rejected,
+  // existing-customer. They render nothing about the applicant, they are dead
+  // ends by design, and they were written while this lock was a no-op. There
+  // is nothing here to protect, and redirecting them away would make the
+  // designs unreachable.
+  if (BAD_CASE_PATHS.some((p) => path.startsWith(p))) {
+    return null;
+  }
+
+  // The income step is never taken away from someone who has an application.
+  // The gate cookie says they belong there; its absence must not mean they do
+  // not, or a cleared cookie, an older session or a second device would push
+  // them off the only screen that can move them forward.
+  if (path.startsWith("/apply/verify-income") && pickLeadId(ctx)) {
+    return null;
+  }
+
   // Accept: T&C page shares the approval/book session stage.
   if ((stage === "approval" || stage === "book") && path.startsWith("/apply/accept")) {
     return null;
@@ -220,6 +275,7 @@ export function readFunnelContextFromRequest(request: NextRequest): ApplyFunnelC
     session,
     hasApplyGate: request.cookies.get(GATE_COOKIE)?.value === "1",
     hasReviewGate: request.cookies.get(REVIEW_GATE_COOKIE)?.value === "1",
+    hasIncomeGate: request.cookies.get(INCOME_GATE_COOKIE)?.value === "1",
     approvalOffer: (() => {
       const raw = request.cookies.get(APPROVAL_OFFER_COOKIE)?.value;
       return raw ? decodeApprovalOffer(raw) : null;
@@ -232,6 +288,7 @@ export function readFunnelContextFromRequest(request: NextRequest): ApplyFunnelC
 }
 
 export type ServerFunnelInput = {
+  hasIncomeGate?: boolean;
   pathname: string;
   session: Partial<LoanFormData> | null;
   hasApplyGate: boolean;
@@ -248,6 +305,7 @@ export function readFunnelContextFromServer(input: ServerFunnelInput): ApplyFunn
     session: input.session,
     hasApplyGate: input.hasApplyGate,
     hasReviewGate: input.hasReviewGate,
+    hasIncomeGate: input.hasIncomeGate ?? false,
     approvalOffer: input.approvalOffer ?? null,
     hasBookingConfirm: input.hasBookingConfirm,
     queryLeadId: q && looksLikeLeadUuid(q) ? q : null,

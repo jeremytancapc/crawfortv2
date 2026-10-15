@@ -1,0 +1,84 @@
+{
+  "id": "payslip-empno-3months",
+  "description": "Three payslips whose header reads NAME (employee number). The reader sometimes returned the number inside the name. The original files from 9 Oct, unchanged.",
+  "origin": [
+    "add533c",
+    "sha256 9a5e09cd / aa015599 / 23966b90"
+  ],
+  "tags": [
+    "regression",
+    "payslip",
+    "name-with-number"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "CHRISTOPHER DAVID LEE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-empno-sep.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-empno-aug.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-empno-jul.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "CHRISTOPHER DAVID LEE",
+          "issuer": "CONSULTING"
+        },
+        {
+          "index": 2,
+          "kind": "payslip",
+          "holderName": "CHRISTOPHER DAVID LEE",
+          "issuer": "CONSULTING"
+        },
+        {
+          "index": 3,
+          "kind": "payslip",
+          "holderName": "CHRISTOPHER DAVID LEE",
+          "issuer": "CONSULTING"
+        }
+      ],
+      "periods": [
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-30",
+          "gross": 29000,
+          "net": 29000
+        },
+        {
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "gross": 29000,
+          "net": 30200
+        },
+        {
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "gross": 29000,
+          "net": 29000
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 29000,
+      "m2": 29000,
+      "m3": 29000
+    }
+  }
+}

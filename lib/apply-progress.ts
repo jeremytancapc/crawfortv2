@@ -11,17 +11,22 @@ export const SHOW_INCOME_STEP = false;
  * Flip SHOW_BANKRUPTCY_DECLARATION to put the Nothing / Something to declare
  * cards back on the complete-application step.
  */
-export const SHOW_BANKRUPTCY_DECLARATION = false;
+export const SHOW_BANKRUPTCY_DECLARATION = true;
 
 const OFFSET = SHOW_INCOME_STEP ? 1 : 0;
 
+// Verifying income sits after submit: Ascend only asks for payslips once it
+// has the application. It used to sit before review - where the funnel ran
+// it for everyone - so an applicant sent to upload payslips after submitting
+// watched progress drop from 45% to 27%. An applicant Ascend doesn't ask
+// simply skips this step.
 export const APPLY_PROGRESS = {
   amount: 1,
   income: 2,
   singpass: 2 + OFFSET,
-  verifyOrIdentity: 3 + OFFSET,
-  reviewInfo: 4 + OFFSET,
-  completeApp: 5 + OFFSET,
+  reviewInfo: 3 + OFFSET,
+  completeApp: 4 + OFFSET,
+  verifyOrIdentity: 5 + OFFSET,
   confirmAmount: 6 + OFFSET,
   choosePlan: 7 + OFFSET,
   confirmTerms: 8 + OFFSET,

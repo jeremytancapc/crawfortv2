@@ -9,7 +9,11 @@ import { Pill, Row, Rows, Stepper, Tabs, Tag, TextField } from "@/app/v2/ui/cont
 import { V2Body, V2Footer, V2Header, V2Screen, V2Title, cx } from "@/app/v2/ui/screen";
 import { useClientValue } from "@/app/v2/ui/use-client-value";
 import { trackEvent } from "@/lib/analytics";
-import { approvalOfferDisplay, formatOfferAmount } from "@/lib/approval-display";
+import {
+  approvalOfferDisplay,
+  formatOfferAmount,
+  type AscendLimits,
+} from "@/lib/approval-display";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
 import type { LoanFormData } from "@/lib/loan-form";
 import {
@@ -54,14 +58,17 @@ function shortTitle(plan: OfferPlan): string {
  */
 export function PlanScreen({
   formData,
+  limits,
   initialWithdrawAmount,
 }: {
   formData: LoanFormData;
+  /** Ascend's limits, so the offer shown is the one Ascend approved. */
+  limits?: AscendLimits;
   initialWithdrawAmount?: number;
 }) {
   const router = useRouter();
   const applyHref = useApplyPath();
-  const { withdrawToday } = approvalOfferDisplay(formData);
+  const { withdrawToday } = approvalOfferDisplay(formData, limits);
   const max = Math.max(initialWithdrawAmount ?? withdrawToday, MIN_WITHDRAW_AMOUNT);
 
   const stored = useClientValue(

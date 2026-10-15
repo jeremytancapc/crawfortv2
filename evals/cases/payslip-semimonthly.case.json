@@ -1,0 +1,98 @@
+{
+  "id": "payslip-semimonthly",
+  "description": "September as two half-month payslips (1-15 and 16-30), plus monthly August and July. The halves add up to September.",
+  "origin": [
+    "docs/income-verification.md - which months count"
+  ],
+  "tags": [
+    "payslip",
+    "half-month"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-semimonthly-sep2.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-semimonthly-sep1.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-semimonthly-aug.pdf",
+      "mediaType": "application/pdf"
+    },
+    {
+      "file": "fixtures/payslip-semimonthly-jul.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE",
+          "issuer": "SAMPLE LOGISTICS"
+        },
+        {
+          "index": 2,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE",
+          "issuer": "SAMPLE LOGISTICS"
+        },
+        {
+          "index": 3,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE",
+          "issuer": "SAMPLE LOGISTICS"
+        },
+        {
+          "index": 4,
+          "kind": "payslip",
+          "holderName": "LIM WEI JIE",
+          "issuer": "SAMPLE LOGISTICS"
+        }
+      ],
+      "periods": [
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-15",
+          "gross": 2400,
+          "net": 2400
+        },
+        {
+          "start": "2026-09-16",
+          "end": "2026-09-30",
+          "gross": 2600,
+          "net": 2600
+        },
+        {
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "gross": 4900,
+          "net": 4900
+        },
+        {
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "gross": 4800,
+          "net": 4800
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 5000,
+      "m2": 4900,
+      "m3": 4800
+    }
+  }
+}

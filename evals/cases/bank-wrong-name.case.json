@@ -1,0 +1,41 @@
+{
+  "id": "bank-wrong-name",
+  "description": "A statement in another person's name. Must be refused, naming the file.",
+  "origin": [
+    "d6d5c0a"
+  ],
+  "tags": [
+    "bank",
+    "negative",
+    "name-check"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/bank-someone-else.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "documents": [
+        {
+          "index": 1,
+          "kind": "bank_statement",
+          "holderName": "GOH MEI LING"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "needs_review",
+      "reasonMatches": "belong to someone else"
+    }
+  }
+}

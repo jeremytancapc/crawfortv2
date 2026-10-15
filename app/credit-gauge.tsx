@@ -116,15 +116,35 @@ function clampInt(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
-/** First labeled stick - a round thousand so the left end reads as a floor,
- *  not as zero. */
-const FLOOR_MARK = 1000;
+/**
+ * Amount to arc fraction. The arc always runs from $0 to the limit, so a
+ * position means what it looks like - half the arc is half the limit.
+ *
+ * Starting the arc at the withdrawal minimum instead was tried and read
+ * worse: for a small approval ($1,000 of $2,000 with a $500 floor) it pushed
+ * the approved amount off-centre and squeezed the choosable range to a
+ * sliver. The minimum is shown as a marker on this scale instead, and the
+ * knob simply stops there (see `applyPointer` and the minimum hint).
+ */
+function amountToT(amount: number, limit: number): number {
+  if (limit <= 0) return 0;
+  return Math.min(1, Math.max(0, amount / limit));
+}
+
+/** Arc fraction to amount - the inverse of `amountToT`. */
+function tToAmount(t: number, limit: number): number {
+  return t * limit;
+}
+
 /** Landmark ticks stay inside the same ring as the minors - a hair longer,
  *  never an antenna past the rim. */
 const MAJOR_INNER_R = INNER_R - 3;
 const MAJOR_OUTER_R = OUTER_R + 3;
-/** Two marks closer than this share one stick; keep the later / more important. */
-const MARK_MERGE_T = 0.07;
+/** Two marks closer than this share one stick; the more important one wins.
+ *  At least the 0.08 inside which markLabelStyle pins a label to the arc's
+ *  end - a $500 minimum on a $7,000 limit sits at 0.071, and at 0.07 its
+ *  label and "$0" were both drawn at the left end, on top of each other. */
+const MARK_MERGE_T = 0.09;
 
 function formatMarkAmount(amount: number): string {
   return `$${Math.round(amount).toLocaleString("en-SG")}`;
@@ -138,47 +158,53 @@ interface ScaleMark {
   isLocked: boolean;
   /** The approved cap itself: the stick the intro parks under at the crest. */
   isApproved: boolean;
+  /** The withdrawal minimum - where the knob stops on the way down. */
+  isMin: boolean;
 }
 
-function buildScaleMarks(maxToday: number, limit: number): ScaleMark[] {
+/**
+ * The labelled sticks on the arc. When two land closer than MARK_MERGE_T -
+ * a $1,000 approval puts its halfway mark exactly on a $500 minimum - the
+ * more important one keeps the stick: approved amount, then limit, then the
+ * minimum, then the $0 start, then the in-between marks.
+ */
+function buildScaleMarks(maxToday: number, limit: number, min: number): ScaleMark[] {
   const safeLimit = limit > 0 ? limit : 1;
-  const candidates = [
-    { amount: FLOOR_MARK, isApproved: false, pinT: 0 },
-    { amount: maxToday / 2, isApproved: false },
-    { amount: maxToday, isApproved: true },
-    { amount: safeLimit * 0.75, isApproved: false },
-    { amount: safeLimit, isApproved: false },
+  // Only a floor the knob can actually be held at is worth marking. When the
+  // approval is at or under the minimum the dial is locked, and a "Min" stick
+  // on top of the approved one would explain nothing.
+  const showMin = min > 0 && min < maxToday;
+
+  const candidates: Array<Omit<ScaleMark, "t" | "isLocked"> & { t: number; priority: number }> = [
+    { amount: 0, label: "$0", isApproved: false, isMin: false, t: 0, priority: 1 },
+    ...(showMin
+      ? [{ amount: min, label: `Min ${formatMarkAmount(min)}`, isApproved: false, isMin: true, t: amountToT(min, safeLimit), priority: 3 }]
+      : []),
+    { amount: maxToday / 2, label: formatMarkAmount(maxToday / 2), isApproved: false, isMin: false, t: amountToT(maxToday / 2, safeLimit), priority: 0 },
+    { amount: maxToday, label: formatMarkAmount(maxToday), isApproved: true, isMin: false, t: amountToT(maxToday, safeLimit), priority: 5 },
+    { amount: safeLimit * 0.75, label: formatMarkAmount(safeLimit * 0.75), isApproved: false, isMin: false, t: 0.75, priority: 0 },
+    { amount: safeLimit, label: formatMarkAmount(safeLimit), isApproved: false, isMin: false, t: 1, priority: 4 },
   ];
 
-  const marks: ScaleMark[] = [];
-  for (const candidate of candidates) {
-    if (candidate.amount <= 0 || candidate.amount > safeLimit + 0.5) continue;
-    const t =
-      candidate.pinT != null
-        ? candidate.pinT
-        : Math.min(1, Math.max(0, candidate.amount / safeLimit));
-    const last = marks[marks.length - 1];
-    if (last && t - last.t < MARK_MERGE_T) {
-      if (candidate.isApproved || candidate.amount === safeLimit) {
-        marks[marks.length - 1] = {
-          t,
-          amount: candidate.amount,
-          label: formatMarkAmount(candidate.amount),
-          isLocked: candidate.amount > maxToday + 0.5,
-          isApproved: candidate.isApproved,
-        };
-      }
+  const kept: typeof candidates = [];
+  for (const candidate of [...candidates].sort((a, b) => a.t - b.t)) {
+    if (candidate.amount > safeLimit + 0.5) continue;
+    const last = kept[kept.length - 1];
+    if (last && candidate.t - last.t < MARK_MERGE_T) {
+      if (candidate.priority > last.priority) kept[kept.length - 1] = candidate;
       continue;
     }
-    marks.push({
-      t,
-      amount: candidate.amount,
-      label: formatMarkAmount(candidate.amount),
-      isLocked: candidate.amount > maxToday + 0.5,
-      isApproved: candidate.isApproved,
-    });
+    kept.push(candidate);
   }
-  return marks;
+
+  return kept.map((c) => ({
+    t: c.t,
+    amount: c.amount,
+    label: c.label,
+    isApproved: c.isApproved,
+    isMin: c.isMin,
+    isLocked: c.amount > maxToday + 0.5,
+  }));
 }
 
 function markLabelStyle(t: number): { x: number; y: number; anchor: "start" | "middle" | "end" } {
@@ -296,14 +322,18 @@ export function CreditGauge({
 
   const safeLimit = limit > 0 ? limit : 1;
   const availableCount = clampInt(
-    Math.round((maxToday / safeLimit) * TICK_COUNT),
+    Math.round(amountToT(maxToday, safeLimit) * TICK_COUNT),
     0,
     TICK_COUNT,
   );
   const liveLitCount =
     value <= 0
       ? 0
-      : clampInt(Math.round((value / safeLimit) * TICK_COUNT), 1, availableCount || TICK_COUNT);
+      : clampInt(
+          Math.round(amountToT(value, safeLimit) * TICK_COUNT),
+          1,
+          availableCount || TICK_COUNT,
+        );
 
   // Prefers-reduced-motion is unknown during SSR, so never branch on it
   // during render - only after mount, or the input's disabled/readOnly
@@ -324,7 +354,7 @@ export function CreditGauge({
   useEffect(() => {
     if (!canPlay || !isIntro || prefersReducedMotion || disabled) return;
 
-    const peakAmount = Math.min(maxToday, safeLimit / 2);
+    const peakAmount = Math.min(maxToday, tToAmount(0.5, safeLimit));
     const restAmount = clampInt(Math.round(maxToday / 2 / step) * step, min, maxToday);
     const hasOvershoot = peakAmount - restAmount > step;
 
@@ -385,7 +415,11 @@ export function CreditGauge({
   const fillCount =
     displayAmount <= 0
       ? 0
-      : clampInt(Math.round((displayAmount / safeLimit) * TICK_COUNT), 1, availableCount || TICK_COUNT);
+      : clampInt(
+          Math.round(amountToT(displayAmount, safeLimit) * TICK_COUNT),
+          1,
+          availableCount || TICK_COUNT,
+        );
   const litCount = isIntro ? fillCount : liveLitCount;
   // During the rise, ticks ahead of the wave stay grey so the blue reads as
   // liquid moving into an empty tank. From the crest down, the rest of the
@@ -397,18 +431,31 @@ export function CreditGauge({
 
   // Handle rides the crest of the fill, then parks on the chosen amount. It is
   // the main signal that the dial can be dragged at all.
-  const knob = polar(KNOB_R, angleAt(Math.min(1, knobAmount / safeLimit)));
-  const scaleMarks = buildScaleMarks(maxToday, safeLimit);
+  const knob = polar(KNOB_R, angleAt(amountToT(knobAmount, safeLimit)));
+  const scaleMarks = buildScaleMarks(maxToday, safeLimit, min);
 
   const isDraggingRef = useRef(false);
   const pendingAmountRef = useRef<number | null>(null);
   const commitRafRef = useRef(0);
 
+  // The arc starts at $0 but nothing under the minimum can be chosen. A knob
+  // that just stops, with no reason given, reads as broken - so dragging past
+  // it names the minimum for a moment.
+  const [belowMin, setBelowMin] = useState(false);
+  const belowMinTimerRef = useRef(0);
+  useEffect(() => () => window.clearTimeout(belowMinTimerRef.current), []);
+  const flagBelowMin = () => {
+    setBelowMin(true);
+    window.clearTimeout(belowMinTimerRef.current);
+    belowMinTimerRef.current = window.setTimeout(() => setBelowMin(false), 1800);
+  };
+
   const applyPointer = (e: ReactPointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
     if (!svg) return;
     e.preventDefault();
-    const raw = pointerToFraction(svg, e.clientX, e.clientY) * safeLimit;
+    const raw = tToAmount(pointerToFraction(svg, e.clientX, e.clientY), safeLimit);
+    if (raw < min - step / 2 && min < maxToday) flagBelowMin();
     const next = Math.min(maxToday, Math.max(min, raw));
     setDragAmount(next);
     pendingAmountRef.current = next;
@@ -537,11 +584,13 @@ export function CreditGauge({
           const deg = angleAt(mark.t);
           const inner = polar(MAJOR_INNER_R, deg);
           const outer = polar(MAJOR_OUTER_R, deg);
-          const stroke = mark.isLocked
-            ? GAUGE_LOCKED_MAJOR
-            : mark.isApproved
-              ? "var(--brand-blue-hex)"
-              : "oklch(0.48 0.13 245)";
+          const stroke = mark.isMin
+            ? "var(--text-primary)"
+            : mark.isLocked
+              ? GAUGE_LOCKED_MAJOR
+              : mark.isApproved
+                ? "var(--brand-blue-hex)"
+                : "oklch(0.48 0.13 245)";
           return (
             <g key={mark.label} pointerEvents="none">
               <line
@@ -550,7 +599,7 @@ export function CreditGauge({
                 x2={outer.x}
                 y2={outer.y}
                 stroke={stroke}
-                strokeWidth={mark.isApproved ? 2.75 : 2}
+                strokeWidth={mark.isApproved || mark.isMin ? 2.75 : 2}
                 strokeLinecap="round"
               />
             </g>
@@ -625,9 +674,23 @@ export function CreditGauge({
         </p>
       ) : null}
 
+      {min < maxToday ? (
+        // Space held even while hidden, so naming the minimum never shifts the
+        // card under a finger that is mid-drag.
+        <p
+          className="mt-1 text-center text-[13px] font-semibold leading-snug text-[var(--text-secondary)] transition-opacity duration-200"
+          style={{ opacity: belowMin ? 1 : 0 }}
+          role="status"
+          aria-live="polite"
+        >
+          {belowMin ? `The minimum is ${formatMarkAmount(min)}` : " "}
+        </p>
+      ) : null}
+
       <p className="sr-only">
-        Scale from {formatMarkAmount(FLOOR_MARK)} up to {formatMarkAmount(safeLimit)},
-        with {formatMarkAmount(maxToday)} approved today.
+        Scale from $0 up to {formatMarkAmount(safeLimit)}, with{" "}
+        {formatMarkAmount(maxToday)} approved today and a minimum of{" "}
+        {formatMarkAmount(min)}.
       </p>
 
       <input

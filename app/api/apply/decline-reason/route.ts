@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/db/client";
+import { setDeclineReason } from "@/lib/db/applicants";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +13,7 @@ export async function POST(request: Request) {
       return new Response("Missing leadId or reason", { status: 400 });
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("leads")
-      .update({ decline_reason: reason })
-      .eq("id", leadId);
-
-    if (error) {
-      console.error("[decline-reason] db error", error);
-      return new Response("DB error", { status: 500 });
-    }
+    await setDeclineReason(leadId, reason);
 
     return new Response("ok", { status: 200 });
   } catch (err) {

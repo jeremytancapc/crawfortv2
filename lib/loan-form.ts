@@ -36,7 +36,21 @@ export interface LoanFormData {
   officePhone: string;
   mailingAddress: string;
   secondaryMobile: string;
-  bankruptcyDeclaration: "" | "clear" | "discharged_lt5" | "active";
+  /**
+   * Ascend's six bands. "" means unanswered, and stays unanswered: a
+   * declaration with legal weight is never filled in on someone's behalf.
+   * `discharged_lt5` is legacy, from when one option covered the whole
+   * under-five-years span.
+   */
+  bankruptcyDeclaration:
+    | ""
+    | "clear"
+    | "discharged_gt5"
+    | "discharged_4_5"
+    | "discharged_1_3"
+    | "discharged_lt1"
+    | "active"
+    | "discharged_lt5";
   maritalStatus: string;
   email: string;
   moneylenderLoanAmount: string;
@@ -48,7 +62,7 @@ export interface LoanFormData {
   cpfContributions: CpfContribution[];      // up to 12 months
   noaHistory: NoaRecord[];                  // all available YA records
 
-  // UUID key into the server-side auth-callback-store; raw blobs are never put in
+  // UUID key into myinfo_retrievals; raw blobs are never put in
   // the session cookie (they would exceed the 4 KB browser limit).
   singpassRawKey: string;
 

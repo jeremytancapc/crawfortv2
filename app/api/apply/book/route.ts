@@ -19,8 +19,10 @@ import {
   APPROVAL_OFFER_COOKIE,
 } from "@/lib/approval-offer";
 import { bookingConfirmCookieValue } from "@/lib/booking-confirmation";
-import { createAdminClient } from "@/lib/db/client";
-import { logExternalApi } from "@/lib/external-api-logger";
+import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
+import { insertAppointment } from "@/lib/db/appointments";
+import { pushAppointmentToAirConnect } from "@/lib/airconnect/notify";
+import { toSgE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -33,89 +35,6 @@ function cfh5ApplicationRef(leadId: string): string {
   return `CFH5-${leadId.slice(-8).toUpperCase()}`;
 }
 
-/** Outbound AirConnect call - must be awaited before returning the HTTP response.
- * If left fire-and-forget, serverless often freezes right after `return res` and the
- * fetch never completes, so upstream never sees the request and you won't get OK/error logs. */
-async function notifyAirConnect(payload: {
-  customerName: string;
-  phoneNumber: string;
-  appointmentDate: string;
-  timeSlot: string;
-  leadId: string;
-  loanAmount: number;
-  idNumber?: string;
-}) {
-  const apiKey = process.env.AIRCONNECT_API_KEY;
-  const url = process.env.AIRCONNECT_APPOINTMENTS_URL;
-
-  if (!apiKey || !url) {
-    console.warn(`${LOG} AirConnect env not configured - skipping notification`, {
-      hasApiKey: Boolean(apiKey),
-      hasUrl: Boolean(url),
-    });
-    return;
-  }
-
-  const cfh5Id = cfh5ApplicationRef(payload.leadId);
-
-  try {
-    const bookingUrl = new URL(url);
-    bookingUrl.searchParams.set("cfh5Id", cfh5Id);
-    bookingUrl.searchParams.set("loanAmount", String(payload.loanAmount));
-    bookingUrl.searchParams.set("leadId", payload.leadId);
-
-    const headers: Record<string, string> = {
-      apikey: apiKey,
-      "Content-Type": "application/json",
-    };
-
-    const requestBody = {
-      app: "dashboard",
-      customerName: payload.customerName,
-      phoneNumber: payload.phoneNumber,
-      appointmentDate: payload.appointmentDate,
-      timeSlot: payload.timeSlot,
-      cfh5Id,
-      leadId: payload.leadId,
-      loanAmount: payload.loanAmount,
-      ...(payload.idNumber ? { idNumber: payload.idNumber } : {}),
-    };
-
-    const started = Date.now();
-    const res = await fetch(bookingUrl.toString(), {
-      method: "POST",
-      headers,
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    const ms = Date.now() - started;
-    const responseBody = !res.ok ? await res.text() : undefined;
-
-    logExternalApi({
-      tag: LOG,
-      url: bookingUrl.toString(),
-      method: "POST",
-      headers,
-      body: requestBody,
-      status: res.status,
-      ok: res.ok,
-      ms,
-      responseBody,
-      leadId: payload.leadId,
-    });
-
-    if (!res.ok) {
-      console.error(`${LOG} AirConnect notification failed`, {
-        status: res.status,
-        ms,
-        body: responseBody?.slice(0, 500),
-      });
-    }
-  } catch (err) {
-    console.error(`${LOG} AirConnect notification error`, err);
-  }
-}
 
 export async function POST(request: NextRequest) {
   const rawSession = request.cookies.get(SESSION_COOKIE)?.value ?? "";
@@ -150,21 +69,16 @@ export async function POST(request: NextRequest) {
 
   console.info(`${LOG} booking slot`, { date, time, idNumber: idNumber ?? null, cfh5Hint: cfh5ApplicationRef(leadId) });
 
-  const admin = createAdminClient();
-
-  const { data: appointment, error } = await admin
-    .from("appointments")
-    .insert({
-      lead_id: leadId,
-      appointment_date: date,
-      appointment_time: time,
+  let appointment: { id: string };
+  try {
+    appointment = await insertAppointment({
+      applicantId: leadId,
+      date,
+      time,
       status: "confirmed",
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    console.error(`${LOG} insert appointment failed`, error);
+    });
+  } catch (err) {
+    console.error(`${LOG} insert appointment failed`, err);
     return NextResponse.json({ error: "Failed to book appointment" }, { status: 500 });
   }
 
@@ -180,26 +94,19 @@ export async function POST(request: NextRequest) {
     cfh5Hint: cfh5ApplicationRef(leadId),
   });
 
-  // Fetch lead details for the AirConnect notification
-  const { data: lead } = await admin
-    .from("leads")
-    .select("full_name, mobile, loan_amount")
-    .eq("id", leadId)
-    .single();
+  // Applicant details for the AirConnect notification.
+  const lead = await getApplicant(leadId);
 
-  // Update the lead status to "appointed"
-  const { error: leadUpdateError } = await admin
-    .from("leads")
-    .update({ status: "appointed" })
-    .eq("id", leadId);
-
-  if (leadUpdateError) {
-    console.error(`${LOG} lead status update failed`, leadUpdateError);
-  } else {
-    console.info(`${LOG} lead status → appointed`, { cfh5Hint: cfh5ApplicationRef(leadId) });
+  try {
+    await setApplicantStatus(leadId, "appointed");
+    console.info(`${LOG} applicant status → appointed`, { cfh5Hint: cfh5ApplicationRef(leadId) });
+  } catch (err) {
+    // The appointment itself is already booked; a status that did not move is
+    // a reporting problem, not a lost booking.
+    console.error(`${LOG} applicant status update failed`, err);
   }
 
-  const loanAmount = Number(lead?.loan_amount ?? 0) || 0;
+  const loanAmount = Number(lead?.desired_amount ?? 0) || 0;
   const cfh5Id = cfh5ApplicationRef(leadId);
 
   if (!lead) {
@@ -210,15 +117,19 @@ export async function POST(request: NextRequest) {
 
   // Notify AirConnect - await so serverless completes the outbound fetch before freeze.
   // Booking still succeeds in DB even if AirConnect fails (errors logged above).
-  await notifyAirConnect({
-    customerName: lead?.full_name ?? "",
-    phoneNumber: lead?.mobile ?? "",
-    appointmentDate: date,
-    timeSlot: time,
-    leadId,
-    loanAmount,
-    ...(idNumber ? { idNumber } : {}),
-  });
+  await pushAppointmentToAirConnect(
+    {
+      applicantId: leadId,
+      customerName: lead?.full_name ?? "",
+      // Same format as the lead push at submit (lib/phone.ts) - AirConnect
+      // matches the two calls by phone number, so they must agree.
+      phoneNumber: toSgE164(lead?.mobile),
+      appointmentDate: date,
+      timeSlot: time,
+      ...(idNumber ? { idNumber } : {}),
+    },
+    LOG,
+  );
 
   const res = NextResponse.json({
     ok: true,

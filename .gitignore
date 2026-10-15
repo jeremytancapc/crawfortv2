@@ -33,6 +33,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+# Per-environment templates. Placeholders only - never real values.
+!.env.*.example
 
 # vercel
 .vercel
@@ -44,3 +46,25 @@ next-env.d.ts
 # Ascend API smoke tests — hold live appId/secret, never commit
 scripts/ascend-test.mjs
 scripts/ascend-users-check.mjs
+
+# Singpass public JWKS — regenerate with scripts/singpass-keygen.mjs, do not commit
+singpass-jwks.public.json
+.neon
+
+# Throwaway Postgres for database-backed tests
+.tmp/
+
+# Applicant documents — payslips carry NRIC, bank accounts and home addresses.
+# Read them from wherever they already sit (scripts/read-payslips.mjs takes a
+# path or an s3:// URI); never copy one into the repo. Force-add with `git add
+# -f` only for a fixture you have confirmed holds no real person's details.
+*.pdf
+*.jpg
+*.jpeg
+*.png
+!public/**
+!docs/**
+
+# Eval fixtures are synthetic and stamped SAMPLE; run results hold raw model replies
+!evals/**
+evals/results/

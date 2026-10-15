@@ -6,6 +6,7 @@ import {
   Step6_Contact,
   Step7_Additional,
   Step7_BankruptcyDeclaration,
+  Step7_EmploymentType,
   Step8_Review,
 } from "@/app/loan-application-form";
 import {
@@ -27,9 +28,12 @@ import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { saveReviewDraft, submitReview } from "@/app/apply/review/submit-review";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { useApplyPath } from "@/app/use-apply-path";
+import type { EmploymentSuggestion } from "@/lib/ascend/borrower-derive";
 
 interface Props {
   initialData: LoanFormData;
+  /** What employment was pre-ticked from, so the picker can say so. */
+  employmentSuggestion?: EmploymentSuggestion | null;
 }
 
 // Internal step numbers (same as original form)
@@ -51,7 +55,7 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
   },
 };
 
-export function ReviewForm({ initialData }: Props) {
+export function ReviewForm({ initialData, employmentSuggestion = null }: Props) {
   const router = useRouter();
   const applyHref = useApplyPath();
   const [formData, setFormData] = useState<LoanFormData>(initialData);
@@ -60,6 +64,7 @@ export function ReviewForm({ initialData }: Props) {
     key: number;
   } | null>(null);
   const submitNavRef = useRef<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -90,6 +95,10 @@ export function ReviewForm({ initialData }: Props) {
       case 5:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
+          // Ascend requires employment status and a declaration. Employment
+          // may arrive pre-ticked from CPF or NOA, but the applicant sees it
+          // and can change it; the declaration is never filled in for them.
+          formData.employmentStatus !== "" &&
           formData.bankruptcyDeclaration !== "" &&
           formData.bankruptcyDeclaration !== "active"
         );
@@ -98,6 +107,10 @@ export function ReviewForm({ initialData }: Props) {
       case 7:
         return (
           /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
+          // Ascend requires employment status and a declaration. Employment
+          // may arrive pre-ticked from CPF or NOA, but the applicant sees it
+          // and can change it; the declaration is never filled in for them.
+          formData.employmentStatus !== "" &&
           formData.bankruptcyDeclaration !== "" &&
           formData.bankruptcyDeclaration !== "active"
         );
@@ -133,6 +146,7 @@ export function ReviewForm({ initialData }: Props) {
 
   async function submitApplication() {
     if (submitOverlay) return;
+    setSubmitError(null);
     submitNavRef.current = null;
     const task = (async () => {
       const result = await submitReview(formData);
@@ -220,9 +234,20 @@ export function ReviewForm({ initialData }: Props) {
           onComplete={() => {
             const path = submitNavRef.current;
             if (path) {
-              router.push(applyHref(path));
+              // The overlay stays up until this page is gone. Clearing it the
+              // moment navigation began put the finished review form back on
+              // screen - clickable, "Submit Application" live again - for the
+              // second the next page took to load.
+              window.location.assign(applyHref(path));
+              return;
             }
+            // No destination means the submit failed. Say so: dropping the
+            // overlay alone left the applicant back on the form with no idea
+            // whether anything had happened.
             setSubmitOverlay(null);
+            setSubmitError(
+              "We could not submit your application just now. Please try again in a moment.",
+            );
           }}
         />
       ) : null}
@@ -276,6 +301,11 @@ export function ReviewForm({ initialData }: Props) {
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step7_EmploymentType
+                        formData={formData}
+                        updateField={updateField}
+                        suggestion={employmentSuggestion}
+                      />
                       <Step7_BankruptcyDeclaration
                         formData={formData}
                         updateField={updateField}
@@ -288,6 +318,11 @@ export function ReviewForm({ initialData }: Props) {
                   {step === 7 && (
                     <div className="flex flex-col gap-6">
                       <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step7_EmploymentType
+                        formData={formData}
+                        updateField={updateField}
+                        suggestion={employmentSuggestion}
+                      />
                       <Step7_BankruptcyDeclaration
                         formData={formData}
                         updateField={updateField}
@@ -304,6 +339,14 @@ export function ReviewForm({ initialData }: Props) {
                 </div>
               </div>
 
+              {submitError && step === 5 ? (
+                <p
+                  role="alert"
+                  className="ios-apply-gutter pb-1 text-[13px] font-semibold leading-snug text-[var(--danger,#a92d3a)]"
+                >
+                  {submitError}
+                </p>
+              ) : null}
               <StickyFooter nav={stepNav}>
                 <PrimaryButton
                   onClick={handlePrimary}

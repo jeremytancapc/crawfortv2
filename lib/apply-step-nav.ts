@@ -67,11 +67,21 @@ function readClientWithdrawAmount(): number | null {
 const GATE_STEP_KEY = "crawfort-apply-gate-step";
 const GATE_RESUME_KEY = "crawfort-apply-gate-resume";
 
-/** Linear apply path. Side branches (pending, custom offer) are handled separately. */
+/**
+ * Linear apply path. Side branches (verify-income, pending, custom offer) are
+ * handled separately.
+ *
+ * verify-income is not on this path. It used to run for everyone between
+ * Singpass and review, which asked every applicant for three payslips before
+ * anything had established whether they were needed. Ascend only asks for
+ * income when it returns PENDING - "There is no income, please submit income"
+ * - so the step is now reached from submit, and an applicant whose CPF or NOA
+ * data satisfies Ascend never sees it.
+ */
 export function applyStepOrder(): ApplyStepId[] {
   return SHOW_INCOME_STEP
-    ? ["amount", "income", "singpass", "verify", "review", "approval", "choosePlan", "accept", "book", "booked"]
-    : ["amount", "singpass", "verify", "review", "approval", "choosePlan", "accept", "book", "booked"];
+    ? ["amount", "income", "singpass", "review", "approval", "choosePlan", "accept", "book", "booked"]
+    : ["amount", "singpass", "review", "approval", "choosePlan", "accept", "book", "booked"];
 }
 
 export function neighborApplySteps(id: ApplyStepId): {
@@ -85,8 +95,19 @@ export function neighborApplySteps(id: ApplyStepId): {
     // offer a back arrow that dead-ends at the home page.
     return { prev: null, next: null };
   }
+  // pending and verify are both reached only after submit - the funnel's
+  // one-way gate (lib/apply-funnel.ts) never lets either navigate back to
+  // review from here, so offering that arrow was a dead button: clicking it
+  // sent the browser to /apply/review, the server guard caught it there and
+  // bounced it straight back, and nothing the applicant saw explained why.
+  // No prev at all, same as "booked" below - there is nothing to go back to.
   if (id === "pending") {
-    return { prev: "review", next: "approval" };
+    return { prev: null, next: "approval" };
+  }
+  // Reached from submit when Ascend says PENDING, and rejoining the funnel at
+  // approval once the payslip figures have been submitted and re-scored.
+  if (id === "verify") {
+    return { prev: null, next: "approval" };
   }
   if (id === "customReceived") {
     return { prev: "choosePlan", next: "accept" };

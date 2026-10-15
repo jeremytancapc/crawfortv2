@@ -1,10 +1,12 @@
 const STORAGE_KEY = "crawfort-withdraw-amount";
 
-export const MIN_WITHDRAW_AMOUNT = 500;
+/** The least an applicant can draw down. The one place this number lives -
+ *  the dial, the plan screens and /api/apply/select-amount all read it. */
+export const MIN_WITHDRAW_AMOUNT = 300;
 export const WITHDRAW_STEP = 100;
 
-/** Clamp to [min(500, max), max], snapped to $100. The true max is always
- *  reachable even when it is not a $100 boundary. */
+/** Clamp to [min(MIN_WITHDRAW_AMOUNT, max), max], snapped to $100. The true
+ *  max is always reachable even when it is not a $100 boundary. */
 export function clampWithdrawAmount(raw: number, max: number): number {
   const safeMax = Math.max(max, 0);
   const floor = Math.min(MIN_WITHDRAW_AMOUNT, safeMax);
@@ -25,7 +27,7 @@ export function readStoredWithdrawAmount(max: number): number | null {
     if (!raw) return null;
     const amount = Number(raw);
     if (!Number.isFinite(amount) || amount <= 0) return null;
-    return Math.min(max, Math.max(500, Math.round(amount)));
+    return Math.min(max, Math.max(MIN_WITHDRAW_AMOUNT, Math.round(amount)));
   } catch {
     return null;
   }

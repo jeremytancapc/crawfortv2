@@ -1,0 +1,52 @@
+{
+  "id": "payslip-masked-id-name",
+  "description": "A masked NRIC after the name, and a name with BINTE in it.",
+  "origin": [
+    "add533c"
+  ],
+  "tags": [
+    "regression",
+    "payslip",
+    "name-with-number",
+    "name-connector"
+  ],
+  "today": "2026-10-09",
+  "applicant": {
+    "name": "NURUL AINA BINTE YUSOF"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/payslip-masked-id.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "payslip",
+          "holderName": "NURUL AINA BINTE YUSOF",
+          "issuer": "SAMPLE RETAIL"
+        }
+      ],
+      "periods": [
+        {
+          "start": "2026-09-01",
+          "end": "2026-09-30",
+          "gross": 3500,
+          "net": 3500
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "NON_PANEL_PAYSLIP",
+      "m1": 3500,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "id": "bank-unemployed-cpf-life",
+  "description": "Unemployed with income: only the CPF LIFE payout counts, whatever else is paid in.",
+  "origin": [
+    "4ca6a8c"
+  ],
+  "tags": [
+    "bank",
+    "employment-rule",
+    "cpf-life"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "TEO AH HOCK"
+  },
+  "employmentType": "UNEMPLOYED WITH INCOME",
+  "documents": [
+    {
+      "file": "fixtures/bank-unemployed-cpf-life.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "bank_statement",
+          "holderName": "TEO AH HOCK",
+          "issuer": "HARBOURFRONT"
+        }
+      ],
+      "credits": [
+        {
+          "date": "2026-07-03",
+          "amount": 500,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-07-10",
+          "amount": 300,
+          "category": "cash_deposit"
+        },
+        {
+          "date": "2026-07-15",
+          "amount": 1060,
+          "category": "cpf_life"
+        },
+        {
+          "date": "2026-07-28",
+          "amount": 0.31,
+          "category": "interest"
+        },
+        {
+          "date": "2026-08-03",
+          "amount": 500,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-08-10",
+          "amount": 300,
+          "category": "cash_deposit"
+        },
+        {
+          "date": "2026-08-15",
+          "amount": 1060,
+          "category": "cpf_life"
+        },
+        {
+          "date": "2026-08-28",
+          "amount": 0.31,
+          "category": "interest"
+        },
+        {
+          "date": "2026-09-03",
+          "amount": 500,
+          "category": "transfer_from_others"
+        },
+        {
+          "date": "2026-09-10",
+          "amount": 300,
+          "category": "cash_deposit"
+        },
+        {
+          "date": "2026-09-15",
+          "amount": 1060,
+          "category": "cpf_life"
+        },
+        {
+          "date": "2026-09-28",
+          "amount": 0.31,
+          "category": "interest"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "BANK_STATEMENT_OTHER_INCOME",
+      "m1": 1060,
+      "m2": 1060,
+      "m3": 1060
+    }
+  }
+}

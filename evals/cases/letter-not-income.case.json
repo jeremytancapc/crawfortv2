@@ -1,0 +1,42 @@
+{
+  "id": "letter-not-income",
+  "description": "A bank letter with no transactions. Must be refused, in a sentence an applicant can act on.",
+  "origin": [
+    "docs/income-verification.md"
+  ],
+  "tags": [
+    "negative",
+    "refusal-path"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/letter-not-income.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "documents": [
+        {
+          "index": 1,
+          "kind": "other"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": [
+        "needs_review",
+        "unreadable"
+      ],
+      "reasonMatches": "statement"
+    }
+  }
+}

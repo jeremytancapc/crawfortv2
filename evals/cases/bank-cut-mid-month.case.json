@@ -1,0 +1,57 @@
+{
+  "id": "bank-cut-mid-month",
+  "description": "Two statements cut on the 15th. September is covered end to end by the two together (3,200); August is only half covered and October is not over, so neither counts.",
+  "origin": [
+    "de9b5d3",
+    "7d89ee6"
+  ],
+  "tags": [
+    "bank",
+    "mid-month",
+    "future-dated"
+  ],
+  "today": "2026-10-09",
+  "env": {
+    "TEST_RECOGNISED_BANKS": "HARBOURFRONT"
+  },
+  "applicant": {
+    "name": "LIM WEI JIE"
+  },
+  "employmentType": "EMPLOYED",
+  "documents": [
+    {
+      "file": "fixtures/bank-cut-mid-month.pdf",
+      "mediaType": "application/pdf"
+    }
+  ],
+  "expect": {
+    "reader": {
+      "readable": true,
+      "documents": [
+        {
+          "index": 1,
+          "kind": "bank_statement",
+          "holderName": "LIM WEI JIE",
+          "issuer": "HARBOURFRONT"
+        }
+      ],
+      "statements": [
+        {
+          "start": "2026-08-15",
+          "end": "2026-09-14"
+        },
+        {
+          "start": "2026-09-15",
+          "end": "2026-10-14"
+        }
+      ]
+    },
+    "pipeline": {
+      "kind": "usable",
+      "incomeType": "BANK_STATEMENT_OTHER_INCOME",
+      "m1": 3200,
+      "m2": 0,
+      "m3": 0
+    }
+  }
+}

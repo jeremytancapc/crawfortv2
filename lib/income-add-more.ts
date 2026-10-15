@@ -1,0 +1,86 @@
+/**
+ * Adding documents on the results page.
+ *
+ * The first page asks for documents; the results page shows what was read and
+ * lets the applicant add more to strengthen it - but never take any away. The
+ * two rules here are what make adding safe.
+ */
+
+/** The most documents one reading takes. The extract route enforces the same. */
+export const MAX_INCOME_FILES = 6;
+
+/**
+ * How many of `incoming` files fit alongside the `current` ones. The rest are
+ * not added, and the applicant is told - a file silently dropped looks like it
+ * was counted.
+ */
+export function roomForMore(
+  current: number,
+  incoming: number,
+): { accept: number; message: string | null } {
+  const accept = Math.max(0, Math.min(incoming, MAX_INCOME_FILES - current));
+  const left = incoming - accept;
+  return {
+    accept,
+    message:
+      left > 0
+        ? `You can add up to ${MAX_INCOME_FILES} documents. ${left} ${left === 1 ? "was" : "were"} not added.`
+        : null,
+  };
+}
+
+/**
+ * What the page does once the added documents have been read again.
+ *
+ *   replace        the new reading is usable: show its figures.
+ *   keep_previous  it is not, but the figures from before still stand - they
+ *                  came from documents that are all still there - so they stay
+ *                  on screen and the reason is shown beside them. Throwing
+ *                  them away would make adding a document cost the applicant
+ *                  what they already had.
+ *   show_ask       there is nothing to keep: say what is missing.
+ */
+export function afterReread(args: {
+  hadReading: boolean;
+  readUsable: boolean;
+}): "replace" | "keep_previous" | "show_ask" {
+  if (args.readUsable) return "replace";
+  return args.hadReading ? "keep_previous" : "show_ask";
+}
+
+/**
+ * What the main button does on the results page.
+ *
+ * Adding a document only saves it. The figures on screen are still the ones
+ * read before, so submitting now would send income that ignores what was just
+ * added - the button reads the new documents first, and submits only when
+ * nothing has changed since the figures were read.
+ */
+export function footerAction(args: { saving: boolean; unreadNew: number }): "saving" | "update" | "submit" {
+  if (args.saving) return "saving";
+  return args.unreadNew > 0 ? "update" : "submit";
+}
+
+/** Shown beside the document list while saved documents are not yet counted. */
+export function pendingNote(unreadNew: number): string | null {
+  if (unreadNew <= 0) return null;
+  return unreadNew === 1
+    ? "1 new document added. Tap Update my income to include it."
+    : `${unreadNew} new documents added. Tap Update my income to include them.`;
+}
+
+/**
+ * Whether a document can be taken out from the results page.
+ *
+ * A document the figures were read from stays: removing it would change what
+ * the figures above describe. One that did not count - refused for the wrong
+ * name, outside the months, or failed to save - is not in the figures at all,
+ * and must be removable: it would otherwise sit in the list and be read again
+ * with every document added afterwards, refusing each reading for good.
+ */
+export function canRemoveOnResults(
+  file: { status: "uploading" | "ready" | "failed"; documentId?: string },
+  counted: ReadonlySet<string>,
+): boolean {
+  return !(file.status === "ready" && file.documentId !== undefined && counted.has(file.documentId));
+}

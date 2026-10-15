@@ -11,6 +11,9 @@ const STATUS_MESSAGES = [
   "Almost there...",
 ];
 
+/** The timed climb stops here until the real work settles - 100% means done. */
+const WAITING_CEILING = 90;
+
 interface LoanLoadingScreenProps {
   onComplete: () => void;
   /**
@@ -18,9 +21,15 @@ interface LoanLoadingScreenProps {
    * reached 100% and this promise has settled (success or failure).
    */
   waitUntil?: Promise<unknown>;
+  /** What the applicant reads while waiting, in order. */
+  messages?: readonly string[];
 }
 
-export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenProps) {
+export function LoanLoadingScreen({
+  onComplete,
+  waitUntil,
+  messages = STATUS_MESSAGES,
+}: LoanLoadingScreenProps) {
   const [progress, setProgress] = useState(0);
   const [statusIndex, setStatusIndex] = useState(0);
   const [statusVisible, setStatusVisible] = useState(true);
@@ -40,6 +49,8 @@ export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenPr
     let current = 0;
     let done = false;
     let released = !waitUntil;
+    // Set once waitUntil settles, so no late tick drags the bar back from 100.
+    let settled = false;
 
     const t = (fn: () => void, ms: number) => {
       const id = setTimeout(fn, ms);
@@ -63,6 +74,7 @@ export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenPr
     if (waitUntil) {
       void Promise.resolve(waitUntil).finally(() => {
         released = true;
+        settled = true;
         if (current < 100) {
           current = 100;
           setProgress(100);
@@ -86,17 +98,22 @@ export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenPr
       [8500, 8],
     ];
 
+    // With real work to wait for, the timed climb stops short of 100 - a bar
+    // reading 100% while Ascend is still scoring (18s on an income check)
+    // tells the applicant it is finished and then leaves them staring at it.
+    const ceiling = waitUntil ? WAITING_CEILING : 100;
+
     ticks.forEach(([delay, inc]) => {
       t(() => {
-        if (done) return;
-        current = Math.min(100, current + inc);
+        if (done || settled) return;
+        current = Math.min(ceiling, current + inc);
         setProgress(current);
         if (current >= 100) tryFinish();
       }, delay);
     });
 
     const cycle = (idx: number, at: number) => {
-      if (idx >= STATUS_MESSAGES.length) return;
+      if (idx >= messages.length) return;
       t(() => {
         setStatusVisible(false);
         t(() => {
@@ -112,7 +129,7 @@ export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenPr
       done = true;
       clearAll();
     };
-  }, [waitUntil]);
+  }, [waitUntil, messages.length]);
 
   const content = (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -189,7 +206,7 @@ export function LoanLoadingScreen({ onComplete, waitUntil }: LoanLoadingScreenPr
                 "opacity 200ms cubic-bezier(0.16,1,0.3,1), transform 200ms cubic-bezier(0.16,1,0.3,1)",
             }}
           >
-            {STATUS_MESSAGES[statusIndex]}
+            {messages[statusIndex]}
           </p>
           <p className="ios-type-subtitle mt-2">
             This usually takes a few seconds.

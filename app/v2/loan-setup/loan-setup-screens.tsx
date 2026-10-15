@@ -140,11 +140,12 @@ export function LoanSetupScreens({
         setRedirectPending(false);
         return;
       }
-      window.location.assign(applyHref("/apply/verify-income"));
+      // Straight to Singpass; verify-income is now only reached from submit.
+      window.location.assign("/api/auth");
     } catch {
       setRedirectPending(false);
     }
-  }, [applyHref, formData]);
+  }, [formData]);
 
   if (step === 3) {
     return (
