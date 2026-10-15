@@ -3,6 +3,7 @@
  *
  *   node scripts/ascend-call.mjs users --nric S7790721A --phone 91234567
  *   node scripts/ascend-call.mjs query --orderId 1523633858296446976
+ *   node scripts/ascend-call.mjs users --nric S7790721A --phone 91234567 --env-file .env.vercel-production
  *
  * Credentials come from .env.local, so this file holds no secrets and is safe
  * to commit - unlike the ad-hoc scripts .gitignore still excludes.
@@ -24,7 +25,12 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-for (const line of readFileSync(join(ROOT, ".env.local"), "utf8").split("\n")) {
+// Which env file to read: .env.local by default, or --env-file <path> (for
+// example .env.vercel-production, to try the production credentials).
+const envFileIndex = process.argv.indexOf("--env-file");
+const ENV_FILE = envFileIndex > -1 ? process.argv[envFileIndex + 1] : ".env.local";
+
+for (const line of readFileSync(join(ROOT, ENV_FILE), "utf8").split("\n")) {
   const m = line.match(/^([A-Z_0-9]+)=(.*)$/);
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, "");
 }
@@ -44,7 +50,7 @@ const missingNames = [
 ].filter(Boolean);
 
 if (missingNames.length) {
-  console.error(`Missing from .env.local: ${missingNames.join(", ")}`);
+  console.error(`Missing from ${ENV_FILE}: ${missingNames.join(", ")}`);
   console.error("\nAdd them yourself - do not paste the secret into a chat.");
   process.exit(1);
 }
