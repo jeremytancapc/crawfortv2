@@ -26,12 +26,13 @@ before launch.
 | B2 | The name must be the applicant's Singpass name. | Names are compared as sets of words, in any order and any case: `TAN CAKEN`, `CAKEN TAN`, `TAN, CAKEN` and `Mr Tan Caken` are all the same person. | Product | |
 | B3 | Every word in the printed name must be theirs. | A printed name with an extra word that is not in their Singpass name is refused (`TAN CAKEN JOHN`). Initials are allowed in place of their other names when two names are still written in full: for `TAN WEI LIN FELICIA`, `TAN W L FELICIA` passes. | Product | |
 | B4 | At least two words must match, in full. | A surname alone is refused. Someone whose Singpass name is one word needs that one word. | Product | |
-| B5 | Ignored when comparing. | Titles (Mr, Mrs, Ms, Miss, Mdm, Madam, Dr), connectors (bin, binte, bte, binti, s/o, d/o, al), and anything containing a digit (an employee number `(100257)`, a masked NRIC `S****083H`). | Product | |
+| B5 | Titles, connectors and numbers are dropped from **both** names before comparing. | Dropped from the name on the document and from their Singpass name alike: titles (Mr, Mrs, Ms, Miss, Mdm, Madam, Dr) and connectors (bin, binte, bte, binti, s/o, d/o, al). So Singpass `MUHAMMAD BIN ALI` matches `MUHAMMAD BIN ALI`, `MUHAMMAD ALI` and `ALI MUHAMMAD` on a document. Any token containing a digit is dropped from the printed name: an employee number `(1000012)` or a masked NRIC `S****083H`. | Product | |
 | B6 | Aliases. | Other names Singpass holds for them (alias, Hanyu Pinyin, married name) are accepted. | Product | |
 | B7 | Joint accounts. | If a document names several holders (joined by `&` or `AND`), it passes when any one holder is the applicant. | Product | |
 | B8 | One wrong document stops all. | If any document does not carry the applicant's name, nothing is read off any of them. The applicant is told which file to replace. | Product | |
 | B9 | Gig-app screenshots with no name. | Allowed (many show none). A screenshot showing a name that is not theirs is refused. An accepted unnamed screenshot is noted on the Ascend order for staff. | Product | |
 | B10 | Bank statements must be from a recognised Singapore bank. | DBS, POSB, OCBC, UOB, Standard Chartered, HSBC, Citibank, Maybank, Bank of China, ICBC, CIMB, RHB, Trust Bank, GXS, MariBank, ANEXT. Any other bank, or none named, is refused. | Product | |
+| B11 | A payslip or bank statement with no readable name is refused, whatever the file type. | PDF, JPG and PNG are treated the same. The reader reports the name it can read; an empty name on a payslip or bank statement gives "We could not find your name on <file>". Only a platform earnings statement may show no name (B9). The document type is the reader's judgement: a cropped payslip photo the reader calls an earnings statement would pass unnamed. | Product | |
 
 ## C. Which months count
 
