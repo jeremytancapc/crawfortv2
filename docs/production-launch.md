@@ -6,8 +6,7 @@ large jump, not a small update: a new database, a new S3 bucket, a new Anthropic
 key, a new Singpass app setup and a new domain all arrive together.
 
 `get.crawfort.com` is chosen (DNS had no record for it on 14 Oct).
-`apply.crawfort.com` is the live app on Vercel and stays as it is until it is
-deliberately replaced.
+`apply.crawfort.com` is a different app and is not part of this release.
 
 Owner column: **Dev** = engineering, **Ops** = whoever holds the account
 (Vercel, AWS, DNS), **Biz** = business sign-off, **Ext** = Singpass, Ascend,
@@ -17,7 +16,7 @@ AirConnect, AXS.
 
 | # | Item | Owner |
 |---|---|---|
-| 0.1 | **Is `apply.crawfort.com` attached to this Vercel project's Production?** If yes, merging `stg` into `main` replaces what is live on `apply.crawfort.com` too, whatever happens on `get`. If you want the old app to stay, `get.crawfort.com` needs its **own Vercel project** (own env vars, own production branch). Decide this before anything is merged. | Dev + Ops |
+| 0.1 | Confirm in the Vercel dashboard that this project's **Production branch is `main`** and add `get.crawfort.com` to it. (`apply.crawfort.com` is a different app and is not touched.) | Ops |
 | 0.2 | Privacy sign-off: applicants' payslips and bank statements (names, NRIC details) are sent to Anthropic's API. PDPA overseas-transfer check, data-handling terms or zero-retention setting, privacy notice update, and whether applicants are told an AI reads their documents. | Biz / DPO |
 | 0.3 | A named person confirms each income rule (Wenting's 30 Sep rules, unemployed-with-income counts the CPF payout only, bank statements count all money in for others). | Biz |
 | 0.4 | Foreigners: proof of residence was never built. Build it, or launch knowing foreigners cannot prove residence. | Biz + Dev |
@@ -74,4 +73,4 @@ Production applications are **real**: real Singpass, real Ascend. Use staff with
 
 - **First week:** daily look at `income_model_calls` (refusals, `max_tokens`, read failures, cost), the Ascend watch, Anthropic spend and Vercel errors.
 - **Back out:** Vercel Instant Rollback to the previous production deployment. The database changes only add tables, so a rollback leaves them in place harmlessly. Write down who may press it and what triggers it.
-- **Later:** schedule the 2031 clean-up for `income_model_calls` (GitHub issue 11); decide when `apply.crawfort.com` moves to the new app, and redirect one name to the other.
+- **Later:** schedule the 2031 clean-up for `income_model_calls` (GitHub issue 11).
