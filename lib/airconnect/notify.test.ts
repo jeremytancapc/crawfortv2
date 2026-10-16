@@ -28,6 +28,31 @@ function mockResponse(status = 200, body = "{}") {
   });
 }
 
+describe("pushNewLeadToAirConnect - the staff review link", () => {
+  const BASE = {
+    applicantId: "11111111-2222-3333-4444-555566667777",
+    customerName: "Tan Ah Kow",
+    phoneNumber: "+6591234567",
+  };
+
+  it("sends customerHyperLink when there is one", async () => {
+    mockResponse(200);
+    const link = "https://api-admin-ascend.crawfort.com/order/pending/notify?orderId=1560591551355564032";
+
+    await pushNewLeadToAirConnect({ ...BASE, customerHyperLink: link });
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).customerHyperLink).toBe(link);
+  });
+
+  it("leaves it out otherwise, so an ordinary lead is exactly what it was", async () => {
+    mockResponse(200);
+
+    await pushNewLeadToAirConnect(BASE);
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).not.toHaveProperty("customerHyperLink");
+  });
+});
+
 describe("pushNewLeadToAirConnect", () => {
   const PAYLOAD = {
     applicantId: "11111111-2222-3333-4444-555566667777",

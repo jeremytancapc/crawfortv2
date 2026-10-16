@@ -256,3 +256,11 @@ the known lists in `shape.ts`.
 `GET /api/cron/ascend-shape` (guarded by `CRON_SECRET`) summarises the last 24
 hours and answers **500** when anything other than a watch item appeared. It needs a
 scheduler to call it daily: `vercel.json` has no cron entries yet.
+
+## The staff review link we give AirConnect
+
+When an applicant is waiting on a person - income taken and left PENDING, or a PASS that never named a limit - the lead is sent to AirConnect with `customerHyperLink`:
+
+`<ASCEND_BASE_URL>/order/pending/notify?orderId=<orderId>`
+
+This is not a guess. Read from AirConnect's production database on 16 Oct 2026: all 869 of its verification links share exactly this shape (27 Jun 2025 to that day), with no application id, and AirConnect shows it to agents as a "Verify in Ascend" button. Built by `lib/ascend/review-link.ts`; sent at submit for an unresolved PASS, and again after the income step (`lib/airconnect/staff-review.ts`) - AirConnect updates the lead it already holds for that phone number. Ascend confirmed the page also works for an order that is pending after income. Nobody else gets a link: approved, declined and "needs income" applicants have none.

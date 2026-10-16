@@ -106,6 +106,12 @@ export interface NewLeadPayload {
   customerName: string;
   phoneNumber: string;
   idNumber?: string;
+  /**
+   * The page staff open in Ascend to review this order. AirConnect keeps it on
+   * the lead and offers it to agents as "Verify in Ascend". Sent only when a
+   * person has to look (see staff-review.ts).
+   */
+  customerHyperLink?: string;
 }
 
 /**
@@ -130,6 +136,7 @@ export async function pushNewLeadToAirConnect(
     customerName: payload.customerName,
     phoneNumber: payload.phoneNumber,
     ...(payload.idNumber ? { idNumber: payload.idNumber } : {}),
+    ...(payload.customerHyperLink ? { customerHyperLink: payload.customerHyperLink } : {}),
   };
 
   return postToAirConnect({ url, body, applicantId: payload.applicantId, tag });

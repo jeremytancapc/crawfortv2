@@ -52,6 +52,7 @@ import { getDocumentBytes } from "@/lib/documents/store";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { clearIncomeGateCookie } from "@/lib/apply-session";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
+import { pushStaffReviewLink } from "@/lib/airconnect/staff-review";
 import { readingStillHolds } from "@/lib/income-document-rules";
 import { recordNoteOnAscendOrder } from "@/lib/ascend/record-plan";
 
@@ -248,6 +249,14 @@ export async function POST(request: NextRequest) {
     // Not decideApplyOutcome: PENDING here means the income was taken and is
     // being reviewed, not that more is wanted.
     const outcome = decideAfterIncome(settled);
+
+    // Waiting on a person now: tell AirConnect which Ascend order to open.
+    // Awaited so serverless does not freeze before the request goes out, and
+    // it cannot throw - a missed note must not cost the applicant this step.
+    if (outcome.kind === "in_review" || outcome.kind === "unresolved") {
+      await pushStaffReviewLink({ applicantId, orderId: settled.orderId });
+    }
+
     const res = NextResponse.json({
       // The declined/in-review/unresolved branch below clears the session,
       // so the client has nowhere else to read a leadId from - and without
