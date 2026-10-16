@@ -30,9 +30,10 @@ whatever else is true of them. `stuck` shows every stage except the first two.
 
 | Stage | What it means | What to do |
 |---|---|---|
-| `booked` | Has an appointment | - |
+| `booked` | Has an appointment that is not cancelled (the latest appointment counts, so cancel-then-rebook is booked) | - |
 | `declined_offer` | Saw the offer and said no (reason recorded) | Read the reason; follow up if it is a rate or amount concern |
 | `plan_chosen_not_booked` | Picked a plan, never booked | Call: they are one step from done |
+| `booking_cancelled` | Booked, then cancelled, and has not booked again | Call: they were committed once |
 | `offer_seen_no_plan` | Approved and shown a limit, chose nothing | Call |
 | `approved_without_limit` | Ascend said PASS but gave no limit | **A fault**, not a customer choice: check the order |
 | `rejected_by_ascend` | Ascend rejected | Nothing, unless the reason looks wrong |

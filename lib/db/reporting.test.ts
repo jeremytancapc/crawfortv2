@@ -34,6 +34,17 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     await order(booked, "passed", 3500);
     await sql`insert into appointments (applicant_id, appointment_date, appointment_time) values (${booked}, '2026-10-20', '15:00')`;
 
+    // Booked, then cancelled: not booked any more, and someone to call.
+    const cancelled = await applicant("cancelled", { plan: "6 months" });
+    await order(cancelled, "passed", 3500);
+    await sql`insert into appointments (applicant_id, appointment_date, appointment_time, status) values (${cancelled}, '2026-10-21', '10:00', 'cancelled')`;
+
+    // Cancelled, then booked again: the latest appointment is the one that counts.
+    const rebooked = await applicant("rebooked", { plan: "6 months" });
+    await order(rebooked, "passed", 3500);
+    await sql`insert into appointments (created_at, applicant_id, appointment_date, appointment_time, status) values ('2026-10-16 09:00+08', ${rebooked}, '2026-10-21', '10:00', 'cancelled')`;
+    await sql`insert into appointments (created_at, applicant_id, appointment_date, appointment_time, status) values ('2026-10-16 09:30+08', ${rebooked}, '2026-10-22', '11:00', 'confirmed')`;
+
     const declined = await applicant("declined", { decline: "Rates don't match my expectations" });
     await order(declined, "passed", 3500);
 
@@ -78,6 +89,8 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
   it.each([
     ["booked", "booked"],
     ["declined", "declined_offer"],
+    ["cancelled", "booking_cancelled"],
+    ["rebooked", "booked"],
     ["planned", "plan_chosen_not_booked"],
     ["offer", "offer_seen_no_plan"],
     ["passed_no_limit", "approved_without_limit"],
@@ -101,8 +114,9 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     const rows = await sql<{ ref: string; booking_date: string; booking_time: string }>`
       select ref, booking_date::text, booking_time::text from reporting.booked where ref like 'CFH5-%'
         and ref in (select ref from reporting.applicant_journey where id = any(${Object.values(ids)}::uuid[]))`;
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ booking_date: "2026-10-20", booking_time: "15:00:00" });
+    // The person who booked, and the one who cancelled then booked again: not the one who cancelled.
+    expect(rows.map((r) => r.booking_date).sort()).toEqual(["2026-10-20", "2026-10-22"]);
+    expect(rows.find((r) => r.booking_date === "2026-10-20")).toMatchObject({ booking_time: "15:00:00" });
   });
 
   it("the declined table holds the people who turned the offer down, with their reason", async () => {
@@ -116,7 +130,7 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     const stuck = new Set(rows.map((r) => r.id));
     expect(stuck.has(ids.booked!)).toBe(false);
     expect(stuck.has(ids.declined!)).toBe(false);
-    for (const key of ["planned", "offer", "passed_no_limit", "rejected", "review", "uploading", "needs_income", "no_order", "logged_in", "not_logged_in"]) {
+    for (const key of ["cancelled", "planned", "offer", "passed_no_limit", "rejected", "review", "uploading", "needs_income", "no_order", "logged_in", "not_logged_in"]) {
       expect(stuck.has(ids[key]!), key).toBe(true);
     }
   });
