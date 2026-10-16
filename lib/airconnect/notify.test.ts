@@ -53,6 +53,40 @@ describe("pushNewLeadToAirConnect - the staff review link", () => {
   });
 });
 
+describe("pushNewLeadToAirConnect - the credit limit", () => {
+  const BASE = {
+    applicantId: "11111111-2222-3333-4444-555566667777",
+    customerName: "Tan Ah Kow",
+    phoneNumber: "+6591234567",
+  };
+
+  it("sends the limit with where it came from, who decided it and which order", async () => {
+    mockResponse(200);
+
+    await pushNewLeadToAirConnect({
+      ...BASE,
+      creditLimit: { amount: 7600, source: "cf_h5_v2", provider: "ascend", reference: "1560590648489684992" },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body).toMatchObject({
+      creditLimit: 7600,
+      creditLimitSource: "cf_h5_v2",
+      creditLimitProvider: "ascend",
+      creditLimitReference: "1560590648489684992",
+    });
+  });
+
+  it("leaves every credit field out when there is no limit, so AirConnect sees what it always has", async () => {
+    mockResponse(200);
+
+    await pushNewLeadToAirConnect(BASE);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(Object.keys(body).filter((key) => key.startsWith("creditLimit"))).toEqual([]);
+  });
+});
+
 describe("pushNewLeadToAirConnect", () => {
   const PAYLOAD = {
     applicantId: "11111111-2222-3333-4444-555566667777",

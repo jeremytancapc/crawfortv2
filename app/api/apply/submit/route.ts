@@ -58,6 +58,7 @@ import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
 import { ascendOrderReviewLink } from "@/lib/ascend/review-link";
+import { creditLimitForAirConnect } from "@/lib/airconnect/credit-limit";
 import {
   DuplicateAscendOrderError,
   getAscendOrder,
@@ -388,6 +389,11 @@ export async function POST(request: NextRequest) {
       // page they open in Ascend. Nobody else gets a link at this point.
       ...(decision.kind === "unresolved" && ascendResult?.orderId
         ? { customerHyperLink: ascendOrderReviewLink(ascendResult.orderId) ?? undefined }
+        : {}),
+      // Ascend has already given a limit: AirConnect keeps it, with where it
+      // came from, and shows the latest on the lead.
+      ...(decision.kind === "approved"
+        ? { creditLimit: creditLimitForAirConnect(decision.aCardLimit, ascendResult?.orderId) }
         : {}),
     });
     if (pushed) await markAirConnectLeadPushed(leadId);

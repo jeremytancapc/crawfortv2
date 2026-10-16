@@ -52,6 +52,7 @@ import { getDocumentBytes } from "@/lib/documents/store";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import { clearIncomeGateCookie } from "@/lib/apply-session";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
+import { pushCreditLimit } from "@/lib/airconnect/credit-limit";
 import { pushStaffReviewLink } from "@/lib/airconnect/staff-review";
 import { readingStillHolds } from "@/lib/income-document-rules";
 import { recordNoteOnAscendOrder } from "@/lib/ascend/record-plan";
@@ -255,6 +256,12 @@ export async function POST(request: NextRequest) {
     // it cannot throw - a missed note must not cost the applicant this step.
     if (outcome.kind === "in_review" || outcome.kind === "unresolved") {
       await pushStaffReviewLink({ applicantId, orderId: settled.orderId });
+    }
+
+    // Approved after income: the limit did not exist when the lead was first
+    // sent at submit, so send the lead again carrying it.
+    if (outcome.kind === "approved") {
+      await pushCreditLimit({ applicantId, orderId: settled.orderId, amount: outcome.aCardLimit });
     }
 
     const res = NextResponse.json({
