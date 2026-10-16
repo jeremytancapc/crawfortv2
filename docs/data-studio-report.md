@@ -26,7 +26,7 @@ applicant id, the same reference staff already use.
 ## The stages ("where did they stop")
 
 Checked from the end of the journey backwards, so someone who booked is "booked"
-whatever else is true of them. `stuck` shows every stage except the first two.
+whatever else is true of them. `stuck` shows everyone with `needs_follow_up` true: every stage except `booked`, `declined_offer` and `existing_customer_redirected`.
 
 | Stage | What it means | What to do |
 |---|---|---|
@@ -40,7 +40,8 @@ whatever else is true of them. `stuck` shows every stage except the first two.
 | `waiting_for_staff_review` | Income submitted, Ascend left it pending | **Staff are the blocker**: review the order |
 | `uploading_income_not_submitted` | Uploaded documents, never submitted | Call; `last_income_issue` says why a document was refused |
 | `needs_income_not_started` | Ascend wants income, none uploaded | Call: the document step lost them |
-| `submitted_no_ascend_order` | Submitted, but Ascend never opened an order | **A fault**: check the Ascend call |
+| `existing_customer_redirected` | Submitted, and Ascend says they already borrow from us: sent to the mobile app on purpose, so no order | Nothing: not stuck |
+| `submitted_no_ascend_order` | Submitted, but Ascend never opened an order, and they are not an existing customer | Check the Ascend call for this applicant (on staging, 8 are from before the Ascend step existed and 4 are worth a look) |
 | `logged_in_not_submitted` | Logged in with Singpass, stopped at the review page | Call |
 | `started_not_logged_in` | Row exists, never logged in | Low value |
 
@@ -100,8 +101,8 @@ whatever else is true of them. `stuck` shows every stage except the first two.
      `stage` = `declined_offer`.
    - **Never completed**: Table with ref, created_at, last_activity_at,
      hours_since_last_activity, mobile, stage, apply, source, requested, income,
-     approved, documents, last_income_issue; filter *Exclude* `stage` is `booked`
-     or `declined_offer`. Add a control on `stage` so staff can pull up one stage
+     approved, documents, last_income_issue; filter *Include* `needs_follow_up` is
+     `true`. (One field, so a stage added later needs no change here.) Add a control on `stage` so staff can pull up one stage
      and call them.
    - **Funnel**: Bar chart, dimension `stage`, metric Record Count, sorted by
      `stage_order` ascending.

@@ -72,6 +72,9 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
 
     await order(await applicant("needs_income"), "pending", null);
     await applicant("no_order");
+    // Ascend says they already borrow from us: sent to the app on purpose, so no order is made.
+    const existing = await applicant("existing");
+    await sql`update applicants set ascend_user_id = '1550469448854245376', ascend_new_customer = false where id = ${existing}`;
     await applicant("logged_in", { status: "in_progress" });
     await applicant("not_logged_in", { status: "in_progress", auth: null });
   });
@@ -99,6 +102,7 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     ["uploading", "uploading_income_not_submitted"],
     ["needs_income", "needs_income_not_started"],
     ["no_order", "submitted_no_ascend_order"],
+    ["existing", "existing_customer_redirected"],
     ["logged_in", "logged_in_not_submitted"],
     ["not_logged_in", "started_not_logged_in"],
   ])("puts the applicant who %s at stage %s", async (key, stage) => {
@@ -130,9 +134,18 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     const stuck = new Set(rows.map((r) => r.id));
     expect(stuck.has(ids.booked!)).toBe(false);
     expect(stuck.has(ids.declined!)).toBe(false);
+    expect(stuck.has(ids.existing!), "existing customers are sent to the app, not stuck").toBe(false);
     for (const key of ["cancelled", "planned", "offer", "passed_no_limit", "rejected", "review", "uploading", "needs_income", "no_order", "logged_in", "not_logged_in"]) {
       expect(stuck.has(ids[key]!), key).toBe(true);
     }
+  });
+
+  it("flags who needs a call, so the report filters on one field however many stages there are", async () => {
+    const rows = await sql<{ id: string; needs_follow_up: boolean }>`
+      select id, needs_follow_up from reporting.applicant_journey where id = any(${Object.values(ids)}::uuid[])`;
+    const flag = (key: string) => rows.find((r) => r.id === ids[key])?.needs_follow_up;
+    for (const key of ["booked", "rebooked", "declined", "existing"]) expect(flag(key), key).toBe(false);
+    for (const key of ["cancelled", "planned", "offer", "passed_no_limit", "review", "no_order", "logged_in"]) expect(flag(key), key).toBe(true);
   });
 
   it("says what went wrong with the documents, using the latest problem only", async () => {
