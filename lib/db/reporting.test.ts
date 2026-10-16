@@ -186,6 +186,38 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     expect(row!.no_order_reason).toBe("ascend_not_configured");
   });
 
+  it.each([
+    // booked
+    ["booked", "booked"],
+    ["rebooked", "booked"],
+    // had a credit limit from Ascend and did not book (or booked and cancelled, or turned it down)
+    ["cancelled", "got_credit_limit"],
+    ["declined", "got_credit_limit"],
+    ["planned", "got_credit_limit"],
+    ["offer", "got_credit_limit"],
+    // an existing customer, sent to the app on purpose
+    ["existing", "reloan"],
+    // everyone else: no limit was ever given
+    ["passed_no_limit", "other"],
+    ["rejected", "other"],
+    ["review", "other"],
+    ["uploading", "other"],
+    ["needs_income", "other"],
+    ["no_order", "other"],
+    ["logged_in", "other"],
+    ["not_logged_in", "other"],
+  ])("puts the applicant who %s in the group %s", async (key, group) => {
+    const [row] = await sql<{ journey_group: string }>`select journey_group from reporting.applicant_journey where id = ${ids[key]}`;
+    expect(row!.journey_group).toBe(group);
+  });
+
+  it("uses only the four groups, and gives every applicant one", async () => {
+    const rows = await sql<{ journey_group: string | null }>`
+      select distinct journey_group from reporting.applicant_journey where id = any(${Object.values(ids)}::uuid[])`;
+    const groups = rows.map((r) => r.journey_group).sort();
+    expect(groups).toEqual(["booked", "got_credit_limit", "other", "reloan"]);
+  });
+
   it("flags who needs a call, so the report filters on one field however many stages there are", async () => {
     const rows = await sql<{ id: string; needs_follow_up: boolean }>`
       select id, needs_follow_up from reporting.applicant_journey where id = any(${Object.values(ids)}::uuid[])`;

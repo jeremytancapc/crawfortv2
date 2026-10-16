@@ -23,6 +23,18 @@ ceiling); **Approved** is Ascend's credit limit (the A-Card Limit); **OS** is th
 outstanding loans we recorded. **Ref** is `CFH5-` plus the last 8 characters of the
 applicant id, the same reference staff already use.
 
+## The four piles
+
+Every applicant is in exactly one, in the field `journey_group`. Build one table
+per pile from the single data source, each with one filter, `journey_group` equals:
+
+| Pile | `journey_group` | Who | What to look at |
+|---|---|---|---|
+| Booked | `booked` | Has an appointment | The appointments list |
+| Got a credit limit | `got_credit_limit` | Ascend gave a limit and they did not book: saw the offer, chose a plan, turned it down, or booked and cancelled | `stage`, `approved`, `decline_reason`; these are the people to call |
+| Reloan | `reloan` | Ascend says they already borrow from us; sent to the app on purpose | Nothing: counted, not chased |
+| Other | `other` | No limit was ever given, for any reason | `stage` says where they stopped; `no_order_reason` says why a submit failed |
+
 ## The stages ("where did they stop")
 
 Checked from the end of the journey backwards, so someone who booked is "booked"
