@@ -51,11 +51,19 @@ export async function creditAfterIncome(
     query?: typeof ascendQueryCredit;
     /** Replaced in tests so they do not sleep. */
     wait?: (ms: number) => Promise<void>;
+    /**
+     * Whether a PENDING answer is read once more (the default, for the income
+     * step, where the decision can settle after the submission). Right after
+     * apply/credit it is off: PENDING there means Ascend needs income, which is
+     * an answer, not a wait.
+     */
+    rereadPending?: boolean;
   },
 ): Promise<AscendCreditResult> {
   const status = submitted.risk?.riskStatus;
   const awaitingLimit = status === "PASS" && !hasLimit(submitted);
-  if (status !== "PENDING" && !awaitingLimit) return submitted;
+  const rereadPending = options?.rereadPending ?? true;
+  if (!(status === "PENDING" && rereadPending) && !awaitingLimit) return submitted;
 
   const query = options?.query ?? ascendQueryCredit;
   const wait = options?.wait ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));

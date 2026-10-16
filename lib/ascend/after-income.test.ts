@@ -151,3 +151,41 @@ describe("creditAfterIncome - a PASS whose limit has not arrived yet", () => {
     expect(query).not.toHaveBeenCalled();
   });
 });
+
+describe("creditAfterIncome - right after apply/credit, where PENDING is a real answer", () => {
+  // Observed 2026-10-16 on staging (orders 1560590648489684992 and
+  // 1560591551355564032): apply/credit answered PASS with creditScore {} and
+  // the portal showed both as passed with a limit. The submit step read the
+  // first answer as final and sent both applicants to the pending page.
+  const passNoLimit = () => result({ risk: { riskStatus: "PASS" }, creditScore: {} });
+  const passWithLimit = () =>
+    result({ risk: { riskStatus: "PASS" }, creditScore: { creditLimit: 2000, creditLevel: "C" } });
+  const noWait = () => Promise.resolve();
+
+  it("asks again for a PASS that has no limit yet, and returns the limit", async () => {
+    const query = vi.fn().mockResolvedValue(passWithLimit());
+
+    const out = await creditAfterIncome(ORDER, passNoLimit(), { query, wait: noWait, rereadPending: false });
+
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(out.creditScore.creditLimit).toBe(2000);
+  });
+
+  it("leaves a PENDING answer alone: it means Ascend needs income, not that it is still thinking", async () => {
+    const query = vi.fn();
+    const pending = result();
+
+    const out = await creditAfterIncome(ORDER, pending, { query, wait: noWait, rereadPending: false });
+
+    expect(query).not.toHaveBeenCalled();
+    expect(out).toBe(pending);
+  });
+
+  it("still re-reads a PENDING answer by default, as the income step needs", async () => {
+    const query = vi.fn().mockResolvedValue(result());
+
+    await creditAfterIncome(ORDER, result(), { query, wait: noWait });
+
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+});

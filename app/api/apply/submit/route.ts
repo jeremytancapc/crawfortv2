@@ -56,6 +56,7 @@ import {
 import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
 import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
+import { creditAfterIncome } from "@/lib/ascend/after-income";
 import {
   DuplicateAscendOrderError,
   getAscendOrder,
@@ -348,7 +349,7 @@ export async function POST(request: NextRequest) {
   // *new* answer pointed rather than the one on record.
   const existingOrder = isDatabaseConfigured() ? await getAscendOrder(leadId) : null;
 
-  const ascendResult = existingOrder
+  const firstAnswer = existingOrder
     ? orderAsCreditResult(existingOrder)
     : await requestAscendDecision({
         desiredAmount: formData.amount,
@@ -362,6 +363,15 @@ export async function POST(request: NextRequest) {
         applicantId: leadId,
         borrowerMyInfo,
       });
+
+  // A PASS can arrive before its limit does (staging, 16 Oct: two applicants
+  // sent to the pending page that the portal showed as passed). Ask again
+  // before deciding, but only for a new order: one already on file is the
+  // answer of record. PENDING is left alone here - it means Ascend needs income.
+  const ascendResult =
+    !existingOrder && firstAnswer?.orderId
+      ? await creditAfterIncome(firstAnswer.orderId, firstAnswer, { applicantId: leadId, rereadPending: false })
+      : firstAnswer;
 
   const decision = decideSubmission({ ascend: ascendResult });
 

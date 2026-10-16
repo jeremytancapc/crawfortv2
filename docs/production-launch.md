@@ -36,7 +36,7 @@ Each item has its own production value. **Nothing is shared with staging.**
 | 1.6 | **AirConnect and AXS** | Production `AIRCONNECT_API_KEY`, `AIRCONNECT_APPOINTMENTS_URL`, `AIRCONNECT_LEADS_URL`, `AXS_PARTNER_API_KEY`, `AXS_TOKEN_SECRET`. | Ops + Ext |
 | 1.7 | **App secrets and flags** | `APPLY_SESSION_SECRET` (32+ random characters, unique to production), `CRON_SECRET`, `NEXT_PUBLIC_APP_BASE_URL=https://get.crawfort.com`. **Off:** `MYINFO_EDITOR_ENABLED=false`, `MYINFO_CAPTURE_ENABLED=false`. **Empty:** `TEST_RECOGNISED_BANKS`. App store links if booking uses them. | Dev |
 | 1.8 | **Vercel** | Set every variable above in the Production scope only. Add `get.crawfort.com` to the project. In DNS add a record for `get` pointing where Vercel's domain screen says (`apply` uses a Vercel CNAME that is not proxied, so use the same kind of record). Wait for the certificate. | Ops |
-| 1.9 | **Cron jobs** - scheduled in `vercel.json` (done 15 Oct): `/api/cron/income-documents` daily 03:00 Singapore time (deletes documents added but never submitted, after 7 days) and `/api/cron/ascend-shape` daily 09:00 (reports when Ascend changes how it answers; returns an error on a new problem). Both refuse without `CRON_SECRET`, which Vercel sends automatically once it is set. Still to decide: where the Ascend alert goes. | Dev + Ops |
+| 1.9 | **Cron jobs** - scheduled in `vercel.json`, all daily and all refusing requests without `CRON_SECRET` (Vercel sends it once the variable is set): `/api/cron/income-documents` 03:00 Singapore time (deletes documents added but never submitted, after 7 days); `/api/cron/myinfo-retention` 03:30 (deletes raw MyInfo records - NRIC, CPF, NOA - after their 24-hour retention; added 15 Oct because nothing was calling the delete function); `/api/cron/ascend-shape` 09:00 (reports when Ascend changes how it answers; errors on a new problem). Vercel runs crons on Production only, so on staging call a route by hand. Still to decide: where the Ascend alert goes. | Dev + Ops |
 
 ## 2. Code to settle before the release
 
@@ -67,7 +67,8 @@ Production applications are **real**: real Singpass, real Ascend. Use staff with
 - [ ] Accept, booking and AirConnect/AXS steps work. The booking link in the message starts with `https://get.crawfort.com`.
 - [ ] `income_model_calls` has a row for each read, with `retain_until` five years out.
 - [ ] The editor routes are closed: `/api/dev/myinfo-edit` and `/api/dev/myinfo-strip` answer with an error, and the Edit NOA / CPF button is absent.
-- [ ] Both cron routes answer with the right secret and refuse without it.
+- [ ] All three cron routes answer with the right secret and refuse without it. `myinfo-retention` returns `{"pruned": n}`.
+- [ ] After the first night, no row in `myinfo_retrievals` is older than 24 hours.
 
 ## 5. Watch, and be ready to back out
 
