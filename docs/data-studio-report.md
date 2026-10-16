@@ -107,6 +107,21 @@ whatever else is true of them. `stuck` shows every stage except the first two.
    - Sort the tables by created_at, newest first; add a date range control on
      created_at; green fill on *approved*; yellow rows where booking_date is empty.
 
+   **In the Looker Studio editor** (Setup tab of a Table):
+   - *Dimension*: add the fields listed. *Metric*: remove the default **Record Count**
+     (click its X) - each row is one applicant, so a count would collapse the rows.
+   - *Filter, Filters on this chart, Add filter, Create a filter*: Include / Exclude,
+     field `stage`, then Equal to or In, then the stage names.
+   - *Sort*: `created_at` descending. *Number of rows*: 100. *Date range
+     dimension*: `created_at`.
+   - *Style tab*: Show row numbers; Conditional formatting: green fill where
+     `approved` > 0, yellow fill where `booking_date` is null.
+   - Insert a **Drop-down list** on `stage` above the Never completed table, and one
+     **Date range control** at the top.
+   - Name the data source "CF H5 v2 journey" so it is not confused with an older
+     source of similar name. Check that older sources do not expose `full_name` or
+     `nric` to everyone who can edit the report.
+
 5. **Refresh.** Looker Studio caches. Set the data source freshness to 15 minutes
    (Data source settings, Data freshness), or refresh by hand during the day.
 
