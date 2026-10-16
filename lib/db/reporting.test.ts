@@ -73,6 +73,14 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     await order(await applicant("needs_income"), "pending", null);
     await applicant("no_order");
 
+    // Ascend's answer is now "rejected", though an earlier limit is still stored: no limit counts.
+    await order(await applicant("rejected_with_limit"), "rejected", 1800);
+
+    // Flagged as an existing customer, yet went through the funnel and has an order: not a reloan.
+    const flaggedButOrdered = await applicant("flagged_with_order");
+    await order(flaggedButOrdered, "pending", null);
+    await sql`update applicants set ascend_new_customer = false where id = ${flaggedButOrdered}`;
+
     // Submitted with no Ascend order, and what the log says about why:
     const skipped = await applicant("no_order_skipped");
     await sql`insert into api_logs (tag, method, url, applicant_id, error) values ('[ascend]skipped', 'POST', 'skipped', ${skipped}, 'Ascend is not configured in this environment')`;
@@ -197,6 +205,8 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     ["offer", "got_credit_limit"],
     // an existing customer, sent to the app on purpose
     ["existing", "reloan"],
+    ["rejected_with_limit", "other"],
+    ["flagged_with_order", "other"],
     // everyone else: no limit was ever given
     ["passed_no_limit", "other"],
     ["rejected", "other"],
