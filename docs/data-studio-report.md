@@ -71,22 +71,41 @@ whatever else is true of them. `stuck` shows every stage except the first two.
    `reporting`, gets *permission denied* on `applicants`, `myinfo_retrievals`,
    `api_logs` and the rest, and cannot write.
 
-3. **Connect Looker Studio.** Add data source, **PostgreSQL**:
+3. **Connect Looker Studio, one data source.** Add data source, **PostgreSQL**:
    - Host: the Neon **direct** (not `-pooler`) host from the connection string
    - Port `5432`, database `neondb`
    - Username `looker_reader`, the password from step 2
    - Tick **Enable SSL** (Neon requires it)
 
-   Add `reporting.booked`, `reporting.customer_declined`, `reporting.stuck` and
-   `reporting.stage_summary` as four data sources.
+   The connector lists only tables in the `public` schema, which this login cannot
+   read, so it says "There are no tables available in this database". That is
+   expected. Choose **CUSTOM QUERY** and enter:
 
-4. **Build the page**, matching the example: three tables (Booked, Customer
-   rejected, Never completed), sorted by created at, newest first; green fill on
-   *Approved*; yellow rows where booking is empty. Add a **date range control**
-   on created at, and on the Never completed table a filter on **stage** (so staff
-   can pull up "plan chosen, not booked" and call them). For the funnel, a bar
-   chart of `stage_summary` with `stage_order` as the sort and `applicants` as the
-   metric.
+   ```sql
+   select * from reporting.applicant_journey
+   ```
+
+   The connector makes one data source per table or query, so use this one and
+   build all three report tables from it with filters (below), not four separate
+   connections. `booked`, `customer_declined`, `stuck` and `stage_summary` exist for
+   anyone who prefers a data source per table.
+
+4. **Build the page** from that one data source:
+   - **Booked**: Table with ref, created_at, mobile, booking_date, booking_time,
+     apply, source, income, requested, os, max_eligible, approved; filter *Include*
+     `stage` = `booked`.
+   - **Customer rejected**: Table with ref, created_at, mobile, apply, source,
+     decline_reason, income, requested, os, max_eligible, approved; filter *Include*
+     `stage` = `declined_offer`.
+   - **Never completed**: Table with ref, created_at, last_activity_at,
+     hours_since_last_activity, mobile, stage, apply, source, requested, income,
+     approved, documents, last_income_issue; filter *Exclude* `stage` is `booked`
+     or `declined_offer`. Add a control on `stage` so staff can pull up one stage
+     and call them.
+   - **Funnel**: Bar chart, dimension `stage`, metric Record Count, sorted by
+     `stage_order` ascending.
+   - Sort the tables by created_at, newest first; add a date range control on
+     created_at; green fill on *approved*; yellow rows where booking_date is empty.
 
 5. **Refresh.** Looker Studio caches. Set the data source freshness to 15 minutes
    (Data source settings, Data freshness), or refresh by hand during the day.
