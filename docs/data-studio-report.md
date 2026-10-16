@@ -45,6 +45,25 @@ whatever else is true of them. `stuck` shows everyone with `needs_follow_up` tru
 | `logged_in_not_submitted` | Logged in with Singpass, stopped at the review page | Call |
 | `started_not_logged_in` | Row exists, never logged in | Low value |
 
+### Why a submitted applicant has no Ascend order
+
+`submitted_no_ascend_order` is not a customer being stuck. They pressed Submit, were
+shown "under review", and are waiting for a check that never happened - so it is a
+fault on our side. The column `no_order_reason` (with `no_order_detail`) says which,
+from what the call log recorded:
+
+| `no_order_reason` | What happened | What to do |
+|---|---|---|
+| `ascend_not_configured` | The app skipped Ascend: a setting was missing in Vercel Production | **Urgent.** Fix the setting, redeploy, ask them to apply again |
+| `ascend_call_failed` | Ascend answered with an error (see `no_order_detail`, e.g. "600 busy") | Look at the detail; ask them to apply again if it was temporary |
+| `order_not_saved` | Ascend made an order but we did not save it | **A bug on our side.** Find the order in the Ascend portal and tell a developer |
+| `user_made_no_credit_call` | Ascend identified them but the credit call never happened | Look at the log for that applicant |
+| `no_call_recorded` | Nothing was recorded: usually before Ascend was connected (old test data) | Usually ignore; check the created date |
+
+In Data Studio, add `no_order_reason` and `no_order_detail` to the Never completed
+table, and a small table "Submitted, no Ascend order to fix" filtered to
+`stage` = `submitted_no_ascend_order` showing those two columns.
+
 `last_income_issue` is the sentence the applicant saw when we refused a document
 (wrong name, month too old, and so on), taken from the latest refused reading.
 
