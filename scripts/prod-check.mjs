@@ -7,6 +7,8 @@
  *   node scripts/prod-check.mjs --control       + one Ascend call signed with a WRONG
  *                                                 secret, to prove the real one is accepted
  *   node scripts/prod-check.mjs --airconnect    + an empty request to AirConnect
+ *   node scripts/prod-check.mjs --live          ask the LIVE site what settings it really has
+ *                                                 (the file checks above prove the file, not Vercel)
  *
  * Reads .env.vercel-production (or --file <path>), never process.env, so it
  * cannot pick up staging values by accident. Prints names and PASS/FAIL only,
@@ -211,6 +213,28 @@ if (flag("airconnect")) {
     } catch (error) {
       say("FAIL", `${name} reachable`, String(error.message));
     }
+  }
+}
+
+if (flag("live")) {
+  section("7. The live site (what Vercel really holds, as yes or no)");
+  try {
+    const res = await fetch(`${env.NEXT_PUBLIC_APP_BASE_URL}/api/health/config`, {
+      headers: { authorization: `Bearer ${env.CRON_SECRET}` },
+    });
+    if (res.status === 401) {
+      say("FAIL", "live site answers", "401: CRON_SECRET in Vercel is missing, or differs from the file, or the site has not been redeployed since it was added");
+    } else if (res.status === 404) {
+      say("FAIL", "live site answers", "404: the live site does not have the health route yet (not deployed)");
+    } else {
+      const report = await res.json();
+      console.log(`      environment ${report.environment}, running commit ${report.commit}`);
+      for (const name of ["ascend", "database", "documents", "anthropic", "singpass", "airconnect", "appBaseUrl", "cron", "editorsOff", "testBanksOff"]) {
+        say(report[name] ? "PASS" : "FAIL", `live: ${name}`);
+      }
+    }
+  } catch (error) {
+    say("FAIL", "live site reachable", String(error.message));
   }
 }
 

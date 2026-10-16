@@ -7,7 +7,9 @@
  *    a booking that may never happen.
  *      POST {AIRCONNECT_LEADS_URL}        (their /api/ascend/leads/manualverify)
  *  - Appointment booked (apply/axs/aip `book` routes).
- *      POST {AIRCONNECT_APPOINTMENTS_URL} (their /api/appointments/ascend)
+ *      POST {AIRCONNECT_APPOINTMENTS_URL} (their /api/appointments/cfh5, which
+ *      files the appointment as `submitted_from_h5`; /api/appointments/ascend
+ *      takes the same body but files it as `booking_appointment`)
  *
  * Both take the same auth (x-api-key: AIRCONNECT_API_KEY) and the same
  * shape of body: no cfh5Id/leadId/loanAmount - those were this app's own
@@ -104,6 +106,26 @@ export interface NewLeadPayload {
   customerName: string;
   phoneNumber: string;
   idNumber?: string;
+  /**
+   * The page staff open in Ascend to review this order. AirConnect keeps it on
+   * the lead and offers it to agents as "Verify in Ascend". Sent only when a
+   * person has to look (see staff-review.ts).
+   */
+  customerHyperLink?: string;
+  /**
+   * A credit limit Ascend has already given this applicant. AirConnect keeps
+   * every limit it is told about (with where it came from and when) and shows
+   * the latest. Omitted when there is none, so an ordinary lead is unchanged.
+   */
+  creditLimit?: {
+    amount: number;
+    /** Which system sent it: cf_h5_v2 for this app. */
+    source: string;
+    /** Who decided it. */
+    provider: string;
+    /** The provider's id for the decision: the Ascend order id. */
+    reference?: string | null;
+  };
 }
 
 /**
@@ -128,6 +150,15 @@ export async function pushNewLeadToAirConnect(
     customerName: payload.customerName,
     phoneNumber: payload.phoneNumber,
     ...(payload.idNumber ? { idNumber: payload.idNumber } : {}),
+    ...(payload.customerHyperLink ? { customerHyperLink: payload.customerHyperLink } : {}),
+    ...(payload.creditLimit
+      ? {
+          creditLimit: payload.creditLimit.amount,
+          creditLimitSource: payload.creditLimit.source,
+          creditLimitProvider: payload.creditLimit.provider,
+          ...(payload.creditLimit.reference ? { creditLimitReference: payload.creditLimit.reference } : {}),
+        }
+      : {}),
   };
 
   return postToAirConnect({ url, body, applicantId: payload.applicantId, tag });

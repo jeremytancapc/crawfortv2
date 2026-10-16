@@ -30,14 +30,17 @@ export const ASCEND_ENVIRONMENTS = {
 /**
  * Returns null when Ascend is not configured or not switched on. Callers treat
  * null as "Ascend is not part of this journey" and keep the pre-Ascend
- * behaviour, which is what lets this land on production dark.
+ * behaviour, which is what lets this land on staging and on a laptop without it.
+ *
+ * Takes the environment as an argument so it can be tested; it defaults to the
+ * real one.
  */
-export function ascendConfig(): AscendConfig | null {
-  if (process.env.ASCEND_ENABLED !== "true") return null;
+export function ascendConfig(env: NodeJS.ProcessEnv = process.env): AscendConfig | null {
+  if (env.ASCEND_ENABLED !== "true") return null;
 
-  const baseUrl = process.env.ASCEND_BASE_URL?.trim() ?? "";
-  const appId = process.env.ASCEND_APP_ID?.trim() ?? "";
-  const secret = process.env.ASCEND_APP_SECRET?.trim() ?? "";
+  const baseUrl = env.ASCEND_BASE_URL?.trim() ?? "";
+  const appId = env.ASCEND_APP_ID?.trim() ?? "";
+  const secret = env.ASCEND_APP_SECRET?.trim() ?? "";
 
   if (!baseUrl || !appId || !secret) {
     console.warn("[ascend] ASCEND_ENABLED is true but config is incomplete - staying off", {
@@ -49,4 +52,18 @@ export function ascendConfig(): AscendConfig | null {
   }
 
   return { baseUrl: baseUrl.replace(/\/+$/, ""), appId, secret };
+}
+
+/**
+ * True on the live site when Ascend is not fully set up.
+ *
+ * "Ascend is off" is a fine state for staging and a laptop, but on production it
+ * is a fault: with no answer from Ascend an applicant is sent to the "under
+ * review" page, nobody checks them and no lead is made. On 16 Oct the first
+ * real customer went this way because one setting (the app secret) was not in
+ * Vercel. Production refuses to submit instead, so the applicant is told to try
+ * again and the fault shows up at once.
+ */
+export function ascendMissingInProduction(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VERCEL_ENV === "production" && ascendConfig(env) === null;
 }
