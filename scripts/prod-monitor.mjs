@@ -96,14 +96,14 @@ async function healthProblems() {
 
 // ── Counts from the database (read-only) ──────────────────────────────────
 
-async function counts() {
+async function measure() {
   const { default: pg } = await import("pg");
   const client = new pg.Client({ connectionString: env.DATABASE_URL_UNPOOLED });
   await client.connect();
   try {
     const n = async (text, params = [windowMinutes]) => Number((await client.query(text, params)).rows[0].n);
     const since = "now() - make_interval(mins => $1::int)";
-    return {
+    const counts = {
       newApplicants: await n(`select count(*) as n from applicants where created_at > ${since}`),
       // Submitted in the window, not an existing customer sent to the app on purpose, and no order.
       submittedWithoutOrder: await n(
@@ -135,6 +135,30 @@ async function counts() {
         [],
       ),
     };
+
+    // Everyone who still needs a person, and how long they have been idle. Read from
+    // the reporting views (migrations 0010-0012), so "stuck" means the same here as
+    // in the Data Studio report. last_activity_at is Singapore time without a zone.
+    let applicants = null;
+    try {
+      const { rows } = await client.query(
+        `select ref, stage, right(mobile, 4) as mobile_last4, last_income_issue as issue,
+                extract(epoch from ((now() at time zone 'Asia/Singapore') - last_activity_at)) / 60 as minutes_idle
+           from reporting.applicant_journey
+          where needs_follow_up and last_activity_at > (now() at time zone 'Asia/Singapore') - interval '2 days'`,
+      );
+      applicants = rows.map((r) => ({
+        ref: r.ref,
+        stage: r.stage,
+        minutesIdle: Number(r.minutes_idle),
+        mobileLast4: r.mobile_last4 ?? null,
+        issue: r.issue ?? null,
+      }));
+    } catch (error) {
+      // 3F000 / 42P01: the views are not on this database yet. Said, not hidden.
+      if (!["3F000", "42P01"].includes(error.code)) throw error;
+    }
+    return { counts, applicants };
   } finally {
     await client.end();
   }
@@ -145,7 +169,7 @@ async function counts() {
 const [site, lambda, ascend, health] = await Promise.all([siteOk(), lambdaOk(), ascendCredentialsOk(), healthProblems()]);
 let measured;
 try {
-  measured = await counts();
+  measured = await measure();
 } catch (error) {
   console.log(`URGENT database_unreachable: could not read the production database (${String(error.message).replace(/postgres(ql)?:\/\/\S+/g, "<url>").slice(0, 120)}).`);
   process.exit(2);
@@ -155,7 +179,8 @@ const { findingsFrom } = await import(join(ROOT, "lib/monitor/findings.ts"));
 const findings = findingsFrom({
   windowMinutes,
   probes: { siteOk: site, lambdaOk: lambda, ascendCredentialsOk: ascend, healthProblems: health },
-  counts: measured,
+  counts: measured.counts,
+  applicants: measured.applicants,
 });
 
 const sgt = new Date().toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Singapore" });

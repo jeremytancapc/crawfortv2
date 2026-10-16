@@ -38,9 +38,43 @@ export type Snapshot = {
     /** Applicants Ascend passed who have no limit stored. */
     approvedWithoutLimit: number;
   };
+  /**
+   * Everyone who still needs a person, with how long they have been idle.
+   * null when the reporting views are not on the database, so the check could
+   * not be made - which is said, not mistaken for "nobody is stuck".
+   */
+  applicants: StuckCandidate[] | null;
+};
+
+export type StuckCandidate = {
+  /** CFH5-XXXXXXXX, the reference staff already use. */
+  ref: string;
+  stage: string;
+  minutesIdle: number;
+  /** Last four digits only. */
+  mobileLast4: string | null;
+  /** The sentence the applicant last saw when a document was refused. */
+  issue: string | null;
 };
 
 export type Finding = { level: "urgent" | "warn" | "info"; code: string; message: string };
+
+/**
+ * How long someone may sit at each step before it is worth telling a person, and
+ * how to say it. Not listed on purpose: finished (booked, declined), sent to the
+ * app on purpose, never logged in, and rejected by Ascend - none is a person
+ * stuck. The two faults that are never the customer's doing (submitted with no
+ * Ascend order, approved with no limit) are already urgent from the counts above.
+ */
+const WATCH: Record<string, { afterMinutes: number; level: Finding["level"]; what: string }> = {
+  logged_in_not_submitted: { afterMinutes: 20, level: "warn", what: "logged in with Singpass and never submitted" },
+  needs_income_not_started: { afterMinutes: 30, level: "warn", what: "were asked for income documents and uploaded none" },
+  uploading_income_not_submitted: { afterMinutes: 30, level: "warn", what: "uploaded income documents and never submitted them" },
+  waiting_for_staff_review: { afterMinutes: 240, level: "warn", what: "submitted income and are still waiting for staff to review" },
+  offer_seen_no_plan: { afterMinutes: 60, level: "info", what: "were approved, saw their offer and chose no plan" },
+  plan_chosen_not_booked: { afterMinutes: 60, level: "warn", what: "chose a plan and never booked an appointment" },
+  booking_cancelled: { afterMinutes: 1, level: "warn", what: "booked and then cancelled" },
+};
 
 export function findingsFrom(s: Snapshot): Finding[] {
   const found: Finding[] = [];
@@ -74,9 +108,6 @@ export function findingsFrom(s: Snapshot): Finding[] {
   }
 
   // ── Worth a look ────────────────────────────────────────────────────────
-  if (s.probes.healthProblems === null) {
-    add("warn", "health_unavailable", "Could not ask the live site which settings it has (its health check did not answer).");
-  }
   if (s.counts.singpassRedirects >= 5 && s.counts.singpassCallbacks > 0 && s.counts.singpassCallbacks / s.counts.singpassRedirects < 0.4) {
     add("warn", "singpass_dropping", `Only ${s.counts.singpassCallbacks} of ${s.counts.singpassRedirects} Singpass attempts in the last ${minutes} came back.`);
   }
@@ -87,7 +118,30 @@ export function findingsFrom(s: Snapshot): Finding[] {
     add("warn", "reader_failures", `The document reader produced no report ${s.counts.readerFailures} times in the last ${minutes}.`);
   }
 
+  // ── Applicants who stopped somewhere ────────────────────────────────────
+  if (s.applicants === null) {
+    add("warn", "stuck_check_unavailable", "Could not check who is stuck: the reporting views are not on the production database yet (run migrations 0010-0012).");
+  } else {
+    for (const [stage, rule] of Object.entries(WATCH)) {
+      // Said once, in the window in which they cross the line: a stateless check
+      // run every few minutes would otherwise repeat the same person all day.
+      const crossed = s.applicants.filter(
+        (p) => p.stage === stage && p.minutesIdle >= rule.afterMinutes && p.minutesIdle < rule.afterMinutes + s.windowMinutes,
+      );
+      if (crossed.length === 0) continue;
+      const who = crossed
+        .slice(0, 6)
+        .map((p) => `${p.ref}${p.mobileLast4 ? ` (...${p.mobileLast4})` : ""}${p.issue ? ` - "${p.issue.slice(0, 90)}"` : ""}`)
+        .join("; ");
+      const more = crossed.length > 6 ? `, and ${crossed.length - 6} more` : "";
+      add(rule.level, `stuck_${stage}`, `${crossed.length} applicant(s) ${rule.what}, idle over ${rule.afterMinutes} minutes: ${who}${more}.`);
+    }
+  }
+
   // ── News ────────────────────────────────────────────────────────────────
+  if (s.probes.healthProblems === null) {
+    add("info", "health_unavailable", "The live site's settings check did not answer.");
+  }
   if (s.counts.newApplicants > 0) {
     add("info", "new_applicants", `${s.counts.newApplicants} new applicant(s) in the last ${minutes}.`);
   }
