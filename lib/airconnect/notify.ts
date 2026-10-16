@@ -7,7 +7,9 @@
  *    a booking that may never happen.
  *      POST {AIRCONNECT_LEADS_URL}        (their /api/ascend/leads/manualverify)
  *  - Appointment booked (apply/axs/aip `book` routes).
- *      POST {AIRCONNECT_APPOINTMENTS_URL} (their /api/appointments/ascend)
+ *      POST {AIRCONNECT_APPOINTMENTS_URL} (their /api/appointments/cfh5, which
+ *      files the appointment as `submitted_from_h5`; /api/appointments/ascend
+ *      takes the same body but files it as `booking_appointment`)
  *
  * Both take the same auth (x-api-key: AIRCONNECT_API_KEY) and the same
  * shape of body: no cfh5Id/leadId/loanAmount - those were this app's own
