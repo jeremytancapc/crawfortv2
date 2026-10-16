@@ -67,6 +67,7 @@ import {
 } from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 import { resolveAscendIdentity } from "@/lib/ascend/identity";
+import { ascendMissingInProduction } from "@/lib/ascend/config";
 import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-info";
 import { deriveBorrowerFields } from "@/lib/ascend/borrower-derive";
 import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
@@ -118,6 +119,18 @@ export async function POST(request: NextRequest) {
     (sessionData as { leadId?: string }).leadId ||
     ""
   ).trim();
+
+  // On the live site, a missing Ascend setting is a fault, not a journey without
+  // Ascend. Refuse before anything is written: the applicant is told to try again
+  // and stays where they are, instead of being sent to "under review" with no
+  // check, no lead and no credit decision (what happened on 16 Oct).
+  if (ascendMissingInProduction()) {
+    console.error("[apply/submit] production has no complete Ascend configuration - refusing to submit");
+    return NextResponse.json(
+      { error: "Our service is temporarily unavailable. Please try again shortly." },
+      { status: 503 },
+    );
+  }
 
   // ── 1. Save the applicant (UPDATE if a partial row exists, INSERT otherwise) ─
   const applicantFields: NewApplicant = {
