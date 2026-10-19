@@ -23,6 +23,18 @@ ceiling); **Approved** is Ascend's credit limit (the A-Card Limit); **OS** is th
 outstanding loans we recorded. **Ref** is `CFH5-` plus the last 8 characters of the
 applicant id, the same reference staff already use.
 
+## The four piles
+
+Every applicant is in exactly one, in the field `journey_group`. Build one table
+per pile from the single data source, each with one filter, `journey_group` equals:
+
+| Pile | `journey_group` | Who | What to look at |
+|---|---|---|---|
+| Booked | `booked` | Has an appointment | The appointments list |
+| Got a credit limit | `got_credit_limit` | Ascend gave a limit and they did not book: saw the offer, chose a plan, turned it down, or booked and cancelled | `stage`, `approved`, `decline_reason`; these are the people to call |
+| Reloan | `reloan` | Ascend says they already borrow from us; sent to the app on purpose | Nothing: counted, not chased |
+| Other | `other` | No limit was ever given, for any reason | `stage` says where they stopped; `no_order_reason` says why a submit failed |
+
 ## The stages ("where did they stop")
 
 Checked from the end of the journey backwards, so someone who booked is "booked"
@@ -44,6 +56,25 @@ whatever else is true of them. `stuck` shows everyone with `needs_follow_up` tru
 | `submitted_no_ascend_order` | Submitted, but Ascend never opened an order, and they are not an existing customer | Check the Ascend call for this applicant (on staging, 8 are from before the Ascend step existed and 4 are worth a look) |
 | `logged_in_not_submitted` | Logged in with Singpass, stopped at the review page | Call |
 | `started_not_logged_in` | Row exists, never logged in | Low value |
+
+### Why a submitted applicant has no Ascend order
+
+`submitted_no_ascend_order` is not a customer being stuck. They pressed Submit, were
+shown "under review", and are waiting for a check that never happened - so it is a
+fault on our side. The column `no_order_reason` (with `no_order_detail`) says which,
+from what the call log recorded:
+
+| `no_order_reason` | What happened | What to do |
+|---|---|---|
+| `ascend_not_configured` | The app skipped Ascend: a setting was missing in Vercel Production | **Urgent.** Fix the setting, redeploy, ask them to apply again |
+| `ascend_call_failed` | Ascend answered with an error (see `no_order_detail`, e.g. "600 busy") | Look at the detail; ask them to apply again if it was temporary |
+| `order_not_saved` | Ascend made an order but we did not save it | **A bug on our side.** Find the order in the Ascend portal and tell a developer |
+| `user_made_no_credit_call` | Ascend identified them but the credit call never happened | Look at the log for that applicant |
+| `no_call_recorded` | Nothing was recorded: usually before Ascend was connected (old test data) | Usually ignore; check the created date |
+
+In Data Studio, add `no_order_reason` and `no_order_detail` to the Never completed
+table, and a small table "Submitted, no Ascend order to fix" filtered to
+`stage` = `submitted_no_ascend_order` showing those two columns.
 
 `last_income_issue` is the sentence the applicant saw when we refused a document
 (wrong name, month too old, and so on), taken from the latest refused reading.

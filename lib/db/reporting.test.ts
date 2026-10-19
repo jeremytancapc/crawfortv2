@@ -72,6 +72,31 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
 
     await order(await applicant("needs_income"), "pending", null);
     await applicant("no_order");
+
+    // Ascend's answer is now "rejected", though an earlier limit is still stored: no limit counts.
+    await order(await applicant("rejected_with_limit"), "rejected", 1800);
+
+    // Flagged as an existing customer, yet went through the funnel and has an order: not a reloan.
+    const flaggedButOrdered = await applicant("flagged_with_order");
+    await order(flaggedButOrdered, "pending", null);
+    await sql`update applicants set ascend_new_customer = false where id = ${flaggedButOrdered}`;
+
+    // Submitted with no Ascend order, and what the log says about why:
+    const skipped = await applicant("no_order_skipped");
+    await sql`insert into api_logs (tag, method, url, applicant_id, error) values ('[ascend]skipped', 'POST', 'skipped', ${skipped}, 'Ascend is not configured in this environment')`;
+
+    const failed = await applicant("no_order_failed");
+    await sql`insert into api_logs (tag, method, url, applicant_id, response_status, response_ok, error)
+              values ('[ascend]/openApi/apply/credit', 'POST', 'u', ${failed}, 200, false, '600: Busy, please retry')`;
+
+    const unsaved = await applicant("no_order_unsaved");
+    await sql`insert into api_logs (tag, method, url, applicant_id, response_status, response_ok)
+              values ('[ascend]/openApi/apply/credit', 'POST', 'u', ${unsaved}, 200, true)`;
+
+    const identified = await applicant("no_order_identified");
+    await sql`update applicants set ascend_user_id = '1550469448854245376', ascend_new_customer = true where id = ${identified}`;
+    await sql`insert into api_logs (tag, method, url, applicant_id, response_status, response_ok)
+              values ('[ascend]/openApi/users', 'POST', 'u', ${identified}, 200, true)`;
     // Ascend says they already borrow from us: sent to the app on purpose, so no order is made.
     const existing = await applicant("existing");
     await sql`update applicants set ascend_user_id = '1550469448854245376', ascend_new_customer = false where id = ${existing}`;
@@ -82,6 +107,7 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
   afterAll(async () => {
     for (const id of Object.values(ids)) await sql`delete from applicants where id = ${id}`;
     await sql`delete from income_model_calls where applicant_id = any(${Object.values(ids)}::uuid[])`;
+    await sql`delete from api_logs where applicant_id = any(${Object.values(ids)}::uuid[])`;
   });
 
   const stageOf = async (key: string) => {
@@ -138,6 +164,68 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     for (const key of ["cancelled", "planned", "offer", "passed_no_limit", "rejected", "review", "uploading", "needs_income", "no_order", "logged_in", "not_logged_in"]) {
       expect(stuck.has(ids[key]!), key).toBe(true);
     }
+  });
+
+  it.each([
+    ["no_order", "no_call_recorded", null],
+    ["no_order_skipped", "ascend_not_configured", null],
+    ["no_order_failed", "ascend_call_failed", "600: Busy, please retry"],
+    ["no_order_unsaved", "order_not_saved", null],
+    ["no_order_identified", "user_made_no_credit_call", null],
+  ])("says why %s has no Ascend order: %s", async (key, reason, detail) => {
+    const [row] = await sql<{ stage: string; no_order_reason: string | null; no_order_detail: string | null }>`
+      select stage, no_order_reason, no_order_detail from reporting.applicant_journey where id = ${ids[key]}`;
+
+    expect(row!.stage).toBe("submitted_no_ascend_order");
+    expect(row!.no_order_reason).toBe(reason);
+    if (detail) expect(row!.no_order_detail).toContain(detail);
+  });
+
+  it("gives no reason to anyone who does have an order, or is not in that stage", async () => {
+    const rows = await sql<{ id: string; no_order_reason: string | null }>`
+      select id, no_order_reason from reporting.applicant_journey
+      where id = any(${[ids.booked, ids.offer, ids.existing, ids.logged_in]}::uuid[])`;
+
+    expect(rows.every((r) => r.no_order_reason === null)).toBe(true);
+  });
+
+  it("carries the reason into the never-completed table", async () => {
+    const [row] = await sql<{ no_order_reason: string }>`select no_order_reason from reporting.stuck where id = ${ids.no_order_skipped}`;
+    expect(row!.no_order_reason).toBe("ascend_not_configured");
+  });
+
+  it.each([
+    // booked
+    ["booked", "booked"],
+    ["rebooked", "booked"],
+    // had a credit limit from Ascend and did not book (or booked and cancelled, or turned it down)
+    ["cancelled", "got_credit_limit"],
+    ["declined", "got_credit_limit"],
+    ["planned", "got_credit_limit"],
+    ["offer", "got_credit_limit"],
+    // an existing customer, sent to the app on purpose
+    ["existing", "reloan"],
+    ["rejected_with_limit", "other"],
+    ["flagged_with_order", "other"],
+    // everyone else: no limit was ever given
+    ["passed_no_limit", "other"],
+    ["rejected", "other"],
+    ["review", "other"],
+    ["uploading", "other"],
+    ["needs_income", "other"],
+    ["no_order", "other"],
+    ["logged_in", "other"],
+    ["not_logged_in", "other"],
+  ])("puts the applicant who %s in the group %s", async (key, group) => {
+    const [row] = await sql<{ journey_group: string }>`select journey_group from reporting.applicant_journey where id = ${ids[key]}`;
+    expect(row!.journey_group).toBe(group);
+  });
+
+  it("uses only the four groups, and gives every applicant one", async () => {
+    const rows = await sql<{ journey_group: string | null }>`
+      select distinct journey_group from reporting.applicant_journey where id = any(${Object.values(ids)}::uuid[])`;
+    const groups = rows.map((r) => r.journey_group).sort();
+    expect(groups).toEqual(["booked", "got_credit_limit", "other", "reloan"]);
   });
 
   it("flags who needs a call, so the report filters on one field however many stages there are", async () => {
