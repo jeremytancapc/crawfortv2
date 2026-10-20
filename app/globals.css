@@ -689,8 +689,7 @@ input[type="range"]::-moz-range-thumb {
     box-shadow 110ms cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
-.plan-card-front:active .plan-card-cta-btn,
-.plan-card-back:active .plan-card-cta-btn {
+.plan-card-front:active .plan-card-cta-btn {
   transform: translateY(1px) scale(0.985);
   box-shadow: 0 1px 1.5px oklch(0.24 0.06 260 / 0.14) !important;
 }
@@ -791,7 +790,6 @@ input[type="range"]::-moz-range-thumb {
     /* 20px corners on a ~40px spine read as a capsule. Drop to a tight
        rounding so the collapsed cards still look like cards. */
     .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-shell,
-    .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-back-shell,
     .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-frame,
     .plan-lane[data-expanded="true"] .plan-lane-item[data-active="false"] .plan-card-tab {
       --plan-card-radius: 8px;
@@ -856,8 +854,7 @@ input[type="range"]::-moz-range-thumb {
    them so the open accordion card can actually fit near the fold instead of
    needing a scroll through most of its own height to reach the CTA. */
 @media (max-height: 620px) {
-  .plan-card-header,
-  .plan-back-header {
+  .plan-card-header {
     padding-top: 0.625rem;
     padding-bottom: 0.5rem;
     gap: 0.375rem;
@@ -868,55 +865,9 @@ input[type="range"]::-moz-range-thumb {
     gap: 0.25rem;
   }
 
-  .plan-back-body {
-    padding-top: 0.5rem;
-    padding-bottom: 0.25rem;
-  }
-
-  .plan-card-cta,
-  .plan-back-cta {
+  .plan-card-cta {
     padding-top: 0.125rem;
     padding-bottom: 0.5rem;
-  }
-}
-
-.plan-breakdown-row + .plan-breakdown-row {
-  border-top: 1px solid var(--plan-rule-ink);
-}
-
-/* The details face carries five stacked figures against the sales face's four
-   bullets, which makes it the taller of the two - and since both faces share
-   one grid cell, the taller one is what the card's height is, flipped or not.
-   Past this width it has the room to run them in two columns instead, which
-   takes about 60px of empty sales face off the bottom of every card. The
-   bullets need no such treatment: a second column of four would cost the
-   reading and buy nothing. */
-@container (min-width: 190px) {
-  .plan-breakdown {
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, auto);
-    align-content: center;
-    column-gap: 0.75rem;
-  }
-
-  /* Top of the second column, so it opens on a rule-free row like the first. */
-  .plan-breakdown-row:nth-child(4) {
-    border-top: none;
-  }
-
-  /* Half-width columns are narrow enough that the longest labels wrap, and a
-     wrapped label costs a whole row of card height. Dropping the label a step
-     below the figure it names buys most of them back onto one line - and the
-     figures are what this face is for. */
-  .plan-breakdown-row {
-    padding-block: 0.25rem;
-  }
-
-  .plan-breakdown-row dt {
-    font-size: 0.625rem;
-    letter-spacing: 0.04em;
   }
 }
 
@@ -2671,4 +2622,3 @@ input[type="range"].rm-slider::-moz-range-thumb {
     animation: none;
   }
 }
-
