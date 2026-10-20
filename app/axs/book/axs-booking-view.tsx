@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import type { LoanFormData } from "@/lib/loan-form";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   leadId: string;
@@ -15,6 +16,7 @@ interface Props {
 const LOG = "[axs/book:client]";
 
 export function AxsBookingView({ leadId, axsRef, approvedAmount, tenure, token }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
 
   // Minimal formData for AppointmentBooking (only uses idType for "Things to Bring")
@@ -37,7 +39,7 @@ export function AxsBookingView({ leadId, axsRef, approvedAmount, tenure, token }
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       console.error(`${LOG} book failed`, { status: res.status, error: body.error });
-      alert("We couldn't confirm your appointment. Please try again.");
+      alert(t("We couldn't confirm your appointment. Please try again."));
       return null;
     }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X } from "@phosphor-icons/react";
 import { TermsContent, PrivacyContent } from "./legal-content";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 type DocKey = "terms" | "privacy";
 
@@ -12,6 +13,7 @@ const LABELS: Record<DocKey, string> = {
 };
 
 function DocModal({ doc, onClose }: { doc: DocKey; onClose: () => void }) {
+  const { t } = useLocale();
   // Lock body scroll while open
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -46,12 +48,12 @@ function DocModal({ doc, onClose }: { doc: DocKey; onClose: () => void }) {
           style={{ borderBottom: "1px solid var(--border-subtle)" }}
         >
           <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            {LABELS[doc]}
+            {t(LABELS[doc])}
           </span>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[var(--surface-secondary)] active:scale-95"
           >
             <X size={16} weight="bold" style={{ color: "var(--text-secondary)" }} />
@@ -69,6 +71,7 @@ function DocModal({ doc, onClose }: { doc: DocKey; onClose: () => void }) {
 }
 
 export function AxsFooter() {
+  const { t } = useLocale();
   const [open, setOpen] = useState<DocKey | null>(null);
 
   return (
@@ -84,14 +87,14 @@ export function AxsFooter() {
               onClick={() => setOpen("terms")}
               className="underline underline-offset-2 hover:text-[var(--text-secondary)] transition-colors"
             >
-              Terms &amp; Conditions
+              {t("Terms & Conditions")}
             </button>
             <button
               type="button"
               onClick={() => setOpen("privacy")}
               className="underline underline-offset-2 hover:text-[var(--text-secondary)] transition-colors"
             >
-              Privacy Policy
+              {t("Privacy Policy")}
             </button>
             <span>© 2026 CF Money Pte. Ltd.</span>
           </div>

@@ -18,12 +18,10 @@ import {
   DownloadSimple,
   ArrowSquareOut,
 } from "@phosphor-icons/react";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 import {
-  DAY_LABELS,
-  MONTH_LABELS,
   TIME_SLOTS,
-  formatDisplayDate,
   formatDisplayTime,
   fullyBookedIndex,
   isDisabledDate,
@@ -103,6 +101,7 @@ const WHAT_TO_BRING = {
 } as const;
 
 function WhatToBring({ idType }: { idType: string }) {
+  const { t } = useLocale();
   const defaultTab = idType === "foreigner" ? "foreigner" : "sg_pr";
   const [tab, setTab] = useState<"sg_pr" | "foreigner">(defaultTab as "sg_pr" | "foreigner");
   const items = WHAT_TO_BRING[tab];
@@ -110,23 +109,23 @@ function WhatToBring({ idType }: { idType: string }) {
   return (
     <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5 text-left">
       <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-        Things to bring
+        {t("Things to bring")}
       </p>
 
       {/* Tab toggle */}
       <div className="flex gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-1 w-fit">
-        {(["sg_pr", "foreigner"] as const).map((t) => (
+        {(["sg_pr", "foreigner"] as const).map((langTab) => (
           <button
-            key={t}
+            key={langTab}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(langTab)}
             className="rounded-full px-3.5 py-1 text-xs font-semibold transition-all duration-200"
             style={{
-              background: tab === t ? "var(--brand-teal-hex)" : "transparent",
-              color: tab === t ? "var(--text-primary)" : "var(--text-tertiary)",
+              background: tab === langTab ? "var(--brand-teal-hex)" : "transparent",
+              color: tab === langTab ? "var(--text-primary)" : "var(--text-tertiary)",
             }}
           >
-            {t === "sg_pr" ? "Singaporean / PR" : "Foreigner"}
+            {langTab === "sg_pr" ? t("Singaporean / PR") : t("Foreigner")}
           </button>
         ))}
       </div>
@@ -140,7 +139,7 @@ function WhatToBring({ idType }: { idType: string }) {
               weight="duotone"
               className="mt-0.5 shrink-0 text-brand-teal"
             />
-            <span className="text-sm leading-snug text-[var(--text-secondary)]">{item}</span>
+            <span className="text-sm leading-snug text-[var(--text-secondary)]">{t(item)}</span>
           </li>
         ))}
       </ul>
@@ -158,6 +157,7 @@ export function AppointmentBooking({
   hideInlineCta = false,
   ctaHost = null,
 }: AppointmentBookingProps) {
+  const { locale, t } = useLocale();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -176,6 +176,18 @@ export function AppointmentBooking({
   const timeTriggerRef = useRef<HTMLButtonElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
   const confirmBtnRef = useRef<HTMLDivElement>(null);
+  const formatLocalizedDate = (date: Date) =>
+    new Intl.DateTimeFormat(locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date);
+  const calendarDayHeaders = Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(locale, { weekday: "short" }).format(
+      new Date(2024, 0, index + 1),
+    ),
+  );
 
   const updateTimeListScrollHint = useCallback(() => {
     const el = timeListRef.current;
@@ -317,7 +329,7 @@ export function AppointmentBooking({
     const appointmentMessage = [
       "[ CF Money Appointment ]",
       "",
-      `Date: ${formatDisplayDate(selectedDateObj)}`,
+      `${t("Date")}: ${formatLocalizedDate(selectedDateObj)}`,
       `Time: ${formatDisplayTime(selectedTime)}`,
       "",
       "-- Location --",
@@ -349,18 +361,18 @@ export function AppointmentBooking({
               className="shrink-0 text-brand-teal"
             />
             <span className="text-xs font-semibold uppercase tracking-widest text-[var(--text-tertiary)]">
-              Appointment confirmed
+              {t("Appointment confirmed")}
             </span>
           </div>
           <div>
             <p className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-              {formatDisplayDate(selectedDateObj)}
+              {formatLocalizedDate(selectedDateObj)}
             </p>
             <p className="mt-1 font-display text-2xl font-semibold tracking-tight text-brand-blue sm:text-3xl">
               {formatDisplayTime(selectedTime)}
             </p>
             <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-              Kindly arrive on time so we can serve you promptly.
+              {t("Kindly arrive on time so we can serve you promptly.")}
             </p>
             <button
               type="button"
@@ -368,7 +380,7 @@ export function AppointmentBooking({
               className="mx-auto mt-3 mb-[-16px] flex items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
             >
               <DownloadSimple size={16} weight="bold" />
-              Save details on WhatsApp
+              {t("Save details on WhatsApp")}
             </button>
           </div>
 
@@ -392,7 +404,7 @@ export function AppointmentBooking({
 
           <div className="flex flex-col gap-3">
             <h3 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">
-              Our office
+              {t("Our office")}
             </h3>
 
             <div className="flex items-start gap-3">
@@ -416,10 +428,10 @@ export function AppointmentBooking({
               <Clock size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
               <div>
                 <p className="text-sm font-medium text-[var(--text-primary)]">
-                  Mon - Sat &nbsp;&middot;&nbsp; 10:30am - 7:30pm
+                  {t("Mon - Sat · 10:30am - 7:30pm")}
                 </p>
                 <p className="text-sm text-[var(--text-tertiary)]">
-                  Closed on Sundays &amp; Public Holidays
+                  {t("Closed on Sundays & Public Holidays")}
                 </p>
               </div>
             </div>
@@ -434,7 +446,7 @@ export function AppointmentBooking({
             <div className="flex items-start gap-3">
               <Car size={16} weight="duotone" className="mt-0.5 shrink-0 text-brand-blue" />
               <p className="text-sm font-medium text-[var(--text-primary)]">
-                Multi-storey carpark in the building
+                {t("Multi-storey carpark in the building")}
               </p>
             </div>
           </div>
@@ -443,7 +455,7 @@ export function AppointmentBooking({
         <div className="h-px bg-[var(--border-subtle)]" />
 
         <div className="flex flex-col gap-1 text-sm leading-relaxed text-[var(--text-secondary)] text-center">
-          <p>We look forward to meeting you.</p>
+          <p>{t("We look forward to meeting you.")}</p>
         </div>
       </div>
     );
@@ -464,7 +476,7 @@ export function AppointmentBooking({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Go back"
+            aria-label={t("Go back")}
             className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-secondary)] active:scale-[0.95]"
           >
             <ArrowLeft size={14} weight="bold" />
@@ -531,7 +543,7 @@ export function AppointmentBooking({
               href={OFFICE_MAPS_URL}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Open our office in Google Maps"
+              aria-label={t("Open our office in Google Maps")}
               className="group flex shrink-0 flex-col items-center gap-1.5 transition-transform duration-150 active:scale-[0.96]"
             >
               <span className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] transition-colors duration-150 group-hover:border-[var(--border-medium)]">
@@ -545,7 +557,7 @@ export function AppointmentBooking({
           </div>
         </div>
 
-        <p className="mb-3 text-lg font-bold text-[var(--text-primary)] lg:mb-4">Select a date &amp; time</p>
+        <p className="mb-3 text-lg font-bold text-[var(--text-primary)] lg:mb-4">{t("Select a date & time")}</p>
 
         <div className="flex flex-col gap-3">
 
@@ -568,13 +580,13 @@ export function AppointmentBooking({
                 }}
               >
                 {selectedDate && selectedDateObj
-                  ? `${DAY_LABELS[selectedDateObj.getDay()]}, ${selectedDateObj.getDate()} ${MONTH_LABELS[selectedDateObj.getMonth()]}`
-                  : "Choose a preferred date"}
+                  ? formatLocalizedDate(selectedDateObj)
+                  : t("Choose a preferred date")}
               </span>
               {selectedDate ? (
                 <span
                   role="button"
-                  aria-label="Clear date"
+                  aria-label={t("Clear date")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedDate(null);
@@ -609,7 +621,7 @@ export function AppointmentBooking({
                   <div className="flex items-center justify-between px-4 py-3" style={{ background: "var(--brand-blue-hex)" }}>
                     <button
                       type="button"
-                      aria-label="Previous month"
+                      aria-label={t("Previous month")}
                       onClick={() => {
                         const d = new Date(calendarMonth);
                         d.setMonth(d.getMonth() - 1);
@@ -625,13 +637,12 @@ export function AppointmentBooking({
                     </button>
 
                     <p className="text-sm font-semibold text-white">
-                      {["January","February","March","April","May","June","July","August","September","October","November","December"][calendarMonth.getMonth()]}{" "}
-                      {calendarMonth.getFullYear()}
+                      {new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(calendarMonth)}
                     </p>
 
                     <button
                       type="button"
-                      aria-label="Next month"
+                      aria-label={t("Next month")}
                       onClick={() => {
                         const d = new Date(calendarMonth);
                         d.setMonth(d.getMonth() + 1);
@@ -651,7 +662,7 @@ export function AppointmentBooking({
 
                   {/* Day-of-week headers */}
                   <div className="grid grid-cols-7 border-b border-[var(--border-subtle)]">
-                    {["Mo","Tu","We","Th","Fr","Sa","Su"].map((d) => (
+                    {calendarDayHeaders.map((d) => (
                       <div key={d} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
                         {d}
                       </div>
@@ -787,7 +798,7 @@ export function AppointmentBooking({
                   fontWeight: selectedTime ? 500 : 400,
                   }}
                 >
-                  {selectedTime ? formatDisplayTime(selectedTime) : "Choose a preferred time"}
+                  {selectedTime ? formatDisplayTime(selectedTime) : t("Choose a preferred time")}
                 </span>
                 <CaretDown
                   size={14}
@@ -809,7 +820,7 @@ export function AppointmentBooking({
                       className="shrink-0 px-4 py-3"
                       style={{ background: "var(--brand-blue-hex)" }}
                     >
-                      <p className="text-sm font-semibold text-white">Choose a timeslot</p>
+                      <p className="text-sm font-semibold text-white">{t("Choose a timeslot")}</p>
                     </div>
 
                     <div className="relative min-h-0 flex-1">
@@ -1058,7 +1069,7 @@ export function AppointmentBooking({
 
       {/* ── Confirm button ─────────────────────────────────────── */}
       {(() => {
-        const label = isBooking ? "Confirming…" : "Secure my slot";
+        const label = isBooking ? t("Confirming…") : t("Secure my slot");
         const footerButton = (
           <button
             type="button"
@@ -1075,8 +1086,8 @@ export function AppointmentBooking({
               {slotNeed && !isBooking ? (
                 <p className="text-center text-xs font-medium text-[#D70015]">
                   {slotNeed === "date"
-                    ? "Select a date to continue"
-                    : "Select a time to continue"}
+                    ? t("Select a date to continue")
+                    : t("Select a time to continue")}
                 </p>
               ) : null}
               {ctaHost ? createPortal(footerButton, ctaHost) : null}
@@ -1103,17 +1114,17 @@ export function AppointmentBooking({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
-              Confirming...
+              {t("Confirming…")}
             </>
           ) : (
-            "Secure my slot"
+            t("Secure my slot")
           )}
         </button>
         {slotNeed && !isBooking && (
           <p className="mt-2 text-center text-xs font-medium text-[#D70015]">
             {slotNeed === "date"
-              ? "Select a date to continue"
-              : "Select a time to continue"}
+              ? t("Select a date to continue")
+              : t("Select a time to continue")}
           </p>
         )}
       </div>

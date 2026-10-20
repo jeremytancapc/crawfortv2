@@ -5,6 +5,7 @@ import { WhatsappLogo } from "@phosphor-icons/react";
 
 import { AppStoreBadges } from "@/app/app-store-badges";
 import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   reloan: { fullName: string | null };
@@ -25,6 +26,7 @@ interface Props {
  * step, so there is no progress to show.
  */
 export function ReloanView({ reloan }: Props) {
+  const { t } = useLocale();
   const { fullName } = reloan;
   const firstName = fullName?.trim().split(/\s+/)[0] ?? null;
 
@@ -33,14 +35,14 @@ export function ReloanView({ reloan }: Props) {
       <div className="flex flex-1 flex-col items-center gap-8 px-5 pb-8 pt-7 text-center animate-fade-up">
         <Image
           src="/images/crawfort-app-logo.png"
-          alt="Crawfort app"
+          alt={t("Crawfort app")}
           width={1000}
           height={1000}
           className="h-16 w-16 shrink-0"
         />
 
         <h1 className="ios-type-title">
-          {firstName ? `Welcome back, ${firstName}` : "Welcome back"}
+          {firstName ? `${t("Welcome back")}, ${firstName}` : t("Welcome back")}
         </h1>
 
         <div
@@ -50,10 +52,9 @@ export function ReloanView({ reloan }: Props) {
 
         <div className="flex flex-col items-center gap-3">
           <p className="ios-type-body text-[var(--text-secondary)]">
-            You have borrowed from Crawfort before, so your next loan is handled in the app
-            rather than here.
+            {t("You have borrowed from Crawfort before, so your next loan is handled in the app rather than here.")}
             <br />
-            It already knows your details, so there is nothing to fill in again.
+            {t("It already knows your details, so there is nothing to fill in again.")}
           </p>
 
           <AppStoreBadges />
@@ -65,7 +66,7 @@ export function ReloanView({ reloan }: Props) {
         />
 
         <div className="flex w-full flex-col gap-3 text-left">
-          <p className="ios-type-option text-[var(--text-primary)]">Prefer to talk to someone?</p>
+          <p className="ios-type-option text-[var(--text-primary)]">{t("Prefer to talk to someone?")}</p>
           <a
             href="https://wa.me/6560119380?text=Hi%2C%20I%27m%20an%20existing%20customer%20and%20would%20like%20to%20apply%20again"
             target="_blank"
@@ -74,8 +75,8 @@ export function ReloanView({ reloan }: Props) {
           >
             <WhatsappLogo size={22} weight="duotone" className="shrink-0 text-brand-blue" />
             <div>
-              <p className="ios-type-option text-[var(--text-primary)]">WhatsApp us</p>
-              <p className="text-xs text-[var(--text-tertiary)]">6011 9380 · Mon - Sat, 10:30am - 7:30pm</p>
+              <p className="ios-type-option text-[var(--text-primary)]">{t("WhatsApp us")}</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{t("6011 9380 · Mon - Sat, 10:30am - 7:30pm")}</p>
             </div>
           </a>
         </div>

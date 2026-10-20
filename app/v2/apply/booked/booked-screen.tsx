@@ -9,11 +9,13 @@ import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@
 import { formatDisplayTime, fromISODate } from "@/lib/appointment-slots";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
 import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 const MOBILE_APP_URL = "https://crawfort.com/mobileapp";
 
-function longDate(iso: string): string {
-  return fromISODate(iso).toLocaleDateString("en-SG", {
+function longDate(iso: string, locale: string): string {
+  const intlLocale = locale === "zh-CN" ? "zh-CN" : locale === "ms" ? "ms-SG" : "en-SG";
+  return fromISODate(iso).toLocaleDateString(intlLocale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -21,6 +23,7 @@ function longDate(iso: string): string {
 }
 
 export function BookedScreen({ booking }: { booking: StoredBookingConfirmation }) {
+  const { locale, t } = useLocale();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -50,31 +53,31 @@ export function BookedScreen({ booking }: { booking: StoredBookingConfirmation }
           <V2Illustration>
             <BookedIllustration />
           </V2Illustration>
-          <V2Title title="You're booked" subtitle="We'll WhatsApp the details shortly." />
+          <V2Title title={t("You're booked")} subtitle={t("We'll WhatsApp the details shortly.")} />
         </div>
 
         <div className="v2-enter flex flex-col gap-1" style={{ ["--i" as string]: 1 }}>
-          <span className="v2-label">{longDate(booking.date)}</span>
+          <span className="v2-label">{longDate(booking.date, locale)}</span>
           <span className="v2-hero-num">{formatDisplayTime(booking.time)}</span>
         </div>
 
         <Rows className="v2-enter">
           <Row
-            label="Reference"
+            label={t("Reference")}
             value={booking.cfh5Id}
             action={
               <button
                 type="button"
                 onClick={copyRef}
-                aria-label="Copy reference number"
+                aria-label={t("Copy reference number")}
                 className="v2-icon-button -mr-2 h-9 w-9 text-[var(--v2-ink-2)]"
               >
                 {copied ? <Check size={16} weight="bold" /> : <Copy size={16} />}
               </button>
             }
           />
-          <Row label="Where" value="High Street Centre, #01-35" />
-          <Row label="Bring" value="NRIC and Singpass" />
+          <Row label={t("Where")} value={t("High Street Centre, #01-35")} />
+          <Row label={t("Bring")} value={t("NRIC and Singpass")} />
         </Rows>
       </V2Body>
       <V2Footer>
@@ -84,10 +87,10 @@ export function BookedScreen({ booking }: { booking: StoredBookingConfirmation }
           rel="noopener noreferrer"
           className="v2-pill v2-pill-primary"
         >
-          Get the app
+          {t("Get the app")}
         </a>
         <Pill variant="ghost" onClick={addToCalendar}>
-          Add to calendar
+          {t("Add to calendar")}
         </Pill>
       </V2Footer>
     </V2Screen>

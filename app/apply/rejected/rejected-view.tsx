@@ -7,8 +7,10 @@ import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { BadCaseNav } from "@/app/apply/bad-case-nav";
 import { useApplyPath } from "@/app/use-apply-path";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 export function RejectedView({ isRealApplicant = false }: { isRealApplicant?: boolean }) {
+  const { t } = useLocale();
   const applyHref = useApplyPath();
 
   return (
@@ -16,7 +18,7 @@ export function RejectedView({ isRealApplicant = false }: { isRealApplicant?: bo
       <div className="flex flex-1 flex-col gap-8 px-5 pb-8 pt-7 animate-fade-up">
         {/* Heading */}
         <div className="flex flex-col gap-2">
-          <h1 className="ios-type-title">Application Rejected</h1>
+          <h1 className="ios-type-title">{t("Application Rejected")}</h1>
         </div>
 
         {/* Status card */}
@@ -37,12 +39,10 @@ export function RejectedView({ isRealApplicant = false }: { isRealApplicant?: bo
           </div>
           <div className="flex flex-col gap-3">
             <p className="ios-type-body" style={{ color: "var(--ios-danger)" }}>
-              Thank you for your interest, however your application is
-              rejected.
+              {t("Thank you for your interest, however your application is rejected.")}
             </p>
             <p className="ios-type-body" style={{ color: "var(--ios-danger)" }}>
-              We are unable to disclose the confidential credit scoring used
-              for this evaluation.
+              {t("We are unable to disclose the confidential credit scoring used for this evaluation.")}
             </p>
           </div>
         </div>
@@ -53,12 +53,12 @@ export function RejectedView({ isRealApplicant = false }: { isRealApplicant?: bo
         />
 
         <p className="ios-type-body text-[var(--text-primary)]">
-          To submit a new loan application,{" "}
+          {t("To submit a new loan application,")}{" "}
           <Link
             href={applyHref("/")}
             className="underline underline-offset-2"
           >
-            click here
+            {t("click here")}
           </Link>
         </p>
       </div>

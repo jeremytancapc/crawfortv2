@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 const BTN_CLASS =
   "flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal px-4 py-3.5 text-sm font-semibold text-[var(--text-primary)] shadow-[0_4px_16px_-2px_oklch(0.78_0.16_178_/_0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]";
@@ -16,6 +17,7 @@ const SCROLL_REVEAL_THRESHOLD = 80;
  * SCROLL_REVEAL_THRESHOLD px, and disappears once the anchor itself is visible.
  */
 export function AxsBackButton() {
+  const { t } = useLocale();
   const anchorRef = useRef<HTMLButtonElement>(null);
   const [anchorVisible, setAnchorVisible] = useState(false);
   const [scrolledPast, setScrolledPast] = useState(false);
@@ -54,7 +56,7 @@ export function AxsBackButton() {
         onClick={() => window.history.back()}
         className={BTN_CLASS}
       >
-        Continue to AXS App
+        {t("Continue to AXS App")}
         <ArrowRight size={15} weight="bold" />
       </button>
 
@@ -70,7 +72,7 @@ export function AxsBackButton() {
               onClick={() => window.history.back()}
               className={BTN_CLASS}
             >
-              Continue to AXS App
+              {t("Continue to AXS App")}
               <ArrowRight size={15} weight="bold" />
             </button>
           </div>

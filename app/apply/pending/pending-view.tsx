@@ -10,6 +10,7 @@ import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { PendingDisplay } from "@/lib/pending-display";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   pending: PendingDisplay;
@@ -27,6 +28,7 @@ const NEXT_STEPS = [
 ];
 
 export function PendingView({ pending }: Props) {
+  const { t } = useLocale();
   const { leadId, amount, idType } = pending;
   const cfh5Ref = leadId ? `CFH5-${shortRef(leadId)}` : null;
 
@@ -47,21 +49,21 @@ export function PendingView({ pending }: Props) {
                 style={{ color: "#e07b4a" }}
               />
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
-                Application Pending Review
+                {t("Application Pending Review")}
               </span>
             </div>
 
             {/* Heading */}
             <div className="flex flex-col gap-2">
               <h1 className="ios-type-title">
-                Wait for our review
+                {t("Wait for our review")}
               </h1>
               <p className="ios-type-body text-[var(--text-secondary)]">
-                Your application for a loan of{" "}
+                {t("Your application for a loan of")}{" "}
                 <span className="font-semibold text-[var(--text-primary)]">
                   S${amount.toLocaleString()}
                 </span>{" "}
-                has been received and is pending review by our team.
+                {" "}{t("has been received and is pending review by our team.")}
               </p>
             </div>
 
@@ -69,7 +71,7 @@ export function PendingView({ pending }: Props) {
             {cfh5Ref && (
               <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-4">
                 <div>
-                  <p className="text-xs text-[var(--text-tertiary)]">Application reference</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">{t("Application reference")}</p>
                   <p className="mt-0.5 font-display text-lg font-bold tracking-tight text-[var(--text-primary)]">
                     {cfh5Ref}
                   </p>
@@ -82,7 +84,7 @@ export function PendingView({ pending }: Props) {
 
             {/* What happens next */}
             <div className="flex flex-col gap-3">
-              <p className="ios-type-option text-[var(--text-primary)]">What happens next</p>
+              <p className="ios-type-option text-[var(--text-primary)]">{t("What happens next")}</p>
               <ul className="flex flex-col gap-2.5">
                 {NEXT_STEPS.map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -92,7 +94,7 @@ export function PendingView({ pending }: Props) {
                       className="mt-0.5 shrink-0"
                       style={{ color: "#e07b4a" }}
                     />
-                    <span className="ios-type-body text-[var(--text-secondary)]">{step}</span>
+                    <span className="ios-type-body text-[var(--text-secondary)]">{t(step)}</span>
                   </li>
                 ))}
               </ul>
@@ -103,7 +105,7 @@ export function PendingView({ pending }: Props) {
               <div className="flex gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-4 py-3">
                 <Info size={15} weight="duotone" className="mt-0.5 shrink-0 text-[var(--text-tertiary)]" />
                 <p className="text-xs leading-relaxed text-[var(--text-tertiary)]">
-                  For foreigners, a minimum annual income of S$40,000 is required. If your income has changed recently, please contact us with your latest payslips.
+                  {t("For foreigners, a minimum annual income of S$40,000 is required. If your income has changed recently, please contact us with your latest payslips.")}
                 </p>
               </div>
             )}
@@ -112,7 +114,7 @@ export function PendingView({ pending }: Props) {
 
             {/* WhatsApp - official channel for follow-up */}
             <div className="flex flex-col gap-3">
-              <p className="ios-type-option text-[var(--text-primary)]">Get in touch</p>
+              <p className="ios-type-option text-[var(--text-primary)]">{t("Get in touch")}</p>
               <a
                 href="https://wa.me/6560119380?text=Hi%20My%20application%20is%20pending%20review"
                 target="_blank"
@@ -121,15 +123,15 @@ export function PendingView({ pending }: Props) {
               >
                 <WhatsappLogo size={22} weight="duotone" className="shrink-0 text-brand-blue" />
                 <div>
-                  <p className="ios-type-option text-[var(--text-primary)]">WhatsApp us</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">6011 9380 · Mon - Sat, 10:30am - 7:30pm</p>
+                  <p className="ios-type-option text-[var(--text-primary)]">{t("WhatsApp us")}</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">{t("6011 9380 · Mon - Sat, 10:30am - 7:30pm")}</p>
                 </div>
               </a>
             </div>
 
             {/* Footer note */}
             <p className="text-xs leading-relaxed text-[var(--text-tertiary)]">
-              Office hours: Mon - Sat, 10:30am - 7:30pm. Closed on Sundays and Public Holidays.
+              {t("Office hours: Mon - Sat, 10:30am - 7:30pm. Closed on Sundays and Public Holidays.")}
             </p>
 
       </div>

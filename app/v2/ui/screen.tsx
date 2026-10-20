@@ -8,6 +8,7 @@ import { CaretLeft } from "@phosphor-icons/react";
 import { useApplyPath } from "@/app/use-apply-path";
 import { v2ProgressFills, type V2Progress } from "@/app/v2/ui/progress";
 import { setV2Progress } from "@/app/v2/ui/progress-store";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 /**
  * Fixed-height screen: header | body | footer. Nothing inside may scroll
@@ -82,10 +83,11 @@ export function V2Screen({
  * in the funnel.
  */
 function V2Navbar() {
+  const { t } = useLocale();
   const applyHref = useApplyPath();
   return (
     <div className="v2-navbar">
-      <Link href={applyHref("/")} aria-label="Crawfort home">
+      <Link href={applyHref("/")} aria-label={t("Crawfort home")}>
         <Image
           src="/images/crawfort-white-color-dot.png"
           alt="Crawfort"
@@ -111,6 +113,7 @@ export function V2Header({
   progress?: V2Progress;
   right?: ReactNode;
 }) {
+  const { t } = useLocale();
   const stage = progress?.stage;
   const fraction = progress?.fraction;
 
@@ -126,12 +129,12 @@ export function V2Header({
           type="button"
           onClick={onBack}
           className="v2-icon-button"
-          aria-label="Back"
+          aria-label={t("Back")}
         >
           <CaretLeft size={22} weight="bold" />
         </button>
       ) : backHref ? (
-        <Link href={backHref} className="v2-icon-button" aria-label="Back">
+        <Link href={backHref} className="v2-icon-button" aria-label={t("Back")}>
           <CaretLeft size={22} weight="bold" />
         </Link>
       ) : (
@@ -146,6 +149,7 @@ export function V2Header({
 }
 
 export function V2ProgressBar({ progress }: { progress: V2Progress }) {
+  const { t } = useLocale();
   const fills = v2ProgressFills(progress);
   const done = Math.round(
     (fills.reduce((sum, fill) => sum + fill, 0) / fills.length) * 100,
@@ -157,7 +161,7 @@ export function V2ProgressBar({ progress }: { progress: V2Progress }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={done}
-      aria-label="Application progress"
+      aria-label={t("Application progress")}
     >
       {fills.map((fill, index) => (
         <span key={index} style={{ ["--fill" as string]: fill }} />

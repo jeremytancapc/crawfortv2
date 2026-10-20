@@ -11,6 +11,7 @@ import {
 import { Minus, Plus } from "@phosphor-icons/react";
 
 import { cx } from "@/app/v2/ui/screen";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
 
@@ -309,6 +310,7 @@ export function AmountInput({
   maxLabel?: string;
   className?: string;
 }) {
+  const { t } = useLocale();
   const [raw, setRaw] = useState<string | null>(null);
   const id = useId();
 
@@ -366,7 +368,7 @@ export function AmountInput({
           onChange={(event) => onChange(parseInt(event.target.value, 10))}
           onPointerUp={() => onCommit?.(value)}
           onKeyUp={() => onCommit?.(value)}
-          aria-label={`Adjust ${ariaLabel.toLowerCase()}`}
+          aria-label={`${t("Adjust")} ${ariaLabel.toLowerCase()}`}
         />
       </div>
       {minLabel || maxLabel ? (
