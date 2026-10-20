@@ -62,6 +62,7 @@ export default async function ReviewPage() {
         <MyinfoDebugWidget
           rid={rid}
           current={{
+            nric: hydrated?.nric ?? session?.nric ?? "",
             cpf: (hydrated?.cpfContributions ?? []).map((c) => ({ month: c.month, amount: c.amount, employer: c.employer })),
             noa: (hydrated?.noaHistory ?? []).map((n) => ({
               yearOfAssessment: n.yearOfAssessment,

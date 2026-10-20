@@ -8,20 +8,22 @@ import {
   generateCpfRows,
   validateCpfRows,
   validateNoaRows,
+  validateNric,
+  normaliseNric,
   type CpfRow,
   type NoaRow,
 } from "@/lib/myinfo-edit";
 
 /**
- * Staging-only: edit the CPF and NOA on the open application before it goes to
- * Ascend. Saved to the retrieved Singpass record, to our own database and to
+ * Staging-only: edit the CPF, NOA and ID number on the open application before
+ * it goes to Ascend. Saved to the retrieved Singpass record, to our own database and to
  * the cookie the review page reads, so what is shown, kept and sent agree.
  *
  * Values start from what the application has now; where it has none, from a
  * default a tester can adjust rather than build from nothing.
  */
 
-type Tab = "noa" | "cpf";
+type Tab = "noa" | "cpf" | "id";
 
 // Inputs hold text while being typed, so "" and "9." are allowed on the way.
 type NoaDraft = Record<keyof NoaRow, string>;
@@ -61,14 +63,15 @@ export function MyinfoEditSheet({
   onClose,
 }: {
   rid: string;
-  current: { cpf: CpfRow[]; noa: NoaRow[] };
+  current: { cpf: CpfRow[]; noa: NoaRow[]; nric: string };
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("noa");
   const [noa, setNoa] = useState<NoaDraft[]>(() => (current.noa.length ? current.noa : defaultNoaRows()).map(toNoaDraft));
   const [cpf, setCpf] = useState<CpfDraft[]>(() => (current.cpf.length ? current.cpf : defaultCpfRows()).map(toCpfDraft));
   // Only what was actually touched is sent, so editing NOA never rewrites CPF.
-  const [touched, setTouched] = useState<Record<Tab, boolean>>({ noa: false, cpf: false });
+  const [touched, setTouched] = useState<Record<Tab, boolean>>({ noa: false, cpf: false, id: false });
+  const [nric, setNric] = useState(current.nric);
   const [gen, setGen] = useState(() => {
     const d = defaultCpfRows();
     return { employer: d[0].employer, amount: String(d[0].amount), months: "12", latestMonth: d[0].month };
@@ -78,7 +81,7 @@ export function MyinfoEditSheet({
 
   const touch = (which: Tab) => setTouched((t) => ({ ...t, [which]: true }));
   // Nothing on file means the rows shown are a default to start from, not data.
-  const onFile: Record<Tab, boolean> = { noa: current.noa.length > 0, cpf: current.cpf.length > 0 };
+  const onFile: Record<Tab, boolean> = { noa: current.noa.length > 0, cpf: current.cpf.length > 0, id: true };
   const isDefault = (which: Tab) => !onFile[which] && !touched[which];
 
   const editNoa = (index: number, key: keyof NoaDraft, value: string) => {
@@ -92,7 +95,7 @@ export function MyinfoEditSheet({
 
   async function save() {
     setError(null);
-    const body: { rid: string; noa?: NoaRow[]; cpf?: CpfRow[] } = { rid };
+    const body: { rid: string; noa?: NoaRow[]; cpf?: CpfRow[]; nric?: string } = { rid };
     if (touched.noa) {
       if (noa.length === 0) return setError("NOA: add at least one year, or use Remove NOA.");
       body.noa = noaRows(noa);
@@ -101,7 +104,12 @@ export function MyinfoEditSheet({
       if (cpf.length === 0) return setError("CPF: add at least one month, or use Remove CPF.");
       body.cpf = cpfRows(cpf);
     }
-    const problems = [...(body.noa ? validateNoaRows(body.noa) : []), ...(body.cpf ? validateCpfRows(body.cpf) : [])];
+    if (touched.id) body.nric = normaliseNric(nric);
+    const problems = [
+      ...(body.noa ? validateNoaRows(body.noa) : []),
+      ...(body.cpf ? validateCpfRows(body.cpf) : []),
+      ...(body.nric !== undefined ? validateNric(body.nric) : []),
+    ];
     if (problems.length > 0) return setError(problems.join(" "));
 
     setSaving(true);
@@ -125,7 +133,7 @@ export function MyinfoEditSheet({
     }
   }
 
-  const anyTouched = touched.noa || touched.cpf;
+  const anyTouched = touched.noa || touched.cpf || touched.id;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center" role="dialog" aria-modal="true" aria-label="Edit MyInfo">
@@ -143,7 +151,7 @@ export function MyinfoEditSheet({
         </header>
 
         <div className="flex gap-1 border-b border-amber-200 px-4 pt-2">
-          {(["noa", "cpf"] as const).map((t) => (
+          {(["noa", "cpf", "id"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -152,8 +160,8 @@ export function MyinfoEditSheet({
                 tab === t ? "bg-white text-amber-950" : "text-amber-800 hover:bg-amber-100"
               }`}
             >
-              {t === "noa" ? "NOA" : "CPF"}{" "}
-              {isDefault(t) ? "(none on file)" : `(${t === "noa" ? noa.length : cpf.length})`}
+              {t === "noa" ? "NOA" : t === "cpf" ? "CPF" : "ID number"}{" "}
+              {t === "id" ? "" : isDefault(t) ? "(none on file)" : `(${t === "noa" ? noa.length : cpf.length})`}
               {touched[t] ? " •" : ""}
             </button>
           ))}
@@ -166,7 +174,29 @@ export function MyinfoEditSheet({
               anything, or tap Reset to default, to use them.
             </p>
           ) : null}
-          {tab === "noa" ? (
+          {tab === "id" ? (
+            <div className="flex flex-col gap-3">
+              <label>
+                <span className={label}>NRIC / FIN</span>
+                <input
+                  className={`${input} uppercase`}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  maxLength={9}
+                  value={nric}
+                  onChange={(e) => {
+                    touch("id");
+                    setNric(e.target.value);
+                  }}
+                />
+              </label>
+              <p className="rounded-md bg-amber-100 px-2.5 py-2 text-[12px] leading-snug text-amber-900">
+                A different ID number is a different person to Ascend: it gets its own Ascend user, and anything
+                Ascend said about the old one for this application is forgotten. Use a number that is not a real
+                customer&apos;s.
+              </p>
+            </div>
+          ) : tab === "noa" ? (
             <div className="flex flex-col gap-3">
               {noa.map((row, i) => {
                 const assessable = num(row.employmentIncome) + num(row.tradeIncome) + num(row.rentIncome) + num(row.interestIncome);
@@ -330,7 +360,7 @@ export function MyinfoEditSheet({
           ) : null}
           <div className="flex items-center justify-between gap-3">
             <p className="text-[12px] text-amber-800">
-              {anyTouched ? `Changed: ${[touched.noa && "NOA", touched.cpf && "CPF"].filter(Boolean).join(" and ")}` : "No changes yet"}
+              {anyTouched ? `Changed: ${[touched.noa && "NOA", touched.cpf && "CPF", touched.id && "ID number"].filter(Boolean).join(" and ")}` : "No changes yet"}
             </p>
             <div className="flex gap-2">
               <button type="button" onClick={onClose} className={ghost}>

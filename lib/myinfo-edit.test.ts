@@ -8,6 +8,7 @@ import {
   generateCpfRows,
   validateCpfRows,
   validateNoaRows,
+  validateNric,
   type CpfRow,
   type NoaRow,
 } from "./myinfo-edit";
@@ -164,5 +165,92 @@ describe("validation", () => {
   it("caps how many rows can be written", () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ month: `2024-${String((i % 12) + 1).padStart(2, "0")}`, amount: 1, employer: "" }));
     expect(validateCpfRows(many.slice(0, 30)).join(" ")).toMatch(/at most/i);
+  });
+});
+
+/**
+ * Editing the ID number. A tester who needs a fresh applicant - above all
+ * against an Ascend environment that has never seen the persona - should not
+ * have to find another Singpass test account. Ascend identifies a person by
+ * the `sub` claim, not by `uinfin` (lib/myinfo.ts), so changing only the NRIC
+ * would hand Ascend the original person back. The two change together.
+ */
+describe("editing the ID number", () => {
+  const person = {
+    iss: "singpass",
+    sub: "6f0c1d3e-1111-4a2b-9c3d-aaaaaaaaaaaa",
+    person_info: {
+      name: { value: "TAN CAKEN" },
+      uinfin: { value: "S1234567A" },
+    },
+  };
+
+  it("writes the new NRIC where our own parser reads it back", () => {
+    const { payload } = applyMyinfoEdits(person, { nric: "s7654321b" }, TODAY);
+
+    expect(buildMyInfoPatch(payload).nric).toBe("S7654321B");
+  });
+
+  it("gives Ascend a different person, because it identifies them by sub", () => {
+    const { payload } = applyMyinfoEdits(person, { nric: "S7654321B" }, TODAY);
+
+    expect(payload.sub).not.toBe(person.sub);
+    expect(typeof payload.sub).toBe("string");
+  });
+
+  it("gives the same person every time the same NRIC is typed", () => {
+    const a = applyMyinfoEdits(person, { nric: "S7654321B" }, TODAY).payload.sub;
+    const b = applyMyinfoEdits(person, { nric: "S7654321B" }, TODAY).payload.sub;
+    const other = applyMyinfoEdits(person, { nric: "S7654322C" }, TODAY).payload.sub;
+
+    expect(a).toBe(b);
+    expect(other).not.toBe(a);
+  });
+
+  it("changes nothing else about the person", () => {
+    const { payload } = applyMyinfoEdits(person, { nric: "S7654321B" }, TODAY);
+    const edited = payload.person_info as { name: unknown };
+
+    expect(edited.name).toEqual({ value: "TAN CAKEN" });
+    expect(payload.iss).toBe("singpass");
+  });
+
+  it("leaves the NRIC and sub alone when it is not asked to change them", () => {
+    const { payload } = applyMyinfoEdits(person, { cpf: [] }, TODAY);
+
+    expect(payload.sub).toBe(person.sub);
+    expect((payload.person_info as { uinfin: unknown }).uinfin).toEqual({ value: "S1234567A" });
+  });
+
+  it("works on the older flat shape, where uinfin and sub sit at the top", () => {
+    const flat = { sub: "s=S123", uinfin: { value: "S1234567A" }, name: { value: "TAN CAKEN" } };
+    const { payload } = applyMyinfoEdits(flat, { nric: "S7654321B" }, TODAY);
+
+    expect(buildMyInfoPatch(payload).nric).toBe("S7654321B");
+    expect(payload.sub).not.toBe("s=S123");
+  });
+
+  it("does not modify the record it was given", () => {
+    const before = structuredClone(person);
+    applyMyinfoEdits(person, { nric: "S7654321B" }, TODAY);
+
+    expect(person).toEqual(before);
+  });
+});
+
+describe("validateNric", () => {
+  it("accepts the Singapore formats, in either case", () => {
+    expect(validateNric("S1234567A")).toEqual([]);
+    expect(validateNric(" t7654321b ")).toEqual([]);
+    expect(validateNric("F1234567N")).toEqual([]);
+    expect(validateNric("G1234567N")).toEqual([]);
+  });
+
+  it("rejects anything else, with a message that says what is expected", () => {
+    for (const bad of ["", "S123456A", "1234567A", "S12345678", "SABCDEFGA", "S1234567"]) {
+      const errors = validateNric(bad);
+      expect(errors, bad).toHaveLength(1);
+      expect(errors[0]).toMatch(/NRIC|FIN/);
+    }
   });
 });

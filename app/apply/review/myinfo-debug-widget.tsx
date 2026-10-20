@@ -25,7 +25,7 @@ export function MyinfoDebugWidget({
 }: {
   rid: string;
   /** What the application holds now, so the editor starts from it. */
-  current: { cpf: CpfRow[]; noa: NoaRow[] };
+  current: { cpf: CpfRow[]; noa: NoaRow[]; nric: string };
 }) {
   const [cpf, setCpf] = useState<FieldState>("idle");
   const [noa, setNoa] = useState<FieldState>("idle");

@@ -229,6 +229,25 @@ export async function markAirConnectLeadPushed(id: string): Promise<void> {
   await sql`update applicants set airconnect_lead_pushed_at = now() where id = ${id}`;
 }
 
+/**
+ * Staging only: the tester typed a different ID number for the application
+ * that is open (see lib/myinfo-edit.ts).
+ *
+ * The NRIC is kept on the applicant and on its MyInfo profile, so both move.
+ * Whatever Ascend said about the old NRIC is no longer about this person, so
+ * the identity is cleared and resolved afresh at the next submit.
+ */
+export async function setApplicantNric(id: string, nric: string): Promise<void> {
+  await sql`
+    update applicants set
+      nric = ${nric},
+      ascend_user_id = null,
+      ascend_new_customer = null,
+      ascend_has_myinfo = null
+    where id = ${id}`;
+  await sql`update myinfo_profiles set nric = ${nric} where applicant_id = ${id}`;
+}
+
 export async function setAscendIdentity(
   id: string,
   input: { ascendUserId: string; newCustomer: boolean; hasMyinfo: boolean },
