@@ -39,7 +39,6 @@ import {
   buildOfferPlans,
   calculateInstalment,
   OFFER_CONFIRMATION_DISCLAIMER,
-  OFFER_MAX_PROCESSING_FEE_PCT,
   OFFER_MONTHLY_RATE,
   type OfferPlan,
 } from "@/lib/offer-plans";
@@ -400,9 +399,7 @@ function OfferHeader({
 interface PlanCardProps {
   plan: OfferPlan;
   isSelected: boolean;
-  isFlipped: boolean;
   onSelect: () => void;
-  onFlipBack: () => void;
 }
 
 /** Card labels are space-constrained in the 3-up grid, so drop the trailing "Plan" suffix. */
@@ -410,31 +407,24 @@ function shortPlanName(title: string): string {
   return title.replace(/\s+Plan$/i, "");
 }
 
-const FLIP_DURATION = 0.55;
-
 /** Reserved strip above every card body. The "Popular" tab occupies this slot
  *  so a badge on one card can never push the other two header panels out of line. */
 const PILL_SLOT_HEIGHT = "1.125rem";
 
 const CARD_RADIUS = 20;
 
-/** The CTA button is inset on the card's own fill now, so it needs its own,
- *  tighter radius - CARD_RADIUS on a button this short reads as a pill. */
+/** The inset CTA needs a tighter radius; CARD_RADIUS on a button this short
+ *  reads as a pill. */
 const CTA_RADIUS = 11;
 
-/** Ink-black, and the flipped-back face's alone. No card front may fill with
- *  it: black is how the breakdown announces itself, and a front that was
- *  already black gave the flip nothing to land on. Slightly blue-shifted off
- *  pure black so it sits in the same family as the brand rather than reading
- *  as a hole in the page. */
+/** Ink-black used for the selected plan's contrasting controls. */
 const INK = "#12141A";
 
-/** The amber carried by the "Popular" tab, and by the outlined button on the
- *  ink breakdown face. */
+/** The amber carried by the selected "Popular" tab. */
 const AMBER = "#F5C518";
 
 interface PlanSurface {
-  /** Card background, front face and header alike. */
+  /** Card background and header. */
   fill: string;
   /** Primary text on `fill` - name, price, features. */
   ink: string;
@@ -581,7 +571,7 @@ const PLAN_ICONS = {
   custom: Scales,
 } satisfies Record<OfferPlan["id"], typeof Lightning>;
 
-/** Drop shadow drawn around the card body, outside the flipping faces.
+/** Drop shadow drawn around the card body.
  *  There is no selected ring: the fill is the card, and a second outline
  *  on top of it just framed the colour. `--plan-ring` stays so the invalid
  *  state can still paint the row red without inventing a second channel. */
@@ -603,9 +593,7 @@ function cardFrameShadow(isSelected: boolean, isPopular = false): string {
 function PlanCard({
   plan,
   isSelected,
-  isFlipped,
   onSelect,
-  onFlipBack,
 }: PlanCardProps) {
   const isPopular = Boolean(plan.badge);
   const prefersReducedMotion = useReducedMotion();
@@ -629,15 +617,7 @@ function PlanCard({
     ...plan.sellingPoints.map((point) => ({ text: point, special: false, isTenure: false })),
   ];
 
-  // `perspective` forces Chrome to rasterize the whole card as a 3D layer, which
-  // softens its text. Mount it only while the card is mid-flip or showing its back.
-  const [isFlipping, setIsFlipping] = useState(false);
-
-  // The card body and panels never change color for selection - only the
-  // ring/glow (outside the flip) and the CTA (below) do. Gating the one-shot
-  // shine on "settled" keeps it from playing mid-flip, when the front face
-  // isn't even in view.
-  const isSettledSelected = isSelected && !isFlipped;
+  const isSettledSelected = isSelected;
 
   // Bumped on every tap of the CTA so the click itself gets a quick shine,
   // independent of the slower whole-panel sweep that plays once the card
@@ -649,18 +629,12 @@ function PlanCard({
   return (
     <div
       className="@container relative h-full w-full"
-      /* Rules inside the card are drawn in CSS: which breakdown rows need one
-         depends on how many columns that face is running at this card's
-         width, which only CSS knows. Two are needed because the two faces no
-         longer share a background - the front rules against the plan's own
-         fill, the breakdown face against ink-black. */
+      /* The header rule follows each plan's own fill. */
       style={{
         ["--plan-rule" as string]: surface.hairline,
-        ["--plan-rule-ink" as string]: "oklch(1 0 0 / 0.16)",
       }}
     >
-      {/* Ring + shadow live outside the flip so they frame the card as one unit
-          and stay crisp while the faces rotate. */}
+      {/* Ring and shadow frame the card while keeping selection feedback crisp. */}
       <div
         aria-hidden="true"
         className="plan-card-frame pointer-events-none absolute inset-x-0 bottom-0 transition-shadow duration-200"
@@ -672,9 +646,7 @@ function PlanCard({
       />
 
       {/* Full-width tab, flush with the card below: rounded top, square bottom,
-          like a header bar sitting on the card. Lives outside the flip so it
-          never rotates, mirrors, or disappears when the details face comes
-          forward. */}
+          like a header bar sitting on the card. */}
       {isPopular && (
         <div
           className="plan-card-tab pointer-events-none absolute inset-x-0 top-0 z-[3] overflow-hidden"
@@ -700,46 +672,15 @@ function PlanCard({
         </div>
       )}
 
-      {/* Both faces sit in the same grid cell (grid-area 1/1), but only the
-          one currently facing the customer is in flow - the other is taken
-          out of it. The card is therefore exactly as tall as what it is
-          showing, which is what lets the landscape face be landscape instead
-          of inheriting the height of a breakdown nobody has asked for yet.
-          grid-cols-1 (minmax(0,1fr)) pins the column's width to the card
-          itself - without it, a grid item's default min-width:auto lets its
-          content push the column (and the card) wider than its neighbors,
-          which is what was bleeding one card's back face into the next. */}
-      <div
-        className="h-full w-full"
-        style={{ perspective: isFlipped || isFlipping ? 1000 : undefined }}
-      >
-      <motion.div
-        className="relative grid h-full w-full grid-cols-1"
-        style={{ transformStyle: "preserve-3d" }}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        onAnimationStart={() => setIsFlipping(true)}
-        onAnimationComplete={() => setIsFlipping(false)}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : { duration: FLIP_DURATION, ease: [0.22, 1, 0.36, 1] }
-        }
-      >
     <button
       type="button"
       onClick={() => {
         onSelect();
         setCtaPulse((n) => n + 1);
       }}
-      className={`plan-card-front ${isFlipped ? "absolute inset-0" : "relative"} flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]`}
-      style={{
-        backfaceVisibility: "hidden",
-        WebkitBackfaceVisibility: "hidden",
-      }}
+      className="plan-card-front relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none"
       aria-pressed={isSelected}
-      aria-label={`${shortPlanName(plan.title)}${isPopular ? ", most popular" : ""}: ${plan.pitch}, ${formatCurrency(plan.monthlyInstalment)} a month over ${plan.tenure} months.${isSelected ? " Tap again for the full breakdown." : ""}`}
-      aria-hidden={isFlipped}
-      tabIndex={isFlipped ? -1 : 0}
+      aria-label={`${shortPlanName(plan.title)}${isPopular ? ", most popular" : ""}: ${plan.pitch}, ${formatCurrency(plan.monthlyInstalment)} a month over ${plan.tenure} months.${isSelected ? " Selected." : " Select this plan."}`}
     >
       {/* Reserved tab slot - keeps header panels aligned across all three cards */}
       <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
@@ -751,10 +692,7 @@ function PlanCard({
           background: surface.fill,
         }}
       >
-        {/* Plays once when the card settles into the selected state - a brief
-            glassy sweep that reads as premium feedback. Gated on
-            isSettledSelected (not raw isSelected) so it never plays mid-flip,
-            when the front face isn't even in view. */}
+        {/* Plays once when the card settles into the selected state. */}
         {isSettledSelected && <div aria-hidden="true" className="selected-card-shine z-[2]" />}
 
         {/* Header - no fill of its own any more. The plan's colour is the
@@ -854,19 +792,10 @@ function PlanCard({
               </li>
             ))}
           </ul>
-          {isSelected && (
-            <p
-              className={`mt-auto pb-1 text-center font-medium leading-none tracking-[-0.01em] ${TYPE.label}`}
-              style={{ color: surface.mutedInk }}
-            >
-              Tap again for more details
-            </p>
-          )}
         </div>
 
-        {/* CTA is the opposite of the face: plan fill on a pale card, white
-            on the picked colour block. Pressing the card dips it (see
-            .plan-card-front:active in CSS). */}
+        {/* Contrast the plan fill on a pale card and use white on the selected
+            colour block. Pressing the card dips the CTA. */}
         <div className="plan-card-cta shrink-0 px-3 pt-1 pb-3 sm:px-3.5 sm:pb-3.5">
           <div
             className="plan-card-cta-btn relative flex items-center justify-center overflow-hidden px-2 py-2 sm:py-2.5"
@@ -899,133 +828,6 @@ function PlanCard({
         </div>
       </div>
     </button>
-
-        {/* Details face - the whole thing is the flip-back target, so a tap
-            anywhere on the card returns to the sales side. Mounted only for
-            the selected card, the only one that can be flipped: both faces
-            share a grid cell, so the height the breakdown needs is height
-            every resting card was reserving too. Dropping it is what lets the
-            other two collapse beside the expanded card instead of setting the
-            row's height from the sidelines. */}
-        {isSelected && (
-        <button
-          type="button"
-          onClick={onFlipBack}
-          aria-label={`Hide the ${shortPlanName(plan.title)} breakdown`}
-          tabIndex={isFlipped ? 0 : -1}
-          aria-hidden={!isFlipped}
-          className={`plan-card-back ${isFlipped ? "relative" : "absolute inset-0"} flex h-full w-full min-w-0 flex-col text-left focus:outline-none [grid-area:1/1]`}
-          style={{
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
-            transform: "rotateY(180deg)",
-          }}
-        >
-          <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
-          <div
-            className="plan-back-shell flex min-h-0 flex-1 flex-col overflow-hidden"
-            style={{
-              borderRadius: isPopular ? "0 0 var(--plan-card-radius) var(--plan-card-radius)" : "var(--plan-card-radius)",
-              background: INK,
-            }}
-          >
-            {/* One ink fill for the whole face, the same way the front is one
-                fill of the plan's own colour - deliberately breaking from that
-                colour so the two faces read as distinct "sell" vs "detail"
-                moods. The header no longer needs a fill of its own; a single
-                rule is all that marks where it hands off to the figures. */}
-            <div
-              className="plan-back-header flex shrink-0 flex-col gap-2.5 px-3.5 pt-[1.125rem] pb-3 sm:gap-3 sm:px-4 sm:pt-5 sm:pb-3.5"
-              style={{ boxShadow: "inset 0 -1px 0 0 var(--plan-rule-ink)" }}
-            >
-              <div className="flex min-w-0 items-center gap-[3px] sm:gap-1.5">
-                <PlanIcon
-                  size={12}
-                  weight="bold"
-                  className={`shrink-0 ${TYPE.icon}`}
-                  style={{ color: "#ffffff" }}
-                />
-                <span
-                  className={`font-semibold leading-none tracking-[-0.01em] ${TYPE.planName}`}
-                  style={{ color: "#ffffff" }}
-                >
-                  {shortPlanName(plan.title)}
-                </span>
-              </div>
-              {/* Replaces the price here - the monthly figure moved down
-                  into the figures list below, so this row now names what
-                  the rest of the face is showing. */}
-              <span
-                className={`font-extrabold leading-none tracking-[-0.02em] ${TYPE.price}`}
-                style={{ color: "#ffffff" }}
-              >
-                Breakdown
-              </span>
-            </div>
-
-            {/* Figures list. flex-1 so it absorbs whatever extra height
-                items-stretch gives this card. Bottom padding guarantees a
-                minimum gap above the "Tap to go back" footer even when
-                justify-center leaves little room of its own. */}
-            <div
-              className="plan-back-body flex min-h-0 flex-1 flex-col px-2.5 pt-3 pb-1 sm:px-3.5 sm:pt-3.5 sm:pb-1.5"
-            >
-              <dl className="plan-breakdown flex min-h-0 flex-1 flex-col justify-center">
-                {[
-                  { label: "Monthly instalment", value: `${formatCurrency(plan.monthlyInstalment)}/mo` },
-                  { label: "Tenure", value: `${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}` },
-                  { label: "Interest rate", value: `Up to ${formatRate(plan.monthlyRate)}/mo` },
-                  { label: "Processing fee", value: `Up to ${OFFER_MAX_PROCESSING_FEE_PCT}%` },
-                  { label: "Total repayable", value: formatCurrency(plan.totalRepayment) },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    className="plan-breakdown-row flex flex-col gap-px py-[3px] sm:py-1.5"
-                  >
-                    <dt
-                      className={`font-bold uppercase leading-tight tracking-[0.07em] ${TYPE.label}`}
-                      style={{ color: "oklch(0.72 0.012 260)" }}
-                    >
-                      {row.label}
-                    </dt>
-                    <dd
-                      className={`tabular-nums font-bold leading-tight tracking-[-0.01em] ${TYPE.body}`}
-                      style={{ color: "#ffffff" }}
-                    >
-                      {row.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-
-            {/* Same inset button as the front's CTA, so both faces offer the
-                same shape to press - but outlined on the ink rather than
-                filled, because going back is the way out of this face, not the
-                thing it is asking for. No drop shadow: a soft dark shadow is
-                invisible on a fill this dark, and the outline is enough. */}
-            <div className="plan-back-cta shrink-0 px-3 pt-1 pb-3 sm:px-3.5 sm:pb-3.5">
-              <div
-                className="plan-card-cta-btn flex items-center justify-center px-2 py-2 sm:py-2.5"
-                style={{
-                  borderRadius: CTA_RADIUS,
-                  background: "transparent",
-                  border: `1.5px solid ${AMBER}`,
-                }}
-              >
-                <span
-                  className={`font-bold leading-none tracking-[-0.01em] ${TYPE.cta}`}
-                  style={{ color: AMBER }}
-                >
-                  Tap to go back
-                </span>
-              </div>
-            </div>
-          </div>
-        </button>
-        )}
-      </motion.div>
-      </div>
     </div>
   );
 }
@@ -1450,8 +1252,6 @@ function PlanPicker({
   needsInput = false,
   attentionNonce = 0,
 }: PlanPickerProps) {
-  const [flippedPlanId, setFlippedPlanId] = useState<OfferPlan["id"] | null>(null);
-
   useEffect(() => {
     if (!needsInput) return;
     const el = document.getElementById("plan-lane-field");
@@ -1496,18 +1296,7 @@ function PlanPicker({
                   <PlanCard
                     plan={plan}
                     isSelected={selectedPlanId === plan.id}
-                    isFlipped={flippedPlanId === plan.id}
-                    onSelect={() => {
-                      // First tap picks the plan and brings it forward; tapping
-                      // the card that is already forward turns it over.
-                      if (selectedPlanId !== plan.id) {
-                        onPlanSelect(plan.id);
-                        setFlippedPlanId(null);
-                        return;
-                      }
-                      setFlippedPlanId(plan.id);
-                    }}
-                    onFlipBack={() => setFlippedPlanId(null)}
+                    onSelect={() => onPlanSelect(plan.id)}
                   />
                 </div>
               </RevealOnScroll>
@@ -1949,6 +1738,8 @@ interface LoanResultsProps {
   creditLimit?: number;
   /** Amount page confirms the figure; plan page picks a repayment schedule. */
   phase: "amount" | "plan";
+  /** Override the next-step URL for an isolated preview flow. */
+  nextStepPath?: (amount: number) => string;
   initialWithdrawAmount?: number;
   /** When set, the plan page is controlled by the header amount editor. */
   amount?: number;
@@ -1961,6 +1752,7 @@ export function LoanResults({
   onCustomOfferSubmitted,
   creditLimit,
   phase,
+  nextStepPath,
   initialWithdrawAmount,
   amount,
   onAmountChange,
@@ -2026,8 +1818,11 @@ export function LoanResults({
     storeWithdrawAmount(withdrawAmount);
     void persistAmount(withdrawAmount);
     onAccept(withdrawAmount);
-    router.push(applyHref(`/apply/choose-plan?amount=${withdrawAmount}`));
-  }, [formData.amount, persistAmount, withdrawAmount, onAccept, router, applyHref]);
+    router.push(
+      nextStepPath?.(withdrawAmount) ??
+        applyHref(`/apply/choose-plan?amount=${withdrawAmount}`),
+    );
+  }, [formData.amount, persistAmount, withdrawAmount, onAccept, router, applyHref, nextStepPath]);
 
   const stepNav = useApplyStepNav(isPlanPhase ? "choosePlan" : "approval", {
     onNext: isPlanPhase ? undefined : () => { void handleConfirmAmount(); },

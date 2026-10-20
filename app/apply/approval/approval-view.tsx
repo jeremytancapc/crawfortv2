@@ -22,9 +22,16 @@ interface Props {
   limits?: AscendLimits;
   phase: "amount" | "plan";
   initialWithdrawAmount?: number;
+  previewMode?: boolean;
 }
 
-export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }: Props) {
+export function ApprovalView({
+  formData,
+  limits,
+  phase,
+  initialWithdrawAmount,
+  previewMode = false,
+}: Props) {
   const router = useRouter();
   const applyHref = useApplyPath();
   const prefersReducedMotion = useReducedMotion();
@@ -113,6 +120,11 @@ export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }:
         creditLimit={creditLimit}
         monthlyRepayment={0}
         phase={phase}
+        nextStepPath={
+          previewMode
+            ? (amount) => `/dev/approval-preview?phase=plan&amount=${amount}`
+            : undefined
+        }
         initialWithdrawAmount={initialWithdrawAmount}
         amount={isPlan ? planAmount : undefined}
         onAmountChange={isPlan ? handlePlanAmountChange : undefined}
