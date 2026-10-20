@@ -8,6 +8,8 @@ import {
   generateCpfRows,
   validateCpfRows,
   validateNoaRows,
+  completeNric,
+  nricCheckLetter,
   validateNric,
   type CpfRow,
   type NoaRow,
@@ -238,15 +240,61 @@ describe("editing the ID number", () => {
   });
 });
 
-describe("validateNric", () => {
-  it("accepts the Singapore formats, in either case", () => {
-    expect(validateNric("S1234567A")).toEqual([]);
-    expect(validateNric(" t7654321b ")).toEqual([]);
-    expect(validateNric("F1234567N")).toEqual([]);
-    expect(validateNric("G1234567N")).toEqual([]);
+/**
+ * Ascend pulls the applicant's credit bureau report, and the bureau refuses an
+ * ID number whose check letter is wrong ("B2B0007 ID number does not pass
+ * Modulus 11 check"). The editor therefore never takes the check letter from
+ * the tester: it works it out. Weights 2,7,6,5,4,3,2 over the seven digits;
+ * T and G add 4; the remainder mod 11 picks the letter from a table that
+ * differs for S/T and F/G.
+ */
+describe("the NRIC check letter", () => {
+  it("is the one a real S number carries - S1234567D is the standard valid example", () => {
+    expect(nricCheckLetter("S", "1234567")).toBe("D");
   });
 
-  it("rejects anything else, with a message that says what is expected", () => {
+  it("follows the Modulus 11 sum, so S1112223 ends in Z and not the A that was refused", () => {
+    expect(nricCheckLetter("S", "1112223")).toBe("Z");
+  });
+
+  it("uses the other letter table for F and G, and adds 4 for T and G", () => {
+    expect(nricCheckLetter("F", "1234567")).toBe("N");
+    expect(nricCheckLetter("T", "1234567")).toBe("J");
+    expect(nricCheckLetter("G", "1234567")).toBe("X");
+  });
+
+  it("completes the seven digits into a whole ID number", () => {
+    expect(completeNric("S", "1112223")).toBe("S1112223Z");
+    expect(completeNric("t", "1234567")).toBe("T1234567J");
+  });
+
+  it("refuses digits that are not seven, and prefixes it cannot work out", () => {
+    expect(completeNric("S", "123456")).toBeNull();
+    expect(completeNric("S", "12345678")).toBeNull();
+    expect(completeNric("S", "12345AB")).toBeNull();
+    expect(completeNric("M", "1234567")).toBeNull();
+    expect(completeNric("X", "1234567")).toBeNull();
+  });
+});
+
+describe("validateNric", () => {
+  it("accepts ID numbers whose check letter is right, in either case", () => {
+    expect(validateNric("S1234567D")).toEqual([]);
+    expect(validateNric(" s1112223z ")).toEqual([]);
+    expect(validateNric("T1234567J")).toEqual([]);
+    expect(validateNric("F1234567N")).toEqual([]);
+    expect(validateNric("G1234567X")).toEqual([]);
+  });
+
+  it("rejects the number that failed at Ascend, and says which letter it should end in", () => {
+    const errors = validateNric("S1112223A");
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/check letter/);
+    expect(errors[0]).toMatch(/Z/);
+  });
+
+  it("rejects anything that is not an ID number at all, with a message that says what is expected", () => {
     for (const bad of ["", "S123456A", "1234567A", "S12345678", "SABCDEFGA", "S1234567"]) {
       const errors = validateNric(bad);
       expect(errors, bad).toHaveLength(1);

@@ -116,7 +116,7 @@ export function validateNoaRows(rows: NoaRow[]): string[] {
   return errors;
 }
 
-/** Singapore NRIC / FIN: a letter, seven digits, a check letter. Same shape the review step accepts. */
+/** Singapore NRIC / FIN: a letter, seven digits, a check letter. */
 const NRIC_SHAPE = /^[STFGM]\d{7}[A-Z]$/;
 
 /** The NRIC as it is stored: trimmed and upper case. */
@@ -124,10 +124,43 @@ export function normaliseNric(value: string): string {
   return value.trim().toUpperCase();
 }
 
+const NRIC_WEIGHTS = [2, 7, 6, 5, 4, 3, 2];
+// Citizens and PRs (S, T) and foreigners (F, G) each have their own letter table.
+const CHECK_LETTERS: Record<string, string> = { S: "JZIHGFEDCBA", T: "JZIHGFEDCBA", F: "XWUTRQPNMLK", G: "XWUTRQPNMLK" };
+
+/**
+ * The check letter for an ID number, by Modulus 11: the seven digits weighted
+ * 2,7,6,5,4,3,2, plus 4 for a T or G, remainder after dividing by 11, looked up
+ * in the table for that prefix. Ascend's credit bureau runs this check and
+ * refuses a number that fails it.
+ *
+ * Only S, T, F and G are worked out; the newer M series is not (null).
+ */
+export function nricCheckLetter(prefix: string, digits: string): string | null {
+  const table = CHECK_LETTERS[prefix.trim().toUpperCase()];
+  if (!table || !/^\d{7}$/.test(digits)) return null;
+  const p = prefix.trim().toUpperCase();
+  const sum = [...digits].reduce((total, d, i) => total + Number(d) * NRIC_WEIGHTS[i], 0) + (p === "T" || p === "G" ? 4 : 0);
+  return table[sum % 11];
+}
+
+/** A whole ID number from its prefix and seven digits, with the right check letter; null when it cannot be made. */
+export function completeNric(prefix: string, digits: string): string | null {
+  const letter = nricCheckLetter(prefix, digits);
+  return letter ? `${prefix.trim().toUpperCase()}${digits}${letter}` : null;
+}
+
 export function validateNric(value: string): string[] {
-  return NRIC_SHAPE.test(normaliseNric(value))
-    ? []
-    : [`"${value.trim()}" is not an NRIC or FIN (a letter, seven digits and a letter, like S1234567A).`];
+  const nric = normaliseNric(value);
+  if (!NRIC_SHAPE.test(nric)) {
+    return [`"${value.trim()}" is not an NRIC or FIN (a letter, seven digits and a letter, like S1234567D).`];
+  }
+  const expected = nricCheckLetter(nric[0], nric.slice(1, 8));
+  // The M series is not worked out here; its shape is all that is checked.
+  if (expected && expected !== nric[8]) {
+    return [`${nric}: the check letter should be ${expected} (this ID number fails the Modulus 11 check Ascend's credit bureau runs).`];
+  }
+  return [];
 }
 
 /**

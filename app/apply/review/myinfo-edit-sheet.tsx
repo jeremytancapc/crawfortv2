@@ -8,8 +8,7 @@ import {
   generateCpfRows,
   validateCpfRows,
   validateNoaRows,
-  validateNric,
-  normaliseNric,
+  completeNric,
   type CpfRow,
   type NoaRow,
 } from "@/lib/myinfo-edit";
@@ -71,7 +70,12 @@ export function MyinfoEditSheet({
   const [cpf, setCpf] = useState<CpfDraft[]>(() => (current.cpf.length ? current.cpf : defaultCpfRows()).map(toCpfDraft));
   // Only what was actually touched is sent, so editing NOA never rewrites CPF.
   const [touched, setTouched] = useState<Record<Tab, boolean>>({ noa: false, cpf: false, id: false });
-  const [nric, setNric] = useState(current.nric);
+  // The ID number is typed as seven digits. The letter in front stays what the
+  // application has now (S, T, F or G; S when there is none), and the check
+  // letter is worked out, because the credit bureau refuses a wrong one.
+  const idPrefix = /^[STFG]/i.test(current.nric) ? current.nric[0].toUpperCase() : "S";
+  const [idDigits, setIdDigits] = useState(/^[STFGM]\d{7}[A-Z]$/i.test(current.nric) ? current.nric.slice(1, 8) : "");
+  const idComplete = completeNric(idPrefix, idDigits);
   const [gen, setGen] = useState(() => {
     const d = defaultCpfRows();
     return { employer: d[0].employer, amount: String(d[0].amount), months: "12", latestMonth: d[0].month };
@@ -104,12 +108,11 @@ export function MyinfoEditSheet({
       if (cpf.length === 0) return setError("CPF: add at least one month, or use Remove CPF.");
       body.cpf = cpfRows(cpf);
     }
-    if (touched.id) body.nric = normaliseNric(nric);
-    const problems = [
-      ...(body.noa ? validateNoaRows(body.noa) : []),
-      ...(body.cpf ? validateCpfRows(body.cpf) : []),
-      ...(body.nric !== undefined ? validateNric(body.nric) : []),
-    ];
+    if (touched.id) {
+      if (!idComplete) return setError("ID number: type all seven digits.");
+      body.nric = idComplete;
+    }
+    const problems = [...(body.noa ? validateNoaRows(body.noa) : []), ...(body.cpf ? validateCpfRows(body.cpf) : [])];
     if (problems.length > 0) return setError(problems.join(" "));
 
     setSaving(true);
@@ -176,24 +179,37 @@ export function MyinfoEditSheet({
           ) : null}
           {tab === "id" ? (
             <div className="flex flex-col gap-3">
-              <label>
+              <div>
                 <span className={label}>NRIC / FIN</span>
-                <input
-                  className={`${input} uppercase`}
-                  autoCapitalize="characters"
-                  autoComplete="off"
-                  maxLength={9}
-                  value={nric}
-                  onChange={(e) => {
-                    touch("id");
-                    setNric(e.target.value);
-                  }}
-                />
-              </label>
+                <div className="flex items-center gap-1.5">
+                  <span className={`${input} !w-10 text-center font-semibold`} aria-label="Letter in front">
+                    {idPrefix}
+                  </span>
+                  <input
+                    className={`${input} text-center tracking-[0.3em]`}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={7}
+                    placeholder="1234567"
+                    aria-label="Seven digits"
+                    value={idDigits}
+                    onChange={(e) => {
+                      touch("id");
+                      setIdDigits(e.target.value.replace(/\D/g, "").slice(0, 7));
+                    }}
+                  />
+                  <span className={`${input} !w-10 text-center font-semibold`} aria-label="Check letter, worked out for you">
+                    {idComplete ? idComplete[8] : "?"}
+                  </span>
+                </div>
+                <p className="mt-1 text-[12px] text-amber-800">
+                  {idComplete ? `Will be saved as ${idComplete}` : "Type the seven digits; the check letter is filled in for you."}
+                </p>
+              </div>
               <p className="rounded-md bg-amber-100 px-2.5 py-2 text-[12px] leading-snug text-amber-900">
                 A different ID number is a different person to Ascend: it gets its own Ascend user, and anything
-                Ascend said about the old one for this application is forgotten. Use a number that is not a real
-                customer&apos;s.
+                Ascend said about the old one for this application is forgotten. The check letter is worked out so
+                the credit bureau accepts the number; use digits that are not a real customer&apos;s.
               </p>
             </div>
           ) : tab === "noa" ? (
