@@ -21,6 +21,7 @@ import { SignaturePad } from "./signature-pad";
 import { TermsDeck, type TermsDeckHandle } from "./terms-deck";
 import { FINE_PRINT_ITEMS, SCHEDULE_CTA_LABEL } from "./accept-content";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 import {
   CARD_SHADOW,
   DashedDivider,
@@ -69,6 +70,7 @@ function PlanSummaryCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useLocale();
   const referenceId = formatReferenceId(leadId);
   const dateTimeLabel = formatReceiptDateTime(acceptedAt);
 
@@ -95,7 +97,7 @@ function PlanSummaryCard({
               className="text-[13px] font-bold tracking-[0.12em] uppercase"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Your approved loan
+              {t("Your approved loan")}
             </span>
             <span
               className="text-[16px] font-bold leading-snug"
@@ -131,7 +133,7 @@ function PlanSummaryCard({
             {!collapsible && (
               <div className="deck-card-banner relative isolate flex h-[88px] flex-col justify-center gap-1.5 overflow-hidden px-5">
                 <h2 className="deck-card-banner-title relative z-10 min-w-0 text-[22px] font-bold leading-[1.15] tracking-[-0.03em]">
-                  Approved Loan Amount
+                  {t("Approved Loan Amount")}
                 </h2>
                 <p className="deck-card-banner-title relative z-10 text-[13.5px] font-semibold tabular-nums leading-none opacity-90">
                   Ref ID: {referenceId}
@@ -183,33 +185,33 @@ function PlanSummaryCard({
 
               {/* Key-value breakdown */}
               <div className="flex flex-col gap-3">
-                <ReceiptRow size="lg" label="Application Date" value={dateTimeLabel} />
-                <ReceiptRow size="lg" label="Plan" value={plan.planTitle} />
+                <ReceiptRow size="lg" label={t("Application Date")} value={dateTimeLabel} />
+                <ReceiptRow size="lg" label={t("Plan")} value={t(plan.planTitle)} />
                 <ReceiptRow
                   size="lg"
-                  label="Loan term"
-                  value={`${plan.tenure} ${plan.tenure === 1 ? "month" : "months"}`}
+                  label={t("Loan term")}
+                  value={`${plan.tenure} ${t(plan.tenure === 1 ? "month" : "months")}`}
                 />
                 <ReceiptRow
                   size="lg"
-                  label="Interest Rate"
-                  value={`${formatRate(plan.monthlyRate)}/month`}
+                  label={t("Interest Rate")}
+                  value={`${formatRate(plan.monthlyRate)}/${t("month")}`}
                 />
                 <ReceiptRow
                   size="lg"
-                  label="Total amount you'll pay"
+                  label={t("Total amount you'll pay")}
                   value={formatCurrency(plan.totalRepayment)}
                 />
                 {plan.additionalRequests.length > 0 && (
                   <ReceiptRow
                     size="lg"
-                    label="Additional requests"
+                    label={t("Additional requests")}
                     value={plan.additionalRequests.join(", ")}
                   />
                 )}
                 <ReceiptRow
                   size="lg"
-                  label="Monthly payment (fixed)"
+                  label={t("Monthly payment (fixed)")}
                   value={formatCurrency(plan.monthlyInstalment)}
                   emphasize
                 />
@@ -314,6 +316,7 @@ function TermsFootnoteCard() {
 // collection is by appointment only.
 
 function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void }) {
+  const { t } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<"submitting" | "ready">("submitting");
 
@@ -377,14 +380,14 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
                 className="mt-5 text-[clamp(16px,4.8vw,20px)] font-bold leading-snug tracking-[-0.03em]"
                 style={{ color: "var(--text-primary)" }}
               >
-                Reserving your funds...
+                {t("Reserving your funds...")}
               </h2>
               <p
                 id="appointment-reminder-description"
                 className="mt-2 text-[14.5px] font-medium leading-snug"
                 style={{ color: "var(--text-secondary)" }}
               >
-                This usually takes a few seconds.
+                {t("This usually takes a few seconds.")}
               </p>
             </motion.div>
           ) : (
@@ -407,14 +410,14 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
                   className="mt-5 whitespace-nowrap text-[clamp(16px,4.8vw,20px)] font-bold leading-none tracking-[-0.03em]"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Your funds are ready for collection!
+                  {t("Your funds are ready for collection!")}
                 </h2>
                 <p
                   id="appointment-reminder-description"
                   className="mt-2 text-[14.5px] font-medium leading-snug"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Fund collection is by appointment only.
+                  {t("Fund collection is by appointment only.")}
                 </p>
               </div>
 
@@ -423,7 +426,7 @@ function AppointmentReminderModal({ onAcknowledge }: { onAcknowledge: () => void
                 onClick={onAcknowledge}
                 className="ios-type-cta mt-6 flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-brand-blue px-3 text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
               >
-                Final Step: Book Appointment
+                {t("Final Step: Book Appointment")}
               </button>
             </motion.div>
           )}
@@ -446,6 +449,7 @@ function AcceptFooterCta({
   /** When the one-line label won't fit, show `Next:` then the rest. */
   stacked?: { rest: string };
 }) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -457,10 +461,10 @@ function AcceptFooterCta({
       {stacked ? (
         <>
           <span className="flex flex-col items-center leading-[1.15] lg:hidden">
-            <span>Next:</span>
-            <span>{stacked.rest}</span>
+            <span>{t("Next")}:</span>
+            <span>{t(stacked.rest)}</span>
           </span>
-          <span className="hidden lg:inline">Next: {stacked.rest}</span>
+          <span className="hidden lg:inline">{t("Next")}: {t(stacked.rest)}</span>
         </>
       ) : (
         children
@@ -478,6 +482,7 @@ interface AcceptViewProps {
 }
 
 export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
 
@@ -578,10 +583,10 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       {!hasStartedTerms && (
         <div className="shrink-0 px-5 pb-3 pt-5">
           <h1 className="ios-type-title">
-            Confirm loan terms
+            {t("Confirm loan terms")}
           </h1>
           <p className="ios-type-subtitle mt-1">
-            Breakdown of the loan package selected
+            {t("Breakdown of the loan package selected")}
           </p>
         </div>
       )}
@@ -679,14 +684,14 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
       <StickyFooter nav={stepNav}>
         {hasConfirmedTerms ? (
           <AcceptFooterCta onClick={handleGetFundsClick}>
-            Next: Get your funds
+            {t("Next")}: {t("Get your funds")}
           </AcceptFooterCta>
         ) : !hasStartedTerms ? (
           <AcceptFooterCta
             onClick={startTerms}
             stacked={{ rest: "Terms & Conditions" }}
           >
-            Next: Terms &amp; Conditions
+            {t("Next")}: {t("Terms & Conditions")}
           </AcceptFooterCta>
         ) : deckCtaLabel ? (
           <AcceptFooterCta
@@ -697,7 +702,7 @@ export function AcceptView({ plan, leadId, acceptedAt }: AcceptViewProps) {
                 : undefined
             }
           >
-            {deckCtaLabel}
+            {t(deckCtaLabel)}
           </AcceptFooterCta>
         ) : null}
       </StickyFooter>

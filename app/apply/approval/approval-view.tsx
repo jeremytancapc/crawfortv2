@@ -15,6 +15,7 @@ import {
 import { PlanAmountField } from "@/app/apply/choose-plan/plan-amount-field";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   formData: LoanFormData;
@@ -32,6 +33,7 @@ export function ApprovalView({
   initialWithdrawAmount,
   previewMode = false,
 }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const prefersReducedMotion = useReducedMotion();
@@ -98,7 +100,7 @@ export function ApprovalView({
             wordLevelClassName="pb-[0.08em]"
             transition={{ type: "spring", stiffness: 250, damping: 32 }}
           >
-            {isPlan ? "Choose your loan plan" : "Confirm your loan amount"}
+            {t(isPlan ? "Choose your loan plan" : "Confirm your loan amount")}
           </VerticalCutReveal>
         </h1>
         {isPlan ? (
@@ -110,7 +112,7 @@ export function ApprovalView({
           />
         ) : (
           <p className="ios-type-subtitle mt-1.5">
-            Adjust the loan amount to drawdown
+            {t("Adjust the loan amount to drawdown")}
           </p>
         )}
       </motion.div>

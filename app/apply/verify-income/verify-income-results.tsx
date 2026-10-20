@@ -8,6 +8,7 @@ import { ACCEPTED_TYPES, type IncomeMonth, type SelectedFile } from "@/app/apply
 import { MAX_INCOME_FILES, canRemoveOnResults } from "@/lib/income-add-more";
 import type { IncomeTip } from "@/lib/income-tips";
 import { formatCurrency } from "@/lib/loan-form";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 /**
  * Page two of the income step: what was read, how to strengthen it, and the
@@ -49,6 +50,7 @@ export function VerifyIncomeResults({
   /** Removes a document that did not count. Never offered for one that did. */
   onRemove: (id: string) => void;
 }) {
+  const { t } = useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const full = files.length >= MAX_INCOME_FILES;
@@ -62,7 +64,7 @@ export function VerifyIncomeResults({
             <CardRow key={month.label}>
               <span className="min-w-0">
                 <span className="ios-income-fit-label block leading-tight text-[var(--text-primary)]">
-                  {month.month} {month.year}
+                  {t(month.month)} {month.year}
                 </span>
                 <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
                   {month.employer}
@@ -80,7 +82,7 @@ export function VerifyIncomeResults({
                   {month.month} {month.year}
                 </span>
                 <span className="ios-income-fit-meta mt-0.5 block truncate text-[var(--text-secondary)]">
-                  No document - counts as $0
+                  {t("No document - counts as $0")}
                 </span>
               </span>
               <span className="ios-income-fit-label shrink-0 font-semibold tabular-nums text-[var(--text-secondary)]">
@@ -90,7 +92,7 @@ export function VerifyIncomeResults({
           ))}
           <div className="ios-income-fit-avg flex items-center justify-between gap-3 bg-brand-teal/14 px-4">
             <span className="ios-income-fit-avg-label font-semibold leading-tight text-[var(--brand-blue-hex)]">
-              Monthly average (3 months)
+              {t("Monthly average (3 months)")}
             </span>
             <span className="ios-income-fit-avg-value font-bold tabular-nums leading-none text-[var(--brand-blue-hex)]">
               {formatCurrency(average)}
@@ -104,29 +106,29 @@ export function VerifyIncomeResults({
 
         {tips.length > 0 ? (
           <div className="mt-3">
-            <SectionLabel>Want a higher limit?</SectionLabel>
+            <SectionLabel>{t("Want a higher limit?")}</SectionLabel>
             <Card>
               {tips.map((tip) => (
                 <CardRow key={tip.title}>
                   <span className="min-w-0">
                     <span className="block text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-                      {tip.title}
+                      {t(tip.title)}
                     </span>
                     <span className="mt-0.5 block text-[13px] leading-snug text-[var(--text-secondary)]">
-                      {tip.body}
+                      {t(tip.body)}
                     </span>
                   </span>
                 </CardRow>
               ))}
             </Card>
             <p className="mt-2 px-1 text-[13px] leading-snug text-[var(--text-secondary)]">
-              Or carry on with what we have - you can submit now.
+              {t("Or carry on with what we have - you can submit now.")}
             </p>
           </div>
         ) : null}
 
         <div className="mt-3">
-          <SectionLabel>Your documents</SectionLabel>
+          <SectionLabel>{t("Your documents")}</SectionLabel>
           <Card>
             {files.map((file) => (
               <CardRow key={file.id}>
@@ -142,14 +144,14 @@ export function VerifyIncomeResults({
                       }`}
                     >
                       {file.status === "uploading"
-                        ? "Saving\u2026"
+                        ? t("Saving\u2026")
                         : file.status === "failed"
-                          ? (file.error ?? "We could not save this file.")
+                          ? t(file.error ?? "We could not save this file.")
                           : file.documentId && counted.has(file.documentId)
                             ? file.size
                             : file.documentId && pendingIds.includes(file.id)
-                              ? "New - tap Update my income to include it"
-                              : "Not used for your income - remove it to continue"}
+                              ? t("New - tap Update my income to include it")
+                              : t("Not used for your income - remove it to continue")}
                     </span>
                   </span>
                 </span>
@@ -158,13 +160,13 @@ export function VerifyIncomeResults({
                     type="button"
                     onClick={() => onRemove(file.id)}
                     disabled={busy}
-                    aria-label={`Remove ${file.name}`}
+                    aria-label={`${t("Remove")} ${file.name}`}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-secondary)] disabled:opacity-50"
                   >
                     <X size={12} weight="bold" />
                   </button>
                 ) : (
-                  <CheckCircle size={20} weight="fill" className="shrink-0 text-[var(--accent)]" aria-label="Counted" />
+                  <CheckCircle size={20} weight="fill" className="shrink-0 text-[var(--accent)]" aria-label={t("Counted")} />
                 )}
               </CardRow>
             ))}
@@ -195,10 +197,10 @@ export function VerifyIncomeResults({
               </span>
               <span className="min-w-0">
                 <span className="block text-[15px] font-semibold leading-tight text-[var(--accent)]">
-                  {full ? "Document limit reached" : "Add another document"}
+                  {t(full ? "Document limit reached" : "Add another document")}
                 </span>
                 <span className="mt-0.5 block text-[13px] text-[var(--text-secondary)]">
-                  PDF, JPG, or PNG · up to 10 MB each
+                  {t("PDF, JPG, or PNG · up to 10 MB each")}
                 </span>
               </span>
             </button>
@@ -212,12 +214,12 @@ export function VerifyIncomeResults({
                 event.target.value = "";
               }}
               className="sr-only"
-              aria-label="Add more income documents"
+              aria-label={t("Add more income documents")}
             />
           </Card>
           {addNote ? (
             <p role="status" className="mt-2 px-1 text-[13px] leading-snug text-[var(--text-secondary)]">
-              {addNote}
+              {t(addNote)}
             </p>
           ) : null}
         </div>

@@ -20,6 +20,7 @@ import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { footerAction } from "@/lib/income-add-more";
+import { useLocale } from "@/app/i18n/locale-provider";
 import { VerifyIncomeResults } from "@/app/apply/verify-income/verify-income-results";
 import {
   ACCEPTED_TYPES,
@@ -34,6 +35,7 @@ export function VerifyIncomeForm({
 }: {
   initialShowResults?: boolean;
 }) {
+  const { locale, t } = useLocale();
   const {
     files,
     addFiles,
@@ -98,8 +100,8 @@ export function VerifyIncomeForm({
     setSubmitTask(null);
     setSubmitError(
       result && !result.ok
-        ? result.message
-        : "We could not submit your income just now. Please try again in a moment.",
+        ? t(result.message)
+        : t("We could not submit your income just now. Please try again in a moment."),
     );
   }
 
@@ -125,17 +127,17 @@ export function VerifyIncomeForm({
       <div className="shrink-0 px-5 pb-6 pt-7">
         <h1 className="ios-type-title">
           {!showResults
-            ? "Income Documents Required"
+            ? t("Income Documents Required")
             : canSubmit
-              ? "Confirm your income"
-              : "We need a bit more"}
+              ? t("Confirm your income")
+              : t("We need a bit more")}
         </h1>
         <p className="ios-type-subtitle mt-1.5">
           {!showResults
-            ? "Payslips for full-time employees, or monthly statements for PHV drivers."
+            ? t("Payslips for full-time employees, or monthly statements for PHV drivers.")
             : canSubmit
-              ? "Check the income we read from your documents."
-              : "Here is what is still missing."}
+              ? t("Check the income we read from your documents.")
+              : t("Here is what is still missing.")}
         </p>
       </div>
 
@@ -167,7 +169,7 @@ export function VerifyIncomeForm({
               <Card>
                 <div className="px-4 py-5">
                   <p className="ios-income-fit-label leading-snug text-[var(--text-primary)]">
-                    {extractionAsk}
+                    {extractionAsk ? t(extractionAsk) : null}
                   </p>
                 </div>
               </Card>
@@ -178,7 +180,7 @@ export function VerifyIncomeForm({
           <section>
             <div className="mb-2 flex items-center gap-0.5 px-1">
               <p className="text-[13px] font-semibold leading-none text-[var(--text-secondary)]">
-                Upload up to 3 months of documents ({uploadWindow.short})
+                {t("Upload up to 3 months of documents")} ({translateUploadWindow(uploadWindow.short, t)})
               </p>
             </div>
             <Card>
@@ -187,7 +189,7 @@ export function VerifyIncomeForm({
                 className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--accent)_12%,white)] px-3.5 py-3 text-[15px] font-semibold leading-snug text-[var(--brand-blue-hex)]"
               >
                 <Info size={18} weight="fill" aria-hidden className="shrink-0 text-[var(--accent)]" />
-                Documents must match your Singpass name.
+                {t("Documents must match your Singpass name.")}
               </p>
               <button
                 type="button"
@@ -222,10 +224,10 @@ export function VerifyIncomeForm({
                   />
                 </span>
                 <span className="text-[17px] font-semibold text-[var(--text-primary)]">
-                  Tap to add files
+                  {t("Tap to add files")}
                 </span>
                 <span className="text-[13px] text-[var(--text-secondary)]">
-                  PDF, JPG, or PNG · up to 10 MB each
+                  {t("PDF, JPG, or PNG · up to 10 MB each")}
                 </span>
               </button>
               <input
@@ -238,7 +240,7 @@ export function VerifyIncomeForm({
                   event.target.value = "";
                 }}
                 className="sr-only"
-                aria-label="Upload income documents"
+                aria-label={t("Upload income documents")}
               />
             </Card>
           </section>
@@ -246,7 +248,9 @@ export function VerifyIncomeForm({
           {files.length > 0 && (
             <section>
               <SectionLabel>
-                {files.length} {files.length === 1 ? "file" : "files"} added
+                {locale === "zh-CN"
+                  ? `${t("added")} ${files.length} ${t("files")}`
+                  : `${files.length} ${t(files.length === 1 ? "file" : "files")} ${t("added")}`}
               </SectionLabel>
               <Card>
                 {files.map((file) => (
@@ -269,9 +273,9 @@ export function VerifyIncomeForm({
                           }`}
                         >
                           {file.status === "uploading"
-                            ? "Uploading\u2026"
+                            ? t("Uploading\u2026")
                             : file.status === "failed"
-                              ? `${file.error ?? "Could not save this file."} Remove it and try again.`
+                            ? `${t(file.error ?? "Could not save this file.")} ${t("Remove it and try again.")}`
                               : file.size}
                         </span>
                       </span>
@@ -279,7 +283,7 @@ export function VerifyIncomeForm({
                     <button
                       type="button"
                       onClick={() => removeFile(file.id)}
-                      aria-label={`Remove ${file.name}`}
+                      aria-label={`${t("Remove")} ${file.name}`}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-secondary)]"
                     >
                       <X size={12} weight="bold" />
@@ -316,7 +320,7 @@ export function VerifyIncomeForm({
               const action = footerAction({ saving: isUploading, unreadNew });
               return action === "update" ? (
                 <PrimaryButton onClick={handleUpload} disabled={isProcessing || isSubmitting}>
-                  Update my income
+                  {t("Update my income")}
                 </PrimaryButton>
               ) : (
                 <PrimaryButton
@@ -324,21 +328,21 @@ export function VerifyIncomeForm({
                   disabled={action === "saving" || isSubmitting || isProcessing}
                 >
                   {action === "saving"
-                    ? "Saving your files\u2026"
+                    ? t("Saving your files\u2026")
                     : isSubmitting
-                      ? "Submitting\u2026"
-                      : "Submit income"}
+                      ? t("Submitting\u2026")
+                      : t("Submit income")}
                 </PrimaryButton>
               );
             })()
           ) : (
             <PrimaryButton onClick={() => window.history.back()}>
-              Add documents
+              {t("Add documents")}
             </PrimaryButton>
           )
         ) : (
           <PrimaryButton onClick={handleUpload} disabled={isUploading || !hasReadyFiles}>
-            {isUploading ? "Saving your files\u2026" : "Upload documents"}
+            {isUploading ? t("Saving your files\u2026") : t("Upload documents")}
           </PrimaryButton>
         )}
       </StickyFooter>
@@ -351,7 +355,7 @@ export function VerifyIncomeForm({
         <LoanLoadingScreen
           key={submitTask.key}
           waitUntil={submitTask.waitUntil}
-          messages={INCOME_SUBMIT_STATUSES}
+          messages={INCOME_SUBMIT_STATUSES.map(t)}
           onComplete={handleSubmitSettled}
         />
       ) : null}
@@ -371,6 +375,7 @@ function ProcessingDocumentsModal({
   reading: boolean;
   onComplete: () => void;
 }) {
+  const { t } = useLocale();
   const [statusIndex, setStatusIndex] = useState(0);
   const [domReady, setDomReady] = useState(false);
   const [minShown, setMinShown] = useState(false);
@@ -426,17 +431,24 @@ function ProcessingDocumentsModal({
             id="processing-docs-title"
             className="mt-5 text-[22px] font-bold leading-tight tracking-[-0.022em] text-[var(--text-primary)]"
           >
-            Processing documents
+            {t("Processing documents")}
           </h2>
           <p
             className="mt-1.5 min-h-[1.4em] text-[15px] leading-[1.4] text-[var(--text-secondary)]"
             aria-live="polite"
           >
-            {PROCESSING_STATUSES[statusIndex]}
+            {t(PROCESSING_STATUSES[statusIndex])}
           </p>
         </div>
       </div>
     </div>,
     document.body,
   );
+}
+
+function translateUploadWindow(short: string, t: (text: string) => string) {
+  const [prefix, range] = short.split(": ");
+  const months = range?.split(" or ");
+  if (!prefix || !months || months.length !== 2) return t(short);
+  return `${t(prefix)}: ${t(months[0])} ${t("or")} ${t(months[1])}`;
 }

@@ -4,6 +4,7 @@ import { SidebarTrustFeatures } from "@/app/sidebar-trust-features";
 import { ApplyProgressPanel, ApplySidebarTagline, ApplySidebarWordmark } from "@/app/apply-gate/ios-ui";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { enforceApplyFunnel } from "@/lib/apply-funnel-enforce";
+import { LocaleText } from "@/app/i18n/locale-text";
 
 import { VerifyIncomeForm } from "@/app/apply/verify-income/verify-income-form";
 
@@ -39,8 +40,7 @@ export default async function VerifyIncomePage({
           <ApplySidebarTagline />
 
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            One simple application. Licensed and trusted by over 200,000
-            Singaporeans since 2011.
+            <LocaleText text="One simple application. Licensed and trusted by over 200,000 Singaporeans since 2011." />
           </p>
         </div>
 
@@ -69,15 +69,14 @@ function LandingLegalFooter() {
   return (
     <footer className="ios-apply-legal ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
-        CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
-        the laws of Singapore. Customers are advised to read the{" "}
+        <LocaleText text="CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under the laws of Singapore. Customers are advised to read the" />{" "}
         <a
           href="https://crawfort.com/sg/terms/"
           target="_blank"
           rel="noopener noreferrer"
           className="underline underline-offset-2"
         >
-          Terms and Conditions
+          <LocaleText text="Terms and Conditions" />
         </a>{" "}
         and{" "}
         <a
@@ -86,9 +85,9 @@ function LandingLegalFooter() {
           rel="noopener noreferrer"
           className="underline underline-offset-2"
         >
-          Privacy Policy
+          <LocaleText text="Privacy Policy" />
         </a>{" "}
-        carefully.
+        <LocaleText text="carefully." />
       </p>
     </footer>
   );

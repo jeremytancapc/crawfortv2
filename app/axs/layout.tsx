@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { LocaleText } from "@/app/i18n/locale-text";
 import { AxsFooter } from "./axs-footer";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default function AxsLayout({ children }: { children: React.ReactNode }) {
           priority
         />
         <span className="text-xs font-medium text-[var(--text-on-brand)] opacity-75 tracking-wide uppercase">
-          AXS Ready Cash
+          <LocaleText text="AXS Ready Cash" />
         </span>
       </header>
 

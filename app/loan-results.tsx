@@ -24,6 +24,7 @@ import {
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 import { CreditGauge, GAUGE_LOCKED_MAJOR } from "@/app/credit-gauge";
 import {
   clampWithdrawAmount,
@@ -231,6 +232,7 @@ function OfferHeader({
   showNudgeHint = false,
   onInteract,
 }: OfferCardProps) {
+  const { t } = useLocale();
   const [amountFocused, setAmountFocused] = useState(false);
   const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
 
@@ -267,7 +269,7 @@ function OfferHeader({
               step={WITHDRAW_STEP}
               onChange={commitAmount}
               disabled={!canAdjust}
-              ariaLabel="Amount to withdraw today. Drag the dial or use arrow keys."
+              ariaLabel={t("Amount to withdraw today. Drag the dial or use arrow keys.")}
               nudgeNonce={nudgeNonce}
               showNudgeHint={showNudgeHint}
               onInteract={onInteract}
@@ -275,7 +277,7 @@ function OfferHeader({
               {({ value: displayValue, isIntro }) => (
               <div className="flex w-full flex-col items-center">
               <span className="rounded-full bg-[var(--brand-blue-hex)] px-2.5 py-1 text-[clamp(7.5px,calc(2.7vw_-_3.6px),10px)] font-bold uppercase leading-none tracking-[0.1em] text-white">
-                Approved amount
+                {t("Approved amount")}
               </span>
               <div
                 className="ios-display-amount mt-1.5 flex items-baseline justify-center gap-1 pb-1 leading-none"
@@ -311,7 +313,7 @@ function OfferHeader({
                   }}
                   disabled={!canAdjust}
                   readOnly={isIntro}
-                  aria-label="Type the amount to withdraw today"
+                  aria-label={t("Type the amount to withdraw today")}
                   className="ios-display-input border-0 bg-transparent p-0 text-center text-[clamp(18px,calc(10.5vw_-_14px),40px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
                   style={{
                     fieldSizing: "content",
@@ -323,7 +325,7 @@ function OfferHeader({
               {canAdjust && (
                 <p className="mt-1.5 flex items-center gap-1 text-[clamp(7.5px,calc(2.7vw_-_3.6px),10px)] leading-none text-[var(--text-tertiary)]">
                   <HandTap size={12} weight="fill" className="shrink-0 text-[var(--accent)]" />
-                  Drag or tap to change
+                  {t("Drag or tap to change")}
                 </p>
               )}
               </div>
@@ -335,7 +337,7 @@ function OfferHeader({
         <div className="ios-row" style={{ borderTop: "1px solid var(--separator)" }}>
           <span className="flex items-center gap-2 text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
             <CalendarBlank size={16} weight="bold" style={{ color: "oklch(0.62 0.17 25)" }} />
-            Offer expires
+            {t("Offer expires")}
           </span>
           <span className="text-[15px] leading-tight text-[var(--text-secondary)]">
             {renewalLabel}
@@ -345,7 +347,7 @@ function OfferHeader({
         {hasStructuralReserve && (
           <div className="px-4 pb-4 pt-3.5" style={{ borderTop: "1px solid var(--separator)" }}>
             <p className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-              How your credit limit works
+              {t("How your credit limit works")}
             </p>
             {/* Swatches match the gauge ticks above, so the explainer reads as
                 a key to the arc rather than a wall of text. */}
@@ -377,10 +379,10 @@ function OfferHeader({
                       className="text-[14px] font-semibold leading-tight"
                       style={{ color: row.termColor }}
                     >
-                      {row.term}
+                      {t(row.term)}
                     </dt>
                     <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-                      {row.detail}
+                      {t(row.detail)}
                     </dd>
                   </div>
                 </div>
@@ -595,6 +597,7 @@ function PlanCard({
   isSelected,
   onSelect,
 }: PlanCardProps) {
+  const { t } = useLocale();
   const isPopular = Boolean(plan.badge);
   const prefersReducedMotion = useReducedMotion();
   const PlanIcon = PLAN_ICONS[plan.id];
@@ -613,7 +616,7 @@ function PlanCard({
   // this bullet so the list stays three rows deep in half the width.
   const features = [
     { text: plan.pitch, special: true, isTenure: false },
-    { text: `${plan.tenure}-month tenure`, special: false, isTenure: true },
+    { text: `${plan.tenure} ${t("months")} ${t("Tenure")}`, special: false, isTenure: true },
     ...plan.sellingPoints.map((point) => ({ text: point, special: false, isTenure: false })),
   ];
 
@@ -666,7 +669,7 @@ function PlanCard({
               className={`relative z-[1] font-bold uppercase leading-none tracking-[0.08em] ${TYPE.pill}`}
               style={{ color: tabStyle.color }}
             >
-              Popular
+              {t("Popular")}
             </span>
           </div>
         </div>
@@ -680,7 +683,7 @@ function PlanCard({
       }}
       className="plan-card-front relative flex h-full w-full min-w-0 flex-col text-left focus:outline-none"
       aria-pressed={isSelected}
-      aria-label={`${shortPlanName(plan.title)}${isPopular ? ", most popular" : ""}: ${plan.pitch}, ${formatCurrency(plan.monthlyInstalment)} a month over ${plan.tenure} months.${isSelected ? " Selected." : " Select this plan."}`}
+      aria-label={`${t(shortPlanName(plan.title))}${isPopular ? `, ${t("most popular")}` : ""}: ${t(plan.pitch)}, ${formatCurrency(plan.monthlyInstalment)} ${t("a month over")} ${plan.tenure} ${t("months")}.${isSelected ? ` ${t("Selected")}.` : ` ${t("Select this plan")}.`}`}
     >
       {/* Reserved tab slot - keeps header panels aligned across all three cards */}
       <div className="w-full shrink-0" style={{ height: PILL_SLOT_HEIGHT }} aria-hidden="true" />
@@ -716,7 +719,7 @@ function PlanCard({
             className={`plan-card-name min-w-0 truncate font-bold leading-none tracking-[-0.015em] ${TYPE.planName}`}
             style={{ color: surface.ink }}
           >
-            {shortPlanName(plan.title)}
+            {t(shortPlanName(plan.title))}
           </span>
 
           {/* The monthly figure carries the most weight; tenure moves into the
@@ -736,7 +739,7 @@ function PlanCard({
               className={`font-semibold leading-none ${TYPE.priceUnit}`}
               style={{ color: surface.mutedInk }}
             >
-              /mo
+              /{t("mo")}
             </span>
           </div>
 
@@ -747,7 +750,7 @@ function PlanCard({
             className={`plan-card-tenure font-semibold leading-none tracking-[-0.01em] ${TYPE.label}`}
             style={{ color: surface.mutedInk }}
           >
-            over {plan.tenure} months
+            {t("over")} {plan.tenure} {t("months")}
           </span>
         </div>
 
@@ -787,7 +790,7 @@ function PlanCard({
                   className={`min-w-0 font-semibold leading-tight tracking-[-0.01em] ${TYPE.body}`}
                   style={{ color: surface.ink }}
                 >
-                  {feature.text}
+                  {t(feature.text)}
                 </span>
               </li>
             ))}
@@ -815,11 +818,11 @@ function PlanCard({
               {isSelected ? (
                 <>
                   <CheckCircle size={13} weight="fill" className={TYPE.icon} />
-                  Selected
+                  {t("Selected")}
                 </>
               ) : (
                 <>
-                  Pick this plan
+                  {t("Pick this plan")}
                   <ArrowRight size={13} weight="bold" className={TYPE.icon} />
                 </>
               )}
@@ -869,6 +872,8 @@ function CustomCardHeader({
   compact?: boolean;
   trailing?: ReactNode;
 }) {
+  const { t } = useLocale();
+
   return (
     <div
       className={
@@ -898,7 +903,7 @@ function CustomCardHeader({
             className={`${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-none tracking-[-0.01em]`}
             style={{ color: PLAN_SURFACES.custom.ink }}
           >
-            Your own plan
+            {t("Your own plan")}
           </span>
           <span
             className="rounded-full px-2 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
@@ -908,7 +913,7 @@ function CustomCardHeader({
               boxShadow: `inset 0 0 0 1px ${PLAN_SURFACES.custom.hairline}`,
             }}
           >
-            Tentative
+            {t("Tentative")}
           </span>
         </div>
 
@@ -923,6 +928,7 @@ function CustomCardHeader({
 /** Repeated in every state of the card. A custom plan is a request our team
  *  works on by hand, so nothing here may read as an approved offer. */
 function TentativeRequestNote() {
+  const { t } = useLocale();
   return (
     <div
       className="flex items-start gap-2 rounded-[var(--radius-md)] px-2.5 py-2"
@@ -938,10 +944,9 @@ function TentativeRequestNote() {
       />
       <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
         <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-          Tentative request only.
+          {t("Tentative request only.")}
         </span>{" "}
-        This is not a confirmed offer. Our team will call and WhatsApp you to check what&apos;s
-        possible and confirm the final terms.
+        {t("This is not a confirmed offer. Our team will call and WhatsApp you to check what's possible and confirm the final terms.")}
       </p>
     </div>
   );
@@ -1003,6 +1008,7 @@ function CustomOfferCard({
   onAmountChange: (value: string) => void;
   onTenureChange: (value: string) => void;
 }) {
+  const { t } = useLocale();
   const prefersReducedMotion = useReducedMotion();
   const [isEditing, setIsEditing] = useState(true);
   const amountValue = parseInt(amount, 10);
@@ -1031,7 +1037,7 @@ function CustomOfferCard({
         onClick={onSelect}
         aria-expanded={false}
         className="group mx-auto block w-4/5 max-w-sm transition-transform duration-200 active:scale-[0.99]"
-        aria-label="Customise your own loan plan. Sends a tentative request, not a confirmed offer."
+        aria-label={t("Customise your own loan plan. Sends a tentative request, not a confirmed offer.")}
       >
         <CustomCardFrame isSelected={false}>
           <CustomCardHeader
@@ -1049,7 +1055,7 @@ function CustomOfferCard({
               className="min-w-0 text-[15px] font-extrabold leading-tight tracking-[-0.03em]"
               style={{ color: PLAN_SURFACES.custom.ink }}
             >
-              Customise your own loan plan
+              {t("Customise your own loan plan")}
             </span>
           </CustomCardHeader>
         </CustomCardFrame>
@@ -1066,10 +1072,10 @@ function CustomOfferCard({
               className="text-[20px] font-extrabold leading-tight tracking-[-0.03em]"
               style={{ color: PLAN_SURFACES.custom.ink }}
             >
-              Customise your own loan plan
+              {t("Customise your own loan plan")}
             </span>
             <span className="text-[12px] leading-relaxed" style={{ color: PLAN_SURFACES.custom.mutedInk }}>
-              Tell us the amount and tenure you want to request.
+              {t("Tell us the amount and tenure you want to request.")}
             </span>
           </div>
         </CustomCardHeader>
@@ -1078,7 +1084,7 @@ function CustomOfferCard({
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                Loan amount
+                {t("Loan amount")}
               </span>
               <div
                 className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
@@ -1099,7 +1105,7 @@ function CustomOfferCard({
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold tracking-[0.08em] uppercase" style={{ color: "var(--text-tertiary)" }}>
-                Tenure (months)
+                {t("Tenure (months)")}
               </span>
               <div
                 className="flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2.5"
@@ -1129,7 +1135,7 @@ function CustomOfferCard({
                 className="text-[11px] font-bold uppercase tracking-[0.07em]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Indicative instalment
+                {t("Indicative instalment")}
               </span>
               <span
                 className="text-[15px] font-bold tabular-nums tracking-[-0.02em]"
@@ -1153,7 +1159,7 @@ function CustomOfferCard({
                 border: "1.5px solid oklch(0.62 0.17 25 / 0.35)",
               }}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="button"
@@ -1163,7 +1169,7 @@ function CustomOfferCard({
               style={{ background: "var(--brand-blue-hex)", color: "#ffffff" }}
             >
               <CheckCircle size={15} weight="fill" />
-              Confirm details
+              {t("Confirm details")}
             </button>
           </div>
         </div>
@@ -1182,17 +1188,17 @@ function CustomOfferCard({
             {formatCurrency(estimatedInstalment)}
           </span>
           <span className="text-[13px] font-semibold leading-none" style={{ color: PLAN_SURFACES.custom.mutedInk }}>
-            /mo est.
+            /{t("mo")} {t("estimated")}
           </span>
         </div>
       </CustomCardHeader>
 
       <div className="flex flex-col gap-2.5 px-4 pt-3.5 pb-3.5">
         <ul className="flex flex-col gap-1.5">
-          <CustomCardPoint special spin={!prefersReducedMotion} text="Your own amount and tenure" />
-          <CustomCardPoint text={`${formatCurrency(amountValue)} requested`} />
-          <CustomCardPoint text={`${tenureValue}-month tenure`} />
-          <CustomCardPoint text={`Indicative rate up to ${formatRate(OFFER_MONTHLY_RATE)}/mo`} />
+          <CustomCardPoint special spin={!prefersReducedMotion} text={t("Your own amount and tenure")} />
+          <CustomCardPoint text={`${formatCurrency(amountValue)} ${t("requested")}`} />
+          <CustomCardPoint text={`${tenureValue} ${t("months")} ${t("Tenure")}`} />
+          <CustomCardPoint text={`${t("Indicative rate up to")} ${formatRate(OFFER_MONTHLY_RATE)}/${t("mo")}`} />
         </ul>
         <TentativeRequestNote />
       </div>
@@ -1203,7 +1209,7 @@ function CustomOfferCard({
       >
         <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-white">
           <CheckCircle size={14} weight="fill" />
-          Request ready
+          {t("Request ready")}
         </span>
         <span className="flex items-center gap-1">
           <button
@@ -1213,13 +1219,13 @@ function CustomOfferCard({
             style={{ background: "oklch(1 0 0 / 0.16)" }}
           >
             <PencilSimple size={12} weight="bold" />
-            Edit
+            {t("Edit")}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="flex items-center rounded-full p-1.5 text-white/80 transition-colors duration-150 hover:bg-white/20 hover:text-white"
-            aria-label="Remove custom plan request"
+            aria-label={t("Remove custom plan request")}
           >
             <X size={12} weight="bold" />
           </button>
@@ -1252,6 +1258,7 @@ function PlanPicker({
   needsInput = false,
   attentionNonce = 0,
 }: PlanPickerProps) {
+  const { t } = useLocale();
   useEffect(() => {
     if (!needsInput) return;
     const el = document.getElementById("plan-lane-field");
@@ -1310,7 +1317,7 @@ function PlanPicker({
           className="-mt-2 px-1 text-center text-[13px] font-medium leading-snug text-[#D70015]"
           role="alert"
         >
-          Choose a repayment plan to continue.
+          {t("Choose a repayment plan to continue.")}
         </p>
       ) : null}
       <RevealOnScroll>
@@ -1318,7 +1325,6 @@ function PlanPicker({
         isSelected={selectedPlanId === "custom"}
         onSelect={() => {
           onPlanSelect("custom");
-          setFlippedPlanId(null);
         }}
         onCancel={() => {
           onPlanSelect(null);
@@ -1422,8 +1428,9 @@ const DETERRENT_ITEMS = [
 ] as const;
 
 function OfferCountdown() {
+  const { t } = useLocale();
   const { parts } = useCountdownParts();
-  if (parts.expired) return <>Offer expired</>;
+  if (parts.expired) return <>{t("Offer expired")}</>;
   if (parts.days > 0) return <>{parts.days}d {parts.hrs}h {parts.mins}m {String(parts.secs).padStart(2, "0")}s</>;
   return <>{String(parts.hrs).padStart(2, "0")}:{String(parts.mins).padStart(2, "0")}:{String(parts.secs).padStart(2, "0")}</>;
 }
@@ -1439,6 +1446,7 @@ function ReconsiderModal({
   onClose: () => void;
   leadId?: string;
 }) {
+  const { t } = useLocale();
   const [step, setStep] = useState<ModalStep>("deterrent");
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
 
@@ -1485,7 +1493,7 @@ function ReconsiderModal({
             type="button"
             onClick={onClose}
             className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-[var(--surface-secondary)] active:scale-[0.95]"
-            aria-label="Close"
+            aria-label={t("Close")}
           >
             <X size={16} weight="bold" className="text-[var(--text-tertiary)]" />
           </button>
@@ -1498,10 +1506,10 @@ function ReconsiderModal({
                 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]"
                 style={{ letterSpacing: "-0.03em" }}
               >
-                Are you sure?
+                {t("Are you sure?")}
               </p>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                Your loan offer is confirmed. Here is what you stand to lose by waiting.
+                {t("Your loan offer is confirmed. Here is what you stand to lose by waiting.")}
               </p>
             </div>
 
@@ -1522,14 +1530,14 @@ function ReconsiderModal({
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {i === 0 ? (
                         <span className="inline-flex items-baseline gap-1.5 flex-wrap">
-                          Loan offer expires in:
+                          {t("Loan offer expires in:")}
                           <span className="font-black tracking-tight tabular-nums text-red-500">
                             <OfferCountdown />
                           </span>
                         </span>
-                      ) : heading}
+                      ) : t(heading)}
                     </p>
-                    <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{body}</p>
+                    <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{t(body)}</p>
                   </div>
                 </li>
               ))}
@@ -1544,14 +1552,14 @@ function ReconsiderModal({
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-teal text-sm font-semibold text-[var(--text-primary)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
               >
                 <ArrowLeft size={16} weight="bold" />
-                Back to offer
+                {t("Back to offer")}
               </button>
               <button
                 type="button"
                 onClick={() => setStep("survey")}
                 className="text-center text-xs text-[var(--text-tertiary)] transition-colors duration-200 hover:text-[var(--text-secondary)]"
               >
-                I understand, I still need more time
+                {t("I understand, I still need more time")}
               </button>
             </div>
           </>
@@ -1567,10 +1575,10 @@ function ReconsiderModal({
                 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]"
                 style={{ letterSpacing: "-0.03em" }}
               >
-                No worries, mind sharing why?
+                {t("No worries, mind sharing why?")}
               </p>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                Help us understand so we can improve. Your answer won&apos;t affect your application.
+                {t("Help us understand so we can improve. Your answer won't affect your application.")}
               </p>
             </div>
 
@@ -1584,7 +1592,7 @@ function ReconsiderModal({
                   style={{ opacity: 0, animation: `fade-up 0.35s cubic-bezier(0.16,1,0.3,1) ${i * 60}ms both` }}
                 >
                   <span className="text-2xl leading-none">{emoji}</span>
-                  <span className="text-sm font-semibold leading-snug text-[var(--text-primary)]">{label}</span>
+                  <span className="text-sm font-semibold leading-snug text-[var(--text-primary)]">{t(label)}</span>
                 </button>
               ))}
             </div>
@@ -1599,10 +1607,10 @@ function ReconsiderModal({
             >
               <span className="text-4xl">⚡</span>
               <p className="font-display text-2xl font-semibold tracking-tight text-brand-blue">
-                Final Chance!
+                {t("Final Chance!")}
               </p>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)] max-w-[320px]">
-                Your confirmed loan offer is reserved. Once it expires, you&apos;ll need to reapply from scratch.
+                {t("Your confirmed loan offer is reserved. Once it expires, you'll need to reapply from scratch.")}
               </p>
             </div>
 
@@ -1616,7 +1624,7 @@ function ReconsiderModal({
                 style={{ animation: "fade-up 0.4s cubic-bezier(0.16,1,0.3,1) 100ms both" }}
               >
                 <ArrowRight size={16} weight="bold" />
-                Yes, book my appointment now
+                {t("Yes, book my appointment now")}
               </button>
             </div>
           </>
@@ -1641,6 +1649,7 @@ function CustomOfferConfirmModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1667,7 +1676,7 @@ function CustomOfferConfirmModal({
           type="button"
           onClick={onClose}
           className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-[var(--surface-secondary)] active:scale-[0.95]"
-          aria-label="Close"
+          aria-label={t("Close")}
         >
           <X size={16} weight="bold" className="text-[var(--text-tertiary)]" />
         </button>
@@ -1677,15 +1686,15 @@ function CustomOfferConfirmModal({
             className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]"
             style={{ letterSpacing: "-0.03em" }}
           >
-            Send your custom plan request
+            {t("Send your custom plan request")}
           </p>
           <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-            You&apos;re requesting{" "}
-            <span className="font-semibold text-[var(--text-primary)]">{formatCurrency(amount)}</span> over{" "}
+            {t("You're requesting")}{" "}
+            <span className="font-semibold text-[var(--text-primary)]">{formatCurrency(amount)}            </span> {t("over")}{" "}
             <span className="font-semibold text-[var(--text-primary)]">
-              {tenure} {tenure === 1 ? "month" : "months"}
+              {tenure} {t(tenure === 1 ? "month" : "months")}
             </span>
-            , outside our standard plans.
+            {t(", outside our standard plans.")}
           </p>
         </div>
 
@@ -1695,8 +1704,7 @@ function CustomOfferConfirmModal({
         >
           <Warning size={18} weight="fill" className="mt-0.5 shrink-0 text-[var(--offer-accent)]" />
           <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-            This is a tentative request, not a confirmed offer or an approval. Our team will call and
-            WhatsApp you to check what&apos;s possible and confirm the exact terms before anything is signed.
+            {t("This is a tentative request, not a confirmed offer or an approval. Our team will call and WhatsApp you to check what's possible and confirm the exact terms before anything is signed.")}
           </p>
         </div>
 
@@ -1707,7 +1715,7 @@ function CustomOfferConfirmModal({
             disabled={isSubmitting}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
           >
-            {isSubmitting ? "Submitting…" : "Yes, submit my request"}
+            {isSubmitting ? t("Submitting…") : t("Yes, submit my request")}
             {!isSubmitting && <ArrowRight size={16} weight="bold" />}
           </button>
           <button
@@ -1715,7 +1723,7 @@ function CustomOfferConfirmModal({
             onClick={onClose}
             className="text-center text-sm text-[var(--text-tertiary)] transition-colors duration-200 hover:text-[var(--text-secondary)]"
           >
-            Go back and adjust
+            {t("Go back and adjust")}
           </button>
         </div>
       </div>
@@ -1757,6 +1765,7 @@ export function LoanResults({
   amount,
   onAmountChange,
 }: LoanResultsProps) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const isPlanPhase = phase === "plan";
@@ -1936,7 +1945,7 @@ export function LoanResults({
   const footerHint = !isPlanPhase
     ? null
     : needsPlanInput && isCustomSelected && hasInvalidCustomInput
-      ? "Enter the loan amount and tenure for your custom plan."
+      ? t("Enter the loan amount and tenure for your custom plan.")
       : null;
 
   /** Only once the choice is actually actionable - a custom request still
@@ -1944,10 +1953,10 @@ export function LoanResults({
   const selectionLabel = !isPlanPhase || footerHint
     ? null
     : isCustomSelected
-      ? "Your own plan selected"
+      ? t("Your own plan selected")
       : (() => {
           const plan = plans.find((p) => p.id === selectedPlanId);
-          return plan ? `${shortPlanName(plan.title)} plan selected` : null;
+          return plan ? `${t(shortPlanName(plan.title))} ${t("plan selected")}` : null;
         })();
 
   return (
@@ -1963,10 +1972,10 @@ export function LoanResults({
               className="ios-type-title"
               style={{ color: "#7f1d1d" }}
             >
-              Your offer has expired.
+              {t("Your offer has expired.")}
             </h1>
             <p className="ios-type-subtitle" style={{ color: "var(--text-secondary)" }}>
-              This loan offer is no longer valid. Start a new application to get a fresh offer.
+              {t("This loan offer is no longer valid. Start a new application to get a fresh offer.")}
             </p>
           </RevealOnScroll>
         )}
@@ -2010,7 +2019,7 @@ export function LoanResults({
             className="text-[11px] leading-relaxed"
             style={{ color: "var(--text-secondary)", position: "relative", zIndex: 1, textAlign: "center" }}
           >
-            {OFFER_CONFIRMATION_DISCLAIMER}
+            {t(OFFER_CONFIRMATION_DISCLAIMER)}
           </p>
           </RevealOnScroll>
         )}
@@ -2048,18 +2057,18 @@ export function LoanResults({
         </AnimatePresence>
         {isExpired ? (
           <PrimaryButton onClick={() => { window.location.href = applyHref("/"); }}>
-            Start a New Application
+            {t("Start a New Application")}
           </PrimaryButton>
         ) : isPlanPhase ? (
           <PrimaryButton
             onClick={handleReviewOfferClick}
             disabled={isSavingPlan}
           >
-            {isSavingPlan ? "Saving plan…" : "Review Offer"}
+            {isSavingPlan ? t("Saving plan…") : t("Review Offer")}
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleConfirmAmount}>
-            Next: Loan Tenure
+            {t("Next: Loan Tenure")}
           </PrimaryButton>
         )}
       </StickyFooter>

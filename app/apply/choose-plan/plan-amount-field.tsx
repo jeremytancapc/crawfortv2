@@ -8,6 +8,7 @@ import {
   clampWithdrawAmount,
   MIN_WITHDRAW_AMOUNT,
 } from "@/lib/withdraw-amount";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   value: number;
@@ -21,6 +22,7 @@ interface Props {
  * on the previous step; live edits rebuild the plan-card instalments.
  */
 export function PlanAmountField({ value, max, onChange, onCommit }: Props) {
+  const { t } = useLocale();
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState(String(value));
 
@@ -47,7 +49,7 @@ export function PlanAmountField({ value, max, onChange, onCommit }: Props) {
   return (
     <div className="mt-1.5">
       <label className="flex min-h-8 flex-wrap items-baseline gap-x-1.5">
-        <span className="ios-type-subtitle text-[20px] leading-[1.35]">For</span>
+        <span className="ios-type-subtitle text-[20px] leading-[1.35]">{t("For")}</span>
         <span
           className="inline-flex items-baseline gap-0.5 border-b-[1.5px] border-dashed pb-0.5"
           style={{ borderColor: "var(--border-medium)" }}
@@ -74,7 +76,7 @@ export function PlanAmountField({ value, max, onChange, onCommit }: Props) {
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
             }}
-            aria-label={`Loan amount, maximum ${formatOfferAmount(max)}`}
+            aria-label={`${t("Loan amount, maximum")} ${formatOfferAmount(max)}`}
             className="ios-display-input ios-type-subtitle m-0 border-0 bg-transparent p-0 text-[20px] leading-[1.35] font-semibold text-[var(--text-primary)] outline-none"
             style={{
               fieldSizing: "content",

@@ -28,6 +28,7 @@ import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { saveReviewDraft, submitReview } from "@/app/apply/review/submit-review";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 import type { EmploymentSuggestion } from "@/lib/ascend/borrower-derive";
 
 interface Props {
@@ -56,6 +57,7 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
 };
 
 export function ReviewForm({ initialData, employmentSuggestion = null }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const [formData, setFormData] = useState<LoanFormData>(initialData);
@@ -259,8 +261,7 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
           </div>
           <ApplySidebarTagline />
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            One simple application. Licensed and trusted by over 200,000
-            Singaporeans since 2011.
+            {t("One simple application. Licensed and trusted by over 200,000 Singaporeans since 2011.")}
           </p>
         </div>
         <ApplyProgressPanel current={progressStep} total={APPLY_PROGRESS_TOTAL} />
@@ -282,11 +283,11 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   }`}
                 >
                   <h1 className="ios-type-title">
-                    {stepMeta.title}
+                    {t(stepMeta.title)}
                   </h1>
                   {stepMeta.subtitle ? (
                     <p className="ios-type-subtitle mt-1.5">
-                      {stepMeta.subtitle}
+                      {t(stepMeta.subtitle)}
                     </p>
                   ) : null}
                 </div>
@@ -344,7 +345,7 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   role="alert"
                   className="ios-apply-gutter pb-1 text-[13px] font-semibold leading-snug text-[var(--danger,#a92d3a)]"
                 >
-                  {submitError}
+                  {t(submitError)}
                 </p>
               ) : null}
               <StickyFooter nav={stepNav}>
@@ -352,7 +353,7 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   onClick={handlePrimary}
                   disabled={(mounted && !canProceed) || !!submitOverlay}
                 >
-                  {primaryLabel}
+                  {t(primaryLabel)}
                 </PrimaryButton>
               </StickyFooter>
               </MobileGateSheet>
@@ -367,18 +368,18 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
 }
 
 function IosLegalFooter() {
+  const { t } = useLocale();
   return (
     <footer className="ios-apply-legal ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
-        CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
-        the laws of Singapore. Customers are advised to read the{" "}
+        {t("CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under the laws of Singapore. Customers are advised to read the")}{" "}
         <a
           href="https://crawfort.com/sg/terms/"
           target="_blank"
           rel="noopener noreferrer"
           className="underline underline-offset-2"
         >
-          Terms and Conditions
+          {t("Terms and Conditions")}
         </a>{" "}
         and{" "}
         <a
@@ -387,9 +388,9 @@ function IosLegalFooter() {
           rel="noopener noreferrer"
           className="underline underline-offset-2"
         >
-          Privacy Policy
+          {t("Privacy Policy")}
         </a>{" "}
-        carefully.
+        {t("carefully.")}
       </p>
     </footer>
   );
