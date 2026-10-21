@@ -68,14 +68,16 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
   const submitNavRef = useRef<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [validationAttention, setValidationAttention] = useState<{
+    mobile: boolean;
+    employment: boolean;
+    bankruptcy: boolean;
+  } | null>(null);
 
   // Identity is collected via Singpass / session — never a review screen.
   const [history, setHistory] = useState<number[]>([8]);
   const step = history[history.length - 1];
   const sheetScrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (step !== 4) return;
@@ -92,36 +94,106 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
     [],
   );
 
+  const isMobileValid = /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, ""));
+  const isEmploymentMissing = formData.employmentStatus === "";
+  const isDeclarationInvalid =
+    formData.bankruptcyDeclaration === "" ||
+    formData.bankruptcyDeclaration === "active";
   const canProceed = useMemo(() => {
     switch (step) {
       case 5:
         return (
-          /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
           // Ascend requires employment status and a declaration. Employment
           // may arrive pre-ticked from CPF or NOA, but the applicant sees it
           // and can change it; the declaration is never filled in for them.
-          formData.employmentStatus !== "" &&
-          formData.bankruptcyDeclaration !== "" &&
-          formData.bankruptcyDeclaration !== "active"
+          isMobileValid &&
+          !isEmploymentMissing &&
+          !isDeclarationInvalid
         );
       case 6:
         return true;
       case 7:
         return (
-          /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
           // Ascend requires employment status and a declaration. Employment
           // may arrive pre-ticked from CPF or NOA, but the applicant sees it
           // and can change it; the declaration is never filled in for them.
-          formData.employmentStatus !== "" &&
-          formData.bankruptcyDeclaration !== "" &&
-          formData.bankruptcyDeclaration !== "active"
+          isMobileValid &&
+          !isEmploymentMissing &&
+          !isDeclarationInvalid
         );
       case 8:
         return true;
       default:
         return false;
     }
-  }, [step, formData]);
+  }, [
+    step,
+    isMobileValid,
+    isEmploymentMissing,
+    isDeclarationInvalid,
+  ]);
+
+  useEffect(() => {
+    if (!validationAttention || (step !== 5 && step !== 7)) return;
+
+    let timeout: number | undefined;
+    let invalidFields: HTMLElement[] = [];
+    const frame = requestAnimationFrame(() => {
+      invalidFields = [
+        validationAttention.mobile
+          ? document.getElementById("review-mobile-field")
+          : null,
+        validationAttention.employment
+          ? document.getElementById("review-employment-field")
+          : null,
+        validationAttention.bankruptcy
+          ? document.getElementById("review-bankruptcy-field")
+          : null,
+      ].filter((field): field is HTMLElement => field !== null);
+
+      for (const field of invalidFields) {
+        field.classList.remove(
+          "is-zooming",
+          "review-required-invalid",
+          "review-choice-group--invalid",
+        );
+        field.classList.add("review-required-invalid");
+        if (field.classList.contains("review-choice-group")) {
+          field.classList.add("review-choice-group--invalid");
+        }
+        void field.offsetWidth;
+        field.classList.add("is-zooming");
+      }
+
+      const firstInvalidField = invalidFields[0];
+      firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
+      firstInvalidField
+        ?.querySelector<HTMLElement>("input, button")
+        ?.focus({ preventScroll: true });
+
+      timeout = window.setTimeout(() => {
+        for (const field of invalidFields) {
+          field.classList.remove(
+            "is-zooming",
+            "review-required-invalid",
+            "review-choice-group--invalid",
+          );
+        }
+      }, 1500);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      for (const field of invalidFields) {
+        field.classList.remove(
+          "is-zooming",
+          "review-required-invalid",
+          "review-choice-group--invalid",
+        );
+      }
+    };
+  }, [validationAttention, step]);
 
   const navigateTo = useCallback((next: number) => {
     if (next === 4) return;
@@ -203,6 +275,14 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
   const stepMeta = REVIEW_STEP_META[step];
 
   const handlePrimary = () => {
+    if ((step === 5 || step === 7) && !canProceed) {
+      setValidationAttention({
+        mobile: !isMobileValid,
+        employment: isEmploymentMissing,
+        bankruptcy: isDeclarationInvalid,
+      });
+      return;
+    }
     if (step === 8) {
       void handleReviewConfirm();
       return;
@@ -301,7 +381,10 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                 <div className="animate-fade-up">
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
-                      <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step6_Contact
+                        formData={formData}
+                        updateField={updateField}
+                      />
                       <Step7_EmploymentType
                         formData={formData}
                         updateField={updateField}
@@ -318,7 +401,10 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   )}
                   {step === 7 && (
                     <div className="flex flex-col gap-6">
-                      <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step6_Contact
+                        formData={formData}
+                        updateField={updateField}
+                      />
                       <Step7_EmploymentType
                         formData={formData}
                         updateField={updateField}
@@ -351,7 +437,7 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
               <StickyFooter nav={stepNav}>
                 <PrimaryButton
                   onClick={handlePrimary}
-                  disabled={(mounted && !canProceed) || !!submitOverlay}
+                  disabled={!!submitOverlay}
                 >
                   {t(primaryLabel)}
                 </PrimaryButton>
