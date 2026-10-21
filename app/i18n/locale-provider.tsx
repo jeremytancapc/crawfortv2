@@ -101,8 +101,13 @@ export function useLocale() {
 function LocaleSwitcher({ pathname }: { pathname: string }) {
   const { locale, setLocale, t } = useLocale();
   const [desktopRight, setDesktopRight] = useState<number | null>(null);
-  const isReviewPage =
-    pathname === "/apply/review" || pathname === "/v2/apply/review";
+  const hideDesktopSwitcher =
+    pathname === "/apply/review" ||
+    pathname === "/v2/apply/review" ||
+    pathname === "/apply/approval" ||
+    pathname === "/v2/apply/approval" ||
+    pathname === "/apply/choose-plan" ||
+    pathname === "/v2/apply/choose-plan";
   const mobileOptions: { locale: Locale; label: string; name: string }[] = [
     { locale: "en", label: "ENGLISH", name: "English" },
     { locale: "ms", label: "MELAYU", name: "Bahasa Melayu" },
@@ -251,7 +256,7 @@ function LocaleSwitcher({ pathname }: { pathname: string }) {
         })}
       </div>
 
-      {!isReviewPage ? (
+      {!hideDesktopSwitcher ? (
         <label
           className="fixed right-3 z-[80] hidden h-6 items-center rounded-full border border-black/10 bg-white/95 px-2 shadow-sm backdrop-blur-sm lg:top-12 lg:inline-flex xl:top-16"
           style={
