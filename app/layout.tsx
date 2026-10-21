@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { quicksand, nunito } from "./fonts";
 import "./globals.css";
-import { LocaleProvider } from "./i18n/locale-provider";
+import { LocaleProvider } from "@/app/i18n/locale-provider";
 
 export const viewport: Viewport = {
   width: "device-width",

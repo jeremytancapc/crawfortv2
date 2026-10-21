@@ -78,10 +78,10 @@ export function MobileGateHeader({
   return (
     <>
       <div className="ios-apply-header-slot lg:hidden" aria-hidden="true" />
-      <header className="ios-apply-header ios-apply-gutter flex items-center justify-center bg-[var(--brand-blue-hex)] py-2 lg:hidden">
+      <header className="ios-apply-header flex items-center justify-start bg-[var(--brand-blue-hex)] px-3 py-2 sm:px-7 lg:hidden">
         <Link
           href={applyHref("/")}
-          className="flex min-h-9 min-w-0 items-center justify-center"
+          className="flex min-h-9 min-w-0 shrink-0 items-center justify-start"
           aria-label={t("Crawfort home")}
         >
           <Image
@@ -89,7 +89,7 @@ export function MobileGateHeader({
             alt="Crawfort"
             width={1261}
             height={155}
-            className="h-5 w-auto max-w-full object-contain object-center"
+            className="h-[18px] w-auto max-w-full object-contain object-left max-[359px]:h-[15px]"
             priority
           />
         </Link>

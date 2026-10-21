@@ -630,6 +630,27 @@ input[type="range"]::-moz-range-thumb {
   animation: plan-lane-invalid-flash 1.1s ease-in-out 2;
 }
 
+.review-required-invalid.is-zooming {
+  animation: review-required-border-flash 1.5s ease-out 1;
+}
+
+.review-choice-group--invalid.is-zooming button {
+  animation: review-required-border-flash 1.5s ease-out 1;
+}
+
+@keyframes review-required-border-flash {
+  0% {
+    border-color: var(--ios-danger);
+  }
+  18%,
+  42% {
+    border-color: var(--ios-danger);
+  }
+  100% {
+    border-color: var(--border-medium);
+  }
+}
+
 @keyframes plan-lane-invalid-flash {
   0%,
   100% {
@@ -646,6 +667,12 @@ input[type="range"]::-moz-range-thumb {
   .booking-field--invalid,
   .ios-card--invalid {
     animation: none;
+  }
+
+  .review-required-invalid.is-zooming,
+  .review-choice-group--invalid.is-zooming button {
+    animation: none;
+    border-color: var(--ios-danger);
   }
 }
 

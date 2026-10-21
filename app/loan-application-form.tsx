@@ -946,7 +946,9 @@ export function Step6_Contact({
 
   const phoneDigits = formData.mobile.replace(/\s/g, "");
   const phoneError =
-    phoneTouched && phoneDigits.length > 0 && !/^[89]\d{7}$/.test(phoneDigits)
+    phoneTouched &&
+    phoneDigits.length > 0 &&
+    !/^[89]\d{7}$/.test(phoneDigits)
       ? "Enter a valid 8-digit Singapore mobile number starting with 8 or 9."
       : undefined;
 
@@ -965,11 +967,14 @@ export function Step6_Contact({
               <WhatsappLogo size={13} weight="fill" className="text-white" />
             </div>
           </div>
-          <div className={`flex min-h-[40px] sm:min-h-[46px] items-center rounded-[var(--radius-md)] border bg-[var(--surface-elevated)] gap-2 pl-4 pr-4 transition-all duration-200 ${
+          <div
+            id="review-mobile-field"
+            className={`flex min-h-[40px] sm:min-h-[46px] items-center rounded-[var(--radius-md)] border bg-[var(--surface-elevated)] gap-2 pl-4 pr-4 transition-all duration-200 ${
             phoneError
               ? "border-red-400 ring-2 ring-red-400/10"
               : "border-[var(--border-subtle)] focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/10"
-          }`}>
+          }`}
+          >
             <span className="shrink-0 select-none text-sm text-[var(--text-tertiary)]">+65</span>
             <input
               type="tel"
@@ -977,11 +982,15 @@ export function Step6_Contact({
               value={formData.mobile}
               onChange={(e) => updateField("mobile", e.target.value)}
               onBlur={() => setPhoneTouched(true)}
+              aria-invalid={Boolean(phoneError)}
+              aria-describedby={phoneError ? "review-mobile-error" : undefined}
               className="min-w-0 flex-1 border-0 bg-transparent py-2 sm:py-3 pl-0 text-[17px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
             />
           </div>
           {phoneError && (
-            <span className="text-xs text-red-500">{t(phoneError)}</span>
+            <span id="review-mobile-error" className="text-xs text-red-500">
+              {t(phoneError)}
+            </span>
           )}
         </div>
       </div>
@@ -1904,7 +1913,9 @@ function DeclarationChoiceCard({
         </span>
         <span
           className="mt-0.5 block text-[13px] font-medium leading-snug"
-          style={{ color: selected ? "rgba(255,255,255,0.72)" : "var(--text-secondary)" }}
+          style={{
+            color: selected ? "rgba(255,255,255,0.72)" : "var(--text-secondary)",
+          }}
         >
           {t(subtitle)}
         </span>
@@ -1960,7 +1971,8 @@ export function Step7_EmploymentType({
         </p>
       ) : null}
       <div
-        className="flex flex-col gap-2"
+        id="review-employment-field"
+        className="flex flex-col gap-2 review-choice-group"
         role="group"
         aria-label={t("Employment status")}
       >
@@ -1971,6 +1983,7 @@ export function Step7_EmploymentType({
               key={option}
               type="button"
               onClick={() => updateField("employmentStatus", option)}
+              aria-pressed={selected}
               className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
               style={{
                 borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
@@ -2033,7 +2046,12 @@ export function Step7_BankruptcyDeclaration({
     <div>
       <div className="flex flex-col gap-5">
         <div>
-          <div className="flex flex-col gap-2.5" role="group" aria-label={t("Bankruptcy, DRS or self-exclusion")}>
+          <div
+            id="review-bankruptcy-field"
+            className="flex flex-col gap-2.5 review-choice-group"
+            role="group"
+            aria-label={t("Bankruptcy, DRS or self-exclusion")}
+          >
             <DeclarationChoiceCard
               selected={isClear}
               icon={ShieldCheck}
@@ -2073,14 +2091,16 @@ export function Step7_BankruptcyDeclaration({
                       className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
                       style={{
                         borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
-                        background:  selected ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+                        background: selected
+                          ? "oklch(0.32 0.14 260 / 0.06)"
+                          : "var(--surface-elevated)",
                       }}
                     >
                       <span
                         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
                         style={{
                           borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
-                          background:  selected ? "var(--brand-blue-hex)" : "transparent",
+                          background: selected ? "var(--brand-blue-hex)" : "transparent",
                         }}
                       >
                         {selected && <CheckCircle size={14} weight="fill" color="white" />}
@@ -2111,21 +2131,25 @@ export function Step7_BankruptcyDeclaration({
                   className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
                   style={{
                     borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-subtle)",
-                    background:  isActive ? "oklch(0.65 0.18 25 / 0.06)" : "var(--surface-elevated)",
+                    background: isActive
+                      ? "oklch(0.65 0.18 25 / 0.06)"
+                      : "var(--surface-elevated)",
                   }}
                 >
                   <span
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
                     style={{
                       borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-medium)",
-                      background:  isActive ? "oklch(0.65 0.18 25)" : "transparent",
+                      background: isActive ? "oklch(0.65 0.18 25)" : "transparent",
                     }}
                   >
                     {isActive && <CheckCircle size={14} weight="fill" color="white" />}
                   </span>
                   <span
                     className="ios-type-option"
-                    style={{ color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
+                    style={{
+                      color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)",
+                    }}
                   >
                     {t("I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).")}
                   </span>
