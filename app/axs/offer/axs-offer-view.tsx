@@ -14,6 +14,7 @@ import {
   formatCurrency,
   APPROVAL_PAGE_DISCLAIMER,
 } from "@/lib/loan-form";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 const AXS_OFFER_AMOUNT = 5000;
 const AXS_OFFER_TENURE = 12;
@@ -87,6 +88,7 @@ interface OfferCardProps {
 }
 
 function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
+  const { t } = useLocale();
   const shouldReduceMotion = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
   const [shinePlayed, setShinePlayed] = useState(false);
@@ -192,7 +194,7 @@ function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
                 className="text-[11px] font-semibold tracking-[0.12em] uppercase"
                 style={{ color: "oklch(0.78 0.16 178 / 0.95)" }}
               >
-                Personal Loan
+                {t("Personal Loan")}
               </p>
               <CardLogo />
             </div>
@@ -203,7 +205,7 @@ function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
                 className="text-[11px] font-medium tracking-[0.14em] uppercase mb-1"
                 style={{ color: "oklch(1 0 0 / 0.38)" }}
               >
-                Approved Amount
+                {t("Approved Amount")}
               </p>
               <p
                 className="tabular-nums leading-none"
@@ -237,13 +239,13 @@ function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
                   className="text-[9px] font-medium tracking-[0.14em] uppercase"
                   style={{ color: "oklch(1 0 0 / 0.35)" }}
                 >
-                  Offer Valid For
+                  {t("Offer Valid For")}
                 </p>
                 <p
                   className="text-sm font-bold tracking-tight"
                   style={{ color: "oklch(1 0 0 / 0.80)" }}
                 >
-                  3 Days
+                  {t("3 Days")}
                 </p>
               </div>
               <div className="text-right">
@@ -251,7 +253,7 @@ function OfferCard({ amount, tenure, offerRef, entered }: OfferCardProps) {
                   className="text-[9px] font-medium tracking-[0.14em] uppercase"
                   style={{ color: "oklch(1 0 0 / 0.35)" }}
                 >
-                  Ref
+                  {t("Ref")}
                 </p>
                 <p
                   className="text-[11px] font-bold tabular-nums tracking-wider"
@@ -294,6 +296,7 @@ const COMMITMENTS = [
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export function AxsOfferView() {
+  const { t } = useLocale();
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
   const ctaRef = useRef<HTMLDivElement>(null);
@@ -376,7 +379,7 @@ export function AxsOfferView() {
             className="text-[10px] font-bold tracking-[0.20em] uppercase"
             style={{ color: "var(--brand-teal-hex)" }}
           >
-            Approved in Principle
+            {t("Approved in Principle")}
           </span>
         </div>
 
@@ -390,13 +393,13 @@ export function AxsOfferView() {
             color: "var(--text-primary)",
           }}
         >
-            You&apos;re pre-approved.
+            {t("You're pre-approved.")}
         </h1>
 
         <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          Secure it by booking a quick appointment below.
+          {t("Secure it by booking a quick appointment below.")}
           <br />
-          No commitment until you decide on the day.
+          {t("No commitment until you decide on the day.")}
         </p>
       </motion.div>
 
@@ -414,7 +417,7 @@ export function AxsOfferView() {
         style={{ color: "var(--text-tertiary)", opacity: 0.75 }}
         {...fadeUp(stage >= 3, 0)}
       >
-        *{APPROVAL_PAGE_DISCLAIMER}
+        *{t(APPROVAL_PAGE_DISCLAIMER)}
       </motion.p>
 
       {/* 3 ── Terms + commitments */}
@@ -438,7 +441,7 @@ export function AxsOfferView() {
               className="text-[10px] font-semibold tracking-[0.14em] uppercase"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Monthly Est.
+              {t("Monthly Est.")}
             </span>
             <span
               className="tabular-nums font-bold"
@@ -450,7 +453,7 @@ export function AxsOfferView() {
               }}
             >
               {formatCurrency(monthlyRepayment)}
-              <span className="ml-1 text-xs font-normal opacity-50" style={{ letterSpacing: "0.04em" }}>/month*</span>
+              <span className="ml-1 text-xs font-normal opacity-50" style={{ letterSpacing: "0.04em" }}>{t("per month")}*</span>
             </span>
           </div>
           <div
@@ -464,7 +467,7 @@ export function AxsOfferView() {
               className="text-[10px] font-semibold tracking-[0.14em] uppercase"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Tenure
+              {t("Tenure")}
             </span>
             <span
               className="font-bold"
@@ -476,7 +479,7 @@ export function AxsOfferView() {
               }}
             >
               {AXS_OFFER_TENURE}
-              <span className="ml-1 text-xs font-normal opacity-50" style={{ letterSpacing: "0.04em" }}>months</span>
+              <span className="ml-1 text-xs font-normal opacity-50" style={{ letterSpacing: "0.04em" }}>{t("months")}</span>
             </span>
           </div>
         </div>
@@ -487,7 +490,7 @@ export function AxsOfferView() {
             className="text-[10px] font-bold tracking-[0.18em] uppercase mb-3"
             style={{ color: "var(--text-tertiary)" }}
           >
-            To receive your funds
+            {t("To receive your funds")}
           </p>
           <ul className="flex flex-col gap-3">
             {COMMITMENTS.map(({ Icon, label, detail }, i) => (
@@ -517,13 +520,13 @@ export function AxsOfferView() {
                     className="text-sm font-semibold leading-snug"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {label}
+                    {t(label)}
                   </span>
                   <span
                     className="text-xs leading-relaxed"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {detail}
+                    {t(detail)}
                   </span>
                 </span>
               </motion.li>
@@ -549,7 +552,7 @@ export function AxsOfferView() {
             boxShadow: "0 4px 18px oklch(0.78 0.16 178 / 0.30)",
           }}
         >
-          Secure My Offer
+          {t("Secure My Offer")}
           <ArrowRight
             size={16}
             weight="bold"
@@ -575,7 +578,7 @@ export function AxsOfferView() {
               boxShadow: "0 8px 24px oklch(0.78 0.16 178 / 0.40)",
             }}
           >
-            Secure My Offer
+            {t("Secure My Offer")}
             <ArrowRight size={16} weight="bold" style={{ color: "var(--text-primary)" }} />
           </button>
         </div>

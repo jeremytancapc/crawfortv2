@@ -6,6 +6,7 @@ import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { applyRedirectPath } from "@/lib/apply-variant-server";
+import { LocaleText } from "@/app/i18n/locale-text";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +24,13 @@ export default async function BookedPage() {
         <div className="flex items-center gap-3">
           <span
             className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center"
-            role="status"
-            aria-label="Funds reserved"
+            aria-hidden="true"
           >
             <span className="absolute inset-0 rounded-full bg-emerald-400/50 animate-staff-presence-ping-green" />
             <span className="relative h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_3px_rgba(16,185,129,0.55)] animate-staff-presence-glow-green" />
           </span>
           <h1 className="ios-type-title min-w-0 whitespace-nowrap text-[22px] sm:text-[30px]">
-            Your funds are reserved
+            <LocaleText text="Your funds are reserved" />
           </h1>
         </div>
       </div>

@@ -14,6 +14,7 @@ import { V2_STAGES, V2_STAGE_HREF } from "@/app/v2/ui/progress";
 import { useV2VisitedStages } from "@/app/v2/ui/progress-store";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
 import { useClientValue } from "@/app/v2/ui/use-client-value";
+import { useLocale } from "@/app/i18n/locale-provider";
 import { trackDisplayStep } from "@/lib/analytics";
 import { markApplyStepVisited, persistGateStep, readGateResumeStep } from "@/lib/apply-step-nav";
 import {
@@ -55,6 +56,7 @@ export function LoanSetupScreens({
 }: {
   initialApplySession?: Partial<LoanFormData> | null;
 }) {
+  const { t } = useLocale();
   const applyHref = useApplyPath();
   const router = useRouter();
   const visitedStages = useV2VisitedStages();
@@ -110,9 +112,9 @@ export function LoanSetupScreens({
     () =>
       URGENCY_OPTIONS.map(({ value }) => ({
         value,
-        label: URGENCY_SHORT_LABELS[value],
+        label: t(URGENCY_SHORT_LABELS[value]),
       })),
-    [],
+    [t],
   );
 
   const handleContinue = () => {
@@ -157,11 +159,11 @@ export function LoanSetupScreens({
           </V2Illustration>
           <V2Title
             title="Retrieve your details with Singpass"
-            subtitle="Under a minute. Used only for this application."
+            subtitle={t("Under a minute. Used only for this application.")}
           />
           <p className="v2-note v2-enter" style={{ ["--i" as string]: 2 }}>
-            {formatCurrency(formData.amount)} over {tenure} {tenure === 1 ? "month" : "months"}
-            {" · "}approval rates of up to 90%
+            {formatCurrency(formData.amount)} {t("over")} {tenure} {t(tenure === 1 ? "month" : "months")}
+            {" · "}{t("Approval rates of up to 90%")}
           </p>
         </V2Body>
         <V2Footer>
@@ -169,7 +171,7 @@ export function LoanSetupScreens({
             type="button"
             onClick={() => void leaveForSingpass()}
             disabled={redirectPending}
-            aria-label="Retrieve Myinfo with Singpass"
+            aria-label={t("Retrieve Myinfo with Singpass")}
             className={
               redirectPending
                 ? "v2-pill v2-pill-singpass"
@@ -179,7 +181,7 @@ export function LoanSetupScreens({
             {redirectPending ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Please wait…
+                {t("Please wait…")}
               </>
             ) : (
               <Image
@@ -215,7 +217,7 @@ export function LoanSetupScreens({
             <Link
               href={applyHref(V2_STAGE_HREF[furthestAheadStage])}
               className="v2-icon-button"
-              aria-label="Continue where you left off"
+              aria-label={t("Continue where you left off")}
             >
               <CaretRight size={22} weight="bold" />
             </Link>
@@ -224,7 +226,7 @@ export function LoanSetupScreens({
               type="button"
               onClick={() => setStep(3)}
               className="v2-icon-button"
-              aria-label="Forward to Singpass"
+              aria-label={t("Forward to Singpass")}
             >
               <CaretRight size={22} weight="bold" />
             </button>
@@ -232,7 +234,7 @@ export function LoanSetupScreens({
         }
       />
       <V2Body justify="between">
-        <V2Title title="How much do you need?" />
+        <V2Title title={t("How much do you need?")} />
 
         <div className="v2-enter flex flex-col gap-2" style={{ ["--i" as string]: 1 }}>
           <AmountInput
@@ -241,47 +243,47 @@ export function LoanSetupScreens({
             max={MAX_AMOUNT}
             step={AMOUNT_STEP}
             onChange={(value) => updateField("amount", value)}
-            ariaLabel="Loan amount"
+            ariaLabel={t("Loan amount")}
             plusAtMax
           />
           <p className="text-[15px] text-[var(--v2-ink-2)]">
-            About{" "}
+            {t("About")}{" "}
             <span className="font-bold tabular-nums text-[var(--v2-ink)]">
               {formatCurrency(monthlyRepayment)}
             </span>{" "}
-            a month over {tenure} {tenure === 1 ? "month" : "months"}
+            {t("a month over")} {tenure} {t(tenure === 1 ? "month" : "months")}
           </p>
         </div>
 
         <div className="v2-enter" style={{ ["--i" as string]: 2 }}>
           <Rows>
             <Row
-              label="Loan term"
+              label={t("Loan term")}
               action={
                 <Stepper
-                  value={`${tenure} ${tenure === 1 ? "month" : "months"}`}
+                  value={`${tenure} ${t(tenure === 1 ? "month" : "months")}`}
                   onDecrement={() => updateField("tenure", TENURE_OPTIONS[tenureIndex - 1])}
                   onIncrement={() => updateField("tenure", TENURE_OPTIONS[tenureIndex + 1])}
                   canDecrement={tenureIndex > 0}
                   canIncrement={tenureIndex < TENURE_OPTIONS.length - 1}
-                  decrementLabel="Shorter loan term"
-                  incrementLabel="Longer loan term"
+                  decrementLabel={t("Shorter loan term")}
+                  incrementLabel={t("Longer loan term")}
                 />
               }
             />
           </Rows>
           <div className="flex flex-col gap-2 pt-4">
-            <span className="v2-row-label">When do you need it?</span>
+            <span className="v2-row-label">{t("When do you need it?")}</span>
             <Segmented<UrgencyValue>
               options={urgencyOptions}
               value={formData.urgency as UrgencyValue | ""}
               onChange={(value) => updateField("urgency", value)}
-              ariaLabel="When do you need the funds"
+              ariaLabel={t("When do you need the funds")}
               invalid={urgencyNeedsInput}
             />
             {urgencyNeedsInput ? (
               <p className="text-[13px] font-semibold text-[var(--v2-danger)]" role="alert">
-                Pick a payout time to continue.
+                {t("Pick a payout time to continue.")}
               </p>
             ) : null}
           </div>
@@ -290,18 +292,18 @@ export function LoanSetupScreens({
       <V2Footer
         note={
           <>
-            Estimate at 3.92% a month. Licensed moneylender, CF Money Pte. Ltd.{" "}
+            {t("Estimate at 3.92% a month. Licensed moneylender, CF Money Pte. Ltd.")}{" "}
             <a href="https://crawfort.com/sg/terms/" target="_blank" rel="noopener noreferrer">
-              Terms
+              {t("Terms")}
             </a>
             {" · "}
             <a href="https://crawfort.com/sg/privacy/" target="_blank" rel="noopener noreferrer">
-              Privacy
+              {t("Privacy")}
             </a>
           </>
         }
       >
-        <Pill onClick={handleContinue}>Continue</Pill>
+        <Pill onClick={handleContinue}>{t("Continue")}</Pill>
       </V2Footer>
     </V2Screen>
   );

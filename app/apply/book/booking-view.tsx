@@ -8,6 +8,7 @@ import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { LoanFormData } from "@/lib/loan-form";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   formData: LoanFormData;
@@ -16,6 +17,7 @@ interface Props {
 const LOG = "[apply/book:client]";
 
 export function BookingView({ formData }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const [ctaHost, setCtaHost] = useState<HTMLSpanElement | null>(null);
@@ -52,7 +54,7 @@ export function BookingView({ formData }: Props) {
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string };
       console.error(`${LOG} book failed`, { status: res.status, error: body.error, body });
-      alert("We couldn’t confirm your appointment. Please try again.");
+      alert(t("We couldn’t confirm your appointment. Please try again."));
       return null;
     }
 
@@ -75,10 +77,10 @@ export function BookingView({ formData }: Props) {
     >
       <div className="apply-book-fit apply-headline-to-wordmark shrink-0 px-3 pb-3 pt-6 sm:px-5 sm:pb-4 sm:pt-7 lg:!pt-12 lg:!pb-6 xl:!pt-16">
         <h1 className="ios-type-title">
-          Collect your funds
+          {t("Collect your funds")}
         </h1>
         <p className="ios-type-subtitle mt-1.5 lg:mt-4">
-          The visit only takes around 30 minutes.
+          {t("The visit only takes around 30 minutes.")}
         </p>
       </div>
       <div className="apply-book-fit flex-1 px-3 sm:px-5 sm:pb-8">

@@ -12,6 +12,7 @@ import {
   ChartLineUp,
 } from "@phosphor-icons/react";
 import { PaymentHistorySelector } from "@/components/ui/gradient-selector-card";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,8 @@ interface AxsDeclarations {
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
 function StepDots({ current, total }: { current: number; total: number }) {
+  const { t } = useLocale();
+
   return (
     <div className="flex items-center gap-2 mb-8">
       {Array.from({ length: total }, (_, i) => {
@@ -47,7 +50,7 @@ function StepDots({ current, total }: { current: number; total: number }) {
         );
       })}
       <span className="ml-1 text-xs text-[var(--text-tertiary)]">
-        {current} of {total}
+        {t("Step")} {current} {t("of")} {total} {t("steps")}
       </span>
     </div>
   );
@@ -62,6 +65,7 @@ function MoneylenderStep({
   state: AxsDeclarations;
   onChange: <K extends keyof AxsDeclarations>(key: K, value: AxsDeclarations[K]) => void;
 }) {
+  const { t } = useLocale();
   const rawAmount = state.moneylenderLoanAmount;
   const hasAmount =
     rawAmount.trim() !== "" && !Number.isNaN(parseInt(rawAmount, 10));
@@ -89,10 +93,10 @@ function MoneylenderStep({
           className="text-4xl font-bold text-[var(--text-primary)] leading-tight mb-2"
           style={{ letterSpacing: "-0.04em" }}
         >
-          Two quick checks<br />to unlock your offer.
+          {t("Two quick checks")}<br />{t("to unlock your offer.")}
         </h1>
         <p className="text-sm text-[var(--text-tertiary)]">
-          Helps us calculate the most accurate rates for you.
+          {t("Helps us calculate the most accurate rates for you.")}
         </p>
       </div>
 
@@ -108,10 +112,10 @@ function MoneylenderStep({
             className="text-lg font-bold tracking-tight text-[var(--text-primary)]"
             style={{ letterSpacing: "-0.025em" }}
           >
-            Outstanding moneylender loans
+            {t("Outstanding moneylender loans")}
           </h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            Licensed moneylenders only, no need to declare bank loans.
+            {t("Licensed moneylenders only, no need to declare bank loans.")}
           </p>
         </div>
       </div>
@@ -120,7 +124,7 @@ function MoneylenderStep({
         {/* Amount input */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--text-primary)]">
-            Total outstanding amount
+            {t("Total outstanding amount")}
           </label>
           <div
             className="flex min-h-[46px] items-center rounded-[var(--radius-md)] border bg-[var(--surface-elevated)] gap-2 pl-4 pr-4 transition-all duration-200 focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/10"
@@ -133,7 +137,7 @@ function MoneylenderStep({
             <input
               type="text"
               inputMode="numeric"
-              placeholder="e.g. 5,000"
+              placeholder={t("e.g. 5,000")}
               value={state.moneylenderLoanAmount}
               onFocus={() => {
                 if (state.moneylenderNoLoans) onChange("moneylenderNoLoans", false);
@@ -151,7 +155,7 @@ function MoneylenderStep({
         {showPaymentHistory && (
           <div className="animate-slide-in">
             <label className="mb-3 block text-sm font-medium text-[var(--text-primary)]">
-              How is your loan repayment history?
+              {t("How is your loan repayment history?")}
             </label>
             <PaymentHistorySelector
               value={state.moneylenderPaymentHistory}
@@ -192,7 +196,7 @@ function MoneylenderStep({
               color: state.moneylenderNoLoans ? "var(--brand-blue-hex)" : "var(--text-secondary)",
             }}
           >
-            No moneylender loans to declare
+            {t("No moneylender loans to declare")}
           </span>
         </button>
       </div>
@@ -209,6 +213,7 @@ function BankruptcyStep({
   state: AxsDeclarations;
   onChange: <K extends keyof AxsDeclarations>(key: K, value: AxsDeclarations[K]) => void;
 }) {
+  const { t } = useLocale();
   const isClear      = state.bankruptcyDeclaration === "clear";
   const isDischarged = state.bankruptcyDeclaration === "discharged_lt5";
   const isActive     = state.bankruptcyDeclaration === "active";
@@ -227,17 +232,17 @@ function BankruptcyStep({
             className="text-2xl font-bold tracking-tight text-[var(--text-primary)]"
             style={{ letterSpacing: "-0.04em" }}
           >
-            One last step
+            {t("One last step")}
           </h1>
           <p className="text-xs text-[var(--text-secondary)]">
-            Help us confirm your financial standing to move forward.
+            {t("Help us confirm your financial standing to move forward.")}
           </p>
         </div>
       </div>
 
       <div className="mt-5 flex flex-col gap-4">
         <label className="block text-sm font-medium text-[var(--text-primary)]">
-          Which of the following applies to you at this time?
+          {t("Which of the following applies to you at this time?")}
         </label>
 
         <div className="flex flex-col gap-2.5">
@@ -264,7 +269,7 @@ function BankruptcyStep({
               className="text-sm font-semibold"
               style={{ color: isClear ? "oklch(0.40 0.12 145)" : "var(--text-primary)" }}
             >
-              I do not have any active bankruptcy, DRS, or self-exclusion records.
+              {t("I do not have any active bankruptcy, DRS, or self-exclusion records.")}
             </span>
           </button>
 
@@ -291,7 +296,7 @@ function BankruptcyStep({
               className="text-sm"
               style={{ color: isDischarged ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
             >
-              I have previously been discharged from bankruptcy (within the last 5 years).
+              {t("I have previously been discharged from bankruptcy (within the last 5 years).")}
             </span>
           </button>
 
@@ -318,7 +323,7 @@ function BankruptcyStep({
               className="text-sm"
               style={{ color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
             >
-              I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).
+              {t("I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).")}
             </span>
           </button>
         </div>
@@ -327,7 +332,7 @@ function BankruptcyStep({
           <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
             <Warning size={16} weight="fill" className="mt-0.5 shrink-0 text-brand-blue" />
             <p className="text-sm text-brand-blue leading-snug">
-              Please bring along your bankruptcy/DRS discharge letter to your appointment.
+              {t("Please bring along your bankruptcy/DRS discharge letter to your appointment.")}
             </p>
           </div>
         )}
@@ -336,8 +341,7 @@ function BankruptcyStep({
           <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3">
             <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-red-500" />
             <p className="text-sm text-red-700 leading-snug">
-              We are currently unable to issue loans to applicants with an active bankruptcy or DRS status.
-              You cannot proceed at this time.
+              {t("We are currently unable to issue loans to applicants with an active bankruptcy or DRS status. You cannot proceed at this time.")}
             </p>
           </div>
         )}
@@ -349,6 +353,7 @@ function BankruptcyStep({
 // ── Main form ──────────────────────────────────────────────────────────────────
 
 export default function AxsPage() {
+  const { t } = useLocale();
   const router = useRouter();
 
   const [step, setStep] = useState(1);
@@ -414,7 +419,7 @@ export default function AxsPage() {
             className="flex h-12 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-5 text-sm font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] active:scale-[0.98]"
           >
             <ArrowLeft size={16} weight="bold" />
-            Back
+            {t("Back")}
           </button>
         )}
         <button
@@ -423,7 +428,7 @@ export default function AxsPage() {
           disabled={!canProceed}
           className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand-blue text-sm font-semibold text-[var(--text-on-brand)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
         >
-          Continue
+          {t("Continue")}
           <ArrowRight size={16} weight="bold" />
         </button>
       </div>

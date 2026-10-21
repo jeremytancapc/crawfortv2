@@ -25,16 +25,18 @@ import {
   applyProgressHint,
 } from "@/lib/apply-progress";
 import { useApplyProgressStep, usePublishApplyProgress } from "@/lib/apply-progress-store";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 /** Desktop sidebar wordmark. Same destination as the mobile header: the amount step. */
 export function ApplySidebarWordmark() {
+  const { t } = useLocale();
   const applyHref = useApplyPath();
 
   return (
     <Link
       href={applyHref("/")}
       className="inline-flex"
-      aria-label="Crawfort home"
+      aria-label={t("Crawfort home")}
     >
       <Image
         src="/images/crawfort-white.png"
@@ -50,11 +52,12 @@ export function ApplySidebarWordmark() {
 
 /** Forced two-line break so "need, in 8 minutes" never orphans as just "minutes". */
 export function ApplySidebarTagline() {
+  const { t } = useLocale();
   return (
     <p className="max-w-[420px] text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-white">
-      Get the funds you
+      {t("Get the funds you")}
       <br />
-      need, in 8 minutes
+      {t("need, in 8 minutes")}
     </p>
   );
 }
@@ -69,23 +72,24 @@ export function MobileGateHeader({
   progressTotal?: number;
 }) {
   usePublishApplyProgress(progressStep ?? null);
+  const { t } = useLocale();
   const applyHref = useApplyPath();
 
   return (
     <>
       <div className="ios-apply-header-slot lg:hidden" aria-hidden="true" />
-      <header className="ios-apply-header ios-apply-gutter flex items-center justify-center bg-[var(--brand-blue-hex)] py-2 lg:hidden">
+      <header className="ios-apply-header flex items-center justify-start bg-[var(--brand-blue-hex)] px-3 py-2 sm:px-7 lg:hidden">
         <Link
           href={applyHref("/")}
-          className="flex min-h-9 min-w-0 items-center justify-center"
-          aria-label="Crawfort home"
+          className="flex min-h-9 min-w-0 shrink-0 items-center justify-start"
+          aria-label={t("Crawfort home")}
         >
           <Image
             src="/images/crawfort-white-color-dot.png"
             alt="Crawfort"
             width={1261}
             height={155}
-            className="h-5 w-auto max-w-full object-contain object-center"
+            className="h-[18px] w-auto max-w-full object-contain object-left max-[359px]:h-[15px]"
             priority
           />
         </Link>
@@ -653,6 +657,7 @@ export function ApplyProgressBadge({
   current: number;
   total: number;
 }) {
+  const { t } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const detailId = useId();
@@ -661,7 +666,7 @@ export function ApplyProgressBadge({
   const isStart = current <= APPLY_PROGRESS_START;
   const isWaitingForVisit =
     current >= APPLY_PROGRESS_APPOINTMENT && current < total;
-  const label = isStart ? "Start" : isWaitingForVisit ? "Appointment" : `${percent}%`;
+  const label = isStart ? t("Start") : isWaitingForVisit ? t("Appointment") : `${percent}%`;
   const hint = applyProgressHint(current);
 
   useEffect(() => {
@@ -689,10 +694,10 @@ export function ApplyProgressBadge({
         aria-describedby={isOpen ? detailId : undefined}
         aria-label={
           isStart
-            ? "Application not started yet. Show what happens next"
+            ? t("Application not started yet. Show what happens next")
             : isWaitingForVisit
-              ? `Application progress ${percent} percent, appointment outstanding. Show what is left`
-              : `Application progress ${percent} percent. Show what is left`
+              ? `${t("Application progress")} ${percent}%, ${t("appointment outstanding. Show what is left")}`
+              : `${t("Application progress")} ${percent}%. ${t("Show what is left")}`
         }
         className="flex h-8 items-center gap-[7px] rounded-full border border-white/25 bg-white/15 pl-2.5 pr-3 text-[12px] font-bold leading-none tracking-[0.01em] text-white transition-transform duration-150 active:scale-95"
       >
@@ -717,10 +722,10 @@ export function ApplyProgressBadge({
           <div className="relative">
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-[15px] font-bold leading-none text-[var(--brand-blue-hex)]">
-                {isStart ? "Ready to start" : `${percent}% complete`}
+                {isStart ? t("Ready to start") : `${percent}% ${t("complete")}`}
               </p>
               <p className="text-[11px] font-semibold leading-none text-[var(--text-tertiary)]">
-                Step {Math.min(Math.floor(current), total)} of {total}
+                {t("Step")} {Math.min(Math.floor(current), total)} {t("of")} {total} {t("steps")}
               </p>
             </div>
             <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-[var(--surface-sunken)]">
@@ -733,10 +738,10 @@ export function ApplyProgressBadge({
               />
             </div>
             <p className="mt-3 text-[13px] font-bold leading-tight text-[var(--text-primary)]">
-              {hint.title}
+              {t(hint.title)}
             </p>
             <p className="mt-1 text-[12.5px] leading-[1.45] text-[var(--text-secondary)]">
-              {hint.detail}
+              {t(hint.detail)}
             </p>
           </div>
         </div>
@@ -756,6 +761,7 @@ function ApplyProgressFooterStrip({
   current: number;
   total?: number;
 }) {
+  const { t } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const detailId = useId();
@@ -764,7 +770,7 @@ function ApplyProgressFooterStrip({
   const isStart = current <= APPLY_PROGRESS_START;
   const isWaitingForVisit =
     current >= APPLY_PROGRESS_APPOINTMENT && current < total;
-  const label = isStart ? "Start" : isWaitingForVisit ? "Appointment" : `${percent}%`;
+  const label = isStart ? t("Start") : isWaitingForVisit ? t("Appointment") : `${percent}%`;
   const hint = applyProgressHint(current);
 
   useEffect(() => {
@@ -795,10 +801,10 @@ function ApplyProgressFooterStrip({
         aria-describedby={isOpen ? detailId : undefined}
         aria-label={
           isStart
-            ? "Application not started yet. Show what happens next"
+            ? t("Application not started yet. Show what happens next")
             : isWaitingForVisit
-              ? `Application progress ${percent} percent, appointment outstanding. Show what is left`
-              : `Application progress ${percent} percent. Show what is left`
+              ? `${t("Application progress")} ${percent}%, ${t("appointment outstanding. Show what is left")}`
+              : `${t("Application progress")} ${percent}%. ${t("Show what is left")}`
         }
         className="flex w-full items-center gap-2.5 rounded-t-2xl px-3.5 py-1.5"
         style={{
@@ -806,7 +812,7 @@ function ApplyProgressFooterStrip({
         }}
       >
         <span className="shrink-0 text-[12px] font-semibold leading-none text-[var(--brand-blue-hex)]">
-          Progress
+          {t("Progress")}
         </span>
         <span
           className="flex min-w-0 flex-1 items-center gap-1"
@@ -850,10 +856,10 @@ function ApplyProgressFooterStrip({
           <div className="relative">
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-[15px] font-bold leading-none text-[var(--brand-blue-hex)]">
-                {isStart ? "Ready to start" : `${percent}% complete`}
+                {isStart ? t("Ready to start") : `${percent}% ${t("complete")}`}
               </p>
               <p className="text-[11px] font-semibold leading-none text-[var(--text-tertiary)]">
-                Step {Math.min(Math.floor(current), total)} of {total}
+                {t("Step")} {Math.min(Math.floor(current), total)} {t("of")} {total} {t("steps")}
               </p>
             </div>
             <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-[var(--surface-sunken)]">
@@ -866,10 +872,10 @@ function ApplyProgressFooterStrip({
               />
             </div>
             <p className="mt-3 text-[13px] font-bold leading-tight text-[var(--text-primary)]">
-              {hint.title}
+              {t(hint.title)}
             </p>
             <p className="mt-1 text-[12.5px] leading-[1.45] text-[var(--text-secondary)]">
-              {hint.detail}
+              {t(hint.detail)}
             </p>
           </div>
         </div>
@@ -890,6 +896,7 @@ export function ApplyProgressPanel({
   current: number;
   total: number;
 }) {
+  const { t } = useLocale();
   const percent = progressPercent(current, total);
   const isStart = current <= APPLY_PROGRESS_START;
   const isWaitingForVisit =
@@ -904,7 +911,7 @@ export function ApplyProgressPanel({
           {percent}%
         </p>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/55">
-          Step {Math.min(Math.floor(current), total)} of {total}
+          {t("Step")} {Math.min(Math.floor(current), total)} {t("of")} {total} {t("steps")}
         </p>
       </div>
 
@@ -913,8 +920,8 @@ export function ApplyProgressPanel({
         aria-valuenow={percent}
         aria-valuemin={1}
         aria-valuemax={100}
-        aria-valuetext={`${percent} percent`}
-        aria-label="Application progress"
+        aria-valuetext={`${percent}% ${t("complete")}`}
+        aria-label={t("Application progress")}
         className="mt-8 flex items-center"
       >
         {Array.from({ length: PROGRESS_DOTS }, (_, index) => {
@@ -953,17 +960,17 @@ export function ApplyProgressPanel({
       </div>
 
       <div className="mt-2.5 flex items-baseline justify-between gap-4 text-[12px] font-semibold">
-        <span className={isStart ? "text-white" : "text-white/45"}>Start</span>
+        <span className={isStart ? "text-white" : "text-white/45"}>{t("Start")}</span>
         <span className={isWaitingForVisit ? "text-white" : "text-white/45"}>
-          Appointment
+          {t("Appointment")}
         </span>
       </div>
 
       <p className="mt-5 text-[15px] font-bold leading-tight text-white">
-        {hint.title}
+        {t(hint.title)}
       </p>
       <p className="mt-1.5 text-[13.5px] leading-[1.45] text-white/60">
-        {hint.detail}
+        {t(hint.detail)}
       </p>
     </section>
   );
@@ -1003,6 +1010,7 @@ function StepNavButton({
   onClick?: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useLocale();
   const isBack = direction === "back";
   const Icon = isBack ? CaretLeft : CaretRight;
 
@@ -1012,7 +1020,7 @@ function StepNavButton({
       onClick={onClick}
       disabled={disabled}
       tabIndex={disabled ? -1 : undefined}
-      aria-label={isBack ? "Previous step" : "Next step"}
+      aria-label={t(isBack ? "Previous step" : "Next step")}
       className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-primary)] transition-transform duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
     >
       <Icon size={20} weight="bold" />

@@ -13,6 +13,7 @@ import {
   SegmentedControl,
   StepperRow,
 } from "@/app/apply-gate/ios-ui";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 const MIN_AMOUNT = 1000;
 const MAX_AMOUNT = 100000;
@@ -59,6 +60,7 @@ export function GateStepAmount({
   urgencyNeedsInput?: boolean;
   attentionNonce?: number;
 }) {
+  const { t } = useLocale();
   const [amountRaw, setAmountRaw] = useState(String(formData.amount));
   const [amountFocused, setAmountFocused] = useState(false);
 
@@ -108,9 +110,9 @@ export function GateStepAmount({
     () =>
       URGENCY_OPTIONS.map(({ value, label }) => ({
         value,
-        label: URGENCY_SHORT_LABELS[value] ?? label,
+        label: t(URGENCY_SHORT_LABELS[value] ?? label),
       })),
-    [],
+    [t],
   );
 
   useEffect(() => {
@@ -126,7 +128,7 @@ export function GateStepAmount({
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <SectionLabel>Loan amount</SectionLabel>
+        <SectionLabel>{t("Loan amount")}</SectionLabel>
         <Card className="px-4 pb-4 pt-5">
           <label
             htmlFor="loan-amount-input"
@@ -146,7 +148,7 @@ export function GateStepAmount({
               }}
               onBlur={handleAmountBlur}
               onChange={handleAmountChange}
-              aria-label="Loan amount in dollars"
+              aria-label={t("Loan amount in dollars")}
               className="ios-display-input w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none"
             />
           </label>
@@ -165,7 +167,7 @@ export function GateStepAmount({
               step={AMOUNT_STEP}
               value={sliderAmount}
               onChange={handleSliderChange}
-              aria-label="Adjust loan amount"
+              aria-label={t("Adjust loan amount")}
               className="ios-slider w-full"
             />
           </div>
@@ -178,11 +180,11 @@ export function GateStepAmount({
       </section>
 
       <section>
-        <SectionLabel>Repayment period</SectionLabel>
+        <SectionLabel>{t("Repayment period")}</SectionLabel>
         <Card>
           <StepperRow
-            label="Loan term"
-            value={`${TENURE_OPTIONS[tenureIndex]} ${TENURE_OPTIONS[tenureIndex] === 1 ? "month" : "months"}`}
+            label={t("Loan term")}
+            value={`${TENURE_OPTIONS[tenureIndex]} ${t(TENURE_OPTIONS[tenureIndex] === 1 ? "month" : "months")}`}
             onDecrement={() =>
               updateField("tenure", TENURE_OPTIONS[tenureIndex - 1])
             }
@@ -191,8 +193,8 @@ export function GateStepAmount({
             }
             canDecrement={tenureIndex > 0}
             canIncrement={tenureIndex < TENURE_OPTIONS.length - 1}
-            decrementLabel="Shorter loan term"
-            incrementLabel="Longer loan term"
+            decrementLabel={t("Shorter loan term")}
+            incrementLabel={t("Longer loan term")}
           />
         </Card>
       </section>
@@ -201,12 +203,12 @@ export function GateStepAmount({
         id="gate-field-urgency"
         className={urgencyNeedsInput ? "ios-field-needs-input" : undefined}
       >
-        <SectionLabel>Your preferred payout time</SectionLabel>
+        <SectionLabel>{t("Your preferred payout time")}</SectionLabel>
         <SegmentedControl<UrgencyValue>
           options={urgencyOptions}
           value={formData.urgency as UrgencyValue | ""}
           onChange={(value) => updateField("urgency", value)}
-          ariaLabel="When do you need the funds"
+          ariaLabel={t("When do you need the funds")}
           invalid={urgencyNeedsInput}
           describedBy={urgencyNeedsInput ? "gate-urgency-hint" : undefined}
         />
@@ -216,7 +218,7 @@ export function GateStepAmount({
             className="mt-2 px-1 text-[13px] font-medium leading-snug text-[#D70015]"
             role="alert"
           >
-            Choose a preferred payout time to continue.
+            {t("Choose a preferred payout time to continue.")}
           </p>
         ) : null}
       </section>

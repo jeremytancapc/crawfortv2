@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { AppointmentBooking, type BookingConfirmation } from "@/app/appointment-booking";
 import { MobileHeader } from "@/app/mobile-header";
 import { trackEvent } from "@/lib/analytics";
 import type { LoanFormData } from "@/lib/loan-form";
+import { useLocale } from "@/app/i18n/locale-provider";
+import { AipSidebar } from "../aip-sidebar";
 
 const LOG = "[aip/book:client]";
 
@@ -13,6 +14,7 @@ const LOG = "[aip/book:client]";
 const AIP_FORM_DATA = { idType: "singaporean" } as unknown as LoanFormData;
 
 export function AipBookingView() {
+  const { t } = useLocale();
   const router = useRouter();
 
   async function handleConfirm(date: string, time: string): Promise<BookingConfirmation | null> {
@@ -29,7 +31,7 @@ export function AipBookingView() {
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       console.error(`${LOG} book failed`, { status: res.status, error: body.error });
-      alert("We couldn't confirm your appointment. Please try again.");
+      alert(t("We couldn't confirm your appointment. Please try again."));
       return null;
     }
 
@@ -47,26 +49,10 @@ export function AipBookingView() {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-dvh">
-      <aside className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden bg-brand-blue p-12 xl:p-16">
-        <div className="relative z-10">
-          <div className="mb-16">
-            <Image
-              src="/images/cf-money-white.png"
-              alt="CF Money"
-              width={160}
-              height={48}
-              className="h-6 w-auto"
-              priority
-            />
-          </div>
-          <h1 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--text-on-brand)] max-w-[420px]">
-            Book your appointment
-          </h1>
-          <p className="mt-6 text-lg leading-relaxed text-[var(--text-on-brand)] opacity-75 max-w-[380px]">
-            Choose a date and time that works best for you to visit our office.
-          </p>
-        </div>
-      </aside>
+      <AipSidebar
+        title="Book your appointment"
+        description="Choose a date and time that works best for you to visit our office."
+      />
 
       <main className="flex flex-col flex-1 overflow-x-clip">
         <MobileHeader />

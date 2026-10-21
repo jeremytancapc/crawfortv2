@@ -10,24 +10,21 @@ import {
 } from "@phosphor-icons/react";
 import type { StoredBookingConfirmation } from "@/lib/booking-confirmation";
 import { AppStoreBadges } from "@/app/app-store-badges";
-
-const FULL_DAY_LABELS = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
-];
-const MONTH_LABELS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+import { useLocale } from "@/app/i18n/locale-provider";
 
 /** Split parts for the calendar chip + headline in the ticket card. */
-function getDateParts(isoDate: string) {
+function getDateParts(isoDate: string, locale: string) {
   const [y, mo, d] = isoDate.split("-").map(Number);
   const date = new Date(y, mo - 1, d);
+  const intlLocale = locale === "zh-CN" ? "zh-CN" : locale === "ms" ? "ms-SG" : "en-SG";
   return {
-    month: MONTH_LABELS[date.getMonth()].toUpperCase(),
     day: String(date.getDate()),
-    weekday: FULL_DAY_LABELS[date.getDay()],
-    full: `${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`,
+    weekday: new Intl.DateTimeFormat(intlLocale, { weekday: "long" }).format(date),
+    full: new Intl.DateTimeFormat(intlLocale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date),
   };
 }
 
@@ -43,6 +40,7 @@ interface BookingConfirmedViewProps {
 }
 
 export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
+  const { locale, t } = useLocale();
   const [copied, setCopied] = useState(false);
 
   const handleCopyRef = () => {
@@ -52,7 +50,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
     }).catch(() => {});
   };
 
-  const { weekday, full } = getDateParts(booking.date);
+  const { weekday, full } = getDateParts(booking.date, locale);
 
   return (
     <div className="animate-fade-up flex flex-col gap-3.5 text-left">
@@ -62,7 +60,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
           <div className="flex min-w-0 items-center gap-2">
             <CheckCircle size={17} weight="fill" className="shrink-0 text-[oklch(0.55_0.13_178)]" />
             <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
-              Appointment confirmed
+              {t("Appointment confirmed")}
             </span>
           </div>
           <div className="flex min-w-0 items-center gap-1">
@@ -72,7 +70,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
             <button
               type="button"
               onClick={handleCopyRef}
-              aria-label="Copy reference number"
+              aria-label={t("Copy reference number")}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-opacity duration-150 hover:opacity-60 active:scale-95"
             >
               {copied
@@ -117,7 +115,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
               weight="fill"
               className="shrink-0 text-brand-blue"
             />
-            Your slot will be reserved for 30 mins
+            {t("Your slot will be reserved for 30 mins")}
           </p>
           <div
             aria-hidden
@@ -135,7 +133,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
               className="h-12 w-12 shrink-0 lg:h-8 lg:w-8"
             />
             <p className="text-[18px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
-              What to do next
+              {t("What to do next")}
             </p>
           </div>
           <ol className="mt-4 flex flex-col gap-3">
@@ -144,7 +142,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
                 1
               </span>
               <p className="text-[17px] leading-[1.45] text-[var(--text-primary)]">
-                Install the Crawfort App from App store
+                {t("Install the Crawfort App from App store")}
               </p>
             </li>
             <li className="flex items-start gap-2.5">
@@ -161,7 +159,7 @@ export function BookingConfirmedView({ booking }: BookingConfirmedViewProps) {
                   height={81}
                   className="inline-block h-[1.05em] w-auto translate-y-[1.5px] align-middle"
                 />{" "}
-                to view all your loans, future drawdowns and loan repayment
+                {t("to view all your loans, future drawdowns and loan repayment")}
               </p>
             </li>
           </ol>

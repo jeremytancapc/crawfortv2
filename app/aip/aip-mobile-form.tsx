@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Phone } from "@phosphor-icons/react";
 import { trackEvent } from "@/lib/analytics";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 const LOG = "[aip:client]";
 
 const SG_MOBILE_RE = /^[89]\d{7}$/;
 
 export function AipMobileForm() {
+  const { t } = useLocale();
   const router = useRouter();
   const [mobile, setMobile] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function AipMobileForm() {
 
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? "Something went wrong. Please try again.");
+        setError(t(body.error ?? "Something went wrong. Please try again."));
         setLoading(false);
         return;
       }
@@ -49,7 +51,7 @@ export function AipMobileForm() {
       trackEvent("aip_step1_mobile_submitted");
       router.push("/aip/book");
     } catch {
-      setError("Network error. Please check your connection and try again.");
+      setError(t("Network error. Please check your connection and try again."));
       setLoading(false);
     }
   }
@@ -58,19 +60,19 @@ export function AipMobileForm() {
     <form onSubmit={handleSubmit} noValidate className="animate-fade-up flex flex-col gap-8 pt-6 sm:pt-0">
       <div className="flex flex-col gap-3">
         <span className="text-xs font-semibold uppercase tracking-widest text-[var(--text-tertiary)]">
-          Pre-approved offer
+          {t("Pre-approved offer")}
         </span>
         <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-          Book your appointment
+          {t("Book your appointment")}
         </h2>
         <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-          Please enter the mobile number that has been pre-approved. We&apos;ll use this to confirm your booking.
+          {t("Please enter the mobile number that has been pre-approved. We'll use this to confirm your booking.")}
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
         <label htmlFor="aip-mobile" className="text-sm font-semibold text-[var(--text-primary)]">
-          Mobile number
+          {t("Mobile number")}
         </label>
 
         <div
@@ -114,14 +116,14 @@ export function AipMobileForm() {
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         ) : (
           <>
-            Continue
+            {t("Continue")}
             <ArrowRight size={16} weight="bold" />
           </>
         )}
       </button>
 
       <p className="text-xs leading-relaxed text-[var(--text-tertiary)]">
-        Only phone numbers that have received a pre-approved offer from CF Money are eligible to use this link.
+        {t("Only phone numbers that have received a pre-approved offer from CF Money are eligible to use this link.")}
       </p>
     </form>
   );

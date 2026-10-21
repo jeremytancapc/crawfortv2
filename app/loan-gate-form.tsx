@@ -26,6 +26,7 @@ import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS, SHOW_INCOME_STEP } from "@/lib/apply-progress";
 import { persistGateStep, readGateResumeStep } from "@/lib/apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 const GATE_LAST_STEP = 3;
 
@@ -53,6 +54,7 @@ export function LoanGateForm({
 }: {
   initialApplySession?: Partial<FormData> | null;
 }) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const [history, setHistory] = useState<number[]>([1]);
@@ -263,10 +265,10 @@ export function LoanGateForm({
       {stepMeta && (
         <div className="shrink-0 px-5 pb-6 pt-7">
           <h1 className="ios-type-title">
-            {stepMeta.title}
+            {t(stepMeta.title)}
           </h1>
           <p className="ios-type-subtitle mt-1.5">
-            {stepMeta.subtitle}
+            {t(stepMeta.subtitle)}
           </p>
         </div>
       )}
@@ -315,7 +317,7 @@ export function LoanGateForm({
               }}
             >
               <span className="text-[13px] leading-none text-[var(--text-secondary)]">
-                Est. monthly repayment
+                {t("Est. monthly repayment")}
               </span>
               <span className="text-[13px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
                 {formatCurrency(monthlyRepayment)}
@@ -327,7 +329,7 @@ export function LoanGateForm({
         {step === 3 ? (
           <PrimaryButton onClick={startSingpass} disabled={step3RedirectPending}>
             <span className="inline-flex items-center gap-1.5 leading-none">
-              Apply with
+              {t("Apply with")}
               <span className="sr-only">Singpass</span>
               <Image
                 src="/images/singpass_logo_white-1.png"
@@ -341,7 +343,7 @@ export function LoanGateForm({
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleNext} disabled={step3RedirectPending}>
-            {step === 1 ? "Next: Loan Tenure" : "Continue"}
+            {step === 1 ? t("Next: Loan Tenure") : t("Continue")}
           </PrimaryButton>
         )}
       </StickyFooter>

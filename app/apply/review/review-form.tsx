@@ -28,6 +28,7 @@ import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { saveReviewDraft, submitReview } from "@/app/apply/review/submit-review";
 import { APPLY_PROGRESS, APPLY_PROGRESS_TOTAL } from "@/lib/apply-progress";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 import type { EmploymentSuggestion } from "@/lib/ascend/borrower-derive";
 
 interface Props {
@@ -56,6 +57,7 @@ const REVIEW_STEP_META: Record<number, { title: string; subtitle?: string }> = {
 };
 
 export function ReviewForm({ initialData, employmentSuggestion = null }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const [formData, setFormData] = useState<LoanFormData>(initialData);
@@ -66,14 +68,16 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
   const submitNavRef = useRef<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [validationAttention, setValidationAttention] = useState<{
+    mobile: boolean;
+    employment: boolean;
+    bankruptcy: boolean;
+  } | null>(null);
 
   // Identity is collected via Singpass / session — never a review screen.
   const [history, setHistory] = useState<number[]>([8]);
   const step = history[history.length - 1];
   const sheetScrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (step !== 4) return;
@@ -90,36 +94,106 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
     [],
   );
 
+  const isMobileValid = /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, ""));
+  const isEmploymentMissing = formData.employmentStatus === "";
+  const isDeclarationInvalid =
+    formData.bankruptcyDeclaration === "" ||
+    formData.bankruptcyDeclaration === "active";
   const canProceed = useMemo(() => {
     switch (step) {
       case 5:
         return (
-          /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
           // Ascend requires employment status and a declaration. Employment
           // may arrive pre-ticked from CPF or NOA, but the applicant sees it
           // and can change it; the declaration is never filled in for them.
-          formData.employmentStatus !== "" &&
-          formData.bankruptcyDeclaration !== "" &&
-          formData.bankruptcyDeclaration !== "active"
+          isMobileValid &&
+          !isEmploymentMissing &&
+          !isDeclarationInvalid
         );
       case 6:
         return true;
       case 7:
         return (
-          /^[89]\d{7}$/.test(formData.mobile.replace(/\s/g, "")) &&
           // Ascend requires employment status and a declaration. Employment
           // may arrive pre-ticked from CPF or NOA, but the applicant sees it
           // and can change it; the declaration is never filled in for them.
-          formData.employmentStatus !== "" &&
-          formData.bankruptcyDeclaration !== "" &&
-          formData.bankruptcyDeclaration !== "active"
+          isMobileValid &&
+          !isEmploymentMissing &&
+          !isDeclarationInvalid
         );
       case 8:
         return true;
       default:
         return false;
     }
-  }, [step, formData]);
+  }, [
+    step,
+    isMobileValid,
+    isEmploymentMissing,
+    isDeclarationInvalid,
+  ]);
+
+  useEffect(() => {
+    if (!validationAttention || (step !== 5 && step !== 7)) return;
+
+    let timeout: number | undefined;
+    let invalidFields: HTMLElement[] = [];
+    const frame = requestAnimationFrame(() => {
+      invalidFields = [
+        validationAttention.mobile
+          ? document.getElementById("review-mobile-field")
+          : null,
+        validationAttention.employment
+          ? document.getElementById("review-employment-field")
+          : null,
+        validationAttention.bankruptcy
+          ? document.getElementById("review-bankruptcy-field")
+          : null,
+      ].filter((field): field is HTMLElement => field !== null);
+
+      for (const field of invalidFields) {
+        field.classList.remove(
+          "is-zooming",
+          "review-required-invalid",
+          "review-choice-group--invalid",
+        );
+        field.classList.add("review-required-invalid");
+        if (field.classList.contains("review-choice-group")) {
+          field.classList.add("review-choice-group--invalid");
+        }
+        void field.offsetWidth;
+        field.classList.add("is-zooming");
+      }
+
+      const firstInvalidField = invalidFields[0];
+      firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
+      firstInvalidField
+        ?.querySelector<HTMLElement>("input, button")
+        ?.focus({ preventScroll: true });
+
+      timeout = window.setTimeout(() => {
+        for (const field of invalidFields) {
+          field.classList.remove(
+            "is-zooming",
+            "review-required-invalid",
+            "review-choice-group--invalid",
+          );
+        }
+      }, 1500);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      for (const field of invalidFields) {
+        field.classList.remove(
+          "is-zooming",
+          "review-required-invalid",
+          "review-choice-group--invalid",
+        );
+      }
+    };
+  }, [validationAttention, step]);
 
   const navigateTo = useCallback((next: number) => {
     if (next === 4) return;
@@ -201,6 +275,14 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
   const stepMeta = REVIEW_STEP_META[step];
 
   const handlePrimary = () => {
+    if ((step === 5 || step === 7) && !canProceed) {
+      setValidationAttention({
+        mobile: !isMobileValid,
+        employment: isEmploymentMissing,
+        bankruptcy: isDeclarationInvalid,
+      });
+      return;
+    }
     if (step === 8) {
       void handleReviewConfirm();
       return;
@@ -259,8 +341,7 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
           </div>
           <ApplySidebarTagline />
           <p className="mt-5 max-w-[380px] text-[17px] leading-[1.45] text-white/70">
-            One simple application. Licensed and trusted by over 200,000
-            Singaporeans since 2011.
+            {t("One simple application. Licensed and trusted by over 200,000 Singaporeans since 2011.")}
           </p>
         </div>
         <ApplyProgressPanel current={progressStep} total={APPLY_PROGRESS_TOTAL} />
@@ -282,11 +363,11 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   }`}
                 >
                   <h1 className="ios-type-title">
-                    {stepMeta.title}
+                    {t(stepMeta.title)}
                   </h1>
                   {stepMeta.subtitle ? (
                     <p className="ios-type-subtitle mt-1.5">
-                      {stepMeta.subtitle}
+                      {t(stepMeta.subtitle)}
                     </p>
                   ) : null}
                 </div>
@@ -300,7 +381,10 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                 <div className="animate-fade-up">
                   {step === 5 && (
                     <div className="flex flex-col gap-6">
-                      <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step6_Contact
+                        formData={formData}
+                        updateField={updateField}
+                      />
                       <Step7_EmploymentType
                         formData={formData}
                         updateField={updateField}
@@ -317,7 +401,10 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   )}
                   {step === 7 && (
                     <div className="flex flex-col gap-6">
-                      <Step6_Contact formData={formData} updateField={updateField} />
+                      <Step6_Contact
+                        formData={formData}
+                        updateField={updateField}
+                      />
                       <Step7_EmploymentType
                         formData={formData}
                         updateField={updateField}
@@ -344,15 +431,15 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
                   role="alert"
                   className="ios-apply-gutter pb-1 text-[13px] font-semibold leading-snug text-[var(--danger,#a92d3a)]"
                 >
-                  {submitError}
+                  {t(submitError)}
                 </p>
               ) : null}
               <StickyFooter nav={stepNav}>
                 <PrimaryButton
                   onClick={handlePrimary}
-                  disabled={(mounted && !canProceed) || !!submitOverlay}
+                  disabled={!!submitOverlay}
                 >
-                  {primaryLabel}
+                  {t(primaryLabel)}
                 </PrimaryButton>
               </StickyFooter>
               </MobileGateSheet>
@@ -367,18 +454,18 @@ export function ReviewForm({ initialData, employmentSuggestion = null }: Props) 
 }
 
 function IosLegalFooter() {
+  const { t } = useLocale();
   return (
     <footer className="ios-apply-legal ios-apply-gutter pb-10 pt-8 text-[13px] leading-[1.5] text-[var(--text-secondary)] lg:hidden">
       <p>
-        CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under
-        the laws of Singapore. Customers are advised to read the{" "}
+        {t("CF Money Pte. Ltd. (UEN No. 201406595W) is a company incorporated under the laws of Singapore. Customers are advised to read the")}{" "}
         <a
           href="https://crawfort.com/sg/terms/"
           target="_blank"
           rel="noopener noreferrer"
           className="underline underline-offset-2"
         >
-          Terms and Conditions
+          {t("Terms and Conditions")}
         </a>{" "}
         and{" "}
         <a
@@ -387,9 +474,9 @@ function IosLegalFooter() {
           rel="noopener noreferrer"
           className="underline underline-offset-2"
         >
-          Privacy Policy
+          {t("Privacy Policy")}
         </a>{" "}
-        carefully.
+        {t("carefully.")}
       </p>
     </footer>
   );

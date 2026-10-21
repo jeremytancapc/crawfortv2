@@ -10,6 +10,7 @@ import { ApplyIosShell } from "@/app/apply-gate/ios-ui";
 import { ApplyStepNavFooter } from "@/app/apply-gate/use-apply-step-nav";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import type { CustomOfferDisplay } from "@/lib/custom-offer-display";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   offer: CustomOfferDisplay;
@@ -27,6 +28,7 @@ const NEXT_STEPS = [
 ];
 
 export function CustomOfferReceivedView({ offer }: Props) {
+  const { t } = useLocale();
   const { leadId, amount, tenure } = offer;
   const cfh5Ref = leadId ? `CFH5-${shortRef(leadId)}` : null;
 
@@ -45,25 +47,25 @@ export function CustomOfferReceivedView({ offer }: Props) {
                 style={{ color: "#e07b4a" }}
               />
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
-                Custom Offer Requested
+                {t("Custom Offer Requested")}
               </span>
             </div>
 
             {/* Heading */}
             <div className="flex flex-col gap-2">
               <h1 className="ios-type-title">
-                Wait for our call
+                {t("Wait for our call")}
               </h1>
               <p className="ios-type-body text-[var(--text-secondary)]">
-                We&apos;ve received your request for{" "}
+                {t("We've received your request for")}{" "}
                 <span className="font-semibold text-[var(--text-primary)]">
                   S${amount.toLocaleString()}
                 </span>{" "}
-                over{" "}
+                {t("with a tenure of")}{" "}
                 <span className="font-semibold text-[var(--text-primary)]">
-                  {tenure} {tenure === 1 ? "month" : "months"}
+                  {tenure} {t(tenure === 1 ? "month" : "months")}
                 </span>
-                . This isn&apos;t a final approval - our team will be in touch to confirm the exact terms.
+                . {t("This isn't a final approval - our team will be in touch to confirm the exact terms.")}
               </p>
             </div>
 
@@ -71,7 +73,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
             {cfh5Ref && (
               <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-4">
                 <div>
-                  <p className="text-xs text-[var(--text-tertiary)]">Application reference</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">{t("Application reference")}</p>
                   <p className="mt-0.5 font-display text-lg font-bold tracking-tight text-[var(--text-primary)]">
                     {cfh5Ref}
                   </p>
@@ -84,7 +86,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
             {/* What happens next */}
             <div className="flex flex-col gap-3">
-              <p className="ios-type-option text-[var(--text-primary)]">What happens next</p>
+              <p className="ios-type-option text-[var(--text-primary)]">{t("What happens next")}</p>
               <ul className="flex flex-col gap-2.5">
                 {NEXT_STEPS.map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -94,7 +96,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
                       className="mt-0.5 shrink-0"
                       style={{ color: "#e07b4a" }}
                     />
-                    <span className="ios-type-body text-[var(--text-secondary)]">{step}</span>
+                    <span className="ios-type-body text-[var(--text-secondary)]">{t(step)}</span>
                   </li>
                 ))}
               </ul>
@@ -104,16 +106,16 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
             {/* WhatsApp - official channel for follow-up */}
             <div className="flex flex-col gap-3">
-              <p className="ios-type-option text-[var(--text-primary)]">Get in touch</p>
+              <p className="ios-type-option text-[var(--text-primary)]">{t("Get in touch")}</p>
               <a
-                href="https://wa.me/6560119380?text=Hi%20I%20just%20requested%20a%20custom%20loan%20offer"
+                href={`https://wa.me/6560119380?text=${encodeURIComponent(t("Hi I just requested a custom loan offer"))}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4 transition-all duration-200 hover:border-[var(--border-medium)] active:scale-[0.98]"
               >
                 <WhatsappLogo size={22} weight="duotone" className="shrink-0 text-brand-blue" />
                 <div>
-                  <p className="ios-type-option text-[var(--text-primary)]">WhatsApp us</p>
+                  <p className="ios-type-option text-[var(--text-primary)]">{t("WhatsApp us")}</p>
                   <p className="text-xs text-[var(--text-tertiary)]">6011 9380 · Mon - Sat, 10:30am - 7:30pm</p>
                 </div>
               </a>
@@ -121,7 +123,7 @@ export function CustomOfferReceivedView({ offer }: Props) {
 
             {/* Footer note */}
             <p className="text-xs leading-relaxed text-[var(--text-tertiary)]">
-              Office hours: Mon - Sat, 10:30am - 7:30pm. Closed on Sundays and Public Holidays.
+              {t("Office hours: Mon - Sat, 10:30am - 7:30pm. Closed on Sundays and Public Holidays.")}
             </p>
 
       </div>

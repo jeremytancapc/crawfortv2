@@ -15,6 +15,7 @@ import {
 import { PlanAmountField } from "@/app/apply/choose-plan/plan-amount-field";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { useApplyPath } from "@/app/use-apply-path";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 interface Props {
   formData: LoanFormData;
@@ -22,9 +23,17 @@ interface Props {
   limits?: AscendLimits;
   phase: "amount" | "plan";
   initialWithdrawAmount?: number;
+  previewMode?: boolean;
 }
 
-export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }: Props) {
+export function ApprovalView({
+  formData,
+  limits,
+  phase,
+  initialWithdrawAmount,
+  previewMode = false,
+}: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const applyHref = useApplyPath();
   const prefersReducedMotion = useReducedMotion();
@@ -91,7 +100,7 @@ export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }:
             wordLevelClassName="pb-[0.08em]"
             transition={{ type: "spring", stiffness: 250, damping: 32 }}
           >
-            {isPlan ? "Choose your loan plan" : "Confirm your loan amount"}
+            {t(isPlan ? "Choose your loan plan" : "Confirm your loan amount")}
           </VerticalCutReveal>
         </h1>
         {isPlan ? (
@@ -103,7 +112,7 @@ export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }:
           />
         ) : (
           <p className="ios-type-subtitle mt-1.5">
-            Adjust the loan amount to drawdown
+            {t("Adjust the loan amount to drawdown")}
           </p>
         )}
       </motion.div>
@@ -113,6 +122,11 @@ export function ApprovalView({ formData, limits, phase, initialWithdrawAmount }:
         creditLimit={creditLimit}
         monthlyRepayment={0}
         phase={phase}
+        nextStepPath={
+          previewMode
+            ? (amount) => `/dev/approval-preview?phase=plan&amount=${amount}`
+            : undefined
+        }
         initialWithdrawAmount={initialWithdrawAmount}
         amount={isPlan ? planAmount : undefined}
         onAmountChange={isPlan ? handlePlanAmountChange : undefined}

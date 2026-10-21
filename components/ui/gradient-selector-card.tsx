@@ -3,6 +3,7 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/app/i18n/locale-provider";
 
 export interface PaymentHistoryOption {
   id: string;
@@ -68,6 +69,7 @@ export function PaymentHistorySelector({
   onChange,
   className,
 }: PaymentHistorySelectorProps) {
+  const { t } = useLocale();
   const options = PAYMENT_HISTORY_SLIDER_OPTIONS;
   const selectedIndex = value
     ? options.findIndex((opt) => opt.value === value)
@@ -146,7 +148,7 @@ export function PaymentHistorySelector({
                     fontWeight: isSelected ? 600 : 500,
                   }}
                 >
-                  {option.label}
+                  {t(option.label)}
                 </span>
               </button>
 
@@ -232,7 +234,7 @@ export function PaymentHistorySelector({
                     fontWeight: isSelected ? 600 : 500,
                   }}
                 >
-                  {option.label}
+                  {t(option.label)}
                 </button>
               </div>
             );

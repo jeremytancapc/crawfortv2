@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { quicksand, nunito } from "./fonts";
 import "./globals.css";
+import { LocaleProvider } from "@/app/i18n/locale-provider";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -51,7 +52,9 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <LocaleProvider>{children}</LocaleProvider>
+      </body>
     </html>
   );
 }

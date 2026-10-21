@@ -14,6 +14,7 @@ import { trackDisplayStep } from "@/lib/analytics";
 import { LoanGateForm } from "@/app/loan-gate-form";
 import { Card, CardRow, SectionLabel } from "@/app/apply-gate/ios-ui";
 import { SHOW_BANKRUPTCY_DECLARATION } from "@/lib/apply-progress";
+import { useLocale } from "@/app/i18n/locale-provider";
 import {
   DISCHARGE_BANDS,
   EMPLOYMENT_TYPE_LABELS,
@@ -247,6 +248,7 @@ function InputField({
   tooltip?: React.ReactNode;
   validate?: (v: string) => string | undefined;
 }) {
+  const { t } = useLocale();
   const [touched, setTouched] = useState(false);
   const validationError = validate && touched && value.trim() ? validate(value) : undefined;
   const [tipVisible, setTipVisible] = useState(false);
@@ -288,7 +290,7 @@ function InputField({
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
         <label className="ios-type-label text-[var(--text-primary)]">
-          {label}
+          {t(label)}
         </label>
         {tooltip && (
           <>
@@ -299,7 +301,7 @@ function InputField({
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
               className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-brand-blue/30 bg-white text-[10px] font-bold text-brand-blue shadow-sm transition-colors duration-150 hover:bg-brand-blue/5 focus:outline-none"
-              aria-label="More information"
+              aria-label={t("More information")}
             >
               ?
             </button>
@@ -332,7 +334,7 @@ function InputField({
         <input
           type={type === "number" ? "text" : type}
           inputMode={type === "number" ? "numeric" : type === "tel" ? "tel" : undefined}
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => { setTouched(true); onBlur?.(); }}
@@ -342,9 +344,9 @@ function InputField({
         />
       </div>
       {validationError ? (
-        <span className="text-xs text-red-500">{validationError}</span>
+        <span className="text-xs text-red-500">{t(validationError)}</span>
       ) : helper ? (
-        <span className="text-xs text-[var(--text-tertiary)]">{helper}</span>
+        <span className="text-xs text-[var(--text-tertiary)]">{t(helper)}</span>
       ) : null}
     </div>
   );
@@ -675,6 +677,7 @@ export function Step2_SelfDeclaredIncome({
   incomeConfirmed: boolean;
   onIncomeConfirmedChange: (v: boolean) => void;
 }) {
+  const { t } = useLocale();
   const [touched, setTouched] = useState(false);
   const [incomeFocused, setIncomeFocused] = useState(false);
 
@@ -693,7 +696,7 @@ export function Step2_SelfDeclaredIncome({
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <SectionLabel>Gross monthly income</SectionLabel>
+        <SectionLabel>{t("Gross monthly income")}</SectionLabel>
         <Card className="px-4 pb-4 pt-5">
           <label htmlFor="monthly-income-input" className="ios-display-amount flex items-baseline gap-1">
             <span className="text-[34px] font-bold leading-none tracking-[-0.022em] text-[var(--text-primary)]">
@@ -714,25 +717,25 @@ export function Step2_SelfDeclaredIncome({
                 setIncomeFocused(false);
                 setTouched(true);
               }}
-              aria-label="Gross monthly income in dollars"
+              aria-label={t("Gross monthly income in dollars")}
               className="ios-display-input w-full min-w-0 border-0 bg-transparent p-0 text-[44px] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
             />
           </label>
           <p className="mt-3 text-[13px] leading-snug text-[var(--text-secondary)]">
-            Before CPF deduction. Drivers, use earnings after vehicle rental.
+            {t("Before CPF deduction. Drivers, use earnings after vehicle rental.")}
           </p>
         </Card>
       </section>
 
       {isTooLow && (
         <GateNotice tone="error">
-          The minimum is <span className="font-semibold">$200 a month</span>.
+          {t("The minimum is $200 a month.")}
         </GateNotice>
       )}
 
       {isHighIncome && incomeHighWarningShown && (
         <GateNotice tone="warning">
-          That is higher than most. Check the amount is right.
+          {t("That is higher than most. Check the amount is right.")}
         </GateNotice>
       )}
 
@@ -745,8 +748,7 @@ export function Step2_SelfDeclaredIncome({
             className="ios-row w-full text-left"
           >
             <span className="text-[15px] leading-snug text-[var(--text-primary)]">
-              I confirm this is accurate and can be used to assess my
-              eligibility.
+              {t("I confirm this is accurate and can be used to assess my eligibility.")}
             </span>
             <span
               className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-150"
@@ -772,6 +774,7 @@ export function Step3_SingpassGate({
   /** When true, disables actions while session is saved and browser navigates away. */
   redirectPending?: boolean;
 }) {
+  const { t } = useLocale();
   const benefits = [
     "Takes less than a minute",
     "Approval rates of up to 90%",
@@ -790,7 +793,7 @@ export function Step3_SingpassGate({
                 className="shrink-0 text-[var(--accent)]"
               />
               <span className="text-[17px] leading-snug text-[var(--text-primary)]">
-                {text}
+                {t(text)}
               </span>
             </span>
           </CardRow>
@@ -803,7 +806,7 @@ export function Step3_SingpassGate({
           onClick={onSingpass}
           disabled={redirectPending}
           className="flex w-full justify-center transition-transform duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-          aria-label="Retrieve Myinfo with Singpass"
+          aria-label={t("Retrieve Myinfo with Singpass")}
         >
           {redirectPending ? (
             <div
@@ -811,7 +814,7 @@ export function Step3_SingpassGate({
               style={{ backgroundColor: "#F4333D" }}
             >
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              <span className="text-[15px] font-medium text-white">Please wait…</span>
+              <span className="text-[15px] font-medium text-white">{t("Please wait…")}</span>
             </div>
           ) : (
             <Image
@@ -837,6 +840,7 @@ export function Step4_Identity({
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
 }) {
+  const { t } = useLocale();
   return (
     <div>
       <div className="flex flex-col gap-3 sm:gap-5">
@@ -848,7 +852,7 @@ export function Step4_Identity({
             {ID_TYPE_OPTIONS.map(({ value, label }) => (
               <SelectableChip
                 key={value}
-                label={label}
+                label={t(label)}
                 selected={formData.idType === value}
                 onClick={() => updateField("idType", value)}
               />
@@ -937,11 +941,14 @@ export function Step6_Contact({
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
 }) {
+  const { t } = useLocale();
   const [phoneTouched, setPhoneTouched] = useState(false);
 
   const phoneDigits = formData.mobile.replace(/\s/g, "");
   const phoneError =
-    phoneTouched && phoneDigits.length > 0 && !/^[89]\d{7}$/.test(phoneDigits)
+    phoneTouched &&
+    phoneDigits.length > 0 &&
+    !/^[89]\d{7}$/.test(phoneDigits)
       ? "Enter a valid 8-digit Singapore mobile number starting with 8 or 9."
       : undefined;
 
@@ -951,7 +958,7 @@ export function Step6_Contact({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <label className="ios-type-label text-[var(--text-primary)]">
-              WhatsApp Mobile Number
+              {t("WhatsApp Mobile Number")}
             </label>
             <div
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
@@ -960,11 +967,14 @@ export function Step6_Contact({
               <WhatsappLogo size={13} weight="fill" className="text-white" />
             </div>
           </div>
-          <div className={`flex min-h-[40px] sm:min-h-[46px] items-center rounded-[var(--radius-md)] border bg-[var(--surface-elevated)] gap-2 pl-4 pr-4 transition-all duration-200 ${
+          <div
+            id="review-mobile-field"
+            className={`flex min-h-[40px] sm:min-h-[46px] items-center rounded-[var(--radius-md)] border bg-[var(--surface-elevated)] gap-2 pl-4 pr-4 transition-all duration-200 ${
             phoneError
               ? "border-red-400 ring-2 ring-red-400/10"
               : "border-[var(--border-subtle)] focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/10"
-          }`}>
+          }`}
+          >
             <span className="shrink-0 select-none text-sm text-[var(--text-tertiary)]">+65</span>
             <input
               type="tel"
@@ -972,11 +982,15 @@ export function Step6_Contact({
               value={formData.mobile}
               onChange={(e) => updateField("mobile", e.target.value)}
               onBlur={() => setPhoneTouched(true)}
+              aria-invalid={Boolean(phoneError)}
+              aria-describedby={phoneError ? "review-mobile-error" : undefined}
               className="min-w-0 flex-1 border-0 bg-transparent py-2 sm:py-3 pl-0 text-[17px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
             />
           </div>
           {phoneError && (
-            <span className="text-xs text-red-500">{phoneError}</span>
+            <span id="review-mobile-error" className="text-xs text-red-500">
+              {t(phoneError)}
+            </span>
           )}
         </div>
       </div>
@@ -1863,6 +1877,7 @@ function DeclarationChoiceCard({
   onClick: () => void;
   expanded?: boolean;
 }) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -1894,13 +1909,15 @@ function DeclarationChoiceCard({
           className="font-display block text-[17px] leading-tight"
           style={{ color: selected ? "white" : "var(--text-primary)" }}
         >
-          {title}
+          {t(title)}
         </span>
         <span
           className="mt-0.5 block text-[13px] font-medium leading-snug"
-          style={{ color: selected ? "rgba(255,255,255,0.72)" : "var(--text-secondary)" }}
+          style={{
+            color: selected ? "rgba(255,255,255,0.72)" : "var(--text-secondary)",
+          }}
         >
-          {subtitle}
+          {t(subtitle)}
         </span>
       </span>
       <span
@@ -1939,23 +1956,25 @@ export function Step7_EmploymentType({
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
   suggestion?: EmploymentSuggestion | null;
 }) {
+  const { t } = useLocale();
   const showSuggestion = suggestion !== null && formData.employmentStatus === suggestion.value;
   return (
     <div>
       <p className="ios-type-label mb-2.5 text-[var(--text-secondary)]">
-        What is your employment status?
+        {t("What is your employment status?")}
       </p>
       {showSuggestion ? (
         <p className="-mt-1 mb-2.5 text-[13px] leading-snug text-[var(--text-tertiary)]">
           {suggestion.reason === "cpf"
-            ? "Selected from your CPF records. Change it if it's not right."
-            : "Selected from your latest tax assessment. Change it if it's not right."}
+            ? t("Selected from your CPF records. Change it if it's not right.")
+            : t("Selected from your latest tax assessment. Change it if it's not right.")}
         </p>
       ) : null}
       <div
-        className="flex flex-col gap-2"
+        id="review-employment-field"
+        className="flex flex-col gap-2 review-choice-group"
         role="group"
-        aria-label="Employment status"
+        aria-label={t("Employment status")}
       >
         {EMPLOYMENT_TYPE_OPTIONS.map((option) => {
           const selected = formData.employmentStatus === option;
@@ -1964,6 +1983,7 @@ export function Step7_EmploymentType({
               key={option}
               type="button"
               onClick={() => updateField("employmentStatus", option)}
+              aria-pressed={selected}
               className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
               style={{
                 borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
@@ -1983,7 +2003,7 @@ export function Step7_EmploymentType({
                 className="ios-type-option"
                 style={{ color: selected ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
               >
-                {EMPLOYMENT_TYPE_LABELS[option]}
+                {t(EMPLOYMENT_TYPE_LABELS[option])}
               </span>
             </button>
           );
@@ -2000,6 +2020,7 @@ export function Step7_BankruptcyDeclaration({
   formData: FormData;
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
 }) {
+  const { t } = useLocale();
   const isClear      = formData.bankruptcyDeclaration === "clear";
   const isActive     = formData.bankruptcyDeclaration === "active";
   // Ascend recognises four discharge bands. One question covering the whole
@@ -2025,7 +2046,12 @@ export function Step7_BankruptcyDeclaration({
     <div>
       <div className="flex flex-col gap-5">
         <div>
-          <div className="flex flex-col gap-2.5" role="group" aria-label="Bankruptcy, DRS or self-exclusion">
+          <div
+            id="review-bankruptcy-field"
+            className="flex flex-col gap-2.5 review-choice-group"
+            role="group"
+            aria-label={t("Bankruptcy, DRS or self-exclusion")}
+          >
             <DeclarationChoiceCard
               selected={isClear}
               icon={ShieldCheck}
@@ -2065,14 +2091,16 @@ export function Step7_BankruptcyDeclaration({
                       className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
                       style={{
                         borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-subtle)",
-                        background:  selected ? "oklch(0.32 0.14 260 / 0.06)" : "var(--surface-elevated)",
+                        background: selected
+                          ? "oklch(0.32 0.14 260 / 0.06)"
+                          : "var(--surface-elevated)",
                       }}
                     >
                       <span
                         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
                         style={{
                           borderColor: selected ? "var(--brand-blue-hex)" : "var(--border-medium)",
-                          background:  selected ? "var(--brand-blue-hex)" : "transparent",
+                          background: selected ? "var(--brand-blue-hex)" : "transparent",
                         }}
                       >
                         {selected && <CheckCircle size={14} weight="fill" color="white" />}
@@ -2081,7 +2109,7 @@ export function Step7_BankruptcyDeclaration({
                         className="ios-type-option"
                         style={{ color: selected ? "var(--brand-blue-hex)" : "var(--text-secondary)" }}
                       >
-                        {band.label}
+                        {t(band.label)}
                       </span>
                     </button>
                   );
@@ -2091,7 +2119,7 @@ export function Step7_BankruptcyDeclaration({
                   <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 px-4 py-3">
                     <Warning size={16} weight="fill" className="mt-0.5 shrink-0 text-brand-blue" />
                     <p className="ios-type-body text-brand-blue">
-                      Please bring along your bankruptcy/DRS discharge letter to the appointment.
+                      {t("Please bring along your bankruptcy/DRS discharge letter to the appointment.")}
                     </p>
                   </div>
                 )}
@@ -2103,23 +2131,27 @@ export function Step7_BankruptcyDeclaration({
                   className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-all duration-200 active:scale-[0.99]"
                   style={{
                     borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-subtle)",
-                    background:  isActive ? "oklch(0.65 0.18 25 / 0.06)" : "var(--surface-elevated)",
+                    background: isActive
+                      ? "oklch(0.65 0.18 25 / 0.06)"
+                      : "var(--surface-elevated)",
                   }}
                 >
                   <span
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all duration-150"
                     style={{
                       borderColor: isActive ? "oklch(0.65 0.18 25)" : "var(--border-medium)",
-                      background:  isActive ? "oklch(0.65 0.18 25)" : "transparent",
+                      background: isActive ? "oklch(0.65 0.18 25)" : "transparent",
                     }}
                   >
                     {isActive && <CheckCircle size={14} weight="fill" color="white" />}
                   </span>
                   <span
                     className="ios-type-option"
-                    style={{ color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)" }}
+                    style={{
+                      color: isActive ? "oklch(0.40 0.15 25)" : "var(--text-secondary)",
+                    }}
                   >
-                    I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).
+                    {t("I have an ongoing bankruptcy or Debt Repayment Scheme (DRS).")}
                   </span>
                 </button>
 
@@ -2127,7 +2159,7 @@ export function Step7_BankruptcyDeclaration({
                   <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3">
                     <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-red-500" />
                     <p className="ios-type-body text-red-700">
-                      We are currently not able to issue loans if you are not discharged from bankruptcy or DRS status.
+                      {t("We are currently not able to issue loans if you are not discharged from bankruptcy or DRS status.")}
                     </p>
                   </div>
                 )}
@@ -2149,6 +2181,7 @@ function MaritalStatusRow({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const { t } = useLocale();
   const hasKnownValue = MARITAL_OPTIONS.includes(
     value as (typeof MARITAL_OPTIONS)[number],
   );
@@ -2159,14 +2192,14 @@ function MaritalStatusRow({
         htmlFor="marital-status"
         className="text-[17px] leading-tight text-[var(--text-secondary)]"
       >
-        Marital Status
+        {t("Marital Status")}
       </label>
       <div className="relative min-w-0">
         <select
           id="marital-status"
           value={hasKnownValue ? value : value || "Single"}
           onChange={(event) => onChange(event.target.value)}
-          aria-label="Marital status"
+          aria-label={t("Marital status")}
           className="appearance-none bg-transparent pr-5 text-right text-[17px] font-semibold text-[var(--text-primary)] outline-none"
         >
           {!hasKnownValue && value ? (
@@ -2174,7 +2207,7 @@ function MaritalStatusRow({
           ) : null}
           {MARITAL_OPTIONS.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {t(option)}
             </option>
           ))}
         </select>
@@ -2197,6 +2230,7 @@ function EditableReviewRow({
   value: string;
   onSave: (v: string) => void;
 }) {
+  const { t } = useLocale();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -2215,7 +2249,7 @@ function EditableReviewRow({
   return (
     <CardRow>
       <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
-        {label}
+        {t(label)}
       </span>
       <div className="flex min-w-0 items-center gap-2">
         {editing ? (
@@ -2232,7 +2266,7 @@ function EditableReviewRow({
               type="button"
               onMouseDown={(e) => { e.preventDefault(); commit(); }}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]"
-              aria-label="Save"
+              aria-label={t("Save")}
             >
               <Check size={12} weight="bold" className="text-white" />
             </button>
@@ -2246,7 +2280,7 @@ function EditableReviewRow({
               type="button"
               onClick={() => { setDraft(value); setEditing(true); }}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[var(--text-secondary)]"
-              aria-label={`Edit ${label}`}
+              aria-label={`${t("Edit")} ${t(label)}`}
             >
               <PencilSimple size={12} weight="bold" />
             </button>
@@ -2266,6 +2300,7 @@ export function Step8_Review({
   updateField: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
   onModalOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useLocale();
   const [openModal, setOpenModal] = useState<"terms" | "privacy" | null>(null);
 
   const handleOpenModal = useCallback((modal: "terms" | "privacy") => {
@@ -2319,12 +2354,12 @@ export function Step8_Review({
     <div>
       <div className="flex flex-col gap-6">
         <section>
-          <SectionLabel>Personal info</SectionLabel>
+          <SectionLabel>{t("Personal info")}</SectionLabel>
           <Card>
             {personalStaticRows.map(({ label, value }) => (
               <CardRow key={label}>
                 <span className="text-[17px] leading-tight text-[var(--text-secondary)]">
-                  {label}
+                  {t(label)}
                 </span>
                 <span className="max-w-[60%] truncate text-right text-[17px] font-semibold text-[var(--text-primary)]">
                   {value}
@@ -2345,17 +2380,17 @@ export function Step8_Review({
 
         {isSingpassReview && noaRecords.length === 0 && (
           <section>
-            <SectionLabel>Notice of Assessment</SectionLabel>
+            <SectionLabel>{t("Notice of Assessment")}</SectionLabel>
             <p className="px-1 text-[15px] text-[var(--text-secondary)]">
-              No Notice of Assessment was retrieved from Singpass.
+              {t("No Notice of Assessment was retrieved from Singpass.")}
             </p>
           </section>
         )}
         {noaRecords.length > 0 && (
           <section>
-            <SectionLabel>Notice of Assessment</SectionLabel>
+            <SectionLabel>{t("Notice of Assessment")}</SectionLabel>
             <p className="mb-2 px-1 text-[15px] text-[var(--text-secondary)]">
-              {noaRecords.length} year{noaRecords.length === 1 ? "" : "s"} retrieved via Singpass.
+              {noaRecords.length} {t(noaRecords.length === 1 ? "year retrieved via Singpass." : "years retrieved via Singpass.")}
             </p>
             <div className="flex flex-col gap-3">
               {noaRecords.map((rec) => {
@@ -2374,7 +2409,7 @@ export function Step8_Review({
                     </CardRow>
                     <CardRow>
                       <span className="text-[17px] text-[var(--text-secondary)]">
-                        Assessable Income
+                        {t("Assessable Income")}
                       </span>
                       <span className="text-[17px] font-semibold tabular-nums text-[var(--text-primary)]">
                         {formatCurrency(rec.assessableIncome)}
@@ -2388,7 +2423,7 @@ export function Step8_Review({
                     ].map(({ label, value }) => (
                       <CardRow key={label}>
                         <span className="text-[17px] text-[var(--text-secondary)]">
-                          {label}
+                          {t(label)}
                         </span>
                         <span className="tabular-nums text-[17px] text-[var(--text-primary)]">
                           {formatCurrency(value)}
@@ -2397,7 +2432,7 @@ export function Step8_Review({
                     ))}
                     <CardRow>
                       <span className="text-[17px] text-[var(--text-secondary)]">
-                        Implied monthly
+                        {t("Implied monthly")}
                       </span>
                       <span className="tabular-nums text-[17px] text-[var(--text-primary)]">
                         {formatCurrency(Math.round((rec.employmentIncome + rec.tradeIncome) / 12))}
@@ -2412,17 +2447,17 @@ export function Step8_Review({
 
         {isSingpassReview && cpfRecords.length === 0 && (
           <section>
-            <SectionLabel>CPF contribution history</SectionLabel>
+            <SectionLabel>{t("CPF contribution history")}</SectionLabel>
             <p className="px-1 text-[15px] text-[var(--text-secondary)]">
-              No CPF contributions were retrieved from Singpass.
+              {t("No CPF contributions were retrieved from Singpass.")}
             </p>
           </section>
         )}
         {cpfRecords.length > 0 && (
           <section>
-            <SectionLabel>CPF contribution history</SectionLabel>
+            <SectionLabel>{t("CPF contribution history")}</SectionLabel>
             <p className="mb-2 px-1 text-[15px] text-[var(--text-secondary)]">
-              {cpfRecords.length} month{cpfRecords.length === 1 ? "" : "s"} retrieved via Singpass.
+              {cpfRecords.length} {t(cpfRecords.length === 1 ? "month retrieved via Singpass." : "months retrieved via Singpass.")}
             </p>
             <Card>
               {cpfRecords.map((c) => (
@@ -2446,7 +2481,7 @@ export function Step8_Review({
       </div>
 
       <p className="mt-6 w-full px-1 text-[13px] leading-[1.4] [text-wrap:wrap] text-[var(--text-secondary)]">
-        By submitting, you agree to Crawfort&apos;s{" "}
+        {t("By submitting, you agree to Crawfort's")}{" "}
         <a
           href="#terms"
           onClick={(event) => {
@@ -2455,7 +2490,7 @@ export function Step8_Review({
           }}
           className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
         >
-          Terms &amp; Conditions
+          {t("Terms & Conditions")}
         </a>{" "}
         and{" "}
         <a
@@ -2466,7 +2501,7 @@ export function Step8_Review({
           }}
           className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
         >
-          Privacy Policy
+          {t("Privacy Policy")}
         </a>
         . Your data is encrypted and protected under Singapore&apos;s PDPA.
       </p>
