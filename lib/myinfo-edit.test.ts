@@ -253,6 +253,18 @@ describe("the NRIC check letter", () => {
     expect(nricCheckLetter("S", "1234567")).toBe("D");
   });
 
+  // Not worked out from our own formula: these are the first seven NRICs ever
+  // issued (S0000001I, the first, to Yusof bin Ishak), published on Wikipedia.
+  // A check that agrees with real issued numbers, not just with itself.
+  it("agrees with the first seven NRICs ever issued", () => {
+    const issued = ["S0000001I", "S0000002G", "S0000003E", "S0000004C", "S0000005A", "S0000006Z", "S0000007H"];
+
+    for (const nric of issued) {
+      expect(nricCheckLetter(nric[0], nric.slice(1, 8)), nric).toBe(nric[8]);
+      expect(validateNric(nric), nric).toEqual([]);
+    }
+  });
+
   it("follows the Modulus 11 sum, so S1112223 ends in Z and not the A that was refused", () => {
     expect(nricCheckLetter("S", "1112223")).toBe("Z");
   });
