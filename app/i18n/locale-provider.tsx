@@ -101,6 +101,8 @@ export function useLocale() {
 function LocaleSwitcher({ pathname }: { pathname: string }) {
   const { locale, setLocale, t } = useLocale();
   const [desktopRight, setDesktopRight] = useState<number | null>(null);
+  const isReviewPage =
+    pathname === "/apply/review" || pathname === "/v2/apply/review";
   const mobileOptions: { locale: Locale; label: string; name: string }[] = [
     { locale: "en", label: "ENGLISH", name: "English" },
     { locale: "ms", label: "MELAYU", name: "Bahasa Melayu" },
@@ -249,31 +251,33 @@ function LocaleSwitcher({ pathname }: { pathname: string }) {
         })}
       </div>
 
-      <label
-        className="fixed right-3 z-[80] hidden h-6 items-center rounded-full border border-black/10 bg-white/95 px-2 shadow-sm backdrop-blur-sm lg:top-12 lg:inline-flex xl:top-16"
-        style={
-          desktopRight === null
-            ? { visibility: "hidden" }
-            : { right: `${desktopRight}px` }
-        }
-      >
-        <span className="sr-only">{t("Choose a language")}</span>
-        <select
-          aria-label={t("Choose a language")}
-          value={locale}
-          onChange={(event) => {
-            if (isLocale(event.target.value)) setLocale(event.target.value);
-          }}
-          className="h-6 min-h-6 cursor-pointer appearance-none bg-transparent py-0 pl-1 pr-5 text-xs font-semibold text-[var(--text-primary)] outline-none"
+      {!isReviewPage ? (
+        <label
+          className="fixed right-3 z-[80] hidden h-6 items-center rounded-full border border-black/10 bg-white/95 px-2 shadow-sm backdrop-blur-sm lg:top-12 lg:inline-flex xl:top-16"
+          style={
+            desktopRight === null
+              ? { visibility: "hidden" }
+              : { right: `${desktopRight}px` }
+          }
         >
-          <option value="en">English</option>
-          <option value="zh-CN">简体中文</option>
-          <option value="ms">Bahasa Melayu</option>
-        </select>
-        <span className="pointer-events-none absolute right-2 text-[10px]" aria-hidden="true">
-          ▾
-        </span>
-      </label>
+          <span className="sr-only">{t("Choose a language")}</span>
+          <select
+            aria-label={t("Choose a language")}
+            value={locale}
+            onChange={(event) => {
+              if (isLocale(event.target.value)) setLocale(event.target.value);
+            }}
+            className="h-6 min-h-6 cursor-pointer appearance-none bg-transparent py-0 pl-1 pr-5 text-xs font-semibold text-[var(--text-primary)] outline-none"
+          >
+            <option value="en">English</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="ms">Bahasa Melayu</option>
+          </select>
+          <span className="pointer-events-none absolute right-2 text-[10px]" aria-hidden="true">
+            ▾
+          </span>
+        </label>
+      ) : null}
     </>
   );
 }
