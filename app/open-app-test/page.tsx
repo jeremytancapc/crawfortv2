@@ -5,6 +5,7 @@ import {
   launcherIntentUrl,
   playStoreUrl,
   schemeIntentUrl,
+  schemeOnlyIntentUrl,
   validateAppLinkInput,
 } from "@/lib/android-app-link";
 import { platformToShow } from "@/lib/app-platform";
@@ -26,6 +27,8 @@ export const dynamic = "force-dynamic";
 // Taken from the staging Play Store link (NEXT_PUBLIC_PLAY_STORE_URL). Not yet
 // confirmed with whoever built the Android app.
 const DEFAULT_PACKAGE = "com.crawfort.app";
+// Crawfort's own page that sends each phone to its store.
+const MOBILE_APP_URL = "https://crawfort.com/mobileapp";
 // Confirmed by the app team as the app's scheme. Whether the Android app
 // registers the same scheme is not yet confirmed.
 const DEFAULT_SCHEME = "crawfort";
@@ -73,6 +76,11 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
 
   const launcher = ok ? launcherIntentUrl({ package: packageId }) : null;
   const deepLink = ok ? schemeIntentUrl({ scheme, hostAndPath: host, package: packageId }) : null;
+  // Needs neither the package nor a match with the store listing: only the scheme.
+  const schemeOnly =
+    validateAppLinkInput({ package: packageId, scheme, hostAndPath: host }).filter((e) => !e.includes("package")).length === 0
+      ? schemeOnlyIntentUrl({ scheme, hostAndPath: host, fallbackUrl: MOBILE_APP_URL })
+      : null;
 
   // iPhone links need no package, so a bad package name does not hide them.
   const iosOk = validateIosLinkInput({ scheme, hostAndPath: host }).length === 0;
@@ -133,6 +141,22 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
           </a>
         ) : null}
       </section>
+
+          <section className="flex flex-col gap-2">
+            <h2 className="text-[15px] font-bold text-neutral-900">
+              Android 2b. Open by scheme only (no package name)
+            </h2>
+            <p className="text-[13px] leading-relaxed text-neutral-600">
+              Finds the app by <strong>{scheme}://</strong> alone, so it does not matter what the installed app&apos;s package
+              name is. If this opens the app but button 1 goes to the Play Store, the installed app&apos;s package name is
+              not <strong>{packageId}</strong>. If nothing handles the scheme it goes to crawfort.com/mobileapp.
+            </p>
+            {schemeOnly ? (
+              <a href={schemeOnly} className={button}>
+                Open the app by {scheme}://{host} only
+              </a>
+            ) : null}
+          </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-[15px] font-bold text-neutral-900">Android 3. Play Store</h2>

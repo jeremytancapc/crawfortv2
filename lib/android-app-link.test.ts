@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { launcherIntentUrl, playStoreUrl, schemeIntentUrl, validateAppLinkInput } from "./android-app-link";
+import {
+  launcherIntentUrl,
+  playStoreUrl,
+  schemeIntentUrl,
+  schemeOnlyIntentUrl,
+  validateAppLinkInput,
+} from "./android-app-link";
 
 /**
  * Tapping an `intent://` link is how a web page opens a native Android app and
@@ -37,6 +43,29 @@ describe("a link that opens the app at its registered deep link", () => {
     expect(schemeIntentUrl({ scheme: "crawfort", hostAndPath: "loan/offer", package: "com.crawfort.app" })).toMatch(
       /^intent:\/\/loan\/offer#Intent;scheme=crawfort;package=com\.crawfort\.app;/,
     );
+  });
+});
+
+describe("a link that finds the app by its scheme alone", () => {
+  // The installed app can have a different package name from its store listing
+  // (a build from another channel, a flavour), which makes every link that
+  // names the package fall through to the store. The scheme does not depend on it.
+  it("names no package, and falls back to the address given", () => {
+    expect(
+      schemeOnlyIntentUrl({ scheme: "crawfort", hostAndPath: "open", fallbackUrl: "https://crawfort.com/mobileapp" }),
+    ).toBe("intent://open#Intent;scheme=crawfort;S.browser_fallback_url=https%3A%2F%2Fcrawfort.com%2Fmobileapp;end");
+  });
+
+  it("will not take a fallback that is not an https address", () => {
+    for (const bad of ["javascript:alert(1)", "http://crawfort.com/mobileapp", "intent://x#Intent;end", ""]) {
+      expect(() => schemeOnlyIntentUrl({ scheme: "crawfort", hostAndPath: "open", fallbackUrl: bad }), bad).toThrow();
+    }
+  });
+
+  it("still refuses a scheme or host that could break out of the link", () => {
+    expect(() =>
+      schemeOnlyIntentUrl({ scheme: "craw;fort", hostAndPath: "open", fallbackUrl: "https://crawfort.com/mobileapp" }),
+    ).toThrow();
   });
 });
 

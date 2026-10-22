@@ -66,3 +66,23 @@ export function schemeIntentUrl(input: { scheme: string; hostAndPath: string; pa
   checked(input);
   return `intent://${input.hostAndPath}#Intent;scheme=${input.scheme};package=${input.package};${fallback(input.package)};end`;
 }
+
+/**
+ * Opens whichever app handles `<scheme>://<hostAndPath>`, naming no package.
+ *
+ * The package in the other links has to match the installed app exactly. When
+ * it does not - a build installed from another channel, a flavour with its own
+ * application id - every one of them falls through to the store even though
+ * the app is there. The scheme is what the app declared, so it does not drift.
+ *
+ * `fallbackUrl` is where Chrome goes when nothing handles the scheme; it must
+ * be an https address, so a typed value can never become a script.
+ */
+export function schemeOnlyIntentUrl(input: { scheme: string; hostAndPath: string; fallbackUrl: string }): string {
+  const errors = validateDeepLinkParts(input);
+  if (!/^https:\/\/[^\s;#]+$/.test(input.fallbackUrl)) {
+    errors.push(`"${input.fallbackUrl}" is not an https address.`);
+  }
+  if (errors.length > 0) throw new Error(errors.join(" "));
+  return `intent://${input.hostAndPath}#Intent;scheme=${input.scheme};S.browser_fallback_url=${encodeURIComponent(input.fallbackUrl)};end`;
+}
