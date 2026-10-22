@@ -20,19 +20,25 @@ const HOST_AND_PATH = /^[A-Za-z0-9._~!$&'()*+,=:@%/-]+$/;
 
 export type AppLinkInput = { package: string; scheme?: string; hostAndPath?: string };
 
+/** What is wrong with a scheme and host or path, in words - for any platform; empty when usable. */
+export function validateDeepLinkParts(parts: { scheme?: string; hostAndPath?: string }): string[] {
+  const errors: string[] = [];
+  if (parts.scheme !== undefined && !SCHEME.test(parts.scheme)) {
+    errors.push(`"${parts.scheme}" is not a URL scheme (letters, digits, + - . and starting with a letter).`);
+  }
+  if (parts.hostAndPath !== undefined && !HOST_AND_PATH.test(parts.hostAndPath)) {
+    errors.push(`"${parts.hostAndPath}" is not a host or path (no spaces, ; or #).`);
+  }
+  return errors;
+}
+
 /** What is wrong with the input, in words; empty when it can be used. */
 export function validateAppLinkInput(input: AppLinkInput): string[] {
   const errors: string[] = [];
   if (!PACKAGE_ID.test(input.package)) {
     errors.push(`"${input.package}" is not an Android package name (like com.example.app).`);
   }
-  if (input.scheme !== undefined && !SCHEME.test(input.scheme)) {
-    errors.push(`"${input.scheme}" is not a URL scheme (letters, digits, + - . and starting with a letter).`);
-  }
-  if (input.hostAndPath !== undefined && !HOST_AND_PATH.test(input.hostAndPath)) {
-    errors.push(`"${input.hostAndPath}" is not a host or path (no spaces, ; or #).`);
-  }
-  return errors;
+  return [...errors, ...validateDeepLinkParts(input)];
 }
 
 function checked(input: AppLinkInput): void {

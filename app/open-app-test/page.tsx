@@ -6,10 +6,17 @@ import {
   schemeIntentUrl,
   validateAppLinkInput,
 } from "@/lib/android-app-link";
+import { appStoreUrl, iosSchemeUrl, smartAppBannerContent, validateIosLinkInput } from "@/lib/ios-app-link";
+
+// The iPhone app's App Store id, from where https://crawfort.com/mobileapp sends
+// an iPhone.
+const IOS_APP_ID = "6751946791";
 
 export const metadata: Metadata = {
   title: "Open the Crawfort app (test)",
   robots: { index: false, follow: false },
+  // Safari on iPhone shows an Open / Get banner for the app at the top of the page.
+  other: { "apple-itunes-app": smartAppBannerContent(IOS_APP_ID) },
 };
 
 export const dynamic = "force-dynamic";
@@ -17,7 +24,8 @@ export const dynamic = "force-dynamic";
 // Taken from the staging Play Store link (NEXT_PUBLIC_PLAY_STORE_URL). Not yet
 // confirmed with whoever built the Android app.
 const DEFAULT_PACKAGE = "com.crawfort.app";
-// A guess: nothing we hold says the app registers this scheme.
+// Confirmed by the app team as the app's scheme. Whether the Android app
+// registers the same scheme is not yet confirmed.
 const DEFAULT_SCHEME = "crawfort";
 const DEFAULT_HOST = "open";
 
@@ -53,14 +61,17 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
   const launcher = ok ? launcherIntentUrl({ package: packageId }) : null;
   const deepLink = ok ? schemeIntentUrl({ scheme, hostAndPath: host, package: packageId }) : null;
 
+  // iPhone links need no package, so a bad package name does not hide them.
+  const iosOk = validateIosLinkInput({ scheme, hostAndPath: host }).length === 0;
+
   return (
     <main className="mx-auto flex min-h-full w-full max-w-md flex-col gap-5 px-4 py-6">
       <header>
         <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">Test page - not part of the apply journey</p>
         <h1 className="mt-1 text-2xl font-extrabold text-neutral-900">Open the Crawfort app</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-neutral-700">
-          Android only. Open this page in Chrome on the phone and <strong>tap</strong> a button. Typing the link into the
-          address bar never launches an app, and a computer or an iPhone cannot open it at all.
+          Open this page on the phone and <strong>tap</strong> a button. Typing a link into the address bar never launches
+          an app. The Android buttons work only in Chrome on Android; the iPhone section is further down.
         </p>
       </header>
 
@@ -71,7 +82,7 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
       ) : null}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[15px] font-bold text-neutral-900">1. Open by package name</h2>
+        <h2 className="text-[15px] font-bold text-neutral-900">Android 1. Open by package name</h2>
         <p className="text-[13px] leading-relaxed text-neutral-600">
           Starts the app&apos;s main screen. It needs only the package name, so it works even if the app registers no deep
           link. If the app is not installed, Android goes to the Play Store.
@@ -85,7 +96,7 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
 
       <section className="flex flex-col gap-2">
         <h2 className="text-[15px] font-bold text-neutral-900">
-          2. Open at the deep link {scheme}://{host}
+          Android 2. Open at the deep link {scheme}://{host}
         </h2>
         <p className="text-[13px] leading-relaxed text-neutral-600">
           Only works if the app&apos;s manifest declares this scheme. <strong>{scheme}://</strong> was a guess. If tapping
@@ -99,7 +110,7 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[15px] font-bold text-neutral-900">3. Play Store</h2>
+        <h2 className="text-[15px] font-bold text-neutral-900">Android 3. Play Store</h2>
         <a href={playStoreUrl(packageId)} className={secondary}>
           Open the Play Store listing
         </a>
@@ -109,13 +120,35 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[15px] font-bold text-neutral-900">4. App Link (a plain https link that opens the app)</h2>
+        <h2 className="text-[15px] font-bold text-neutral-900">Android 4. App Link (a plain https link that opens the app)</h2>
         <p className="text-[13px] leading-relaxed text-neutral-600">
           No Crawfort domain publishes an <code>assetlinks.json</code> yet, so this opens the website, not the app, until
           App Links are set up and verified.
         </p>
         <a href="https://app.crawfort.com/" className={secondary}>
           https://app.crawfort.com/
+        </a>
+      </section>
+
+      <section className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
+        <h2 className="text-[15px] font-bold text-neutral-900">iPhone</h2>
+        <p className="text-[13px] leading-relaxed text-neutral-600">
+          The Android buttons above do nothing on an iPhone. Tapping the first button here makes Safari ask
+          &quot;Open in Crawfort?&quot;. If the app is not installed, Safari says the address is invalid - use the App Store
+          button instead. Safari may also show an Open / Get banner at the top of this page.
+        </p>
+        {iosOk ? (
+          <>
+            <a href={iosSchemeUrl({ scheme })} className={button}>
+              Open the Crawfort app ({scheme}://)
+            </a>
+            <a href={iosSchemeUrl({ scheme, hostAndPath: host })} className={secondary}>
+              Open with {scheme}://{host}
+            </a>
+          </>
+        ) : null}
+        <a href={appStoreUrl(IOS_APP_ID)} className={secondary}>
+          Get the app on the App Store
         </a>
       </section>
 
