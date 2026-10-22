@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 import {
   launcherIntentUrl,
@@ -6,6 +7,7 @@ import {
   schemeIntentUrl,
   validateAppLinkInput,
 } from "@/lib/android-app-link";
+import { platformToShow } from "@/lib/app-platform";
 import { appStoreUrl, iosSchemeUrl, smartAppBannerContent, validateIosLinkInput } from "@/lib/ios-app-link";
 
 // The iPhone app's App Store id, from where https://crawfort.com/mobileapp sends
@@ -30,7 +32,12 @@ const DEFAULT_SCHEME = "crawfort";
 const DEFAULT_HOST = "open";
 
 interface PageProps {
-  searchParams: Promise<{ package?: string | string[]; scheme?: string | string[]; host?: string | string[] }>;
+  searchParams: Promise<{
+    package?: string | string[];
+    scheme?: string | string[];
+    host?: string | string[];
+    show?: string | string[];
+  }>;
 }
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)?.trim() || undefined;
@@ -54,6 +61,12 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
   const packageId = first(sp.package) ?? DEFAULT_PACKAGE;
   const scheme = first(sp.scheme) ?? DEFAULT_SCHEME;
   const host = first(sp.host) ?? DEFAULT_HOST;
+
+  // Show an Android phone the Android links and an iPhone the iPhone links, so
+  // neither taps the other's store. `?show=all|android|ios` overrides it.
+  const show = platformToShow(first(sp.show), (await headers()).get("user-agent"));
+  const showAndroid = show !== "ios";
+  const showIos = show !== "android";
 
   const problems = validateAppLinkInput({ package: packageId, scheme, hostAndPath: host });
   const ok = problems.length === 0;
@@ -81,6 +94,18 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
         </p>
       ) : null}
 
+      <p className="text-[12px] text-neutral-500">
+        Showing: <strong>{show === "all" ? "Android and iPhone" : show === "android" ? "Android" : "iPhone"}</strong>
+        {" - "}
+        <a href="?show=android" className="underline">Android</a>
+        {" | "}
+        <a href="?show=ios" className="underline">iPhone</a>
+        {" | "}
+        <a href="?show=all" className="underline">both</a>
+      </p>
+
+      {showAndroid ? (
+        <>
       <section className="flex flex-col gap-2">
         <h2 className="text-[15px] font-bold text-neutral-900">Android 1. Open by package name</h2>
         <p className="text-[13px] leading-relaxed text-neutral-600">
@@ -129,7 +154,10 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
           https://app.crawfort.com/
         </a>
       </section>
+        </>
+      ) : null}
 
+      {showIos ? (
       <section className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
         <h2 className="text-[15px] font-bold text-neutral-900">iPhone</h2>
         <p className="text-[13px] leading-relaxed text-neutral-600">
@@ -151,6 +179,7 @@ export default async function OpenAppTestPage({ searchParams }: PageProps) {
           Get the app on the App Store
         </a>
       </section>
+      ) : null}
 
       <section className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
         <h2 className="text-[15px] font-bold text-neutral-900">Try other values</h2>
