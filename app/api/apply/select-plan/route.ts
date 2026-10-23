@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApplicant, setDesiredAmount, setSelectedPlan } from "@/lib/db/applicants";
 import { recordPlanOnAscendOrder } from "@/lib/ascend/record-plan";
 import {
+  isOfferTenure,
   MIN_OFFER_TENURE,
   MAX_OFFER_TENURE,
 } from "@/lib/offer-plans";
@@ -76,17 +77,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "planId is required" }, { status: 400 });
     }
 
-    // Custom offers are freeform (subject to manual staff review), so only the
-    // preset plans are held to the standard tenure ceiling.
-    const isCustomPlan = planId === "custom";
-    const tenureTooLong = !isCustomPlan && (typeof tenure === "number" ? tenure > MAX_OFFER_TENURE : true);
-    if (typeof tenure !== "number" || tenure < MIN_OFFER_TENURE || tenureTooLong) {
+    // A custom plan chooses only its tenure, within the same range as the rest.
+    if (!isOfferTenure(tenure)) {
       return NextResponse.json(
-        {
-          error: isCustomPlan
-            ? `tenure must be at least ${MIN_OFFER_TENURE}`
-            : `tenure must be between ${MIN_OFFER_TENURE} and ${MAX_OFFER_TENURE}`,
-        },
+        { error: `tenure must be between ${MIN_OFFER_TENURE} and ${MAX_OFFER_TENURE}` },
         { status: 400 },
       );
     }
