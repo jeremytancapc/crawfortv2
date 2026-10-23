@@ -13,6 +13,7 @@
  */
 
 import type { AscendCreditResult, AscendUser } from "./ascend/client";
+import { weakPassReason } from "./ascend/weak-pass";
 
 /** Where an applicant goes once their income has been submitted and re-scored. */
 export type AfterIncomeOutcome =
@@ -84,6 +85,13 @@ export function decideApplyOutcome(result: AscendCreditResult): ApplyOutcome {
       destination: "/apply/pending",
       reason: result.risk.riskMsg ?? null,
     };
+  }
+
+  // TEMPORARY (lib/ascend/weak-pass.ts): a PASS Ascend should have made PENDING
+  // goes the way a PENDING goes.
+  const weak = weakPassReason(result.creditScore);
+  if (weak) {
+    return { kind: "needs_income", destination: "/apply/verify-income", reason: weak };
   }
 
   return {

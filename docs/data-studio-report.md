@@ -23,6 +23,24 @@ ceiling); **Approved** is Ascend's credit limit (the A-Card Limit); **OS** is th
 outstanding loans we recorded. **Ref** is `CFH5-` plus the last 8 characters of the
 applicant id, the same reference staff already use.
 
+## Income: what was on file, and what was submitted
+
+`income` and `source` are written when the applicant submits, from MyInfo, before any
+document exists. Someone with no CPF or NOA who then submits payslips still reads
+**SELF-DECLARED, 0** there, though Ascend scored the payslips. Migration `0016` adds five
+columns at the end of `applicant_journey`; refresh the data source to see them, and the
+old columns are unchanged.
+
+| Field | Meaning |
+|---|---|
+| `submitted_income` | Average monthly figure of the latest set of documents the applicant **submitted** (what Ascend was given). Empty if none |
+| `submitted_income_type` | Ascend's own label for it: `PANEL_PAYSLIP`, `NON_PANEL_PAYSLIP`, `BANK_STATEMENT_OTHER_INCOME`, `INCOME_STATEMENT` |
+| `submitted_document_kinds` | What the submitted files were: `payslip`, `earnings_statement`, `bank_statement` (removed and merely uploaded files are not counted) |
+| `income_used` | `submitted_income` when there is one, otherwise `income` |
+| `income_used_source` | Where `income_used` comes from: the submitted type, otherwise `CPF` / `NOA` / `SELF-DECLARED` |
+
+Use `income_used` and `income_used_source` in the tables in place of `income` and `source`.
+
 ## The four piles
 
 Every applicant is in exactly one, in the field `journey_group`. Build one table

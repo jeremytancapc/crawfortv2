@@ -11,7 +11,6 @@ export type PlanComment = {
   tenure: number;
   monthlyInstalment?: number | null;
   additionalRequests?: string[];
-  isCustomPlan?: boolean;
 };
 
 /**
@@ -29,9 +28,6 @@ export function formatPlanComment(input: PlanComment): string {
 
   if (input.monthlyInstalment && input.monthlyInstalment > 0) {
     parts.push(`monthly ${money(Math.round(input.monthlyInstalment))}`);
-  }
-  if (input.isCustomPlan) {
-    parts.push("CUSTOM OFFER - needs staff follow-up");
   }
   if (input.additionalRequests?.length) {
     parts.push(`requests: ${input.additionalRequests.join("; ")}`);

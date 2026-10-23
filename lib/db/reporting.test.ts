@@ -256,4 +256,95 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
       select stage, sum(applicants)::text as applicants from reporting.stage_summary group by stage`;
     expect(rows.find((r) => r.stage === "booked")).toBeTruthy();
   });
+
+  /**
+   * The income columns `income` and `source` are written when the applicant submits,
+   * from MyInfo - before any document is uploaded. Someone with no CPF or NOA who then
+   * submits payslips still reads "self-declared, 0", though Ascend scored the payslips.
+   * These columns carry what was actually submitted, labelled the way Ascend labels it.
+   */
+  describe("income from the submitted documents", () => {
+    const assessment = (id: string, source: string, income: number) =>
+      sql`insert into credit_assessments (applicant_id, income_source, verified_monthly_income, underwritten_cap, engine_offer_amount, is_eligible)
+          values (${id}, ${source}::income_source, ${income}, 1000, 1000, true)`;
+    const reading = (id: string, type: string, average: number, submittedAt: string | null) =>
+      sql`insert into income_readings (applicant_id, income_type, months, average, m1, m2, m3, document_ids, submitted_at)
+          values (${id}, ${type}, '[]'::jsonb, ${average}, ${average}, ${average}, ${average}, '{}', ${submittedAt}::timestamptz)`;
+    const document = (id: string, kind: string, status: string, key: string) =>
+      sql`insert into income_documents (applicant_id, object_key, file_name, content_type, bytes, sha256, status, kind)
+          values (${id}, ${key}, 'f.pdf', 'application/pdf', 10, ${key}, ${status}, ${kind})`;
+    const row = async (key: string) => {
+      const [r] = await sql<{
+        income: string | null; source: string | null;
+        submitted_income: string | null; submitted_income_type: string | null; submitted_document_kinds: string | null;
+        income_used: string | null; income_used_source: string | null;
+      }>`select income::text, source, submitted_income::text, submitted_income_type, submitted_document_kinds,
+                income_used::text, income_used_source
+         from reporting.applicant_journey where id = ${ids[key]}`;
+      return r!;
+    };
+
+    it("shows the income that was submitted, and leaves the figure on file as it was", async () => {
+      const id = await applicant("docs_selfdeclared");
+      await assessment(id, "self_declared", 0);
+      await reading(id, "NON_PANEL_PAYSLIP", 718.55, "2026-10-22 16:25+08");
+
+      expect(await row("docs_selfdeclared")).toMatchObject({
+        income: "0.00",
+        source: "SELF-DECLARED",
+        submitted_income: "718.55",
+        submitted_income_type: "NON_PANEL_PAYSLIP",
+        income_used: "718.55",
+        income_used_source: "NON_PANEL_PAYSLIP",
+      });
+    });
+
+    it("takes the latest submitted reading, and ignores one that was never submitted", async () => {
+      const id = await applicant("docs_latest");
+      await assessment(id, "cpf", 2621.62);
+      await reading(id, "NON_PANEL_PAYSLIP", 100, "2026-10-22 10:00+08");
+      await reading(id, "NON_PANEL_PAYSLIP", 2788.17, "2026-10-22 11:00+08");
+      await reading(id, "NON_PANEL_PAYSLIP", 999, null);
+
+      const r = await row("docs_latest");
+      expect(r.submitted_income).toBe("2788.17");
+      // What Ascend scored, not the CPF figure from before the documents.
+      expect(r.income_used).toBe("2788.17");
+      expect(r.income).toBe("2621.62");
+    });
+
+    it("falls back to the figure on file when nothing was submitted, draft readings included", async () => {
+      const none = await applicant("docs_none");
+      await assessment(none, "cpf", 3000);
+      const draft = await applicant("docs_draft_only");
+      await assessment(draft, "noa", 4000);
+      await reading(draft, "BANK_STATEMENT_OTHER_INCOME", 123, null);
+
+      expect(await row("docs_none")).toMatchObject({ submitted_income: null, submitted_income_type: null, income_used: "3000.00", income_used_source: "CPF" });
+      expect(await row("docs_draft_only")).toMatchObject({ submitted_income: null, income_used: "4000.00", income_used_source: "NOA" });
+    });
+
+    it("says which kinds of document were sent, bank statements included, and not the ones removed", async () => {
+      const id = await applicant("docs_kinds");
+      await assessment(id, "self_declared", 0);
+      await reading(id, "BANK_STATEMENT_OTHER_INCOME", 3000, "2026-10-22 12:00+08");
+      await document(id, "payslip", "submitted", "k-payslip");
+      await document(id, "bank_statement", "submitted", "k-bank");
+      await document(id, "payslip", "removed", "k-removed");
+      await document(id, "earnings_statement", "uploaded", "k-uploaded");
+
+      expect((await row("docs_kinds")).submitted_document_kinds).toBe("bank_statement, payslip");
+      expect((await row("docs_kinds")).submitted_income_type).toBe("BANK_STATEMENT_OTHER_INCOME");
+    });
+
+    it("adds its columns after the existing ones, so a report built on the old ones keeps working", async () => {
+      const cols = await sql<{ column_name: string; ordinal_position: number }>`
+        select column_name, ordinal_position from information_schema.columns
+        where table_schema = 'reporting' and table_name = 'applicant_journey'`;
+      const at = (name: string) => cols.find((c) => c.column_name === name)!.ordinal_position;
+      for (const added of ["submitted_income", "submitted_income_type", "submitted_document_kinds", "income_used", "income_used_source"]) {
+        expect(at(added), added).toBeGreaterThan(at("journey_group"));
+      }
+    });
+  });
 });

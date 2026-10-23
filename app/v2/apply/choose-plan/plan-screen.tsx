@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { X } from "@phosphor-icons/react";
 
 import { useApplyPath } from "@/app/use-apply-path";
-import { Pill, Row, Rows, Stepper, Tabs, Tag, TextField } from "@/app/v2/ui/controls";
+import { Pill, Row, Rows, Stepper, Tabs, Tag } from "@/app/v2/ui/controls";
 import { V2Body, V2Footer, V2Header, V2Screen, V2Title, cx } from "@/app/v2/ui/screen";
 import { useClientValue } from "@/app/v2/ui/use-client-value";
 import { trackEvent } from "@/lib/analytics";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/approval-display";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
 import type { LoanFormData } from "@/lib/loan-form";
+import { pathAfterPlanChosen } from "@/lib/after-plan";
 import {
   MAX_OFFER_TENURE,
   MIN_OFFER_TENURE,
@@ -78,9 +79,7 @@ export function PlanScreen({
   const [amountOverride, setAmount] = useState<number | null>(null);
   const amount = amountOverride ?? initialWithdrawAmount ?? stored ?? max;
   const [tab, setTab] = useState<PlanTab>("average");
-  const [customAmount, setCustomAmount] = useState("");
   const [customTenure, setCustomTenure] = useState(MAX_OFFER_TENURE);
-  const [customTouched, setCustomTouched] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
   const persistTimer = useRef<number | null>(null);
@@ -111,9 +110,8 @@ export function PlanScreen({
     [formData.leadId, max],
   );
 
-  const customAmountValue = parseInt(customAmount.replace(/[^0-9]/g, ""), 10);
-  const customValid =
-    Number.isFinite(customAmountValue) && customAmountValue > 0 && customTenure > 0;
+  // The amount is the one already entered; a custom plan only picks the term.
+  const customMonthly = Math.ceil(calculateInstalment(amount, customTenure, OFFER_MONTHLY_RATE));
 
   const savePlan = useCallback(
     async (payload: Record<string, unknown>) => {
@@ -142,27 +140,21 @@ export function PlanScreen({
       monthlyRate: activePlan.monthlyRate,
       monthlyInstalment: activePlan.monthlyInstalment,
     });
-    router.push(applyHref(`/apply/accept?amount=${amount}`));
+    router.push(applyHref(pathAfterPlanChosen({ planId: activePlan.id, amount })));
   };
 
   const requestCustom = async () => {
     if (isSaving) return;
-    if (!customValid) {
-      setCustomTouched(true);
-      return;
-    }
     trackEvent("step_10_offer_accepted", { planId: "custom" });
     setIsSaving(true);
     await savePlan({
       planId: "custom",
       tenure: customTenure,
-      amount: customAmountValue,
+      amount,
       monthlyRate: OFFER_MONTHLY_RATE,
-      monthlyInstalment: Math.ceil(
-        calculateInstalment(customAmountValue, customTenure, OFFER_MONTHLY_RATE),
-      ),
+      monthlyInstalment: customMonthly,
     });
-    router.push(applyHref(`/apply/custom-received?leadId=${formData.leadId ?? ""}`));
+    router.push(applyHref(pathAfterPlanChosen({ planId: "custom", amount })));
   };
 
   const tabs = useMemo(
@@ -172,10 +164,6 @@ export function PlanScreen({
       ),
     [],
   );
-
-  const customMonthly = customValid
-    ? Math.ceil(calculateInstalment(customAmountValue, customTenure, OFFER_MONTHLY_RATE))
-    : null;
 
   return (
     <V2Screen>
@@ -228,16 +216,8 @@ export function PlanScreen({
           </div>
         ) : (
           <div key="custom" className="v2-enter flex flex-col gap-1">
-            <TextField
-              label="Loan amount"
-              prefix="$"
-              inputMode="numeric"
-              placeholder={amount.toLocaleString("en-SG")}
-              value={customAmount}
-              onChange={(event) => setCustomAmount(event.target.value.replace(/[^0-9,]/g, ""))}
-              invalid={customTouched && !customValid}
-            />
             <Rows>
+              <Row label="Loan amount" value={formatOfferAmount(amount)} />
               <Row
                 label="Term"
                 action={
@@ -254,7 +234,7 @@ export function PlanScreen({
               />
               <Row
                 label="Estimated monthly"
-                value={customMonthly != null ? formatOfferAmount(customMonthly) : "-"}
+                value={formatOfferAmount(customMonthly)}
               />
             </Rows>
           </div>
@@ -269,11 +249,7 @@ export function PlanScreen({
         </button>
       </V2Body>
       <V2Footer
-        note={
-          tab === "custom"
-            ? "A request, not an approval. Staff confirm the final terms."
-            : `${(OFFER_MONTHLY_RATE * 100).toFixed(2)}% a month, reducing balance. Offer valid until disbursement.`
-        }
+        note={`${(OFFER_MONTHLY_RATE * 100).toFixed(2)}% a month, reducing balance. Offer valid until disbursement.`}
       >
         {activePlan ? (
           <Pill onClick={() => void choosePlan()} loading={isSaving}>
@@ -281,7 +257,7 @@ export function PlanScreen({
           </Pill>
         ) : (
           <Pill onClick={() => void requestCustom()} loading={isSaving}>
-            Request custom offer
+            Choose custom plan
           </Pill>
         )}
       </V2Footer>

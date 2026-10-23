@@ -7,7 +7,13 @@
  * database and in the signed cookie the review page reads, so what the tester
  * sees is what is sent and what is kept.
  *
- * Body: { rid, cpf?: CpfRow[], noa?: NoaRow[] } - only what is named changes.
+ * The ID number can be changed too, to try someone Singpass's sandbox does not
+ * hand out. It moves everywhere it is held - the retrieved record (with a new
+ * `sub`, which is what Ascend identifies a person by), the applicant, and the
+ * session the review page reads - so the next submit is that other person.
+ *
+ * Body: { rid, cpf?: CpfRow[], noa?: NoaRow[], nric?: string } - only what is
+ * named changes.
  *
  * Switched on per deployment by MYINFO_EDITOR_ENABLED; with it off this answers
  * 403 and touches nothing.
@@ -16,7 +22,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { myinfoCookieValue } from "@/lib/apply-myinfo-cookie";
-import { DRAFT_LEAD_COOKIE } from "@/lib/apply-session-codec";
+import { getApplySession } from "@/lib/apply-session";
+import { DRAFT_LEAD_COOKIE, sessionCookieValue } from "@/lib/apply-session-codec";
+import { setApplicantNric } from "@/lib/db/applicants";
 import { getMyinfoRetrieval, saveMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { updateMyinfoProcessed } from "@/lib/db/myinfo-profiles";
 import { isDatabaseConfigured } from "@/lib/db/sql";
@@ -24,8 +32,10 @@ import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import {
   applyMyinfoEdits,
+  normaliseNric,
   validateCpfRows,
   validateNoaRows,
+  validateNric,
   type CpfRow,
   type NoaRow,
 } from "@/lib/myinfo-edit";
@@ -72,7 +82,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "DATABASE_URL is not set." }, { status: 500 });
   }
 
-  let body: { rid?: string; cpf?: unknown; noa?: unknown };
+  let body: { rid?: string; cpf?: unknown; noa?: unknown; nric?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -82,11 +92,19 @@ export async function POST(request: NextRequest) {
   const rid = typeof body.rid === "string" ? body.rid : "";
   const cpf = body.cpf === undefined ? undefined : cpfRowsFrom(body.cpf);
   const noa = body.noa === undefined ? undefined : noaRowsFrom(body.noa);
-  if (!rid || cpf === null || noa === null || (cpf === undefined && noa === undefined)) {
-    return NextResponse.json({ error: "rid and at least one of cpf / noa (as lists) are required." }, { status: 400 });
+  const nric = body.nric === undefined ? undefined : typeof body.nric === "string" ? body.nric : null;
+  if (!rid || cpf === null || noa === null || nric === null || (cpf === undefined && noa === undefined && nric === undefined)) {
+    return NextResponse.json(
+      { error: "rid and at least one of cpf / noa (as lists) or nric (as text) are required." },
+      { status: 400 },
+    );
   }
 
-  const errors = [...(cpf ? validateCpfRows(cpf) : []), ...(noa ? validateNoaRows(noa) : [])];
+  const errors = [
+    ...(cpf ? validateCpfRows(cpf) : []),
+    ...(noa ? validateNoaRows(noa) : []),
+    ...(nric !== undefined ? validateNric(nric) : []),
+  ];
   if (errors.length > 0) {
     return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
   }
@@ -96,7 +114,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No capture with that id, or it has expired." }, { status: 404 });
   }
 
-  const edited = applyMyinfoEdits(payload, { cpf, noa });
+  const edited = applyMyinfoEdits(payload, { cpf, noa, nric });
 
   // 1. The raw record - what Ascend is sent at submit.
   await saveMyinfoRetrieval(edited.payload, rid);
@@ -110,15 +128,23 @@ export async function POST(request: NextRequest) {
     savedToProfile = await updateMyinfoProcessed(applicantId, edited.processed, edited.monthlyIncomeNoa);
   }
 
+  // The ID number is also held on the applicant and in the session, which the
+  // review page and submit read - not only in the record.
+  const newNric = nric === undefined ? undefined : normaliseNric(nric);
+  if (newNric && applicantId) await setApplicantNric(applicantId, newNric);
+  const session = newNric ? await getApplySession() : null;
+
   const response = NextResponse.json({
     ok: true,
     rid,
     cpfMonths: edited.processed.cpfContributions.length,
     noaYears: edited.processed.noaHistory.length,
     savedToProfile,
+    nric: newNric ?? null,
   });
 
-  // 3. The signed cookie the review page reads first.
+  // 3. The signed cookies the review page reads first.
   response.cookies.set(myinfoCookieValue(edited.processed));
+  if (newNric && session) response.cookies.set(sessionCookieValue({ ...session, nric: newNric }));
   return response;
 }

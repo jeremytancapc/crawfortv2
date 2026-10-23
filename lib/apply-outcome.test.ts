@@ -284,3 +284,84 @@ describe("deciding from a stored order", () => {
     expect(decision.kind).not.toBe("approved");
   });
 });
+
+/**
+ * TEMPORARY. Ascend is meant to answer PENDING when the credit score is under 550
+ * or the credit limit is under $300, and for now answers PASS. Until it does, a
+ * PASS like that is treated as PENDING and goes through the usual workflow: the
+ * income step, then staff review. Boundaries are exactly 550 and exactly 300, which
+ * are still a pass. Remove with lib/ascend/weak-pass.ts when Ascend is fixed.
+ */
+describe("a PASS that Ascend should have made PENDING", () => {
+  const pass = (creditScore: AscendCreditResult["creditScore"]): AscendCreditResult => ({
+    ...PASSED,
+    creditScore: { creditLevel: "D", mlcbMaxLoanAmount: 25409.58, ...creditScore },
+  });
+
+  it("is sent to the income step when the credit score is under 550, as on 21 Oct (score 539, limit $1,200)", () => {
+    expect(decideApplyOutcome(pass({ creditLimit: 1200, creditScore: 539 }))).toMatchObject({
+      kind: "needs_income",
+      destination: "/apply/verify-income",
+    });
+  });
+
+  it("is sent to the income step when the credit limit is under $300", () => {
+    expect(decideApplyOutcome(pass({ creditLimit: 299, creditScore: 600 }))).toMatchObject({
+      kind: "needs_income",
+      destination: "/apply/verify-income",
+    });
+  });
+
+  it("is still a pass at exactly a score of 550 and a limit of $300", () => {
+    expect(decideApplyOutcome(pass({ creditLimit: 300, creditScore: 550 }))).toMatchObject({
+      kind: "approved",
+      aCardLimit: 300,
+    });
+  });
+
+  it("cannot be judged on a score Ascend did not send, so it stays a pass", () => {
+    expect(decideApplyOutcome(pass({ creditLimit: 1000 }))).toMatchObject({ kind: "approved" });
+  });
+
+  it("goes to staff review after income, not to an offer, when it is still weak", () => {
+    const weak = { ...pass({ creditLimit: 300, creditScore: 540 }), risk: { riskStatus: "PASS" as const } };
+
+    expect(decideAfterIncome(weak)).toMatchObject({ kind: "in_review", destination: "/apply/pending" });
+  });
+
+  it("is held the same way when it is read back from a stored order", () => {
+    const decision = decideSubmission({
+      ascend: orderAsCreditResult({
+        id: "row",
+        created_at: "2026-10-21T04:39:50Z",
+        updated_at: "2026-10-21T04:39:50Z",
+        applicant_id: "b3b88154-ae8b-436c-9e70-1531b0578e43",
+        order_id: "1560993846652792832",
+        risk_status: "passed",
+        a_card_limit: "1200.00",
+        maximum_loan_quantum: "25409.58",
+        new_customer: true,
+        credit_level: "D",
+        credit_score: "539.00",
+      }),
+    });
+
+    expect(decision).toMatchObject({ kind: "needs_income", destination: "/apply/verify-income" });
+  });
+
+  it("changes nothing for a REJECT or a PENDING", () => {
+    expect(decideApplyOutcome({ ...PASSED, risk: { riskStatus: "REJECT" }, creditScore: { creditScore: 400 } }).kind).toBe("declined");
+    expect(decideApplyOutcome({ ...PENDING, creditScore: { creditScore: 400, creditLimit: 100 } }).kind).toBe("needs_income");
+  });
+
+  it("can be switched off, for when Ascend answers PENDING itself", () => {
+    const before = process.env.ASCEND_WEAK_PASS_AS_PENDING;
+    process.env.ASCEND_WEAK_PASS_AS_PENDING = "false";
+    try {
+      expect(decideApplyOutcome(pass({ creditLimit: 1200, creditScore: 539 })).kind).toBe("approved");
+    } finally {
+      if (before === undefined) delete process.env.ASCEND_WEAK_PASS_AS_PENDING;
+      else process.env.ASCEND_WEAK_PASS_AS_PENDING = before;
+    }
+  });
+});
