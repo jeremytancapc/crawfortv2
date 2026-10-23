@@ -13,11 +13,9 @@ describe("formatPlanComment", () => {
       .toContain("over 1 month");
   });
 
-  it("flags a custom offer, because it needs a person", () => {
-    const comment = formatPlanComment({
-      planId: "Custom", amount: 12000, tenure: 12, isCustomPlan: true,
-    });
-    expect(comment).toContain("CUSTOM OFFER - needs staff follow-up");
+  it("writes a custom plan like any other, since the customer goes on to book", () => {
+    expect(formatPlanComment({ planId: "custom", amount: 12000, tenure: 12, monthlyInstalment: 1250 }))
+      .toBe("Plan selected: custom | S$12,000 over 12 months | monthly S$1,250");
   });
 
   it("stands alone rather than assuming an earlier comment survived", () => {

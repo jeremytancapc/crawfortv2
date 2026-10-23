@@ -16,7 +16,6 @@ import { PlanAmountField } from "@/app/apply/choose-plan/plan-amount-field";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { useApplyPath } from "@/app/use-apply-path";
 import { useLocale } from "@/app/i18n/locale-provider";
-import { pathAfterPlanChosen } from "@/lib/after-plan";
 
 interface Props {
   formData: LoanFormData;
@@ -138,7 +137,6 @@ export function ApprovalView({
           }
           router.push(applyHref(`/apply/choose-plan?amount=${nextAmount}`));
         }}
-        onCustomOfferSubmitted={() => router.push(applyHref(pathAfterPlanChosen({ planId: "custom", amount: 0 })))}
       />
     </ApplyIosShell>
   );

@@ -95,17 +95,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "amount must be at least 500" }, { status: 400 });
     }
 
-    // Append short ops-facing notes when the customer ticked additional requests
-    // or asked for a custom (out-of-policy) offer that needs staff follow-up.
+    // Append a short ops-facing note when the customer ticked additional requests.
     const requestLabels = formatPlanAdditionalRequestsLabel(additionalRequests);
     const noteLines: string[] = [];
     if (requestLabels.length > 0) {
       noteLines.push(`Additional requests: ${requestLabels.join("; ")}`);
-    }
-    if (isCustomPlan) {
-      noteLines.push(
-        `Custom offer requested: $${amount.toLocaleString("en-SG")} over ${tenure} ${tenure === 1 ? "month" : "months"} — needs staff follow-up (call/WhatsApp)`,
-      );
     }
     let notes: string | null = null;
     if (noteLines.length > 0) {
@@ -151,7 +145,6 @@ export async function POST(request: NextRequest) {
       tenure,
       monthlyInstalment: monthlyInstalment ?? null,
       additionalRequests: requestLabels,
-      isCustomPlan,
     });
 
     const res = NextResponse.json({ ok: true });
