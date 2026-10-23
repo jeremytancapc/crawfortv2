@@ -16,6 +16,7 @@ import {
 } from "@/lib/approval-display";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
 import type { LoanFormData } from "@/lib/loan-form";
+import { pathAfterPlanChosen } from "@/lib/after-plan";
 import {
   MAX_OFFER_TENURE,
   MIN_OFFER_TENURE,
@@ -142,7 +143,7 @@ export function PlanScreen({
       monthlyRate: activePlan.monthlyRate,
       monthlyInstalment: activePlan.monthlyInstalment,
     });
-    router.push(applyHref(`/apply/accept?amount=${amount}`));
+    router.push(applyHref(pathAfterPlanChosen({ planId: activePlan.id, amount })));
   };
 
   const requestCustom = async () => {
@@ -162,7 +163,7 @@ export function PlanScreen({
         calculateInstalment(customAmountValue, customTenure, OFFER_MONTHLY_RATE),
       ),
     });
-    router.push(applyHref(`/apply/custom-received?leadId=${formData.leadId ?? ""}`));
+    router.push(applyHref(pathAfterPlanChosen({ planId: "custom", amount: customAmountValue })));
   };
 
   const tabs = useMemo(
