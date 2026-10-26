@@ -67,6 +67,12 @@ export type AgentRun = {
   agrees: boolean | null;
   turns: number;
   toolCalls: string[];
+  /**
+   * The report the agent last sent to check_rules: its own reading of the
+   * documents. Kept so that a disagreement with the rules can be traced to
+   * the two readings differing, or to the two judgements. Null if it never ran the rules.
+   */
+  report: Reported | null;
   /** The last stop reason, or "max_turns". */
   stopReason: string | null;
   usage: { inputTokens: number; outputTokens: number };
@@ -232,6 +238,7 @@ export async function runIncomeAgent(
   const usage = { inputTokens: 0, outputTokens: 0 };
   const toolCalls: string[] = [];
   let decision: AgentDecision | null = null;
+  let report: Reported | null = null;
   let stopReason: string | null = null;
   let error: string | null = null;
   let turns = 0;
@@ -274,6 +281,7 @@ export async function runIncomeAgent(
           if (!decision) error = "final_decision did not fit its form";
           break;
         }
+        if (call.name === "check_rules") report = call.input as Reported;
         results.push({
           type: "tool_result",
           tool_use_id: call.id,
@@ -296,6 +304,7 @@ export async function runIncomeAgent(
   return {
     decision,
     agrees: agreement(rules, decision),
+    report,
     turns,
     toolCalls,
     stopReason,

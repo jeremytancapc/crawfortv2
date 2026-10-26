@@ -21,11 +21,12 @@ export async function recordIncomeAgentRun(input: {
   try {
     await sql`
       insert into income_agent_runs
-        (applicant_id, document_ids, rule_kind, rule_reason, decision, agrees, turns, tool_calls,
+        (applicant_id, document_ids, rule_kind, rule_reason, decision, agrees, agent_report, turns, tool_calls,
          stop_reason, usage, latency_ms, error, model_id, prompt_version, read_today, employment_type)
       values
         (${input.applicantId}, ${input.documentIds}::uuid[], ${input.rules.kind}, ${input.rules.reason ?? null},
-         ${run.decision ? JSON.stringify(run.decision) : null}::jsonb, ${run.agrees}, ${run.turns},
+         ${run.decision ? JSON.stringify(run.decision) : null}::jsonb, ${run.agrees},
+         ${run.report ? JSON.stringify(run.report) : null}::jsonb, ${run.turns},
          ${run.toolCalls}::text[], ${run.stopReason}, ${JSON.stringify(run.usage)}::jsonb, ${run.latencyMs},
          ${run.error}, ${run.modelId}, ${run.promptVersion},
          ${input.readToday.toISOString().slice(0, 10)}::date, ${input.employmentType ?? null})`;

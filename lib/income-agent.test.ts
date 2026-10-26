@@ -64,6 +64,20 @@ describe("runIncomeAgent", () => {
     expect(toolResults(create)[1]).toContain("someone else");
   });
 
+  it("keeps the report the agent made, so a disagreement can be traced to the reading or the judgement", async () => {
+    const { client } = fakeClient([turn([use("check_rules", fx.report)]), turn([FINAL()])]);
+
+    const run = await runIncomeAgent([DOC], CONTEXT, RULES_REFUSED, { client });
+
+    expect(run.report).toEqual(fx.report);
+  });
+
+  it("has no report when the agent never ran the rules", async () => {
+    const { client } = fakeClient([turn([FINAL({ outcome: "hand_to_staff" })])]);
+
+    expect((await runIncomeAgent([DOC], CONTEXT, RULES_REFUSED, { client })).report).toBeNull();
+  });
+
   it("tells the agent who the applicant is, from the application", async () => {
     const { client, create } = fakeClient([turn([use("applicant_profile", {})]), turn([FINAL()])]);
 
