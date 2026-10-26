@@ -1,0 +1,127 @@
+{
+  "description": "Earnings statement for the whole of 2025, whose printed holder is the Singpass name plus a Chinese name. Production, 24 Oct 2026: refused as someone else's, and the stale year was never mentioned. Names are replaced; the report is otherwise as stored.",
+  "applicant": {
+    "name": "TAN MEI"
+  },
+  "today": "2026-10-24T00:00:00+08:00",
+  "employmentType": "SELF EMPLOYED",
+  "report": {
+    "note": "",
+    "credits": [],
+    "periods": [
+      {
+        "end": "2025-01-31",
+        "net": 0,
+        "gross": 0,
+        "start": "2025-01-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-02-28",
+        "net": 148.5,
+        "gross": 148.5,
+        "start": "2025-02-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-03-31",
+        "net": 114.79,
+        "gross": 114.79,
+        "start": "2025-03-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-04-30",
+        "net": 106,
+        "gross": 106,
+        "start": "2025-04-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-05-31",
+        "net": 14.5,
+        "gross": 14.5,
+        "start": "2025-05-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-06-30",
+        "net": 223.8,
+        "gross": 223.8,
+        "start": "2025-06-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-07-31",
+        "net": 238.82,
+        "gross": 238.82,
+        "start": "2025-07-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-08-31",
+        "net": 119.48,
+        "gross": 119.48,
+        "start": "2025-08-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-09-30",
+        "net": 0,
+        "gross": 0,
+        "start": "2025-09-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-10-31",
+        "net": 21.5,
+        "gross": 21.5,
+        "start": "2025-10-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-11-30",
+        "net": 0,
+        "gross": 0,
+        "start": "2025-11-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      },
+      {
+        "end": "2025-12-31",
+        "net": 43.36,
+        "gross": 43.36,
+        "start": "2025-12-01",
+        "document": 1,
+        "employer": "Nu Skin Enterprises Singapore Pte Ltd"
+      }
+    ],
+    "readable": true,
+    "documents": [
+      {
+        "kind": "earnings_statement",
+        "index": 1,
+        "issuer": "Nu Skin Enterprises Singapore Pte Ltd",
+        "holderName": "TAN MEI LING ANNA"
+      }
+    ],
+    "statements": []
+  },
+  "expect": {
+    "kind": "needs_review",
+    "reasonIncludes": [
+      "appears to belong to someone else",
+      "September or August 2026"
+    ]
+  }
+}

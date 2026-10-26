@@ -539,29 +539,50 @@ function documentProblem(
   documents: IncomeDocument[],
   seen: Array<SeenDocument | undefined>,
   applicant: { name: string; aliases?: string[] } | undefined,
-): string | null {
+): DocumentProblem | null {
   for (const [i, doc] of documents.entries()) {
     const found = seen[i];
     if (found?.kind === "other") {
-      return `${doc.fileName} does not look like a payslip, bank statement or earnings ` +
-        "statement. Please remove it or upload the right document.";
+      // Not an income document at all: there is nothing in it to count, so
+      // nothing else about it is worth saying.
+      return {
+        blocking: true,
+        message:
+          `${doc.fileName} does not look like a payslip, bank statement or earnings ` +
+          "statement. Please remove it or upload the right document.",
+      };
     }
     if (!applicant) continue;
     if (namesNobody(found)) continue;
     if (!found || !nameBelongsTo(found.holderName, applicant.name, applicant.aliases)) {
-      return found?.holderName.trim()
-        ? `${doc.fileName} appears to belong to someone else, and we do not accept ` +
+      return {
+        blocking: false,
+        message: found?.holderName.trim()
+          ? `${doc.fileName} appears to belong to someone else, and we do not accept ` +
             "documents for another person. Please upload documents in your own name."
-        : `We could not find your name on ${doc.fileName}. Please upload documents that show ` +
-            "your name as it appears in Singpass.";
+          : `We could not find your name on ${doc.fileName}. Please upload documents that show ` +
+            "your name as it appears in Singpass.",
+      };
     }
     if (found.kind === "bank_statement" && !isRecognisedSgBank(found.issuer)) {
-      return `We could not confirm ${doc.fileName} is from a Singapore bank. Please upload ` +
-        "statements from your bank in Singapore.";
+      return {
+        blocking: false,
+        message:
+          `We could not confirm ${doc.fileName} is from a Singapore bank. Please upload ` +
+          "statements from your bank in Singapore.",
+      };
     }
   }
   return null;
 }
+
+/**
+ * `blocking` means the document is no use at all, so only that is said. Any
+ * other problem is said alongside whatever else is wrong with the months: a
+ * customer told only about the name, fixes it, and is then refused again for
+ * the date that was wrong all along.
+ */
+type DocumentProblem = { message: string; blocking: boolean };
 
 /** The model that reads the documents. Stored with every reply. */
 const MODEL_ID = "claude-opus-5-5";
@@ -729,7 +750,9 @@ export function decide(
   // Before any figure is taken: income off someone else's payslip is not
   // this applicant's income, however clearly it reads.
   const problem = documentProblem(documents, seen, options?.applicant);
-  if (problem) return refuse("needs_review", problem);
+  if (problem?.blocking) return refuse("needs_review", problem.message);
+  // Said first, then whatever else is wrong (see DocumentProblem).
+  const withProblem = (reason: string) => (problem ? `${problem.message} ${reason}` : reason);
 
   const kinds = new Set(seen.map((d) => d?.kind));
   const hasPayslip = kinds.has("payslip");
@@ -779,10 +802,11 @@ export function decide(
   const note = applicantSafeNote(reported.note);
   const notReady = (reason: string): ExtractionOutcome => ({
     kind: "needs_review",
-    reason,
+    reason: withProblem(reason),
     note,
     source,
-    months: MONTHLY_ONLY ? months.filter((_, i) => assembly.months[i].exact) : months,
+    // Months read off a document that is not theirs are not months of theirs.
+    months: problem ? [] : MONTHLY_ONLY ? months.filter((_, i) => assembly.months[i].exact) : months,
     periods,
     assembly,
   });
@@ -810,6 +834,9 @@ export function decide(
 
   const review = reviewExtraction(months, plan.window, { checkYearToDate: source !== "bank_statement" });
   if (review.kind === "needs_review") return notReady(review.reason);
+
+  // The months are fine; the document is still not theirs.
+  if (problem) return refuse("needs_review", problem.message, source);
 
   const payslipType: AscendIncomeType =
     hasBank && paidIntoBank(periods, credits, plan.held) ? "PANEL_PAYSLIP" : "NON_PANEL_PAYSLIP";
