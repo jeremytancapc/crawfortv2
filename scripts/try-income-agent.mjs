@@ -10,6 +10,7 @@
  *   --name        the Singpass name the documents must belong to (required)
  *   --employment  employment status as on the application (default EMPLOYED)
  *   --today       YYYY-MM-DD the rules run against (default: today)
+ *   --refused     pretend the applicant was already refused this many times (default 0)
  */
 
 import "./helpers/quiet-known-warnings.mjs";
@@ -68,7 +69,12 @@ const { outcome } = await readAndDecide(documents, { today, applicant, employmen
 const rules = { kind: outcome.kind, reason: outcome.kind === "usable" ? null : outcome.reason };
 console.log(`RULES  ${rules.kind}${rules.reason ? `\n       ${rules.reason}` : ""}\n`);
 
-const run = await runIncomeAgent(documents, { applicant, employmentType, today }, rules);
+const attempts = Array.from({ length: Number(flags.refused ?? 0) }, (_, i) => ({
+  at: new Date(today.getTime() - (i + 1) * 600_000).toISOString(),
+  kind: "needs_review",
+  reason: "Please upload your latest payslip.",
+}));
+const run = await runIncomeAgent(documents, { applicant, employmentType, today, attempts }, rules);
 if (run.error) console.log(`ERROR  ${run.error}`);
 if (run.decision) {
   console.log(`AGENT  ${run.decision.outcome}  [${run.decision.reasonCodes.join(", ")}]`);

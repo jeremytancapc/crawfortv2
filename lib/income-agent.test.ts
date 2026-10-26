@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 
 import fx from "./income-cases/chinese-name-stale-statement.json";
-import { AGENT_MAX_TURNS, runIncomeAgent } from "./income-agent";
+import { AGENT_MAX_TURNS, AGENT_SYSTEM, failedAttempts, runIncomeAgent } from "./income-agent";
 import type { IncomeDocument } from "./income-extraction";
 
 const DOC: IncomeDocument = { fileName: "statement.pdf", mediaType: "application/pdf", bytes: Buffer.from("x") };
@@ -162,5 +162,71 @@ describe("runIncomeAgent", () => {
       const { client } = fakeClient([turn([{ type: "text", text: "?" }], "end_turn")]);
       expect((await runIncomeAgent([DOC], CONTEXT, RULES_USABLE, { client })).agrees).toBeNull();
     });
+  });
+});
+
+describe("failedAttempts - what the customer has actually failed", () => {
+  const row = (outcome_kind: string, outcome_reason: string | null, created_at = "2026-10-24T09:00:00Z") => ({
+    created_at,
+    outcome_kind,
+    outcome_reason,
+  });
+
+  it("counts refusals and nothing else", () => {
+    const rows = [
+      row("needs_review", "a.pdf appears to belong to someone else."),
+      row("usable", null),
+      row("unreadable", "The documents could not be read."),
+    ];
+
+    expect(failedAttempts(rows).map((a) => a.kind)).toEqual(["needs_review", "unreadable"]);
+  });
+
+  it("does not count our own retry of a call that made no report", () => {
+    const rows = [
+      row("unreadable", "No report (max_tokens); asked again"),
+      row("needs_review", "Please upload your latest payslip."),
+    ];
+
+    expect(failedAttempts(rows)).toHaveLength(1);
+  });
+
+  it("keeps when each happened and what the customer was told", () => {
+    expect(failedAttempts([row("needs_review", "Please add June.", "2026-10-24T09:01:00Z")])).toEqual([
+      { at: "2026-10-24T09:01:00Z", kind: "needs_review", reason: "Please add June." },
+    ]);
+  });
+});
+
+describe("previous attempts, as the agent sees them", () => {
+  const attempts = [
+    { at: "2026-10-24T09:00:00Z", kind: "needs_review", reason: "Please add June." },
+    { at: "2026-10-24T09:05:00Z", kind: "needs_review", reason: "Please add June and July." },
+    { at: "2026-10-24T09:09:00Z", kind: "unreadable", reason: "The documents could not be read." },
+  ];
+
+  it("answers previous_attempts with how many times the customer has been refused", async () => {
+    const { client, create } = fakeClient([turn([use("previous_attempts", {})]), turn([FINAL()])]);
+
+    await runIncomeAgent([DOC], { ...CONTEXT, attempts }, RULES_REFUSED, { client });
+
+    const result = JSON.parse(toolResults(create)[0]);
+    expect(result.refusedBefore).toBe(3);
+    expect(result.attempts).toHaveLength(3);
+    expect(result.attempts[0].reason).toBe("Please add June.");
+  });
+
+  it("says none when there have been no earlier attempts", async () => {
+    const { client, create } = fakeClient([turn([use("previous_attempts", {})]), turn([FINAL()])]);
+
+    await runIncomeAgent([DOC], CONTEXT, RULES_REFUSED, { client });
+
+    expect(JSON.parse(toolResults(create)[0])).toEqual({ refusedBefore: 0, attempts: [] });
+  });
+
+  it("tells the agent to hand over after three refusals, counting refusals and not turns", () => {
+    expect(AGENT_SYSTEM).toContain("previous_attempts");
+    expect(AGENT_SYSTEM).toMatch(/3 or more times/);
+    expect(AGENT_SYSTEM).toContain("repeated_refusals");
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AgentRun } from "./income-agent";
-import { runShadow, shadowEnabled } from "./income-agent-shadow";
+import { earlierRefusals, runShadow, shadowEnabled } from "./income-agent-shadow";
 import type { IncomeDocument } from "./income-extraction";
 
 const DOC: IncomeDocument = { fileName: "s.pdf", mediaType: "application/pdf", bytes: Buffer.from("x") };
@@ -44,5 +44,25 @@ describe("runShadow", () => {
 
     await expect(runShadow(INPUT, { run: boom, record: boom })).resolves.toBeUndefined();
     await expect(runShadow(INPUT, { run: vi.fn().mockResolvedValue(RUN), record: boom })).resolves.toBeUndefined();
+  });
+});
+
+describe("earlierRefusals", () => {
+  const call = (outcome_kind: string, outcome_reason: string | null, created_at: unknown) => ({ created_at, outcome_kind, outcome_reason });
+
+  it("lists what the applicant has already failed, with dates as text", async () => {
+    const list = vi.fn().mockResolvedValue([
+      call("needs_review", "Please add June.", new Date("2026-10-24T09:00:00Z")),
+      call("usable", null, new Date("2026-10-24T09:10:00Z")),
+    ]);
+
+    expect(await earlierRefusals("a-1", list as never)).toEqual([
+      { at: "2026-10-24T09:00:00.000Z", kind: "needs_review", reason: "Please add June." },
+    ]);
+    expect(list).toHaveBeenCalledWith("a-1");
+  });
+
+  it("gives none rather than failing when the history cannot be read", async () => {
+    expect(await earlierRefusals("a-1", vi.fn().mockRejectedValue(new Error("db")) as never)).toEqual([]);
   });
 });

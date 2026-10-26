@@ -47,6 +47,7 @@ export const AGENT_REASON_CODES = [
   "unrecognised_bank",
   "weekly_not_monthly",
   "unreadable",
+  "repeated_refusals",
   "other",
 ] as const;
 
@@ -82,7 +83,26 @@ export type AgentRun = {
   error: string | null;
 };
 
+/** One time the applicant was refused, as they were told. */
+export type PastAttempt = { at: string; kind: string; reason: string | null };
+
+/**
+ * What the applicant has actually failed, from their recorded model calls:
+ * refusals only. A usable result is not a failure, and neither is our own
+ * second go at a call that made no report - that one the applicant never saw.
+ */
+export function failedAttempts(
+  calls: Array<{ created_at: string; outcome_kind: string; outcome_reason: string | null }>,
+): PastAttempt[] {
+  return calls
+    .filter((c) => c.outcome_kind !== "usable")
+    .filter((c) => !(c.outcome_reason ?? "").includes("asked again"))
+    .map((c) => ({ at: c.created_at, kind: c.outcome_kind, reason: c.outcome_reason }));
+}
+
 type Context = {
+  /** Earlier refusals of this applicant, oldest first - see failedAttempts. */
+  attempts?: PastAttempt[];
   applicant: { name: string; aliases?: string[] };
   employmentType?: string;
   today: Date;
@@ -98,13 +118,15 @@ applicant if not. Call check_rules wherever the instructions above say to call
 report_income. You have three tools:
 - applicant_profile: who the applicant is according to Singpass, and what
   their employment status is.
+- previous_attempts: the times this applicant has already been refused, and
+  what they were told each time.
 - check_rules: send your report, with the same fields as report_income. It
   returns what Crawfort's rules decide - the usable months, or the reason for
   refusing. The rules do the arithmetic and choose the months; you never state
   a figure of your own.
 - final_decision: your decision. Call it once, last.
-Call applicant_profile first, then check_rules with your report, then
-final_decision.
+Call applicant_profile and previous_attempts first, then check_rules with your
+report, then final_decision.
 
 Judging the rules' answer:
 - When the rules say usable, accept unless the documents plainly contradict it.
@@ -117,6 +139,11 @@ Judging the rules' answer:
   the applicant fixes them in one go.
 - Say the real reason in plain, gentle words. Never say or imply that the
   applicant's income is too low or that they are not eligible.
+- Count what the applicant has failed, not your own turns: only refusals
+  count, never a usable result. If they have been refused 3 or more times
+  already and this attempt is refused as well, do not ask them to upload again.
+  Choose hand_to_staff with repeated_refusals, and tell them gently that our
+  team will help them from here.
 - When you are not sure, choose hand_to_staff.`;
 
 export const AGENT_SYSTEM = SYSTEM + AGENT_ADDENDUM;
@@ -124,6 +151,12 @@ export const AGENT_SYSTEM = SYSTEM + AGENT_ADDENDUM;
 const PROFILE_TOOL: Anthropic.Tool = {
   name: "applicant_profile",
   description: "Who the applicant is according to Singpass, and their employment status.",
+  input_schema: { type: "object", additionalProperties: false, properties: {} },
+};
+
+const ATTEMPTS_TOOL: Anthropic.Tool = {
+  name: "previous_attempts",
+  description: "The times this applicant has already been refused, and what they were told each time.",
   input_schema: { type: "object", additionalProperties: false, properties: {} },
 };
 
@@ -169,7 +202,7 @@ const FINAL_TOOL: Anthropic.Tool = {
   },
 };
 
-const TOOLS: Anthropic.Tool[] = [PROFILE_TOOL, CHECK_RULES_TOOL, FINAL_TOOL];
+const TOOLS: Anthropic.Tool[] = [PROFILE_TOOL, ATTEMPTS_TOOL, CHECK_RULES_TOOL, FINAL_TOOL];
 
 export const AGENT_PROMPT_VERSION = versionOf(AGENT_SYSTEM, TOOLS);
 
@@ -328,6 +361,10 @@ function answerTool(
       otherNamesOnFile: context.applicant.aliases ?? [],
       employmentStatus: context.employmentType ?? null,
     });
+  }
+  if (call.name === "previous_attempts") {
+    const attempts = context.attempts ?? [];
+    return JSON.stringify({ refusedBefore: attempts.length, attempts });
   }
   if (call.name === "check_rules") {
     const outcome = decide(documents, { reported: call.input as Reported }, decideOptions);

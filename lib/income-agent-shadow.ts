@@ -3,7 +3,8 @@
  * keeps what it would have done. Off unless INCOME_AGENT_SHADOW=true.
  */
 
-import { runIncomeAgent, type AgentRun } from "./income-agent";
+import { failedAttempts, runIncomeAgent, type AgentRun, type PastAttempt } from "./income-agent";
+import { listIncomeModelCalls } from "./db/income-model-calls";
 import { recordIncomeAgentRun } from "./db/income-agent-runs";
 import type { IncomeDocument } from "./income-extraction";
 
@@ -42,5 +43,23 @@ export async function runShadow(input: Input, deps?: Partial<Deps>): Promise<voi
     });
   } catch (err) {
     console.error("[income-agent-shadow] a shadow run failed", err);
+  }
+}
+
+/**
+ * What the applicant has already been refused, for the agent to weigh. Read
+ * before the current attempt is recorded, so this attempt is not counted
+ * against them. Never throws: no history means none are counted.
+ */
+export async function earlierRefusals(
+  applicantId: string,
+  list: typeof listIncomeModelCalls = listIncomeModelCalls,
+): Promise<PastAttempt[]> {
+  try {
+    const calls = await list(applicantId);
+    return failedAttempts(calls.map((c) => ({ ...c, created_at: new Date(c.created_at).toISOString() })));
+  } catch (err) {
+    console.error("[income-agent-shadow] could not read earlier attempts", err);
+    return [];
   }
 }
