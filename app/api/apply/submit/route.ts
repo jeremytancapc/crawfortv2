@@ -54,10 +54,10 @@ import {
   upsertMyinfoProfileForApplicant,
 } from "@/lib/myinfo-profile";
 import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
+import { staffReviewLinkAtSubmit } from "@/lib/airconnect/staff-review";
 import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
-import { ascendOrderReviewLink } from "@/lib/ascend/review-link";
 import { creditLimitForAirConnect } from "@/lib/airconnect/credit-limit";
 import {
   DuplicateAscendOrderError,
@@ -398,11 +398,10 @@ export async function POST(request: NextRequest) {
       customerName: formData.fullName,
       phoneNumber: e164Phone,
       idNumber: formData.authMethod === "singpass" && formData.nric ? formData.nric : undefined,
-      // A PASS that never named a limit needs a person; give AirConnect the
-      // page they open in Ascend. Nobody else gets a link at this point.
-      ...(decision.kind === "unresolved" && ascendResult?.orderId
-        ? { customerHyperLink: ascendOrderReviewLink(ascendResult.orderId) ?? undefined }
-        : {}),
+      // Someone staff may have to call - Ascend wants income, or a PASS never
+      // named a limit - gets the page staff open in Ascend straight away,
+      // not only once income has been submitted.
+      customerHyperLink: staffReviewLinkAtSubmit(decision, ascendResult?.orderId),
       // Ascend has already given a limit: AirConnect keeps it, with where it
       // came from, and shows the latest on the lead.
       ...(decision.kind === "approved"
