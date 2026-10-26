@@ -239,7 +239,7 @@ export function creditsCountedFor(employmentType: string | undefined): Set<Credi
   return employmentType === UNEMPLOYED_WITH_INCOME ? CPF_ONLY : COUNTED_CREDITS;
 }
 
-const REPORT_INCOME_TOOL: Anthropic.Tool = {
+export const REPORT_INCOME_TOOL: Anthropic.Tool = {
   name: "report_income",
   description:
     "Report what each of the applicant's documents is and the income on it. Call this once, " +
@@ -339,7 +339,7 @@ const REPORT_INCOME_TOOL: Anthropic.Tool = {
   },
 };
 
-const SYSTEM = `You read Singapore income documents - payslips, bank statements, and
+export const SYSTEM = `You read Singapore income documents - payslips, bank statements, and
 earnings statements from platforms like Grab, Gojek or Foodpanda - and report
 what each one is and the income printed on it.
 
@@ -585,7 +585,7 @@ function documentProblem(
 type DocumentProblem = { message: string; blocking: boolean };
 
 /** The model that reads the documents. Stored with every reply. */
-const MODEL_ID = "claude-opus-5-5";
+export const MODEL_ID = "claude-opus-5-5";
 
 /** Which prompt and tool schema are in force - stored with every reply. */
 export const PROMPT_VERSION = versionOf(SYSTEM, REPORT_INCOME_TOOL);

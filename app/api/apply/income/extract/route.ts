@@ -11,7 +11,7 @@
  * Submit works from that record, not from anything the browser says back.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { getApplicant } from "@/lib/db/applicants";
@@ -27,6 +27,7 @@ import { isDatabaseConfigured } from "@/lib/db/sql";
 import { getDocumentBytes } from "@/lib/documents/store";
 import type { CpfProfile } from "@/lib/income-cpf";
 import { readAndDecide, type IncomeDocument } from "@/lib/income-extraction";
+import { runShadow, shadowEnabled } from "@/lib/income-agent-shadow";
 import { MAX_INCOME_FILES } from "@/lib/income-add-more";
 import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
@@ -164,12 +165,28 @@ export async function POST(request: NextRequest) {
     // The date is fixed here, once, so the rules and the record of the call
     // use the same one - a month window can only be reproduced from it.
     const today = new Date();
+    const cpf = await cpfProfileOf(applicantId);
     const { outcome, read, earlier } = await readAndDecide(documents, {
       today,
       applicant: { name: applicant.name },
       employmentType: applicant.employmentType,
-      cpf: await cpfProfileOf(applicantId),
+      cpf,
     });
+
+    // SHADOW: the income agent decides the same documents after the applicant
+    // has been answered, and its decision is kept next to the rules' own. It
+    // changes nothing they see. Off unless INCOME_AGENT_SHADOW=true.
+    if (shadowEnabled()) {
+      after(() =>
+        runShadow({
+          applicantId,
+          documentIds: ids,
+          documents,
+          context: { applicant: { name: applicant.name }, employmentType: applicant.employmentType, today, cpf },
+          rules: { kind: outcome.kind, reason: outcome.kind === "usable" ? null : outcome.reason },
+        }),
+      );
+    }
 
     // Kept for every call, usable or refused: the model's raw report, the
     // prompt and model it was made under, and what we decided from it. Never
