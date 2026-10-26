@@ -137,9 +137,6 @@ export function ApprovalView({
           }
           router.push(applyHref(`/apply/choose-plan?amount=${nextAmount}`));
         }}
-        onCustomOfferSubmitted={() =>
-          router.push(applyHref(`/apply/custom-received?leadId=${formData.leadId ?? ""}`))
-        }
       />
     </ApplyIosShell>
   );

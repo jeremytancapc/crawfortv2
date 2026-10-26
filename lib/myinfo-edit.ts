@@ -116,6 +116,91 @@ export function validateNoaRows(rows: NoaRow[]): string[] {
   return errors;
 }
 
+/** Singapore NRIC / FIN: a letter, seven digits, a check letter. */
+const NRIC_SHAPE = /^[STFGM]\d{7}[A-Z]$/;
+
+/** The NRIC as it is stored: trimmed and upper case. */
+export function normaliseNric(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+const NRIC_WEIGHTS = [2, 7, 6, 5, 4, 3, 2];
+// Citizens and PRs (S, T) and foreigners (F, G) each have their own letter table.
+const CHECK_LETTERS: Record<string, string> = { S: "JZIHGFEDCBA", T: "JZIHGFEDCBA", F: "XWUTRQPNMLK", G: "XWUTRQPNMLK" };
+
+/**
+ * The check letter for an ID number, by Modulus 11: the seven digits weighted
+ * 2,7,6,5,4,3,2, plus 4 for a T or G, remainder after dividing by 11, looked up
+ * in the table for that prefix. Ascend's credit bureau runs this check and
+ * refuses a number that fails it.
+ *
+ * Only S, T, F and G are worked out; the newer M series is not (null).
+ */
+export function nricCheckLetter(prefix: string, digits: string): string | null {
+  const table = CHECK_LETTERS[prefix.trim().toUpperCase()];
+  if (!table || !/^\d{7}$/.test(digits)) return null;
+  const p = prefix.trim().toUpperCase();
+  const sum = [...digits].reduce((total, d, i) => total + Number(d) * NRIC_WEIGHTS[i], 0) + (p === "T" || p === "G" ? 4 : 0);
+  return table[sum % 11];
+}
+
+/** A whole ID number from its prefix and seven digits, with the right check letter; null when it cannot be made. */
+export function completeNric(prefix: string, digits: string): string | null {
+  const letter = nricCheckLetter(prefix, digits);
+  return letter ? `${prefix.trim().toUpperCase()}${digits}${letter}` : null;
+}
+
+export function validateNric(value: string): string[] {
+  const nric = normaliseNric(value);
+  if (!NRIC_SHAPE.test(nric)) {
+    return [`"${value.trim()}" is not an NRIC or FIN (a letter, seven digits and a letter, like S1234567D).`];
+  }
+  const expected = nricCheckLetter(nric[0], nric.slice(1, 8));
+  // The M series is not worked out here; its shape is all that is checked.
+  if (expected && expected !== nric[8]) {
+    return [`${nric}: the check letter should be ${expected} (this ID number fails the Modulus 11 check Ascend's credit bureau runs).`];
+  }
+  return [];
+}
+
+/**
+ * The `sub` a person with this NRIC gets once edited.
+ *
+ * Ascend identifies people by `sub`, not by `uinfin`, so a new NRIC with the
+ * old `sub` would be the original person to Ascend. A UUID derived from the
+ * NRIC keeps the same NRIC the same person on every edit, and two NRICs apart.
+ */
+export function subForEditedNric(nric: string): string {
+  const hex = hash128(`crawfort-myinfo-edit:${normaliseNric(nric)}`);
+  return [hex.slice(0, 8), hex.slice(8, 12), `4${hex.slice(13, 16)}`, `a${hex.slice(17, 20)}`, hex.slice(20, 32)].join("-");
+}
+
+/**
+ * A fixed 128 bits for a string, as 32 hex characters (cyrb128). Not for
+ * secrecy - it only has to be the same every time and different per NRIC - and
+ * written out here because this file is also loaded by the edit sheet in the
+ * browser, which has no node:crypto.
+ */
+function hash128(text: string): string {
+  let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+  for (let i = 0; i < text.length; i++) {
+    const k = text.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  h1 ^= h2 ^ h3 ^ h4;
+  h2 ^= h1;
+  h3 ^= h1;
+  h4 ^= h1;
+  return [h1, h2, h3, h4].map((n) => (n >>> 0).toString(16).padStart(8, "0")).join("");
+}
+
 // ── Writing it in Singpass's shape ────────────────────────────────────────
 
 const day = (today: Date) => today.toISOString().slice(0, 10);
@@ -153,7 +238,7 @@ function noaField(rows: NoaRow[], today: Date) {
   };
 }
 
-export type MyinfoEdits = { cpf?: CpfRow[]; noa?: NoaRow[] };
+export type MyinfoEdits = { cpf?: CpfRow[]; noa?: NoaRow[]; nric?: string };
 
 export type ProcessedMyinfo = {
   cpfContributions: CpfContribution[];
@@ -180,6 +265,15 @@ export function applyMyinfoEdits(
 
   if (edits.cpf) person.cpfcontributions = cpfField(edits.cpf, today);
   if (edits.noa) person.noahistory = noaField(edits.noa, today);
+
+  if (edits.nric !== undefined) {
+    const nric = normaliseNric(edits.nric);
+    const existing = person.uinfin;
+    person.uinfin = { ...(existing && typeof existing === "object" ? existing : {}), value: nric };
+    // `sub` sits beside the person in v5 and at the top in the flat shape - in
+    // both cases on the payload itself.
+    next.sub = subForEditedNric(nric);
+  }
 
   const patch = buildMyInfoPatch(next);
   const processed: ProcessedMyinfo = {

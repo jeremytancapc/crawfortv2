@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApplicant, setDesiredAmount, setSelectedPlan } from "@/lib/db/applicants";
 import { recordPlanOnAscendOrder } from "@/lib/ascend/record-plan";
 import {
+  isOfferTenure,
   MIN_OFFER_TENURE,
   MAX_OFFER_TENURE,
 } from "@/lib/offer-plans";
@@ -76,17 +77,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "planId is required" }, { status: 400 });
     }
 
-    // Custom offers are freeform (subject to manual staff review), so only the
-    // preset plans are held to the standard tenure ceiling.
-    const isCustomPlan = planId === "custom";
-    const tenureTooLong = !isCustomPlan && (typeof tenure === "number" ? tenure > MAX_OFFER_TENURE : true);
-    if (typeof tenure !== "number" || tenure < MIN_OFFER_TENURE || tenureTooLong) {
+    // A custom plan chooses only its tenure, within the same range as the rest.
+    if (!isOfferTenure(tenure)) {
       return NextResponse.json(
-        {
-          error: isCustomPlan
-            ? `tenure must be at least ${MIN_OFFER_TENURE}`
-            : `tenure must be between ${MIN_OFFER_TENURE} and ${MAX_OFFER_TENURE}`,
-        },
+        { error: `tenure must be between ${MIN_OFFER_TENURE} and ${MAX_OFFER_TENURE}` },
         { status: 400 },
       );
     }
@@ -95,17 +89,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "amount must be at least 500" }, { status: 400 });
     }
 
-    // Append short ops-facing notes when the customer ticked additional requests
-    // or asked for a custom (out-of-policy) offer that needs staff follow-up.
+    // Append a short ops-facing note when the customer ticked additional requests.
     const requestLabels = formatPlanAdditionalRequestsLabel(additionalRequests);
     const noteLines: string[] = [];
     if (requestLabels.length > 0) {
       noteLines.push(`Additional requests: ${requestLabels.join("; ")}`);
-    }
-    if (isCustomPlan) {
-      noteLines.push(
-        `Custom offer requested: $${amount.toLocaleString("en-SG")} over ${tenure} ${tenure === 1 ? "month" : "months"} — needs staff follow-up (call/WhatsApp)`,
-      );
     }
     let notes: string | null = null;
     if (noteLines.length > 0) {
@@ -151,7 +139,6 @@ export async function POST(request: NextRequest) {
       tenure,
       monthlyInstalment: monthlyInstalment ?? null,
       additionalRequests: requestLabels,
-      isCustomPlan,
     });
 
     const res = NextResponse.json({ ok: true });

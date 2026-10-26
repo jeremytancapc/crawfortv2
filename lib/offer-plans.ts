@@ -15,6 +15,16 @@ export const OFFER_MAX_PROCESSING_FEE_PCT = 10;
 export const MAX_OFFER_TENURE = 12;
 export const MIN_OFFER_TENURE = 1;
 
+/** A whole number of months from MIN_OFFER_TENURE to MAX_OFFER_TENURE. */
+export function isOfferTenure(months: unknown): months is number {
+  return (
+    typeof months === "number" &&
+    Number.isInteger(months) &&
+    months >= MIN_OFFER_TENURE &&
+    months <= MAX_OFFER_TENURE
+  );
+}
+
 /**
  * Display name for each plan id, used on the acceptance page. Kept short
  * (no "Plan" suffix) to match the plan cards shown on the approval page.
