@@ -868,7 +868,7 @@ const TRANSLATIONS: Record<Exclude<Locale, "en">, Record<string, string>> = {
     Approved: "Diluluskan",
     "Unlocks later": "Kredit dibuka kemudian",
     "How your credit limit works": "Cara had kredit anda berfungsi",
-    "Pre-approved amount": "Jumlah yang diluluskan secara prinsip",
+    "Pre-approved amount": "Jumlah pra-lulus",
     "Current drawdown": "Pengeluaran semasa",
     "You are drawing {amount} now.": "Anda sedang mengeluarkan {amount}.",
     "Your maximum loan quantum is {amount}.": "Kuantum pinjaman maksimum anda ialah {amount}.",

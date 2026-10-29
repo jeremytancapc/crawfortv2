@@ -1697,8 +1697,12 @@ body:has(.theme-ios) {
 
 /* The whole arc box is the drag surface; stop the page scrolling under a
    finger and stop long-press callouts on iOS. */
+/* Capped here, not with a Tailwind max-w class: this unlayered rule would
+   override the utility. 24rem is about the arc's size on a large phone, so a
+   tablet shows the same dial rather than one that fills a 700px card and
+   leaves the figures inside it - held at their own caps - looking adrift. */
 .credit-gauge {
-  max-width: 100%;
+  max-width: min(100%, 24rem);
   min-width: 0;
   overflow: visible;
   scroll-margin-top: 1.5rem;

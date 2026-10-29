@@ -289,7 +289,7 @@ function OfferHeader({
        below as rows of the same card. */
     <RevealOnScroll>
       <div className="ios-card">
-        <div className="flex w-full min-w-0 flex-col items-center px-5 pb-9 pt-7">
+        <div className="flex w-full min-w-0 flex-col items-center px-5 pb-4 pt-7">
           <CreditGauge
             value={withdrawAmount}
             max={maxWithdraw}
@@ -301,16 +301,19 @@ function OfferHeader({
             ariaLabel={t("Amount to withdraw today. Drag the dial or use arrow keys.")}
           >
             {/* Counts up with the intro fill, then shows the same snapped
-                figure as "You are drawing" below, so the two never disagree. */}
+                figure as "You are drawing" below, so the two never disagree.
+                Sized in cqi against the arc (see credit-gauge.tsx), so the
+                stack always fits inside the inner ring: about 27% of the
+                arc's width tall, where the ring leaves about 39%. */}
             {({ value, isIntro }) => (
               <>
-                <span className="rounded-full bg-[var(--brand-blue-hex)] px-3 py-1.5 text-[clamp(8px,calc(2.7vw_-_3px),11px)] font-bold uppercase leading-none tracking-[0.12em] text-white">
+                <span className="whitespace-nowrap rounded-full bg-[var(--brand-blue-hex)] px-[2.8cqi] py-[1.6cqi] text-[clamp(7px,2.7cqi,12px)] font-bold uppercase leading-none tracking-[0.12em] text-white">
                   {t("Pre-approved amount")}
                 </span>
-                <span className="mt-2 text-[clamp(26px,calc(11vw_-_10px),44px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
+                <span className="mt-[2cqi] text-[clamp(22px,11.5cqi,48px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
                   {formatSgd(quantum)}
                 </span>
-                <span className="mt-2.5 text-[clamp(12px,calc(3.6vw_-_1px),15px)] leading-tight text-[var(--text-primary)]">
+                <span className="mt-[2.2cqi] whitespace-nowrap text-[clamp(10px,3.9cqi,17px)] leading-tight text-[var(--text-primary)]">
                   {t("Current drawdown")}:{" "}
                   <span className="font-bold tabular-nums">
                     {formatSgd(isIntro ? value : withdrawAmount)}
@@ -355,7 +358,10 @@ function OfferHeader({
             </div>
           ))}
         </dl>
-        <div aria-hidden className="apply-fit-leftover-spacer" />
+        {/* On a phone the card takes up the pane's spare height; on a tablet
+            or desktop that spare height is most of the screen, so the card
+            ends at its last line instead of trailing an empty white block. */}
+        <div aria-hidden className="apply-fit-leftover-spacer md:hidden" />
       </div>
     </RevealOnScroll>
   );

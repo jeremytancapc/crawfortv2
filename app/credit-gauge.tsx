@@ -24,11 +24,6 @@ const R = 140;
 const STROKE = 26;
 const CY = R + STROKE / 2 + 2;
 const VIEW_H = CY + STROKE / 2 + 2;
-/** Where the centre readout starts, as a fraction of the arc box's height.
- *  Pulled up with a width-relative negative margin, as in credit-gauge.tsx,
- *  so the readout's real height still pushes the rows below it down. */
-const READOUT_TOP_FRACTION = 0.38;
-const READOUT_MARGIN_TOP_PCT = (READOUT_TOP_FRACTION - 1) * (VIEW_H / VIEW_W) * 100;
 
 /** Grey track: the pre-approved amount not drawn. */
 export const GAUGE_TRACK_SWATCH = "oklch(0.91 0.022 262)";
@@ -274,11 +269,19 @@ export function CreditGauge({
   const showMin = min > 0 && min < max;
 
   return (
+    /* Width is capped in globals.css (.credit-gauge), so the arc is the same
+       size on a tablet as on a large phone. pb-6 is the room the end labels
+       hang into below the arc box. */
     <div
-      className="credit-gauge relative mx-auto w-full min-w-0 max-w-full"
+      className="credit-gauge relative mx-auto w-full pb-6"
       data-disabled={disabled}
     >
-      <div className="relative">
+      {/* The arc box keeps the SVG's own height at every width; the readout
+          sits inside it, pinned to the base, so nothing after the gauge can
+          ride up into the arc however wide it gets. It is also the size
+          container the readout's type is set against (cqi), so the figures
+          shrink with the arc on a small phone instead of with the viewport. */}
+      <div className="@container relative">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -332,23 +335,23 @@ export function CreditGauge({
             {formatSgd(scale)}
           </span>
         </div>
-      </div>
 
-      <div
-        className="pointer-events-none mx-auto flex w-[68%] flex-col items-center text-center"
-        style={{ marginTop: `${READOUT_MARGIN_TOP_PCT}%` }}
-      >
-        {children({ value: displayValue, isIntro })}
-      </div>
+        {/* Inside the inner ring: 16% in from each side clears the band, and
+            pointer events fall through so a drag can cross the middle. */}
+        <div className="pointer-events-none absolute inset-x-[16%] bottom-0.5 flex flex-col items-center text-center">
+          {children({ value: displayValue, isIntro })}
+        </div>
 
-      {/* Space held even while hidden, so a hint never shifts the card under
-          a finger that is mid-drag. The chip rises in on a soft spring and
-          leaves faster than it came, so it never lingers in the way. */}
-      <div
-        className="mt-3 flex min-h-[2.125rem] items-center justify-center"
-        role="status"
-        aria-live="polite"
-      >
+        {/* Floats over the end-label row instead of holding a row of its own,
+            so the card carries no empty band below the arc and nothing moves
+            under a finger mid-drag. While it shows it may cover a label on a
+            narrow phone; it names the same limit the label does. The chip
+            rises in on a soft spring and leaves faster than it came. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-full z-[1] flex justify-center"
+          role="status"
+          aria-live="polite"
+        >
         <AnimatePresence mode="wait" initial={false}>
           {limitHint ? (
             <motion.span
@@ -383,6 +386,7 @@ export function CreditGauge({
             </motion.span>
           ) : null}
         </AnimatePresence>
+        </div>
       </div>
 
       <p className="sr-only">
