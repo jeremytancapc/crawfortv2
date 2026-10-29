@@ -343,7 +343,7 @@ export function LoanGateForm({
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleNext} disabled={step3RedirectPending}>
-            {step === 1 ? t("Next: Loan Tenure") : t("Continue")}
+            {step === 1 ? t("Get Started") : t("Continue")}
           </PrimaryButton>
         )}
       </StickyFooter>

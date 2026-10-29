@@ -1885,7 +1885,7 @@ export function LoanResults({
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleConfirmAmount}>
-            {t("Next: Loan Tenure")}
+            {t("Get Started")}
           </PrimaryButton>
         )}
       </StickyFooter>
