@@ -1,8 +1,8 @@
 # Google Sheet worklist: every applicant and where they stand
 
 A sheet staff work from: one row per applicant, the mobile number to call, the
-stage they reached, why they stopped, and the two credit limits that applicant
-has been given. It is synced by Apps Script from the view
+stage they reached, why they stopped, and two amounts: the V1 pre-approved
+amount and the V2 A-Card limit. It is synced by Apps Script from the view
 `reporting.sheet_worklist` (migrations
 `db/migrations/0019_reporting_sheet_worklist.sql` and
 `db/migrations/0020_sheet_worklist_contact.sql`).
@@ -33,8 +33,8 @@ customer up in AirConnect.
 
 ## Columns
 
-Row 1 is the header, written by the script. The sync writes **A-U** every run
-and never touches **V-X**.
+Row 1 is the header, written by the script. The sync writes **A-T** every run
+and never touches **U-W**.
 
 | Col | Header | Meaning |
 |---|---|---|
@@ -48,28 +48,27 @@ and never touches **V-X**.
 | H | Hours since last activity | |
 | I | Last activity (SGT) | |
 | J | Ascend result | `passed` / `pending` / `rejected` |
-| K | V1 pre-approved | What the **first H5** pre-approved them for (`cf_h5_v1`). From AirConnect, not from this app - see "3. The V1 column". Blank for anyone the first H5 never pre-approved |
-| L | V2 A-Card limit | The **A-Card Limit**: what Ascend is willing to lend, which is what this app (`cf_h5_v2`) sends to AirConnect. Blank until Ascend answers with a pass and a figure |
-| M | Max loan quantum | The **Maximum Loan Quantum** from MLCB - the ceiling across all licensed moneylenders, shown on the offer screen as the "pre-approved amount". What they could unlock, not an offer |
-| N | Plan chosen | |
-| O | Decline reason | The choice they picked on the offer screen |
-| P | Booking (SGT) | Date and time, if booked |
-| Q | Documents uploaded | Count |
-| R | Last document issue | The sentence they were shown when a document was refused |
-| S | Why no Ascend order | Code, only for `submitted_no_ascend_order` |
-| T | Sent to AirConnect (SGT) | When the lead was pushed; blank means not in AirConnect yet |
-| U | Last synced | |
-| V | Remarks | Team |
-| W | PIC | Team |
-| X | Called on | Team |
+| K | V1 pre-approved | The **Maximum Loan Quantum** from MLCB: the figure the offer screen shows as the "pre-approved amount". The ceiling across all licensed moneylenders - what they could unlock, not an offer |
+| L | V2 A-Card limit | The **A-Card Limit**: what Ascend is willing to lend today, and the most they can draw. Blank until Ascend answers with a pass and a figure |
+| M | Plan chosen | |
+| N | Decline reason | The choice they picked on the offer screen |
+| O | Booking (SGT) | Date and time, if booked |
+| P | Documents uploaded | Count |
+| Q | Last document issue | The sentence they were shown when a document was refused |
+| R | Why no Ascend order | Code, only for `submitted_no_ascend_order` |
+| S | Sent to AirConnect (SGT) | When the lead was pushed; blank means not in AirConnect yet |
+| T | Last synced | |
+| U | Remarks | Team |
+| V | PIC | Team |
+| W | Called on | Team |
 
 Filter on **Needs follow-up = Yes** for the call list; sort by **Hours since
-last activity**. **K**, **L** and **M** are numbers, so they sort and sum.
+last activity**. **K** and **L** are numbers, so they sort and sum.
 
-K, L and M are three different amounts and must not be read as one (see
-`CONTEXT.md`, "Amounts"): K is what the old funnel promised, L is what Ascend
-will actually lend today, M is the regulatory ceiling. A K far above L is worth
-a call - that applicant was told a bigger figure once.
+K and L are different amounts and must not be read as one (see `CONTEXT.md`,
+"Amounts"): K is the ceiling the applicant was shown, L is what Ascend will
+actually lend today and the most they can draw. Both come from this app's own
+database; nothing in the sheet is read from AirConnect.
 
 ## 1. Database (once per environment)
 
@@ -100,24 +99,19 @@ const CONFIG = {
   DB_URL: 'jdbc:postgresql://<neon host>:5432/neondb',
   DB_USER: 'sheet_worklist_reader',
   DB_PASSWORD: '<reader password>',
-  // AirConnect, for column K only (see "3. The V1 column"). Leave AC_DB_URL
-  // empty and everything else still syncs, with K blank.
-  AC_DB_URL: '',
-  AC_DB_USER: 'cf_sheet_v1_reader',
-  AC_DB_PASSWORD: '',
 };
 
 const SHEET_NAME = 'Crawfort v2';
 const HEADER_ROWS = 1;
 const KEY_COL = 2;      // B: Ref
 const MOBILE_COL = 3;   // C
-const AMOUNT_COLS = [11, 12, 13]; // K, L, M
-const SYNC_COLS = 21;   // A-U; V-X are never written by the sync
+const AMOUNT_COLS = [11, 12]; // K, L
+const SYNC_COLS = 20;   // A-T; U-W are never written by the sync
 const DAYS_BACK = 30;
 const HEADERS = [
   'Created (SGT)', 'Ref', 'Mobile', 'Applied via', 'Pile', 'Stage', 'Needs follow-up',
   'Hours since last activity', 'Last activity (SGT)', 'Ascend result',
-  'V1 pre-approved', 'V2 A-Card limit', 'Max loan quantum',
+  'V1 pre-approved', 'V2 A-Card limit',
   'Plan chosen', 'Decline reason', 'Booking (SGT)', 'Documents uploaded',
   'Last document issue', 'Why no Ascend order', 'Sent to AirConnect (SGT)', 'Last synced',
   'Remarks', 'PIC', 'Called on',
@@ -143,14 +137,6 @@ function num_(v) {
   return isNaN(n) ? '' : n;
 }
 
-/**
- * The last 8 digits, which is how one Singapore mobile matches across systems:
- * we store `91234567`, AirConnect may hold `+6591234567` or `65 9123 4567`.
- */
-function last8_(mobile) {
-  return String(mobile || '').replace(/\D/g, '').slice(-8);
-}
-
 /** Writes the header row, and rewrites it when the columns have changed. */
 function ensureHeader_(sheet) {
   const row1 = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0].map((v) => String(v).trim());
@@ -168,43 +154,18 @@ function ensureFormats_(sheet) {
   AMOUNT_COLS.forEach((c) => sheet.getRange(1, c, rows, 1).setNumberFormat('#,##0'));
 }
 
-/**
- * The first H5's pre-approved amount per mobile, from AirConnect.
- *
- * Returns {} when AirConnect is not configured or unreachable: column K is
- * extra information, and the rest of the worklist must still sync without it.
- */
-function preApprovedV1_() {
-  const url = CONFIG.AC_DB_URL;
-  if (!url || url.startsWith('<')) return {};
-  try {
-    const conn = Jdbc.getConnection(url, CONFIG.AC_DB_USER, CONFIG.AC_DB_PASSWORD);
-    const rs = conn.createStatement().executeQuery('select mobile8, v1_amount from sheet_v1_limit');
-    const byMobile = {};
-    while (rs.next()) byMobile[rs.getString('mobile8')] = num_(rs.getString('v1_amount'));
-    rs.close();
-    conn.close();
-    return byMobile;
-  } catch (e) {
-    console.warn(`AirConnect unreachable, column K left blank: ${e.message}`);
-    return {};
-  }
-}
-
-/** Refreshes A-U for every applicant from the last DAYS_BACK days or with an upcoming booking. */
+/** Refreshes A-T for every applicant from the last DAYS_BACK days or with an upcoming booking. */
 function syncCrawfortWorklist() {
   const sql = `
     select created_sgt, ref, mobile, applied_via, pile, stage, needs_follow_up,
            hours_since_last_activity, last_activity_sgt, ascend_result,
-           acard_limit, max_loan_quantum, plan_chosen, decline_reason, booking_sgt,
+           max_loan_quantum, acard_limit, plan_chosen, decline_reason, booking_sgt,
            documents_uploaded, last_document_issue, no_order_reason,
            sent_to_airconnect_sgt
     from reporting.sheet_worklist
     where created_at > (now() at time zone 'Asia/Singapore') - interval '${DAYS_BACK} days'
        or booking_date >= current_date
     order by created_at asc`;
-
-  const v1 = preApprovedV1_();
 
   const conn = Jdbc.getConnection(props_('DB_URL'), props_('DB_USER'), props_('DB_PASSWORD'));
   const rs = conn.createStatement().executeQuery(sql);
@@ -224,15 +185,11 @@ function syncCrawfortWorklist() {
   const synced = Utilities.formatDate(new Date(), 'Asia/Singapore', 'yyyy-MM-dd HH:mm');
   const updates = [];
   const inserts = [];
-  let v1Hits = 0;
   while (rs.next()) {
-    const mobile = rs.getString('mobile') || '';
-    const v1Amount = v1[last8_(mobile)];
-    if (v1Amount !== undefined && v1Amount !== '') v1Hits++;
     const row = [
       rs.getString('created_sgt') || '',
       rs.getString('ref') || '',
-      mobile,                                              // C
+      rs.getString('mobile') || '',                        // C
       rs.getString('applied_via') || '',
       rs.getString('pile') || '',
       rs.getString('stage') || '',
@@ -240,9 +197,8 @@ function syncCrawfortWorklist() {
       num_(rs.getString('hours_since_last_activity')),
       rs.getString('last_activity_sgt') || '',
       rs.getString('ascend_result') || '',
-      v1Amount === undefined ? '' : v1Amount,              // K: from AirConnect
-      num_(rs.getString('acard_limit')),                   // L
-      num_(rs.getString('max_loan_quantum')),              // M
+      num_(rs.getString('max_loan_quantum')),              // K: V1 pre-approved
+      num_(rs.getString('acard_limit')),                   // L: V2 A-Card limit
       rs.getString('plan_chosen') || '',
       rs.getString('decline_reason') || '',
       rs.getString('booking_sgt') || '',
@@ -250,7 +206,7 @@ function syncCrawfortWorklist() {
       rs.getString('last_document_issue') || '',
       rs.getString('no_order_reason') || '',
       rs.getString('sent_to_airconnect_sgt') || '',
-      synced,                                              // U
+      synced,                                              // T
     ];
     const at = rowOf[row[KEY_COL - 1]];
     if (at) updates.push({ at, row }); else inserts.push(row);
@@ -262,7 +218,7 @@ function syncCrawfortWorklist() {
   if (inserts.length) {
     sheet.getRange(sheet.getLastRow() + 1, 1, inserts.length, SYNC_COLS).setValues(inserts);
   }
-  console.log(`Crawfort v2 worklist: ${updates.length} updated, ${inserts.length} added, ${v1Hits} with a V1 limit`);
+  console.log(`Crawfort v2 worklist: ${updates.length} updated, ${inserts.length} added`);
 }
 ```
 
@@ -271,68 +227,10 @@ trigger for `syncCrawfortWorklist` (for example every 15 minutes). If the
 spreadsheet already has an `onOpen` (another sync script), merge the two into
 one: a project can only have one.
 
-## 3. The V1 column
-
-Column K is the only thing in the sheet that does not come from this app's
-database, and the only step that touches another system. **It is optional**:
-leave `AC_DB_URL` empty and K stays blank.
-
-The first H5's pre-approved amount was never sent to this database. Both H5s
-report their limits to AirConnect instead - the first as `cf_h5_v1`, this one as
-`cf_h5_v2` (see `docs/ascend-open-api.md`, "The credit limit we give
-AirConnect") - so AirConnect's `t3gallery_credit_limits` is the only place both
-figures exist. One read-only view there gives the sheet the V1 figure and
-nothing else.
-
-Run this once per environment in **AirConnect's** database (`t3gallery`), dev
-before production. Like our own reader, the view runs with its owner's rights,
-which is what lets the role read it with no grant on the tables behind it:
-
-```sql
--- One row per mobile number: the latest amount the first H5 pre-approved.
--- Leads and borrowers both carry limits, and the same person can be in either.
-create or replace view sheet_v1_limit as
-with v1 as (
-  select right(regexp_replace(l.phone_number, '\D', '', 'g'), 8) as mobile8,
-         cl.amount, cl.received_at
-  from t3gallery_credit_limits cl
-  join t3gallery_leads l on l.id = cl.lead_id
-  where cl.source = 'cf_h5_v1'
-  union all
-  select right(regexp_replace(b.phone_number, '\D', '', 'g'), 8) as mobile8,
-         cl.amount, cl.received_at
-  from t3gallery_credit_limits cl
-  join t3gallery_borrowers b on b.id = cl.borrower_id
-  where cl.source = 'cf_h5_v1'
-)
-select distinct on (mobile8) mobile8, amount as v1_amount, received_at as v1_at
-from v1
-order by mobile8, received_at desc;
-
-create role cf_sheet_v1_reader login connection limit 3;
-grant select on sheet_v1_limit to cf_sheet_v1_reader;
--- Set the password by hand, and never commit it:
-alter role cf_sheet_v1_reader with password '<from the password manager>';
-```
-
-Then put the AirConnect host and that password into `CONFIG` and sync. The log
-line ends with how many rows got a V1 figure; `0 with a V1 limit` means the
-match found nothing - check that AirConnect's `phone_number` and our `mobile`
-agree in their last 8 digits.
-
-The join is on the **last 8 digits** of the mobile, not the whole string: we
-store what the applicant typed (usually `91234567`) and AirConnect is sent
-E.164 (`+6591234567`). It follows that an applicant whose number is not a
-Singapore mobile will not match, and that two people sharing a number cannot be
-told apart - this column is background for a call, not a record to act on.
-
 ## Known gaps
 
-- **Not in AirConnect yet (column T blank):** an applicant is pushed only once
+- **Not in AirConnect yet (column S blank):** an applicant is pushed only once
   Ascend opens an order, so earlier stages can't be looked up there by ref. They
   still have a mobile number in column C, which is the point of adding it.
 - **Rows only leave the window, never the sheet:** an applicant older than
   `DAYS_BACK` days with no upcoming booking stops being refreshed but stays.
-- **Column K is a snapshot of AirConnect, keyed by number.** It is read fresh
-  every sync, but a limit the first H5 recorded against a different number for
-  the same person will not show.
