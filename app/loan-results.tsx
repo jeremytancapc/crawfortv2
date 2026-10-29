@@ -358,10 +358,9 @@ function OfferHeader({
             </div>
           ))}
         </dl>
-        {/* On a phone the card takes up the pane's spare height; on a tablet
-            or desktop that spare height is most of the screen, so the card
-            ends at its last line instead of trailing an empty white block. */}
-        <div aria-hidden className="apply-fit-leftover-spacer md:hidden" />
+        {/* No apply-fit-leftover-spacer here: the card ends at its last line
+            rather than stretching to fill the pane's spare height, which on
+            any screen just trailed an empty white block under the key. */}
       </div>
     </RevealOnScroll>
   );
