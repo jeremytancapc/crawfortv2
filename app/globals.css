@@ -608,6 +608,97 @@ input[type="range"]::-moz-range-thumb {
   height: 100%;
 }
 
+/* Picked card ---------------------------------------------------------- */
+
+/* The picked card has several times the width of a resting one, but TYPE.body
+   tops out at 15px either way. Once a card has the row to itself, let its
+   bullets use the room. The other cards keep the stock size, so their rows no
+   longer line up with the picked one - nothing to line up with at that point. */
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-features {
+  grid-template-rows: repeat(4, auto);
+  row-gap: 0.625rem;
+}
+
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-features li > span:last-child {
+  font-size: clamp(0.875rem, min(10.5cqi, 2.8dvh), 1.1875rem);
+}
+
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-features li > :first-child {
+  width: clamp(0.875rem, min(11cqi, 3.2dvh), 1.375rem);
+  height: clamp(0.875rem, min(11cqi, 3.2dvh), 1.375rem);
+}
+
+.plan-features li > span:last-child {
+  transition: font-size 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.plan-features li > :first-child {
+  transition:
+    width 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Bigger bullets end closer to the button; give the last one some air. */
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-card-cta {
+  padding-top: 1.25rem;
+}
+
+/* "Selected" is the confirmation of the pick, so it reads at a glance. */
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-card-cta-btn {
+  padding-block: 0.75rem;
+}
+
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-card-cta-btn > span:last-child {
+  gap: 0.375rem;
+  font-size: clamp(0.9375rem, min(9.5cqi, 2.8dvh), 1.25rem);
+}
+
+/* The tick pops in on every pick (it mounts fresh each time), then keeps a
+   slow beat so the selected card still says so after the eye moves on. */
+.plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-card-cta-btn svg {
+  width: 1.2em;
+  height: 1.2em;
+  animation:
+    plan-check-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    plan-check-beat 2.4s ease-in-out 900ms infinite;
+}
+
+@keyframes plan-check-pop {
+  0% {
+    transform: scale(0) rotate(-90deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.25) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes plan-check-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-features li > span:last-child,
+  .plan-features li > :first-child {
+    transition: none;
+  }
+
+  .plan-lane[data-expanded="true"] .plan-lane-item[data-active="true"] .plan-card-cta-btn svg {
+    animation: none;
+  }
+}
+
 /* Same treatment as the gate payout control: Continue stays live, and a
    missing pick paints the three cards system-red instead of greying the CTA. */
 .plan-lane--invalid {
@@ -1610,78 +1701,6 @@ body:has(.theme-ios) {
   scroll-margin-bottom: 9rem;
 }
 
-@keyframes credit-gauge-nudge-amount {
-  0%,
-  100% {
-    color: var(--text-primary);
-    border-bottom-color: var(--border-medium);
-    transform: scale(1);
-  }
-  40% {
-    color: #e6b800;
-    border-bottom-color: #e6b800;
-    transform: scale(1.06);
-  }
-}
-
-@keyframes credit-gauge-nudge-arc {
-  0%,
-  100% {
-    filter: none;
-  }
-  40% {
-    filter: drop-shadow(0 0 10px #ffcc00) sepia(0.55) saturate(4) hue-rotate(8deg);
-  }
-}
-
-.credit-gauge.is-nudging .ios-display-amount,
-.credit-gauge.is-nudging .ios-display-amount span,
-.credit-gauge.is-nudging .ios-display-amount input {
-  animation: credit-gauge-nudge-amount 1.1s ease-in-out 2;
-}
-
-.credit-gauge.is-nudging .credit-gauge-arc {
-  animation: credit-gauge-nudge-arc 1.1s ease-in-out 2;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .credit-gauge.is-nudging .ios-display-amount,
-  .credit-gauge.is-nudging .ios-display-amount span,
-  .credit-gauge.is-nudging .ios-display-amount input,
-  .credit-gauge.is-nudging .credit-gauge-arc {
-    animation-iteration-count: 1;
-    animation-duration: 0.6s;
-  }
-
-  @keyframes credit-gauge-nudge-amount {
-    0%,
-    100% {
-      color: var(--text-primary);
-      border-bottom-color: var(--border-medium);
-      transform: none;
-    }
-    40% {
-      color: #e6b800;
-      border-bottom-color: #e6b800;
-      transform: none;
-    }
-  }
-
-  @keyframes credit-gauge-nudge-arc {
-    0%,
-    100% {
-      filter: none;
-    }
-    40% {
-      filter: sepia(0.55) saturate(4) hue-rotate(8deg);
-    }
-  }
-}
-
-.credit-gauge-nudge-hint {
-  color: #c9a000;
-}
-
 .credit-gauge-arc {
   max-width: 100%;
   min-width: 0;
@@ -1693,11 +1712,6 @@ body:has(.theme-ios) {
 
 .credit-gauge-arc:active {
   cursor: grabbing;
-}
-
-/* Lifts the handle off the ticks so it reads as a grabbable control. */
-.credit-gauge-knob {
-  filter: drop-shadow(0 2px 4px oklch(0.32 0.14 260 / 0.3));
 }
 
 .credit-gauge[data-disabled="true"] .credit-gauge-arc {

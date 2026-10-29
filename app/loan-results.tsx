@@ -19,13 +19,12 @@ import {
   Feather,
   Star,
   SlidersHorizontal,
-  HandTap,
 } from "@phosphor-icons/react";
 import { PrimaryButton, StickyFooter } from "@/app/apply-gate/ios-ui";
 import { useApplyStepNav } from "@/app/apply-gate/use-apply-step-nav";
 import { useApplyPath } from "@/app/use-apply-path";
 import { useLocale } from "@/app/i18n/locale-provider";
-import { CreditGauge, GAUGE_LOCKED_MAJOR } from "@/app/credit-gauge";
+import { CreditGauge, formatSgd, GAUGE_FILL_SWATCH, GAUGE_TRACK_SWATCH } from "@/app/credit-gauge";
 import {
   clampWithdrawAmount,
   MIN_WITHDRAW_AMOUNT,
@@ -158,6 +157,12 @@ function ordinalSuffix(n: number): string {
 
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+/** "31st October 2026" - the offer's expiry date as the card shows it. */
+function offerExpiryLabel(from = new Date()): string {
+  const d = computeExpiry(from);
+  return `${ordinalSuffix(d.getDate())} ${FULL_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 // ── Term-sheet confirmed offer card ───────────────────────────────────────────
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -215,126 +220,105 @@ function RevealOnScroll({
 
 interface OfferCardProps {
   formData: FormData;
-  creditLimit?: number;
+  /** Maximum Loan Quantum - the full sweep of the dial; never drawable today. */
+  maximumLoanQuantum?: number;
   withdrawAmount: number;
   onWithdrawAmountChange: (amount: number) => void;
-  nudgeNonce?: number;
-  showNudgeHint?: boolean;
-  onInteract?: () => void;
 }
 
-/** Legend swatch for the gauge's locked ticks. The ticks themselves run lighter
- *  (see credit-gauge.tsx); a 10px dot uses the deeper landmark yellow. */
+/** Splits a translated sentence around its {amount} slot, so the figure can
+ *  be set in bold without a separate key for each half of the sentence. */
+function withAmount(sentence: string, amount: ReactNode): ReactNode {
+  const [before, after = ""] = sentence.split("{amount}");
+  return (
+    <>
+      {before}
+      {amount}
+      {after}
+    </>
+  );
+}
 
 function OfferHeader({
   formData,
-  creditLimit,
+  maximumLoanQuantum,
   withdrawAmount,
   onWithdrawAmountChange,
-  nudgeNonce = 0,
-  showNudgeHint = false,
-  onInteract,
 }: OfferCardProps) {
   const { t } = useLocale();
-  const [amountFocused, setAmountFocused] = useState(false);
-  const [amountRaw, setAmountRaw] = useState(String(withdrawAmount));
 
   const maxWithdraw = formData.amount;
+  const quantum = Math.max(maximumLoanQuantum ?? 0, maxWithdraw);
   const minWithdraw = Math.min(MIN_WITHDRAW_AMOUNT, maxWithdraw);
-  const limit = creditLimit && creditLimit > maxWithdraw ? creditLimit : maxWithdraw;
-  const hasStructuralReserve = limit > maxWithdraw;
   const canAdjust = maxWithdraw > minWithdraw;
 
   // Offer expiry date for the footer meta strip (static label, not a live clock).
-  const renewalDate = useMemo(() => computeExpiry(new Date()), []);
-  const renewalLabel = `${ordinalSuffix(renewalDate.getDate())} ${FULL_MONTHS[renewalDate.getMonth()]} ${renewalDate.getFullYear()}`;
+  const renewalLabel = useMemo(() => offerExpiryLabel(), []);
 
   const commitAmount = (raw: number) => {
-    const clamped = clampWithdrawAmount(raw, maxWithdraw);
-    onWithdrawAmountChange(clamped);
-    setAmountRaw(String(clamped));
+    onWithdrawAmountChange(clampWithdrawAmount(raw, maxWithdraw));
   };
 
+  const legend = [
+    {
+      swatch: GAUGE_FILL_SWATCH,
+      term: t("Current drawdown"),
+      detail: withAmount(t("You are drawing {amount} now."), formatSgd(withdrawAmount)),
+    },
+    {
+      swatch: GAUGE_TRACK_SWATCH,
+      term: t("Pre-approved amount"),
+      detail: (
+        <>
+          {withAmount(
+            t("Your maximum loan quantum is {amount}."),
+            <strong className="font-semibold text-[var(--text-primary)]">
+              {formatSgd(quantum)}
+            </strong>,
+          )}
+          <span className="block">{t("Unlocks over time with good repayment")}</span>
+        </>
+      ),
+    },
+  ];
+
   return (
-    /* One card: the gauge carries the whole story - the arc is the total
-       limit, the coloured ticks are what's available today, and the figure
-       in the middle is what they're taking. Expiry and the explainer sit
+    /* One card: the arc is the Maximum Loan Quantum, the blue fill is what
+       is drawn today - which can only go up to what Ascend approved - and the
+       big figure is the quantum itself. Expiry and the key to the arc sit
        below as rows of the same card. */
     <RevealOnScroll>
       <div className="ios-card">
-        <div className="flex w-full min-w-0 flex-col items-center px-5 pb-5 pt-6">
-          <div className="w-full min-w-0">
-            <CreditGauge
-              value={withdrawAmount}
-              maxToday={maxWithdraw}
-              limit={limit}
-              min={minWithdraw}
-              step={WITHDRAW_STEP}
-              onChange={commitAmount}
-              disabled={!canAdjust}
-              ariaLabel={t("Amount to withdraw today. Drag the dial or use arrow keys.")}
-              nudgeNonce={nudgeNonce}
-              showNudgeHint={showNudgeHint}
-              onInteract={onInteract}
-            >
-              {({ value: displayValue, isIntro }) => (
-              <div className="flex w-full flex-col items-center">
-              <span className="rounded-full bg-[var(--brand-blue-hex)] px-2.5 py-1 text-[clamp(7.5px,calc(2.7vw_-_3.6px),10px)] font-bold uppercase leading-none tracking-[0.1em] text-white">
-                {t("Approved amount")}
-              </span>
-              <div
-                className="ios-display-amount mt-1.5 flex items-baseline justify-center gap-1 pb-1 leading-none"
-                style={
-                  canAdjust
-                    ? { borderBottom: "1.5px dashed var(--border-medium)" }
-                    : undefined
-                }
-              >
-                <span
-                  aria-hidden="true"
-                  className="text-[clamp(11px,calc(6.3vw_-_8.5px),24px)] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]"
-                >
-                  $
+        <div className="flex w-full min-w-0 flex-col items-center px-5 pb-9 pt-7">
+          <CreditGauge
+            value={withdrawAmount}
+            max={maxWithdraw}
+            total={quantum}
+            min={minWithdraw}
+            step={WITHDRAW_STEP}
+            onChange={commitAmount}
+            disabled={!canAdjust}
+            ariaLabel={t("Amount to withdraw today. Drag the dial or use arrow keys.")}
+          >
+            {/* Counts up with the intro fill, then shows the same snapped
+                figure as "You are drawing" below, so the two never disagree. */}
+            {({ value, isIntro }) => (
+              <>
+                <span className="rounded-full bg-[var(--brand-blue-hex)] px-3 py-1.5 text-[clamp(8px,calc(2.7vw_-_3px),11px)] font-bold uppercase leading-none tracking-[0.12em] text-white">
+                  {t("Pre-approved amount")}
                 </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={amountFocused ? amountRaw : displayValue.toLocaleString("en-SG")}
-                  onPointerDown={() => onInteract?.()}
-                  onFocus={() => {
-                    onInteract?.();
-                    setAmountFocused(true);
-                    setAmountRaw(String(withdrawAmount));
-                  }}
-                  onChange={(e) => setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))}
-                  onBlur={() => {
-                    setAmountFocused(false);
-                    commitAmount(parseInt(amountRaw, 10));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.currentTarget.blur();
-                  }}
-                  disabled={!canAdjust}
-                  readOnly={isIntro}
-                  aria-label={t("Type the amount to withdraw today")}
-                  className="ios-display-input border-0 bg-transparent p-0 text-center text-[clamp(18px,calc(10.5vw_-_14px),40px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)] outline-none disabled:opacity-100"
-                  style={{
-                    fieldSizing: "content",
-                    width: "auto",
-                    minWidth: `${String(displayValue.toLocaleString("en-SG")).length}ch`,
-                  }}
-                />
-              </div>
-              {canAdjust && (
-                <p className="mt-1.5 flex items-center gap-1 text-[clamp(7.5px,calc(2.7vw_-_3.6px),10px)] leading-none text-[var(--text-tertiary)]">
-                  <HandTap size={12} weight="fill" className="shrink-0 text-[var(--accent)]" />
-                  {t("Drag or tap to change")}
-                </p>
-              )}
-              </div>
-              )}
-            </CreditGauge>
-          </div>
+                <span className="mt-2 text-[clamp(26px,calc(11vw_-_10px),44px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]">
+                  {formatSgd(quantum)}
+                </span>
+                <span className="mt-2.5 text-[clamp(12px,calc(3.6vw_-_1px),15px)] leading-tight text-[var(--text-primary)]">
+                  {t("Current drawdown")}:{" "}
+                  <span className="font-bold tabular-nums">
+                    {formatSgd(isIntro ? value : withdrawAmount)}
+                  </span>
+                </span>
+              </>
+            )}
+          </CreditGauge>
         </div>
 
         <div className="ios-row" style={{ borderTop: "1px solid var(--separator)" }}>
@@ -347,52 +331,30 @@ function OfferHeader({
           </span>
         </div>
 
-        {hasStructuralReserve && (
-          <div className="px-4 pb-4 pt-3.5" style={{ borderTop: "1px solid var(--separator)" }}>
-            <p className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
-              {t("How your credit limit works")}
-            </p>
-            {/* Swatches match the gauge ticks above, so the explainer reads as
-                a key to the arc rather than a wall of text. */}
-            <dl className="mt-3 flex flex-col gap-3">
-              {[
-                {
-                  color: "var(--brand-blue-hex)",
-                  termColor: "var(--text-primary)",
-                  term: "Approved",
-                  detail:
-                    "Paid into your bank after you finish every step, including your in-person appointment.",
-                },
-                {
-                  color: GAUGE_LOCKED_MAJOR,
-                  termColor: "var(--text-primary)",
-                  term: "Unlocks later",
-                  detail:
-                    "Repay on time in the Crawfort app and the remaining credit unlocks automatically.",
-                },
-              ].map((row) => (
-                <div key={row.term} className="flex items-start gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ background: row.color }}
-                  />
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <dt
-                      className="text-[14px] font-semibold leading-tight"
-                      style={{ color: row.termColor }}
-                    >
-                      {t(row.term)}
-                    </dt>
-                    <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
-                      {t(row.detail)}
-                    </dd>
-                  </div>
-                </div>
-              ))}
-            </dl>
-          </div>
-        )}
+        {/* Swatches match the band above, so this reads as a key to the arc
+            rather than a wall of text. */}
+        <dl
+          className="flex flex-col gap-4 px-4 pb-5 pt-4"
+          style={{ borderTop: "1px solid var(--separator)" }}
+        >
+          {legend.map((row) => (
+            <div key={row.term} className="flex items-start gap-3">
+              <span
+                aria-hidden="true"
+                className="mt-[2px] h-3.5 w-3.5 shrink-0 rounded-full"
+                style={{ background: row.swatch }}
+              />
+              <div className="flex min-w-0 flex-col gap-1">
+                <dt className="text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
+                  {row.term}
+                </dt>
+                <dd className="text-[14px] leading-[1.45] text-[var(--text-secondary)]">
+                  {row.detail}
+                </dd>
+              </div>
+            </div>
+          ))}
+        </dl>
         <div aria-hidden className="apply-fit-leftover-spacer" />
       </div>
     </RevealOnScroll>
@@ -447,23 +409,23 @@ interface PlanSurface {
  *  Resting cards are a pale wash with the plan's own hue as type. The pick
  *  takes the full-chroma fill so the chosen card is the colour block. */
 const PLAN_SURFACES = {
+  // Gold at the chroma of a highlighter, not a wash.
   lowest_interest: {
-    fill: "oklch(0.50 0.22 264)",
-    ink: "oklch(0.99 0.01 264)",
-    mutedInk: "oklch(0.90 0.04 264)",
-    hairline: "oklch(1 0 0 / 0.22)",
-    accent: "oklch(0.99 0.01 264)",
-    isDark: true,
-  },
-  // Gold at the chroma of a highlighter, not a wash. The Popular tab sitting
-  // on it is ink, not amber: amber on gold is a badge that has disappeared.
-  average: {
     fill: "oklch(0.88 0.185 98)",
     ink: "#12141A",
     mutedInk: "oklch(0.28 0.04 80)",
     hairline: "oklch(0.16 0.03 80 / 0.20)",
     accent: "#12141A",
     isDark: false,
+  },
+  // The plan we want picked wears the brand blue.
+  average: {
+    fill: "oklch(0.50 0.22 264)",
+    ink: "oklch(0.99 0.01 264)",
+    mutedInk: "oklch(0.90 0.04 264)",
+    hairline: "oklch(1 0 0 / 0.22)",
+    accent: "oklch(0.99 0.01 264)",
+    isDark: true,
   },
   lowest_instalment: {
     fill: "oklch(0.55 0.14 188)",
@@ -1260,7 +1222,11 @@ function PlanPicker({
                   <PlanCard
                     plan={plan}
                     isSelected={selectedPlanId === plan.id}
-                    onSelect={() => onPlanSelect(plan.id)}
+                    /* Tapping the pick again clears it, so the row goes
+                       back to three even columns to compare. */
+                    onSelect={() =>
+                      onPlanSelect(selectedPlanId === plan.id ? null : plan.id)
+                    }
                   />
                 </div>
               </RevealOnScroll>
@@ -1333,18 +1299,6 @@ function SelectedPlanStrip({
       exit={{ opacity: 0, y: 4 }}
       transition={pop}
     >
-      <motion.span
-        className="inline-flex"
-        initial={{ scale: 0.2 }}
-        animate={{ scale: 1 }}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : { type: "spring", stiffness: 700, damping: 16, delay: 0.06 }
-        }
-      >
-        <CheckCircle size={15} weight="fill" style={{ color: surface.accent }} />
-      </motion.span>
       <span
         className="text-[13px] font-semibold leading-none"
         style={{ color: surface.ink }}
@@ -1596,9 +1550,9 @@ interface LoanResultsProps {
   monthlyRepayment: number;
   onAccept: (withdrawAmount: number) => void;
   reminderItems?: string[];
-  /** Originally requested amount. When greater than `formData.amount`, the header
-   *  presents `formData.amount` as "available today" against this as the credit limit. */
-  creditLimit?: number;
+  /** Maximum Loan Quantum: the full sweep of the amount dial. `formData.amount`
+   *  is what can be drawn today, and the dial stops there. */
+  maximumLoanQuantum?: number;
   /** Amount page confirms the figure; plan page picks a repayment schedule. */
   phase: "amount" | "plan";
   /** Override the next-step URL for an isolated preview flow. */
@@ -1612,7 +1566,7 @@ interface LoanResultsProps {
 export function LoanResults({
   formData,
   onAccept,
-  creditLimit,
+  maximumLoanQuantum,
   phase,
   nextStepPath,
   initialWithdrawAmount,
@@ -1632,10 +1586,6 @@ export function LoanResults({
   );
   const withdrawAmount = amount ?? internalAmount;
   const setWithdrawAmount = onAmountChange ?? setInternalAmount;
-  const [hasAdjustedAmount, setHasAdjustedAmount] = useState(false);
-  const hasAdjustedAmountRef = useRef(false);
-  const hasBeenNudgedRef = useRef(false);
-  const [nudgeNonce, setNudgeNonce] = useState(0);
 
   useEffect(() => {
     if (amount != null) return;
@@ -1646,11 +1596,6 @@ export function LoanResults({
     const stored = readStoredWithdrawAmount(formData.amount);
     if (stored != null) setWithdrawAmount(stored);
   }, [amount, formData.amount, initialWithdrawAmount, setWithdrawAmount]);
-
-  const markAmountAdjusted = useCallback(() => {
-    hasAdjustedAmountRef.current = true;
-    setHasAdjustedAmount(true);
-  }, []);
 
   const persistAmount = useCallback(async (amount: number) => {
     storeWithdrawAmount(amount);
@@ -1667,17 +1612,6 @@ export function LoanResults({
   }, [formData.leadId]);
 
   const handleConfirmAmount = useCallback(() => {
-    // First Continue without touching the dial: flash the yellow reminder.
-    // A second Continue without a change is accepted - they have been warned.
-    if (
-      !hasAdjustedAmountRef.current &&
-      formData.amount > MIN_WITHDRAW_AMOUNT &&
-      !hasBeenNudgedRef.current
-    ) {
-      hasBeenNudgedRef.current = true;
-      setNudgeNonce((n) => n + 1);
-      return;
-    }
     storeWithdrawAmount(withdrawAmount);
     void persistAmount(withdrawAmount);
     onAccept(withdrawAmount);
@@ -1685,7 +1619,7 @@ export function LoanResults({
       nextStepPath?.(withdrawAmount) ??
         applyHref(`/apply/choose-plan?amount=${withdrawAmount}`),
     );
-  }, [formData.amount, persistAmount, withdrawAmount, onAccept, router, applyHref, nextStepPath]);
+  }, [persistAmount, withdrawAmount, onAccept, router, applyHref, nextStepPath]);
 
   const stepNav = useApplyStepNav(isPlanPhase ? "choosePlan" : "approval", {
     onNext: isPlanPhase ? undefined : () => { void handleConfirmAmount(); },
@@ -1802,12 +1736,9 @@ export function LoanResults({
           <div className="min-w-0" style={isExpired ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none" } : undefined}>
             <OfferHeader
               formData={formData}
-              creditLimit={creditLimit}
+              maximumLoanQuantum={maximumLoanQuantum}
               withdrawAmount={withdrawAmount}
               onWithdrawAmountChange={setWithdrawAmount}
-              nudgeNonce={nudgeNonce}
-              showNudgeHint={nudgeNonce > 0 && !hasAdjustedAmount}
-              onInteract={markAmountAdjusted}
             />
           </div>
         )}
@@ -1885,7 +1816,7 @@ export function LoanResults({
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleConfirmAmount}>
-            {t("Get Started")}
+            {t("Next: Choose Loan Plan")}
           </PrimaryButton>
         )}
       </StickyFooter>
