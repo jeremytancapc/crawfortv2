@@ -9,27 +9,25 @@ const CFP_CONFIG = {
 const CFP_SHEET_NAME = '[PROD] CrawfortV2';
 const CFP_HEADER_ROWS = 1;
 const CFP_KEY_COL = 2;      // B: Ref
-const CFP_SYNC_COLS = 26;   // A–Z; AA–AC are the team's and never written by the sync
+const CFP_SYNC_COLS = 24;   // A–X; Y–AA are the team's and never written by the sync
 const CFP_DAYS_BACK = 30;
 const CFP_HEADERS = [
   'Created (SGT)', 'Ref', 'Mobile', 'Applied via', 'Pile', 'Stage', 'Needs follow-up',
   'Hours since last activity', 'Last activity (SGT)', 'Ascend result',
-  'V1 (pre-approved amount)', 'V2 (A-Card credit amount)', 'Approved V1', 'Approved V2',
-  'Requested', 'Income', 'Income type',
+  'V1 (pre-approved amount)', 'V2 (A-Card credit amount)', 'Requested', 'Income', 'Income type',
   'Plan chosen', 'Loan tenure', 'Decline reason', 'Booking (SGT)', 'Documents uploaded',
   'Last document issue', 'Why no Ascend order', 'Sent to AirConnect (SGT)', 'Last synced',
   'Remarks', 'PIC', 'Called on',
 ];
-// The number format of each synced column, A–Z. Applied on every run: a cell
+// The number format of each synced column, A–X. Applied on every run: a cell
 // keeps its format when its value changes, so without this a column that used to
 // hold dates goes on showing a count or an hour total as a date.
 const CFP_FORMATS = [
   'yyyy-mm-dd hh:mm', '@', '@', '@', '@', '@', '@',  // A created; B–G text (C: mobile)
   '0', 'yyyy-mm-dd hh:mm', '@',                      // H hours, I last activity, J
-  '#,##0', '#,##0', '#,##0', '#,##0',                // K V1, L V2, M approved V1, N approved V2
-  '#,##0', '#,##0', '@',                             // O requested, P income, Q income type
-  '@', '@', '@', 'yyyy-mm-dd hh:mm', '0', '@', '@',  // R, S tenure, T, U booking, V documents, W, X
-  'yyyy-mm-dd hh:mm', 'yyyy-mm-dd hh:mm',            // Y sent to AirConnect, Z last synced
+  '#,##0', '#,##0', '#,##0', '#,##0', '@',           // K V1, L V2, M requested, N income, O type
+  '@', '@', '@', 'yyyy-mm-dd hh:mm', '0', '@', '@',  // P, Q tenure, R, S booking, T documents, U, V
+  'yyyy-mm-dd hh:mm', 'yyyy-mm-dd hh:mm',            // W sent to AirConnect, X last synced
 ];
 
 function cfpConfig_(name) {
@@ -51,12 +49,13 @@ function cfpNum_(v) {
  *
  * Earlier layouts are recognised by where Remarks sits. Each gets its new columns
  * inserted where they belong, so Remarks, PIC and Called on - and any formula in
- * them - move right with their rows instead of being overwritten by the sync.
- * A sheet several layouts behind goes through each step in turn:
+ * them - move right with their rows instead of being overwritten by the sync:
  *   first  (Remarks in R): Mobile after B, V1 and V2 after Ascend result
  *   second (Remarks in U): Requested, Income and Income type after V2,
  *                          Loan tenure after Plan chosen
- *   third  (Remarks in Y): Approved V1 and Approved V2 after V2
+ * A sheet synced while it had Approved V1 and Approved V2 in M and N (Remarks in
+ * AA) has those two columns deleted instead, which moves the team's columns
+ * back left with their rows. M and N only ever held a copy of the A-Card limit.
  * The team's header cells (Remarks, PIC, Called on) are only written when empty,
  * so a formula in one of them is kept.
  */
@@ -70,7 +69,7 @@ function cfpEnsureHeader_(sheet) {
     let layout = 0;
     if (row1[2] === 'Applied via' && row1[17] === 'Remarks') layout = 1;
     else if (row1[10] === 'V1 pre-approved' && row1[20] === 'Remarks') layout = 2;
-    else if (row1[11] === 'V2 (A-Card credit amount)' && row1[24] === 'Remarks') layout = 3;
+    else if (row1[12] === 'Approved V1' && row1[13] === 'Approved V2' && row1[26] === 'Remarks') layout = 4;
 
     if (layout === 1) {
       sheet.insertColumnAfter(2);       // C: Mobile
@@ -78,12 +77,10 @@ function cfpEnsureHeader_(sheet) {
       layout = 2;
     }
     if (layout === 2) {
-      sheet.insertColumnsAfter(12, 3);  // Requested, Income, Income type, after V2
-      sheet.insertColumnAfter(16);      // Loan tenure, after Plan chosen
-      layout = 3;
-    }
-    if (layout === 3) {
-      sheet.insertColumnsAfter(12, 2);  // M, N: Approved V1, Approved V2, after V2
+      sheet.insertColumnsAfter(12, 3);  // M, N, O: Requested, Income, Income type
+      sheet.insertColumnAfter(16);      // Q: Loan tenure, after Plan chosen
+    } else if (layout === 4) {
+      sheet.deleteColumns(13, 2);       // M, N: Approved V1 and Approved V2
     } else if (row1[CFP_KEY_COL - 1] !== CFP_HEADERS[CFP_KEY_COL - 1] && row1.some(String)) {
       // Row 1 holding data rather than any header: push it down, never overwrite it.
       sheet.insertRowBefore(1);
@@ -100,7 +97,7 @@ function cfpEnsureHeader_(sheet) {
   }
 }
 
-/** Applies CFP_FORMATS to every data row of A–Z. The header row and the team columns are left alone. */
+/** Applies CFP_FORMATS to every data row of A–X. The header row and the team columns are left alone. */
 function cfpEnsureFormats_(sheet) {
   const rows = sheet.getMaxRows() - CFP_HEADER_ROWS;
   if (rows < 1) return;
@@ -108,7 +105,7 @@ function cfpEnsureFormats_(sheet) {
     .setNumberFormats(Array.from({ length: rows }, () => CFP_FORMATS));
 }
 
-/** Refreshes A–Z for every applicant from the last CFP_DAYS_BACK days or with an upcoming booking. */
+/** Refreshes A–X for every applicant from the last CFP_DAYS_BACK days or with an upcoming booking. */
 function syncCrawfortWorklistProd() {
   const sql = `
     select created_sgt, ref, mobile, applied_via, pile, stage, needs_follow_up,
@@ -154,23 +151,18 @@ function syncCrawfortWorklistProd() {
       rs.getString('ascend_result') || '',
       cfpNum_(rs.getString('max_loan_quantum')),            // K: V1 (pre-approved amount)
       cfpNum_(rs.getString('acard_limit')),                 // L: V2 (A-Card credit amount)
-      // M, N: the approved amount under V1 and under V2. One figure for now - the
-      // A-Card Limit, which the app treats as the approved loan amount - until
-      // the two are told apart.
-      cfpNum_(rs.getString('acard_limit')),                 // M: Approved V1
-      cfpNum_(rs.getString('acard_limit')),                 // N: Approved V2
-      cfpNum_(rs.getString('requested')),                   // O
-      cfpNum_(rs.getString('income')),                      // P
-      rs.getString('income_type') || '',                   // Q
+      cfpNum_(rs.getString('requested')),                   // M
+      cfpNum_(rs.getString('income')),                      // N
+      rs.getString('income_type') || '',                   // O
       rs.getString('plan_chosen') || '',
-      rs.getString('loan_tenure') || '',                   // S
+      rs.getString('loan_tenure') || '',                   // Q
       rs.getString('decline_reason') || '',
       rs.getString('booking_sgt') || '',
       cfpNum_(rs.getString('documents_uploaded')),
       rs.getString('last_document_issue') || '',
       rs.getString('no_order_reason') || '',
       rs.getString('sent_to_airconnect_sgt') || '',
-      synced,                                              // Z: last synced
+      synced,                                              // X: last synced
     ];
     const at = rowOf[row[CFP_KEY_COL - 1]];
     if (at) updates.push({ at, row }); else inserts.push(row);
