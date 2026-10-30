@@ -49,8 +49,8 @@ such as one that fills in the PIC.
 | H | Hours since last activity | |
 | I | Last activity (SGT) | |
 | J | Ascend result | `passed` / `pending` / `rejected` |
-| K | V1 (pre-approved amount) | The **Maximum Loan Quantum** from MLCB: the figure the offer screen shows as the "pre-approved amount". What they could unlock, not an offer |
-| L | V2 (A-Card credit amount) | The **A-Card Limit**: what Ascend is willing to lend today, and the most they can draw. Blank until Ascend answers with a pass and a figure |
+| K | V1 (Pre-Approved) | The **Maximum Loan Quantum** from MLCB: the figure the offer screen shows as the "pre-approved amount". What they could unlock, not an offer |
+| L | V2 (A-Card) | The **A-Card Limit**: what Ascend is willing to lend today, and the most they can draw. Blank until Ascend answers with a pass and a figure |
 | M | Requested | What they asked for at the start. **Replaced by the amount they chose to draw once they pick a plan** - the app keeps one figure |
 | N | Income | The monthly income Ascend was last given: from the documents they submitted, otherwise from MyInfo |
 | O | Income type | Ascend's label for that income: `NOA`, `CPF`, `NON_PANEL_PAYSLIP`, `PANEL_PAYSLIP`, `BANK_STATEMENT_OTHER_INCOME`, `SELF-DECLARED` |

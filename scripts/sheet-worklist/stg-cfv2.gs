@@ -14,7 +14,7 @@ const CF_DAYS_BACK = 30;
 const CF_HEADERS = [
   'Created (SGT)', 'Ref', 'Mobile', 'Applied via', 'Pile', 'Stage', 'Needs follow-up',
   'Hours since last activity', 'Last activity (SGT)', 'Ascend result',
-  'V1 (pre-approved amount)', 'V2 (A-Card credit amount)', 'Requested', 'Income', 'Income type',
+  'V1 (Pre-Approved)', 'V2 (A-Card)', 'Requested', 'Income', 'Income type',
   'Plan chosen', 'Loan tenure', 'Decline reason', 'Booking (SGT)', 'Documents uploaded',
   'Last document issue', 'Why no Ascend order', 'Sent to AirConnect (SGT)', 'Last synced',
   'Remarks', 'PIC', 'Called on',
@@ -149,8 +149,8 @@ function syncCrawfortWorklist() {
       cfNum_(rs.getString('hours_since_last_activity')),
       rs.getString('last_activity_sgt') || '',
       rs.getString('ascend_result') || '',
-      cfNum_(rs.getString('max_loan_quantum')),            // K: V1 (pre-approved amount)
-      cfNum_(rs.getString('acard_limit')),                 // L: V2 (A-Card credit amount)
+      cfNum_(rs.getString('max_loan_quantum')),            // K: V1 (Pre-Approved)
+      cfNum_(rs.getString('acard_limit')),                 // L: V2 (A-Card)
       cfNum_(rs.getString('requested')),                   // M
       cfNum_(rs.getString('income')),                      // N
       rs.getString('income_type') || '',                   // O
