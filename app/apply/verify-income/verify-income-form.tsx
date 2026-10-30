@@ -20,6 +20,7 @@ import { LoanLoadingScreen } from "@/app/loan-loading-screen";
 import { CircleLoader } from "@/components/ui/circle-loader";
 import { APPLY_PROGRESS } from "@/lib/apply-progress";
 import { footerAction } from "@/lib/income-add-more";
+import { UPLOAD_GUIDANCE } from "@/lib/income-upload-guidance";
 import { useLocale } from "@/app/i18n/locale-provider";
 import { VerifyIncomeResults } from "@/app/apply/verify-income/verify-income-results";
 import {
@@ -191,6 +192,16 @@ export function VerifyIncomeForm({
                 <Info size={18} weight="fill" aria-hidden className="shrink-0 text-[var(--accent)]" />
                 {t("Documents must match your Singpass name.")}
               </p>
+              <div role="note" className="border-b border-[var(--separator,#e5e5ea)] px-3.5 py-3">
+                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">
+                  {t(UPLOAD_GUIDANCE.heading)}
+                </p>
+                <ul className="mt-1.5 flex flex-col gap-1.5 text-[13px] leading-snug text-[var(--text-secondary)]">
+                  {UPLOAD_GUIDANCE.lines.map((line) => (
+                    <li key={line}>{t(line)}</li>
+                  ))}
+                </ul>
+              </div>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}

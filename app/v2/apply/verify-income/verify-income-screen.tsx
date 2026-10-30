@@ -15,6 +15,7 @@ import { Pill, Row, Rows } from "@/app/v2/ui/controls";
 import { UploadIllustration } from "@/app/v2/ui/illustrations";
 import { V2Body, V2Footer, V2Header, V2Illustration, V2Screen, V2Title } from "@/app/v2/ui/screen";
 import { markApplyStepVisited } from "@/lib/apply-step-nav";
+import { UPLOAD_GUIDANCE } from "@/lib/income-upload-guidance";
 import { formatCurrency } from "@/lib/loan-form";
 
 export function VerifyIncomeScreen({
@@ -161,6 +162,19 @@ export function VerifyIncomeScreen({
           title="Upload your latest 3 months"
           subtitle={`${uploadWindow.long}. PDF, JPG or PNG.`}
         />
+
+        <div
+          role="note"
+          className="v2-enter rounded-[16px] px-4 py-3 text-[13px] leading-snug"
+          style={{ ["--i" as string]: 0, background: "var(--v2-surface)" }}
+        >
+          <p className="font-semibold text-[var(--v2-ink)]">{UPLOAD_GUIDANCE.heading}</p>
+          <ul className="mt-1.5 flex flex-col gap-1.5 text-[var(--v2-ink)] opacity-80">
+            {UPLOAD_GUIDANCE.lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
 
         <button
           type="button"
