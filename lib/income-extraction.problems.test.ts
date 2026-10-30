@@ -64,4 +64,19 @@ describe("what a refused customer is told about each file", () => {
     expect(reason).toMatch(/^3 of your files cannot be used\./);
     for (const name of ["a.png", "b.png", "c.png"]) expect(reason).toContain(name);
   });
+
+  it("ends several screenshot problems with one instruction, not one per file", () => {
+    const reason = reasonOf(
+      ["a.png", "b.png"],
+      [
+        { kind: "bank_statement", holderName: "", issuer: "" },
+        { kind: "other", holderName: "", issuer: "Central Provident Fund Board" },
+      ],
+    );
+
+    expect(reason).toContain("a.png is a screenshot that does not show your name or your bank.");
+    expect(reason).toContain("b.png is a CPF Board page, which we cannot use.");
+    expect(reason.match(/download the PDF of your payslip or bank statement/g)).toHaveLength(1);
+    expect(reason).toMatch(/instead of a screenshot\.$/);
+  });
 });

@@ -555,11 +555,17 @@ function documentProblems(
       // nothing else about it is worth saying.
       problems.push({
         blocking: true,
-        message: /\bCPF\b|Central Provident/i.test(found.issuer)
-          ? `${file} is from the CPF Board, which we cannot use. Please upload payslips or bank ` +
-            "statements instead."
-          : `${file} does not look like a payslip, bank statement or earnings statement. ` +
-            "Please remove it or upload the right document.",
+        ...(/\bCPF\b|Central Provident/i.test(found.issuer)
+          ? {
+              message: `${file} is from the CPF Board, which we cannot use. Please upload payslips or bank statements instead.`,
+              short: `${file} is a CPF Board page, which we cannot use.`,
+              needsPdf: true,
+            }
+          : {
+              message:
+                `${file} does not look like a payslip, bank statement or earnings statement. ` +
+                "Please remove it or upload the right document.",
+            }),
       });
       continue;
     }
@@ -588,11 +594,14 @@ function documentProblems(
       });
     } else if (found?.kind === "bank_statement") {
       // Almost always a screenshot of a banking app, which prints neither.
+      const shows = bankKnown ? "the account holder's name" : "your name or your bank";
       problems.push({
         blocking: false,
         message:
           `${file} does not show the account holder's name${bankKnown ? "" : " or your bank"}, which ` +
           "screenshots from a banking app often do not. Please upload the PDF statement from your bank.",
+        short: `${file} is ${doc.mediaType.startsWith("image/") ? "a screenshot that does" : "a file that does"} not show ${shows}.`,
+        needsPdf: true,
       });
     } else {
       problems.push({
@@ -609,7 +618,11 @@ function documentProblems(
 /** One file's problem is one sentence; several are counted and each said. */
 function sayProblems(problems: DocumentProblem[]): string {
   if (problems.length === 1) return problems[0].message;
-  return `${problems.length} of your files cannot be used. ${problems.map((p) => p.message).join(" ")}`;
+  const closing = problems.some((p) => p.needsPdf)
+    ? " Please download the PDF of your payslip or bank statement and upload that instead of a screenshot."
+    : "";
+  const said = problems.map((p) => (closing && p.needsPdf ? p.short : p.message)).join(" ");
+  return `${problems.length} of your files cannot be used. ${said}${closing}`;
 }
 
 /**
@@ -618,7 +631,18 @@ function sayProblems(problems: DocumentProblem[]): string {
  * said alongside whatever else is wrong with the months: a customer told only
  * about the name, fixes it, and is then refused again for the date.
  */
-type DocumentProblem = { message: string; blocking: boolean };
+type DocumentProblem = {
+  /** The whole instruction, for a file that is the only one with a problem. */
+  message: string;
+  blocking: boolean;
+  /**
+   * The problem alone, without what to do about it, for when several files
+   * share one instruction. Absent when the instruction is part of the problem.
+   */
+  short?: string;
+  /** The fix is the same for every file like this: a PDF, not a screenshot. */
+  needsPdf?: boolean;
+};
 
 /** The model that reads the documents. Stored with every reply. */
 export const MODEL_ID = "claude-opus-5-5";
