@@ -33,8 +33,8 @@ customer up in AirConnect.
 
 ## Columns
 
-Row 1 is the header, written by the script. The sync writes **A-X** every run
-and never touches **Y-AA**, the team's columns - including any formula in them,
+Row 1 is the header, written by the script. The sync writes **A-Z** every run
+and never touches **AA-AC**, the team's columns - including any formula in them,
 such as one that fills in the PIC.
 
 | Col | Header | Meaning |
@@ -51,24 +51,26 @@ such as one that fills in the PIC.
 | J | Ascend result | `passed` / `pending` / `rejected` |
 | K | V1 (pre-approved amount) | The **Maximum Loan Quantum** from MLCB: the figure the offer screen shows as the "pre-approved amount". What they could unlock, not an offer |
 | L | V2 (A-Card credit amount) | The **A-Card Limit**: what Ascend is willing to lend today, and the most they can draw. Blank until Ascend answers with a pass and a figure |
-| M | Requested | What they asked for at the start. **Replaced by the amount they chose to draw once they pick a plan** - the app keeps one figure |
-| N | Income | The monthly income Ascend was last given: from the documents they submitted, otherwise from MyInfo |
-| O | Income type | Ascend's label for that income: `NOA`, `CPF`, `NON_PANEL_PAYSLIP`, `PANEL_PAYSLIP`, `BANK_STATEMENT_OTHER_INCOME`, `SELF-DECLARED` |
-| P | Plan chosen | |
-| Q | Loan tenure | e.g. `6 months`. Like Requested, replaced by the plan's tenure once they choose one |
-| R | Decline reason | The choice they picked on the offer screen |
-| S | Booking (SGT) | Date and time, if booked |
-| T | Documents uploaded | Count |
-| U | Last document issue | The sentence they were shown when a document was refused |
-| V | Why no Ascend order | Code, only for `submitted_no_ascend_order` |
-| W | Sent to AirConnect (SGT) | When the lead was pushed; blank means not in AirConnect yet |
-| X | Last synced | |
-| Y | Remarks | Team |
-| Z | PIC | Team |
-| AA | Called on | Team |
+| M | Approved V1 | The approved amount under V1. **For now the same figure as N**: the A-Card Limit, which the app treats as the approved loan amount |
+| N | Approved V2 | The approved amount under V2. Same as M until the two are told apart |
+| O | Requested | What they asked for at the start. **Replaced by the amount they chose to draw once they pick a plan** - the app keeps one figure |
+| P | Income | The monthly income Ascend was last given: from the documents they submitted, otherwise from MyInfo |
+| Q | Income type | Ascend's label for that income: `NOA`, `CPF`, `NON_PANEL_PAYSLIP`, `PANEL_PAYSLIP`, `BANK_STATEMENT_OTHER_INCOME`, `SELF-DECLARED` |
+| R | Plan chosen | |
+| S | Loan tenure | e.g. `6 months`. Like Requested, replaced by the plan's tenure once they choose one |
+| T | Decline reason | The choice they picked on the offer screen |
+| U | Booking (SGT) | Date and time, if booked |
+| V | Documents uploaded | Count |
+| W | Last document issue | The sentence they were shown when a document was refused |
+| X | Why no Ascend order | Code, only for `submitted_no_ascend_order` |
+| Y | Sent to AirConnect (SGT) | When the lead was pushed; blank means not in AirConnect yet |
+| Z | Last synced | |
+| AA | Remarks | Team |
+| AB | PIC | Team |
+| AC | Called on | Team |
 
 Filter on **Needs follow-up = Yes** for the call list; sort by **Hours since
-last activity**. The amounts (K-N) are numbers, so they sort and sum.
+last activity**. The amounts (K-P) are numbers, so they sort and sum.
 
 K and L are different amounts and must not be read as one (see `CONTEXT.md`,
 "Amounts"): K is the ceiling the applicant was shown, L is what Ascend will
@@ -118,7 +120,7 @@ that used to hold dates shows hours and counts as dates.
 
 ## Known gaps
 
-- **Not in AirConnect yet (column W blank):** an applicant is pushed only once
+- **Not in AirConnect yet (column Y blank):** an applicant is pushed only once
   Ascend opens an order, so earlier stages can't be looked up there by ref. They
   still have a mobile number in column C, which is the point of adding it.
 - **Rows only leave the window, never the sheet:** an applicant older than
