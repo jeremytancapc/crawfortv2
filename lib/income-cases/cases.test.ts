@@ -19,6 +19,8 @@ type Case = {
   applicant: { name: string; aliases?: string[] };
   today: string;
   employmentType?: string;
+  /** The customer's file names, in the order the reader saw them. Placeholder names when absent. */
+  fileNames?: string[];
   report: unknown;
   expect: { kind: string; reasonIncludes?: string[] };
 };
@@ -26,8 +28,8 @@ type Case = {
 const DIR = __dirname;
 const files = readdirSync(DIR).filter((f) => f.endsWith(".json"));
 
-const DOC = (i: number): IncomeDocument => ({
-  fileName: `document-${i + 1}.pdf`,
+const DOC = (i: number, names?: string[]): IncomeDocument => ({
+  fileName: names?.[i] ?? `document-${i + 1}.pdf`,
   mediaType: "application/pdf",
   bytes: Buffer.from("x"),
 });
@@ -42,7 +44,7 @@ describe("income cases", () => {
 
     it(`${file}: ${c.description.slice(0, 80)}`, () => {
       const count = (c.report as { documents: unknown[] }).documents.length;
-      const outcome = decide(Array.from({ length: count }, (_, i) => DOC(i)), { reported: c.report as never }, {
+      const outcome = decide(Array.from({ length: count }, (_, i) => DOC(i, c.fileNames)), { reported: c.report as never }, {
         today: new Date(c.today),
         applicant: c.applicant,
         employmentType: c.employmentType,

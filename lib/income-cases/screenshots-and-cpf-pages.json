@@ -1,0 +1,71 @@
+{
+  "description": "Four screenshots: two banking-app screens that show neither the account holder's name nor the bank, and two CPF Board pages. Production, 28 Oct 2026: seven refusals in 13 minutes, every one naming only the first file, and none saying what to upload instead. Names are replaced; the report is otherwise as stored.",
+  "applicant": {
+    "name": "TIMOTHY J A TANNER"
+  },
+  "today": "2026-10-28T00:00:00+08:00",
+  "employmentType": "EMPLOYED",
+  "fileNames": [
+    "IMG_6941.png",
+    "IMG_6929.png",
+    "IMG_6942.png",
+    "IMG_6943.png"
+  ],
+  "report": {
+    "note": "",
+    "credits": [
+      {
+        "date": "2026-10-06",
+        "payer": "STMicroelectronics AP Pte Ltd",
+        "amount": 2373.3,
+        "category": "salary"
+      },
+      {
+        "date": "2026-10-21",
+        "payer": "STMicroelectronics AP Pte Ltd",
+        "amount": 980,
+        "category": "salary"
+      }
+    ],
+    "periods": [],
+    "readable": true,
+    "documents": [
+      {
+        "kind": "bank_statement",
+        "index": 1,
+        "issuer": "",
+        "holderName": ""
+      },
+      {
+        "kind": "bank_statement",
+        "index": 2,
+        "issuer": "",
+        "holderName": ""
+      },
+      {
+        "kind": "other",
+        "index": 3,
+        "issuer": "cpf.gov.sg",
+        "holderName": ""
+      },
+      {
+        "kind": "other",
+        "index": 4,
+        "issuer": "Central Provident Fund Board",
+        "holderName": "TIMOTHY J A TANNER"
+      }
+    ],
+    "statements": []
+  },
+  "expect": {
+    "kind": "needs_review",
+    "reasonIncludes": [
+      "IMG_6941.png",
+      "IMG_6929.png",
+      "IMG_6942.png",
+      "IMG_6943.png",
+      "CPF",
+      "PDF statement"
+    ]
+  }
+}
