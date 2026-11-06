@@ -11,7 +11,7 @@
  * Submit works from that record, not from anything the browser says back.
  */
 
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE, decodeSession } from "@/lib/apply-session";
 import { getApplicant } from "@/lib/db/applicants";
@@ -27,7 +27,6 @@ import { isDatabaseConfigured } from "@/lib/db/sql";
 import { getDocumentBytes } from "@/lib/documents/store";
 import type { CpfProfile } from "@/lib/income-cpf";
 import { readAndDecide, type IncomeDocument } from "@/lib/income-extraction";
-import { earlierRefusals, runShadow, shadowEnabled } from "@/lib/income-agent-shadow";
 import { MAX_INCOME_FILES } from "@/lib/income-add-more";
 import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
@@ -165,31 +164,12 @@ export async function POST(request: NextRequest) {
     // The date is fixed here, once, so the rules and the record of the call
     // use the same one - a month window can only be reproduced from it.
     const today = new Date();
-    const cpf = await cpfProfileOf(applicantId);
-    // Before this attempt is recorded, so it is not counted against them.
-    const shadow = shadowEnabled();
-    const attempts = shadow ? await earlierRefusals(applicantId) : undefined;
     const { outcome, read, earlier } = await readAndDecide(documents, {
       today,
       applicant: { name: applicant.name },
       employmentType: applicant.employmentType,
-      cpf,
+      cpf: await cpfProfileOf(applicantId),
     });
-
-    // SHADOW: the income agent decides the same documents after the applicant
-    // has been answered, and its decision is kept next to the rules' own. It
-    // changes nothing they see. Off unless INCOME_AGENT_SHADOW=true.
-    if (shadow) {
-      after(() =>
-        runShadow({
-          applicantId,
-          documentIds: ids,
-          documents,
-          context: { applicant: { name: applicant.name }, employmentType: applicant.employmentType, today, cpf, attempts },
-          rules: { kind: outcome.kind, reason: outcome.kind === "usable" ? null : outcome.reason },
-        }),
-      );
-    }
 
     // Kept for every call, usable or refused: the model's raw report, the
     // prompt and model it was made under, and what we decided from it. Never
