@@ -69,7 +69,8 @@ whatever else is true of them. `stuck` shows everyone with `needs_follow_up` tru
 | `rejected_by_ascend` | Ascend rejected | Nothing, unless the reason looks wrong |
 | `waiting_for_staff_review` | Income submitted, Ascend left it pending | **Staff are the blocker**: review the order |
 | `uploading_income_not_submitted` | Uploaded documents, never submitted | Call; `last_income_issue` says why a document was refused |
-| `needs_income_not_started` | Ascend wants income, none uploaded | Call: the document step lost them |
+| `needs_income_not_started` | Pending, none uploaded, and Ascend's reason names income (or gave none) | Call: the document step lost them |
+| `pending_ascend_read_reason` | Pending for a reason that does not name income (`15-MLCB High Debt`, `Low Balance Loan Quantum`, ...), whether or not documents were uploaded | Not a document problem and not a rejection: read `ascend_reason` and decide whether to reject or keep them. Ascend still shows the order as pending |
 | `existing_customer_redirected` | Submitted, and Ascend says they already borrow from us: sent to the mobile app on purpose, so no order | Nothing: not stuck |
 | `submitted_no_ascend_order` | Submitted, but Ascend never opened an order, and they are not an existing customer | Check the Ascend call for this applicant (on staging, 8 are from before the Ascend step existed and 4 are worth a look) |
 | `logged_in_not_submitted` | Logged in with Singpass, stopped at the review page | Call |
@@ -87,7 +88,7 @@ from what the call log recorded:
 | `ascend_not_configured` | The app skipped Ascend: a setting was missing in Vercel Production | **Urgent.** Fix the setting, redeploy, ask them to apply again |
 | `ascend_call_failed` | Ascend answered with an error (see `no_order_detail`, e.g. "600 busy") | Look at the detail; ask them to apply again if it was temporary |
 | `order_not_saved` | Ascend made an order but we did not save it | **A bug on our side.** Find the order in the Ascend portal and tell a developer |
-| `user_made_no_credit_call` | Ascend identified them but the credit call never happened | Look at the log for that applicant |
+| `ascend_answer_not_saved` | Ascend identified them and the credit call was sent (Ascend may hold an eligible order), but our app never saved the answer. Was `user_made_no_credit_call` | **Open the applicant in Ascend**: if an order is there, treat them as that order's status and call them |
 | `no_call_recorded` | Nothing was recorded: usually before Ascend was connected (old test data) | Usually ignore; check the created date |
 
 In Data Studio, add `no_order_reason` and `no_order_detail` to the Never completed

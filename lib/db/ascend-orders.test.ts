@@ -13,6 +13,7 @@ const TEST_URL = process.env.TEST_DATABASE_URL;
 describe.skipIf(!TEST_URL)("recordAscendOrder", () => {
   let recordAscendOrder: typeof import("./ascend-orders").recordAscendOrder;
   let DuplicateAscendOrderError: typeof import("./ascend-orders").DuplicateAscendOrderError;
+  let updateAscendOrderDecision: typeof import("./ascend-orders").updateAscendOrderDecision;
   let insertApplicant: typeof import("./applicants").insertApplicant;
   let sql: typeof import("./sql").sql;
 
@@ -21,7 +22,7 @@ describe.skipIf(!TEST_URL)("recordAscendOrder", () => {
   beforeAll(async () => {
     // Set before the pool is first opened: sql.ts reads DATABASE_URL lazily.
     process.env.DATABASE_URL = TEST_URL;
-    ({ recordAscendOrder, DuplicateAscendOrderError } = await import("./ascend-orders"));
+    ({ recordAscendOrder, DuplicateAscendOrderError, updateAscendOrderDecision } = await import("./ascend-orders"));
     ({ insertApplicant } = await import("./applicants"));
     ({ sql } = await import("./sql"));
 
@@ -75,5 +76,36 @@ describe.skipIf(!TEST_URL)("recordAscendOrder", () => {
     const rows = await sql`select order_id from ascend_orders where applicant_id = ${applicantId}`;
     expect(rows).toHaveLength(1);
     expect(rows[0].order_id).toBe("1549849627749851136");
+  });
+  it("keeps Ascend's own words for a pending answer, and replaces them when Ascend answers again", async () => {
+    const pendingId = await insertApplicant({
+      desiredAmount: 5000,
+      loanTenure: 6,
+      authMethod: "singpass",
+      status: "in_progress",
+    });
+    try {
+      const order = await recordAscendOrder(pendingId, {
+        orderId: "1567859944215937024",
+        userId: "1567859930680918016",
+        newCustomer: true,
+        risk: { riskStatus: "PENDING", riskMsg: "15-MLCB High Debt" },
+        creditScore: { creditLevel: "C", creditLimit: 3700 },
+      });
+      expect(order.risk_message).toBe("15-MLCB High Debt");
+
+      // Income submitted: Ascend answers again, and this time says nothing.
+      await updateAscendOrderDecision(pendingId, {
+        orderId: "1567859944215937024",
+        userId: "1567859930680918016",
+        newCustomer: true,
+        risk: { riskStatus: "PENDING" },
+        creditScore: { creditLevel: "C", creditLimit: 3700 },
+      });
+      const [row] = await sql`select risk_message from ascend_orders where applicant_id = ${pendingId}`;
+      expect(row.risk_message).toBeNull();
+    } finally {
+      await sql`delete from applicants where id = ${pendingId}`;
+    }
   });
 });

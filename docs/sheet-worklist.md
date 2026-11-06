@@ -4,8 +4,8 @@ A sheet staff work from: one row per applicant, the mobile number to call, the
 stage they reached, why they stopped, the amounts, the income Ascend was given
 and the tenure. It is synced by Apps Script from the view
 `reporting.sheet_worklist` (migrations `0019_reporting_sheet_worklist.sql`,
-`0020_sheet_worklist_contact.sql` and `0021_sheet_worklist_income_tenure.sql`
-in `db/migrations/`).
+`0020_sheet_worklist_contact.sql`, `0021_sheet_worklist_income_tenure.sql` and
+`0022_pending_reason_and_hold_stage.sql` in `db/migrations/`).
 
 ## What is in it, and what that means for access
 
@@ -33,8 +33,8 @@ customer up in AirConnect.
 
 ## Columns
 
-Row 1 is the header, written by the script. The sync writes **A-X** every run
-and never touches **Y-AA**, the team's columns - including any formula in them,
+Row 1 is the header, written by the script. The sync writes **A-Y** every run
+and never touches **Z-AB**, the team's columns - including any formula in them,
 such as one that fills in the PIC.
 
 | Col | Header | Meaning |
@@ -49,38 +49,41 @@ such as one that fills in the PIC.
 | H | Hours since last activity | |
 | I | Last activity (SGT) | |
 | J | Ascend result | `passed` / `pending` / `rejected` |
-| K | V1 (Pre-Approved) | The **Maximum Loan Quantum** from MLCB: the figure the offer screen shows as the "pre-approved amount". What they could unlock, not an offer |
-| L | V2 (A-Card) | The **A-Card Limit**: what Ascend is willing to lend today, and the most they can draw. Blank until Ascend answers with a pass and a figure |
-| M | Requested | What they asked for at the start. **Replaced by the amount they chose to draw once they pick a plan** - the app keeps one figure |
-| N | Income | The monthly income Ascend was last given: from the documents they submitted, otherwise from MyInfo |
-| O | Income type | Ascend's label for that income: `NOA`, `CPF`, `NON_PANEL_PAYSLIP`, `PANEL_PAYSLIP`, `BANK_STATEMENT_OTHER_INCOME`, `SELF-DECLARED` |
-| P | Plan chosen | |
-| Q | Loan tenure | e.g. `6 months`. Like Requested, replaced by the plan's tenure once they choose one |
-| R | Decline reason | The choice they picked on the offer screen |
-| S | Booking (SGT) | Date and time, if booked |
-| T | Documents uploaded | Count |
-| U | Last document issue | The sentence they were shown when a document was refused |
-| V | Why no Ascend order | Code, only for `submitted_no_ascend_order` |
-| W | Sent to AirConnect (SGT) | When the lead was pushed; blank means not in AirConnect yet |
-| X | Last synced | |
-| Y | Remarks | Team |
-| Z | PIC | Team |
-| AA | Called on | Team |
+| K | Ascend reason | Ascend's own words for leaving the application **pending** (`15-MLCB High Debt`, `Low Balance Loan Quantum`, `There is no income, please submit income`, ...). Blank when the answer is not pending or Ascend gave none. The agent decides from this; the sheet never says "rejected", because Ascend has not |
+| L | V1 (Pre-Approved) | The **Maximum Loan Quantum** from MLCB: the figure the offer screen shows as the "pre-approved amount". What they could unlock, not an offer |
+| M | V2 (A-Card) | The **A-Card Limit**: what Ascend is willing to lend today, and the most they can draw. Blank until Ascend answers with a pass and a figure |
+| N | Requested | What they asked for at the start. **Replaced by the amount they chose to draw once they pick a plan** - the app keeps one figure |
+| O | Income | The monthly income Ascend was last given: from the documents they submitted, otherwise from MyInfo |
+| P | Income type | Ascend's label for that income: `NOA`, `CPF`, `NON_PANEL_PAYSLIP`, `PANEL_PAYSLIP`, `BANK_STATEMENT_OTHER_INCOME`, `SELF-DECLARED` |
+| Q | Plan chosen | |
+| R | Loan tenure | e.g. `6 months`. Like Requested, replaced by the plan's tenure once they choose one |
+| S | Decline reason | The choice they picked on the offer screen |
+| T | Booking (SGT) | Date and time, if booked |
+| U | Documents uploaded | Count |
+| V | Last document issue | The sentence they were shown when a document was refused |
+| W | Why no Ascend order | Code, only for `submitted_no_ascend_order` |
+| X | Sent to AirConnect (SGT) | When the lead was pushed; blank means not in AirConnect yet |
+| Y | Last synced | |
+| Z | Remarks | Team |
+| AA | PIC | Team |
+| AB | Called on | Team |
 
 Filter on **Needs follow-up = Yes** for the call list; sort by **Hours since
-last activity**. The amounts (K-N) are numbers, so they sort and sum.
+last activity**. The amounts (L-O) are numbers, so they sort and sum.
 
-K and L are different amounts and must not be read as one (see `CONTEXT.md`,
-"Amounts"): K is the ceiling the applicant was shown, L is what Ascend will
+L and M are different amounts and must not be read as one (see `CONTEXT.md`,
+"Amounts"): L is the ceiling the applicant was shown, M is what Ascend will
 actually lend today and the most they can draw. Everything comes from this
 app's own database; nothing in the sheet is read from AirConnect.
 
 ## 1. Database (once per environment)
 
-Apply migrations `0019` to `0021` with `node scripts/db-migrate.mjs`. `0019`
+Apply migrations `0019` to `0022` with `node scripts/db-migrate.mjs`. `0019`
 creates the view and a login, `sheet_worklist_reader`, that can read that view
 and nothing else; `0020` adds the mobile number and the two amounts; `0021` adds
-the requested amount, the income, its type and the tenure. The
+the requested amount, the income, its type and the tenure; `0022` stores
+Ascend's pending reason on the order (filled in for existing orders from the call
+log), adds the `pending_ascend_read_reason` stage and the reason column. The
 login has no password until you set one (never commit it):
 
 ```sql

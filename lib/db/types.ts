@@ -127,6 +127,9 @@ export type AscendOrder = {
 
   credit_level: string | null;
   credit_score: string | null;
+
+  /** Ascend's riskMsg from the latest answer, verbatim ("15-MLCB High Debt"). Null when it gave none. */
+  risk_message: string | null;
 };
 
 export type DbRow = Record<string, unknown>;

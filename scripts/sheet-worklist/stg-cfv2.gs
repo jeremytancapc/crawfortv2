@@ -9,25 +9,25 @@ const CF_CONFIG = {
 const CF_SHEET_NAME = '[STG] CrawfortV2';
 const CF_HEADER_ROWS = 1;
 const CF_KEY_COL = 2;      // B: Ref
-const CF_SYNC_COLS = 24;   // A–X; Y–AA are the team's and never written by the sync
+const CF_SYNC_COLS = 25;   // A–Y; Z–AB are the team's and never written by the sync
 const CF_DAYS_BACK = 30;
 const CF_HEADERS = [
   'Created (SGT)', 'Ref', 'Mobile', 'Applied via', 'Pile', 'Stage', 'Needs follow-up',
-  'Hours since last activity', 'Last activity (SGT)', 'Ascend result',
+  'Hours since last activity', 'Last activity (SGT)', 'Ascend result', 'Ascend reason',
   'V1 (Pre-Approved)', 'V2 (A-Card)', 'Requested', 'Income', 'Income type',
   'Plan chosen', 'Loan tenure', 'Decline reason', 'Booking (SGT)', 'Documents uploaded',
   'Last document issue', 'Why no Ascend order', 'Sent to AirConnect (SGT)', 'Last synced',
   'Remarks', 'PIC', 'Called on',
 ];
-// The number format of each synced column, A–X. Applied on every run: a cell
+// The number format of each synced column, A–Y. Applied on every run: a cell
 // keeps its format when its value changes, so without this a column that used to
 // hold dates goes on showing a count or an hour total as a date.
 const CF_FORMATS = [
   'yyyy-mm-dd hh:mm', '@', '@', '@', '@', '@', '@',  // A created; B–G text (C: mobile)
-  '0', 'yyyy-mm-dd hh:mm', '@',                      // H hours, I last activity, J
-  '#,##0', '#,##0', '#,##0', '#,##0', '@',           // K V1, L V2, M requested, N income, O type
-  '@', '@', '@', 'yyyy-mm-dd hh:mm', '0', '@', '@',  // P, Q tenure, R, S booking, T documents, U, V
-  'yyyy-mm-dd hh:mm', 'yyyy-mm-dd hh:mm',            // W sent to AirConnect, X last synced
+  '0', 'yyyy-mm-dd hh:mm', '@', '@',                 // H hours, I last activity, J result, K reason
+  '#,##0', '#,##0', '#,##0', '#,##0', '@',           // L V1, M V2, N requested, O income, P type
+  '@', '@', '@', 'yyyy-mm-dd hh:mm', '0', '@', '@',  // Q, R tenure, S, T booking, U documents, V, W
+  'yyyy-mm-dd hh:mm', 'yyyy-mm-dd hh:mm',            // X sent to AirConnect, Y last synced
 ];
 
 function cfConfig_(name) {
@@ -53,6 +53,9 @@ function cfNum_(v) {
  *   first  (Remarks in R): Mobile after B, V1 and V2 after Ascend result
  *   second (Remarks in U): Requested, Income and Income type after V2,
  *                          Loan tenure after Plan chosen
+ * third  (Remarks in Y, 24 columns, no Ascend reason): Ascend reason after Ascend
+ *                          result. Every older layout above ends up here first, so each
+ *                          also gets this column last.
  * A sheet synced while it had Approved V1 and Approved V2 in M and N (Remarks in
  * AA) has those two columns deleted instead, which moves the team's columns
  * back left with their rows. M and N only ever held a copy of the A-Card limit.
@@ -70,6 +73,7 @@ function cfEnsureHeader_(sheet) {
     if (row1[2] === 'Applied via' && row1[17] === 'Remarks') layout = 1;
     else if (row1[10] === 'V1 pre-approved' && row1[20] === 'Remarks') layout = 2;
     else if (row1[12] === 'Approved V1' && row1[13] === 'Approved V2' && row1[26] === 'Remarks') layout = 4;
+    else if (row1[10] === 'V1 (Pre-Approved)' && row1[23] === 'Last synced' && row1[24] === 'Remarks') layout = 5;
 
     if (layout === 1) {
       sheet.insertColumnAfter(2);       // C: Mobile
@@ -81,6 +85,11 @@ function cfEnsureHeader_(sheet) {
       sheet.insertColumnAfter(16);      // Q: Loan tenure, after Plan chosen
     } else if (layout === 4) {
       sheet.deleteColumns(13, 2);       // M, N: Approved V1 and Approved V2
+    }
+    if (layout === 1 || layout === 2 || layout === 4 || layout === 5) {
+      // Every layout above has reached the 24-column one by now: add Ascend reason after
+      // Ascend result (J), so Remarks, PIC and Called on move right with their rows.
+      sheet.insertColumnAfter(10);      // K: Ascend reason
     } else if (row1[CF_KEY_COL - 1] !== CF_HEADERS[CF_KEY_COL - 1] && row1.some(String)) {
       // Row 1 holding data rather than any header: push it down, never overwrite it.
       sheet.insertRowBefore(1);
@@ -97,7 +106,7 @@ function cfEnsureHeader_(sheet) {
   }
 }
 
-/** Applies CF_FORMATS to every data row of A–X. The header row and the team columns are left alone. */
+/** Applies CF_FORMATS to every data row of A–Y. The header row and the team columns are left alone. */
 function cfEnsureFormats_(sheet) {
   const rows = sheet.getMaxRows() - CF_HEADER_ROWS;
   if (rows < 1) return;
@@ -105,11 +114,11 @@ function cfEnsureFormats_(sheet) {
     .setNumberFormats(Array.from({ length: rows }, () => CF_FORMATS));
 }
 
-/** Refreshes A–X for every applicant from the last CF_DAYS_BACK days or with an upcoming booking. */
+/** Refreshes A–Y for every applicant from the last CF_DAYS_BACK days or with an upcoming booking. */
 function syncCrawfortWorklist() {
   const sql = `
     select created_sgt, ref, mobile, applied_via, pile, stage, needs_follow_up,
-           hours_since_last_activity, last_activity_sgt, ascend_result,
+           hours_since_last_activity, last_activity_sgt, ascend_result, ascend_reason,
            max_loan_quantum, acard_limit, requested, income, income_type,
            plan_chosen, loan_tenure, decline_reason, booking_sgt,
            documents_uploaded, last_document_issue, no_order_reason,
@@ -149,20 +158,21 @@ function syncCrawfortWorklist() {
       cfNum_(rs.getString('hours_since_last_activity')),
       rs.getString('last_activity_sgt') || '',
       rs.getString('ascend_result') || '',
-      cfNum_(rs.getString('max_loan_quantum')),            // K: V1 (Pre-Approved)
-      cfNum_(rs.getString('acard_limit')),                 // L: V2 (A-Card)
-      cfNum_(rs.getString('requested')),                   // M
-      cfNum_(rs.getString('income')),                      // N
-      rs.getString('income_type') || '',                   // O
+      rs.getString('ascend_reason') || '',                // K: Ascend's reason for leaving it pending
+      cfNum_(rs.getString('max_loan_quantum')),            // L: V1 (Pre-Approved)
+      cfNum_(rs.getString('acard_limit')),                 // M: V2 (A-Card)
+      cfNum_(rs.getString('requested')),                   // N
+      cfNum_(rs.getString('income')),                      // O
+      rs.getString('income_type') || '',                   // P
       rs.getString('plan_chosen') || '',
-      rs.getString('loan_tenure') || '',                   // Q
+      rs.getString('loan_tenure') || '',                   // R
       rs.getString('decline_reason') || '',
       rs.getString('booking_sgt') || '',
       cfNum_(rs.getString('documents_uploaded')),
       rs.getString('last_document_issue') || '',
       rs.getString('no_order_reason') || '',
       rs.getString('sent_to_airconnect_sgt') || '',
-      synced,                                              // X: last synced
+      synced,                                              // Y: last synced
     ];
     const at = rowOf[row[CF_KEY_COL - 1]];
     if (at) updates.push({ at, row }); else inserts.push(row);

@@ -252,6 +252,7 @@ describe("deciding from a stored order", () => {
     new_customer: true,
     credit_level: null,
     credit_score: null,
+    risk_message: null,
     ...over,
   });
 
@@ -343,6 +344,7 @@ describe("a PASS that Ascend should have made PENDING", () => {
         new_customer: true,
         credit_level: "D",
         credit_score: "539.00",
+        risk_message: null,
       }),
     });
 
