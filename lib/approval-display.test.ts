@@ -67,6 +67,47 @@ describe("what the offer screens show", () => {
     expect(displayData.amount).toBe(8000);
   });
 
+  describe("the amount dial's Maximum Loan Quantum", () => {
+    it("runs the dial to MLCB's ceiling while today's offer stays the A-Card Limit", () => {
+      // The dial shows what could be unlocked; the drag still stops at what
+      // Ascend approved today.
+      const { maximumLoanQuantum, withdrawToday } = approvalOfferDisplay(
+        form({ approvedLoanAmount: 3500 }),
+        { aCardLimit: 3500, maximumLoanQuantum: 8000 },
+      );
+
+      expect(withdrawToday).toBe(3500);
+      expect(maximumLoanQuantum).toBe(8000);
+    });
+
+    it("is today's offer when MLCB reports no ceiling", () => {
+      // Ascend has passed orders without mlcbMaxLoanAmount. Nothing past the
+      // offer is known, so nothing past it is shown.
+      const { maximumLoanQuantum } = approvalOfferDisplay(
+        form({ approvedLoanAmount: 8000 }),
+        { aCardLimit: 8000, maximumLoanQuantum: null },
+      );
+
+      expect(maximumLoanQuantum).toBe(8000);
+    });
+
+    it("is today's offer when MLCB has already capped it", () => {
+      const { maximumLoanQuantum, withdrawToday } = approvalOfferDisplay(
+        form({ approvedLoanAmount: 20000 }),
+        { aCardLimit: 20000, maximumLoanQuantum: 15000 },
+      );
+
+      expect(withdrawToday).toBe(15000);
+      expect(maximumLoanQuantum).toBe(15000);
+    });
+
+    it("is the stored approved amount when no order is passed", () => {
+      const { maximumLoanQuantum } = approvalOfferDisplay(form({ approvedLoanAmount: 5000 }));
+
+      expect(maximumLoanQuantum).toBe(5000);
+    });
+  });
+
   describe("the gauge's reserve", () => {
     it("reserves double the approved amount when MLCB leaves room", () => {
       // Every real order seen so far: MLCB sits 5-50x the A-Card Limit, so

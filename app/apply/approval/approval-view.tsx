@@ -39,7 +39,7 @@ export function ApprovalView({
   const prefersReducedMotion = useReducedMotion();
   const isPlan = phase === "plan";
 
-  const { displayData, creditLimit } = approvalOfferDisplay(formData, limits);
+  const { displayData, maximumLoanQuantum } = approvalOfferDisplay(formData, limits);
   const maxPlanAmount = initialWithdrawAmount ?? displayData.amount;
   const [planAmount, setPlanAmount] = useState(maxPlanAmount);
   const persistTimer = useRef<number | null>(null);
@@ -119,7 +119,7 @@ export function ApprovalView({
 
       <LoanResults
         formData={displayData}
-        creditLimit={creditLimit}
+        maximumLoanQuantum={maximumLoanQuantum}
         monthlyRepayment={0}
         phase={phase}
         nextStepPath={

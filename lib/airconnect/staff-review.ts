@@ -13,6 +13,7 @@
 import { getApplicant } from "@/lib/db/applicants";
 import { ascendOrderReviewLink } from "@/lib/ascend/review-link";
 import { toSgE164 } from "@/lib/phone";
+import type { SubmissionDecision } from "@/lib/apply-outcome";
 
 import { pushNewLeadToAirConnect, type NewLeadPayload } from "./notify";
 
@@ -30,6 +31,25 @@ type Deps = {
 };
 
 const TAG = "[airconnect/notify-review-link]";
+
+/**
+ * The review link to put on the lead when it is first sent, at submit.
+ *
+ * An applicant Ascend wants income from, or whose PASS named no limit, is one
+ * staff may have to call - and the income step is where they get stuck, often
+ * without ever submitting. Waiting for an income submission to send the link
+ * left those applicants in AirConnect with nothing to open. The link needs
+ * only the order id, which exists from the first answer.
+ */
+export function staffReviewLinkAtSubmit(
+  decision: Pick<SubmissionDecision, "kind">,
+  orderId: string | undefined,
+  baseUrl?: string,
+): string | undefined {
+  if (decision.kind !== "needs_income" && decision.kind !== "unresolved") return undefined;
+  if (!orderId) return undefined;
+  return ascendOrderReviewLink(orderId, baseUrl) ?? undefined;
+}
 
 /** Never throws, and does nothing it cannot do completely. */
 export async function pushStaffReviewLink(

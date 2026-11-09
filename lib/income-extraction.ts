@@ -530,38 +530,119 @@ function namesNobody(found: SeenDocument | undefined): boolean {
 }
 
 /**
- * Why these documents cannot be taken as the applicant's, or null when they
- * can: each is an income document, each names them (an earnings statement
- * that names no one is let through - see namesNobody), and each bank
- * statement is from a Singapore bank.
+ * Every file that cannot be taken as the applicant's, each with what is wrong
+ * with it and what to upload instead: each is an income document, each names
+ * them (an earnings statement that names no one is let through - see
+ * namesNobody), and each bank statement is from a Singapore bank.
+ *
+ * All of them, not the first: a customer told about one file fixes it and is
+ * refused again for the next, and seven attempts later has still not been told
+ * what the other three were.
  */
-function documentProblem(
+function documentProblems(
   documents: IncomeDocument[],
   seen: Array<SeenDocument | undefined>,
   applicant: { name: string; aliases?: string[] } | undefined,
-): string | null {
+): DocumentProblem[] {
+  const problems: DocumentProblem[] = [];
+
   for (const [i, doc] of documents.entries()) {
     const found = seen[i];
+    const file = doc.fileName;
+
     if (found?.kind === "other") {
-      return `${doc.fileName} does not look like a payslip, bank statement or earnings ` +
-        "statement. Please remove it or upload the right document.";
+      // Not an income document at all: there is nothing in it to count, so
+      // nothing else about it is worth saying.
+      problems.push({
+        blocking: true,
+        ...(/\bCPF\b|Central Provident/i.test(found.issuer)
+          ? {
+              message: `${file} is from the CPF Board, which we cannot use. Please upload payslips or bank statements instead.`,
+              short: `${file} is a CPF Board page, which we cannot use.`,
+              needsPdf: true,
+            }
+          : {
+              message:
+                `${file} does not look like a payslip, bank statement or earnings statement. ` +
+                "Please remove it or upload the right document.",
+            }),
+      });
+      continue;
     }
     if (!applicant) continue;
     if (namesNobody(found)) continue;
-    if (!found || !nameBelongsTo(found.holderName, applicant.name, applicant.aliases)) {
-      return found?.holderName.trim()
-        ? `${doc.fileName} appears to belong to someone else, and we do not accept ` +
-            "documents for another person. Please upload documents in your own name."
-        : `We could not find your name on ${doc.fileName}. Please upload documents that show ` +
-            "your name as it appears in Singpass.";
+
+    const named = Boolean(found?.holderName.trim());
+    const bankKnown = found?.kind === "bank_statement" ? isRecognisedSgBank(found.issuer) : true;
+
+    if (found && named && nameBelongsTo(found.holderName, applicant.name, applicant.aliases)) {
+      if (!bankKnown) {
+        problems.push({
+          blocking: false,
+          message: `We could not confirm ${file} is from a Singapore bank. Please upload statements from your bank in Singapore.`,
+        });
+      }
+      continue;
     }
-    if (found.kind === "bank_statement" && !isRecognisedSgBank(found.issuer)) {
-      return `We could not confirm ${doc.fileName} is from a Singapore bank. Please upload ` +
-        "statements from your bank in Singapore.";
+
+    if (named) {
+      problems.push({
+        blocking: false,
+        message:
+          `${file} appears to belong to someone else, and we do not accept documents for another ` +
+          "person. Please upload documents in your own name.",
+      });
+    } else if (found?.kind === "bank_statement") {
+      // Almost always a screenshot of a banking app, which prints neither.
+      const shows = bankKnown ? "the account holder's name" : "your name or your bank";
+      problems.push({
+        blocking: false,
+        message:
+          `${file} does not show the account holder's name${bankKnown ? "" : " or your bank"}, which ` +
+          "screenshots from a banking app often do not. Please upload the PDF statement from your bank.",
+        short: `${file} is ${doc.mediaType.startsWith("image/") ? "a screenshot that does" : "a file that does"} not show ${shows}.`,
+        needsPdf: true,
+      });
+    } else {
+      problems.push({
+        blocking: false,
+        message:
+          `We could not find your name on ${file}. Please upload documents that show your name as it ` +
+          "appears in Singpass.",
+      });
     }
   }
-  return null;
+  return problems;
 }
+
+/** One file's problem is one sentence; several are counted and each said. */
+function sayProblems(problems: DocumentProblem[]): string {
+  if (problems.length === 1) return problems[0].message;
+  const closing = problems.some((p) => p.needsPdf)
+    ? " Please download the PDF of your payslip or bank statement and upload that instead of a screenshot."
+    : "";
+  const said = problems.map((p) => (closing && p.needsPdf ? p.short : p.message)).join(" ");
+  return `${problems.length} of your files cannot be used. ${said}${closing}`;
+}
+
+/**
+ * `blocking` means the document is no income document at all, so the months it
+ * would have supplied are not worth saying anything about. Any other problem is
+ * said alongside whatever else is wrong with the months: a customer told only
+ * about the name, fixes it, and is then refused again for the date.
+ */
+type DocumentProblem = {
+  /** The whole instruction, for a file that is the only one with a problem. */
+  message: string;
+  blocking: boolean;
+  /**
+   * The problem alone, without what to do about it, for when several files
+   * share one instruction. Absent when the instruction is part of the problem.
+   */
+  short?: string;
+  /** The fix is the same for every file like this: a PDF, not a screenshot. */
+  needsPdf?: boolean;
+};
 
 /** The model that reads the documents. Stored with every reply. */
 const MODEL_ID = "claude-opus-5-5";
@@ -728,8 +809,11 @@ export function decide(
 
   // Before any figure is taken: income off someone else's payslip is not
   // this applicant's income, however clearly it reads.
-  const problem = documentProblem(documents, seen, options?.applicant);
-  if (problem) return refuse("needs_review", problem);
+  const problems = documentProblems(documents, seen, options?.applicant);
+  const problem = problems.length > 0 ? { message: sayProblems(problems) } : null;
+  if (problems.some((p) => p.blocking)) return refuse("needs_review", problem!.message);
+  // Said first, then whatever else is wrong (see DocumentProblem).
+  const withProblem = (reason: string) => (problem ? `${problem.message} ${reason}` : reason);
 
   const kinds = new Set(seen.map((d) => d?.kind));
   const hasPayslip = kinds.has("payslip");
@@ -779,10 +863,11 @@ export function decide(
   const note = applicantSafeNote(reported.note);
   const notReady = (reason: string): ExtractionOutcome => ({
     kind: "needs_review",
-    reason,
+    reason: withProblem(reason),
     note,
     source,
-    months: MONTHLY_ONLY ? months.filter((_, i) => assembly.months[i].exact) : months,
+    // Months read off a document that is not theirs are not months of theirs.
+    months: problem ? [] : MONTHLY_ONLY ? months.filter((_, i) => assembly.months[i].exact) : months,
     periods,
     assembly,
   });
@@ -810,6 +895,9 @@ export function decide(
 
   const review = reviewExtraction(months, plan.window, { checkYearToDate: source !== "bank_statement" });
   if (review.kind === "needs_review") return notReady(review.reason);
+
+  // The months are fine; the document is still not theirs.
+  if (problem) return refuse("needs_review", problem.message, source);
 
   const payslipType: AscendIncomeType =
     hasBank && paidIntoBank(periods, credits, plan.held) ? "PANEL_PAYSLIP" : "NON_PANEL_PAYSLIP";

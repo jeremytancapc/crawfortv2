@@ -130,10 +130,11 @@ export async function POST(request: NextRequest) {
     console.info(`${LOG} plan saved`, { leadId, planId, tenure, amount, additionalRequests });
 
     // Record the choice against the Ascend Order, so staff see it where they
-    // work rather than only in our own database. Fire-and-forget on purpose:
-    // the plan is already saved, and a failed note must not cost the applicant
-    // a step they have completed.
-    void recordPlanOnAscendOrder(leadId, {
+    // work rather than only in our own database. Awaited so serverless does
+    // not freeze before the request goes out (a note fired and forgotten here
+    // went missing with nothing logged); it cannot throw, and a failed note is
+    // recorded rather than costing the applicant a step they have completed.
+    await recordPlanOnAscendOrder(leadId, {
       planId,
       amount,
       tenure,

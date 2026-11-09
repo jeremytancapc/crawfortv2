@@ -22,9 +22,9 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     ids[key] = row!.id;
     return row!.id;
   };
-  const order = (id: string, risk: string, limit: number | null) =>
-    sql`insert into ascend_orders (applicant_id, order_id, risk_status, a_card_limit, maximum_loan_quantum)
-        values (${id}, ${`ORD-${id.slice(0, 8)}`}, ${risk}::risk_status, ${limit}, 20000)`;
+  const order = (id: string, risk: string, limit: number | null, message: string | null = null) =>
+    sql`insert into ascend_orders (applicant_id, order_id, risk_status, a_card_limit, maximum_loan_quantum, risk_message)
+        values (${id}, ${`ORD-${id.slice(0, 8)}`}, ${risk}::risk_status, ${limit}, 20000, ${message})`;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = TEST_URL;
@@ -72,6 +72,19 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
 
     await order(await applicant("needs_income"), "pending", null);
     await applicant("no_order");
+
+    // Pending for a reason income cannot clear: Ascend's own words decide the stage,
+    // not whether documents were uploaded.
+    await order(await applicant("held_debt"), "pending", null, "15-MLCB High Debt");
+    await order(await applicant("held_quantum"), "pending", null, "Low Balance Loan Quantum");
+    const heldAfterIncome = await applicant("held_after_income");
+    await order(heldAfterIncome, "pending", null, "16-MLCB High Debt");
+    await sql`insert into income_readings (applicant_id, income_type, months, average, m1, m2, m3, document_ids, submitted_at)
+              values (${heldAfterIncome}, 'NON_PANEL_PAYSLIP', '[]'::jsonb, 3000, 3000, 3000, 3000, '{}', now())`;
+    // Pending and Ascend does name income: still a person to chase for documents.
+    await order(await applicant("asked_for_income"), "pending", null, "There is no income, please submit income");
+    // Income AND debt in one answer: income comes first, the hold shows once it is in.
+    await order(await applicant("income_and_debt"), "pending", null, "There is no income, please submit income; 16-MLCB High Debt");
 
     // Ascend's answer is now "rejected", though an earlier limit is still stored: no limit counts.
     await order(await applicant("rejected_with_limit"), "rejected", 1800);
@@ -127,12 +140,26 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     ["review", "waiting_for_staff_review"],
     ["uploading", "uploading_income_not_submitted"],
     ["needs_income", "needs_income_not_started"],
+    ["asked_for_income", "needs_income_not_started"],
+    ["income_and_debt", "needs_income_not_started"],
+    ["held_debt", "pending_ascend_read_reason"],
+    ["held_quantum", "pending_ascend_read_reason"],
+    ["held_after_income", "pending_ascend_read_reason"],
     ["no_order", "submitted_no_ascend_order"],
     ["existing", "existing_customer_redirected"],
     ["logged_in", "logged_in_not_submitted"],
     ["not_logged_in", "started_not_logged_in"],
   ])("puts the applicant who %s at stage %s", async (key, stage) => {
     expect(await stageOf(key)).toBe(stage);
+  });
+
+  it("shows Ascend's own words as the reason, and the stage that holds them needs a person", async () => {
+    const rows = await sql<{ ref: string; ascend_reason: string; needs_follow_up: string }>`
+      select ref, ascend_reason, needs_follow_up from reporting.sheet_worklist
+      where ref in (select ref from reporting.applicant_journey where id = any(${[ids.held_debt, ids.needs_income, ids.offer]}::uuid[]))
+      order by ascend_reason`;
+    expect(rows.map((r) => r.ascend_reason)).toEqual(["", "", "15-MLCB High Debt"]);
+    expect(rows.find((r) => r.ascend_reason)?.needs_follow_up).toBe("Yes");
   });
 
   it("names the reference the way staff already know it, and shows the Singapore time", async () => {
@@ -171,7 +198,7 @@ describe.skipIf(!TEST_URL)("reporting views", () => {
     ["no_order_skipped", "ascend_not_configured", null],
     ["no_order_failed", "ascend_call_failed", "600: Busy, please retry"],
     ["no_order_unsaved", "order_not_saved", null],
-    ["no_order_identified", "user_made_no_credit_call", null],
+    ["no_order_identified", "ascend_answer_not_saved", null],
   ])("says why %s has no Ascend order: %s", async (key, reason, detail) => {
     const [row] = await sql<{ stage: string; no_order_reason: string | null; no_order_detail: string | null }>`
       select stage, no_order_reason, no_order_detail from reporting.applicant_journey where id = ${ids[key]}`;

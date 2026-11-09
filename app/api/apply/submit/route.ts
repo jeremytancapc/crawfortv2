@@ -54,10 +54,10 @@ import {
   upsertMyinfoProfileForApplicant,
 } from "@/lib/myinfo-profile";
 import { pushNewLeadToAirConnect } from "@/lib/airconnect/notify";
+import { staffReviewLinkAtSubmit } from "@/lib/airconnect/staff-review";
 import { decideSubmission } from "@/lib/apply-outcome";
 import { requestAscendDecision } from "@/lib/ascend/decision";
 import { creditAfterIncome } from "@/lib/ascend/after-income";
-import { ascendOrderReviewLink } from "@/lib/ascend/review-link";
 import { creditLimitForAirConnect } from "@/lib/airconnect/credit-limit";
 import {
   DuplicateAscendOrderError,
@@ -72,7 +72,7 @@ import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-inf
 import { deriveBorrowerFields } from "@/lib/ascend/borrower-derive";
 import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { myinfoPersonData } from "@/lib/myinfo";
-import { toSgE164 } from "@/lib/phone";
+import { toSgE164, sgMobileOrNull } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -104,6 +104,26 @@ export async function POST(request: NextRequest) {
     (sessionAuth === "manual" || sessionAuth === "singpass")
   ) {
     formData.authMethod = sessionAuth;
+  }
+
+  // The mobile number decides who we call and what AirConnect and Ascend are
+  // told. The review form already requires /^[89]\d{7}$/ before it will
+  // submit, so no applicant coming through the funnel can fail this - only a
+  // request that skipped the form, which is how `' OR '1'='1` and `%` reached
+  // the applicants table on 8 Nov 2026.
+  const submittedMobile = sgMobileOrNull(formData.mobile);
+  if (formData.mobile && !submittedMobile) {
+    // Deliberately generic to the caller: the review form already enforces this
+    // rule, so a real applicant never reaches here - only a request that skipped
+    // the form, which should learn nothing about what is checked. The real
+    // reason goes to our logs, not the response.
+    console.warn("[apply/submit] rejected a mobile that is not a Singapore number", {
+      length: String(formData.mobile).length,
+    });
+    return NextResponse.json(
+      { error: "We couldn't process this application. Please try again." },
+      { status: 400 },
+    );
   }
 
   // Read the draft lead ID from the dedicated draft_lead cookie.
@@ -143,7 +163,7 @@ export async function POST(request: NextRequest) {
     fullName: formData.fullName || null,
     nric: formData.nric || null,
     email: formData.email || null,
-    mobile: formData.mobile || null,
+    mobile: submittedMobile,
     secondaryMobile: formData.secondaryMobile || null,
     postalCode: formData.postalCode || null,
     address: formData.address || null,
@@ -398,11 +418,10 @@ export async function POST(request: NextRequest) {
       customerName: formData.fullName,
       phoneNumber: e164Phone,
       idNumber: formData.authMethod === "singpass" && formData.nric ? formData.nric : undefined,
-      // A PASS that never named a limit needs a person; give AirConnect the
-      // page they open in Ascend. Nobody else gets a link at this point.
-      ...(decision.kind === "unresolved" && ascendResult?.orderId
-        ? { customerHyperLink: ascendOrderReviewLink(ascendResult.orderId) ?? undefined }
-        : {}),
+      // Someone staff may have to call - Ascend wants income, or a PASS never
+      // named a limit - gets the page staff open in Ascend straight away,
+      // not only once income has been submitted.
+      customerHyperLink: staffReviewLinkAtSubmit(decision, ascendResult?.orderId),
       // Ascend has already given a limit: AirConnect keeps it, with where it
       // came from, and shows the latest on the lead.
       ...(decision.kind === "approved"

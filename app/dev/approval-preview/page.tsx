@@ -6,12 +6,17 @@ import { parseWithdrawAmountParam } from "@/lib/withdraw-amount";
 
 export const dynamic = "force-dynamic";
 
+/** Demo figures: Ascend approves S$3,500 today against an MLCB Maximum Loan
+ *  Quantum of S$8,000 - the dial runs to S$8,000 and stops at S$3,500. */
+const DEMO_APPROVED_TODAY = 3500;
+const DEMO_MAXIMUM_LOAN_QUANTUM = 8000;
+
 const previewFormData: LoanFormData = {
   ...initialLoanFormData,
-  amount: 8000,
+  amount: DEMO_APPROVED_TODAY,
   tenure: 12,
   monthlyIncome: "4210",
-  approvedLoanAmount: 8000,
+  approvedLoanAmount: DEMO_APPROVED_TODAY,
   verifiedMonthlyIncome: 4210,
   incomeSource: "cpf",
 };
@@ -33,7 +38,10 @@ export default async function ApprovalPreviewPage({ searchParams }: PageProps) {
   return (
     <ApprovalView
       formData={previewFormData}
-      limits={{ aCardLimit: 8000, maximumLoanQuantum: 20000 }}
+      limits={{
+        aCardLimit: DEMO_APPROVED_TODAY,
+        maximumLoanQuantum: DEMO_MAXIMUM_LOAN_QUANTUM,
+      }}
       phase={phase}
       initialWithdrawAmount={initialWithdrawAmount}
       previewMode

@@ -24,6 +24,7 @@ import { getApplicant, insertApplicant } from "@/lib/db/applicants";
 import { processedPayloadFromRetrieval } from "@/lib/myinfo-profile";
 import type { IdType } from "@/lib/db/types";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
+import { sgMobileOrNull } from "@/lib/phone";
 import { draftLeadCookieValue, DRAFT_LEAD_COOKIE } from "@/lib/apply-session";
 import {
   buildMyinfoCookiePayload,
@@ -98,6 +99,18 @@ export async function GET(request: NextRequest) {
 
   let newDraftLeadId: string | null = null;
   if (hasLoanDetails && !alreadyHasDraft) {
+    // MyInfo should only ever give a Singapore mobile. When it gives something
+    // else the applicant keeps their journey - the number is simply not kept,
+    // so it reaches neither this database nor AirConnect nor Ascend. On
+    // 8 Nov 2026 what arrived here was `' OR '1'='1`, through the callback
+    // that mints this session.
+    const mobile = sgMobileOrNull(merged.mobile);
+    if (merged.mobile && !mobile) {
+      console.warn("[activate] mobile from MyInfo is not a Singapore number - dropping it", {
+        length: merged.mobile.length,
+      });
+    }
+
     try {
       newDraftLeadId = await insertApplicant({
         desiredAmount: merged.amount!,
@@ -109,7 +122,7 @@ export async function GET(request: NextRequest) {
         fullName: merged.fullName || null,
         nric: merged.nric || null,
         email: merged.email || null,
-        mobile: merged.mobile || null,
+        mobile: mobile,
         address: merged.address || null,
         postalCode: merged.postalCode || null,
         monthlyIncome: merged.monthlyIncome || null,

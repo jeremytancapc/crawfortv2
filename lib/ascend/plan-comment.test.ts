@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPlanComment } from "./plan-comment";
+import { formatBookingWithoutPlanNote, formatPlanComment } from "./plan-comment";
 
 describe("formatPlanComment", () => {
   it("names the plan, the amount and the term", () => {
@@ -30,5 +30,13 @@ describe("formatPlanComment", () => {
     expect(comment).toContain("over 12 months");
     expect(comment).toContain("monthly S$292");
     expect(comment).toContain("requests: Call me first");
+  });
+});
+
+describe("formatBookingWithoutPlanNote", () => {
+  it("says the customer booked with no plan, when, and what staff should do", () => {
+    expect(formatBookingWithoutPlanNote({ date: "2026-10-24", time: "19:00" })).toBe(
+      "Booked 2026-10-24 19:00 without choosing a plan - confirm the amount and term with the customer",
+    );
   });
 });

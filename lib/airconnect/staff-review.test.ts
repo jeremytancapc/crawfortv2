@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { pushStaffReviewLink } from "./staff-review";
+import { pushStaffReviewLink, staffReviewLinkAtSubmit } from "./staff-review";
 
 const APPLICANT = {
   full_name: "TAN CAKEN",
@@ -64,5 +64,28 @@ describe("pushStaffReviewLink", () => {
     const d = deps({ getApplicant: vi.fn().mockRejectedValue(new Error("db down")) });
 
     await expect(pushStaffReviewLink({ applicantId: "a-1", orderId: ORDER }, d as never)).resolves.toBe(false);
+  });
+});
+
+describe("staffReviewLinkAtSubmit", () => {
+  const link = (kind: string) => staffReviewLinkAtSubmit({ kind } as never, ORDER, BASE);
+
+  it("gives staff the link as soon as Ascend asks for income, before any is submitted", () => {
+    expect(link("needs_income")).toBe(LINK);
+  });
+
+  it("gives staff the link for a PASS that named no limit", () => {
+    expect(link("unresolved")).toBe(LINK);
+  });
+
+  it("gives nobody a link when no person is needed or the application is closed", () => {
+    expect(link("approved")).toBeUndefined();
+    expect(link("declined")).toBeUndefined();
+    expect(link("unavailable")).toBeUndefined();
+  });
+
+  it("gives no link without an order to open", () => {
+    expect(staffReviewLinkAtSubmit({ kind: "needs_income" } as never, undefined, BASE)).toBeUndefined();
+    expect(staffReviewLinkAtSubmit({ kind: "needs_income" } as never, "abc", BASE)).toBeUndefined();
   });
 });

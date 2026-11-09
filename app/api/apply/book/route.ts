@@ -22,6 +22,7 @@ import { bookingConfirmCookieValue } from "@/lib/booking-confirmation";
 import { getApplicant, setApplicantStatus } from "@/lib/db/applicants";
 import { insertAppointment } from "@/lib/db/appointments";
 import { pushAppointmentToAirConnect } from "@/lib/airconnect/notify";
+import { recordBookingOnAscendOrder } from "@/lib/ascend/record-plan";
 import { toSgE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
@@ -130,6 +131,11 @@ export async function POST(request: NextRequest) {
     },
     LOG,
   );
+
+  // Booking does not need a plan. When none was chosen, staff would see an
+  // appointment with no amount or term, so say so on the Ascend Order. Awaited
+  // for the same reason as above; it cannot throw.
+  await recordBookingOnAscendOrder(leadId, { selectedPlan: lead?.selected_plan, date, time });
 
   const res = NextResponse.json({
     ok: true,

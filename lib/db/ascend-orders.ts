@@ -43,7 +43,7 @@ export async function recordAscendOrder(
       insert into ascend_orders (
         applicant_id, order_id, risk_status,
         a_card_limit, maximum_loan_quantum, new_customer,
-        credit_level, credit_score
+        credit_level, credit_score, risk_message
       ) values (
         ${applicantId},
         ${result.orderId},
@@ -52,7 +52,8 @@ export async function recordAscendOrder(
         ${result.creditScore.mlcbMaxLoanAmount ?? null},
         ${result.newCustomer},
         ${result.creditScore.creditLevel ?? null},
-        ${result.creditScore.creditScore ?? null}
+        ${result.creditScore.creditScore ?? null},
+        ${result.risk.riskMsg ?? null}
       )
       returning *`;
 
@@ -103,7 +104,8 @@ export function orderAsCreditResult(order: AscendOrder): AscendCreditResult {
  *
  * Submitting income turns a PENDING order into a PASS or a REJECT, and the
  * amounts arrive with it. The order_id does not change - this is the same
- * Order, decided.
+ * Order, decided. The reason is replaced too: the latest answer is the one that
+ * says why the order is still pending, or says nothing.
  */
 export async function updateAscendOrderDecision(
   applicantId: string,
@@ -115,6 +117,7 @@ export async function updateAscendOrderDecision(
       a_card_limit = ${result.creditScore.creditLimit ?? null},
       maximum_loan_quantum = ${result.creditScore.mlcbMaxLoanAmount ?? null},
       credit_level = ${result.creditScore.creditLevel ?? null},
-      credit_score = ${result.creditScore.creditScore ?? null}
+      credit_score = ${result.creditScore.creditScore ?? null},
+      risk_message = ${result.risk.riskMsg ?? null}
     where applicant_id = ${applicantId}`;
 }

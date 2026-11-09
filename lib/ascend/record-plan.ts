@@ -1,59 +1,136 @@
 /**
- * Puts the applicant's chosen plan on their Ascend Order.
+ * Puts notes on the applicant's Ascend Order, for the staff who review it.
  *
- * Never throws and never blocks. The plan is already saved by the time this
- * runs, so a failed note is a missing note - not a lost selection, and not a
- * step the applicant has to repeat.
+ * Never throws and never blocks the applicant: the plan or booking is already
+ * saved by the time a note goes out, so a failed note is a missing note - not
+ * a lost selection, and not a step to repeat. What it must not be is a silent
+ * one. Every way a note can fail (Ascend not set up, no order on file, Ascend
+ * refusing, the call timing out, our own database) leaves a row in api_logs
+ * tied to the applicant, so "why does staff see no plan?" has an answer.
  */
 
+import { logExternalApi } from "@/lib/external-api-logger";
 import { getAscendOrder } from "@/lib/db/ascend-orders";
 import { isDatabaseConfigured } from "@/lib/db/sql";
 
 import { ascendAddOrderComment, AscendError } from "./client";
 import { ascendConfig } from "./config";
-import { formatPlanComment, type PlanComment } from "./plan-comment";
+import { formatBookingWithoutPlanNote, formatPlanComment, type PlanComment } from "./plan-comment";
 
-export async function recordPlanOnAscendOrder(
-  applicantId: string,
-  plan: PlanComment,
-): Promise<void> {
-  if (!ascendConfig() || !isDatabaseConfigured()) return;
+/** Short on purpose: the caller is waiting, and a note is never worth a long stall. */
+const NOTE_TIMEOUT_MS = 8_000;
 
-  try {
-    const order = await getAscendOrder(applicantId);
-    // No order means Ascend never decided for this applicant - there is
-    // nothing to comment on.
-    if (!order) return;
+type Deps = {
+  configured: () => boolean;
+  getOrder: (applicantId: string) => Promise<{ order_id: string } | null>;
+  addComment: typeof ascendAddOrderComment;
+  logFailure: (applicantId: string, purpose: string, reason: string) => void;
+};
 
-    await ascendAddOrderComment({
-      orderId: order.order_id,
-      comments: formatPlanComment(plan),
-    });
-  } catch (err) {
-    if (err instanceof AscendError) {
-      console.error(`[ascend] order/comments failed ${err.code}: ${err.msg}`);
-    } else {
-      console.error("[ascend] order/comments failed", err);
-    }
-  }
+function logNoteFailure(applicantId: string, purpose: string, reason: string): void {
+  console.error(`[ascend-note] ${purpose} note not placed: ${reason}`);
+  logExternalApi({
+    tag: "[ascend-note]",
+    url: "/openApi/order/comments",
+    method: "POST",
+    headers: {},
+    body: { purpose },
+    status: 0,
+    ok: false,
+    ms: 0,
+    leadId: applicantId,
+    error: reason,
+  });
+}
+
+const defaultDeps: Deps = {
+  configured: () => Boolean(ascendConfig()),
+  getOrder: getAscendOrder,
+  addComment: ascendAddOrderComment,
+  logFailure: logNoteFailure,
+};
+
+function describe(err: unknown): string {
+  if (err instanceof AscendError) return `Ascend ${err.path} returned ${err.code}: ${err.msg}`;
+  return err instanceof Error ? err.message : String(err);
 }
 
 /**
- * Puts a free-text note on the applicant's Ascend Order, for the staff who
- * review it. Same rules as the plan note: never throws, never blocks.
+ * Writes `comments` on the applicant's order. True when Ascend took it; false
+ * otherwise, with the reason recorded. Awaited by callers, so serverless does
+ * not freeze before the request goes out.
  */
-export async function recordNoteOnAscendOrder(applicantId: string, note: string): Promise<void> {
-  if (!ascendConfig() || !isDatabaseConfigured()) return;
+export async function placeNoteOnAscendOrder(
+  applicantId: string,
+  comments: string,
+  purpose: string,
+  overrides?: Partial<Deps>,
+): Promise<boolean> {
+  const deps = { ...defaultDeps, ...overrides };
+
+  // Nothing to record into: without a database there is no applicant either.
+  if (!overrides && !isDatabaseConfigured()) return false;
+
+  const fail = (reason: string) => {
+    try {
+      deps.logFailure(applicantId, purpose, reason);
+    } catch (err) {
+      console.error("[ascend-note] could not record a failed note", err);
+    }
+    return false;
+  };
 
   try {
-    const order = await getAscendOrder(applicantId);
-    if (!order) return;
-    await ascendAddOrderComment({ orderId: order.order_id, comments: note });
+    if (!deps.configured()) return fail("Ascend is not configured");
+
+    const order = await deps.getOrder(applicantId);
+    // No order means Ascend never decided for this applicant - there is
+    // nothing to comment on.
+    if (!order) return fail("no Ascend order on file for this applicant");
+
+    await deps.addComment(
+      { orderId: order.order_id, comments },
+      { applicantId, timeoutMs: NOTE_TIMEOUT_MS },
+    );
+    return true;
   } catch (err) {
-    if (err instanceof AscendError) {
-      console.error(`[ascend] order/comments failed ${err.code}: ${err.msg}`);
-    } else {
-      console.error("[ascend] order/comments failed", err);
-    }
+    return fail(describe(err));
   }
+}
+
+/** The applicant's chosen plan, on their Ascend Order. */
+export function recordPlanOnAscendOrder(
+  applicantId: string,
+  plan: PlanComment,
+  overrides?: Partial<Deps>,
+): Promise<boolean> {
+  return placeNoteOnAscendOrder(applicantId, formatPlanComment(plan), "plan", overrides);
+}
+
+/** A free-text note on the applicant's Ascend Order. */
+export function recordNoteOnAscendOrder(
+  applicantId: string,
+  note: string,
+  overrides?: Partial<Deps>,
+): Promise<boolean> {
+  return placeNoteOnAscendOrder(applicantId, note, "note", overrides);
+}
+
+/**
+ * Booking does not need a plan, so a customer can book having picked none.
+ * Staff then see an appointment and no amount or term: say so on the order.
+ * A booking with a plan needs no note - the plan note already says it.
+ */
+export async function recordBookingOnAscendOrder(
+  applicantId: string,
+  booking: { selectedPlan: string | null | undefined; date: string; time: string },
+  overrides?: Partial<Deps>,
+): Promise<void> {
+  if (booking.selectedPlan) return;
+  await placeNoteOnAscendOrder(
+    applicantId,
+    formatBookingWithoutPlanNote({ date: booking.date, time: booking.time }),
+    "booking without plan",
+    overrides,
+  );
 }

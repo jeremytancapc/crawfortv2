@@ -37,6 +37,10 @@ export type AscendLimits = {
  * capped the approved amount itself, `creditLimit` collapses back to
  * `withdrawToday` and the gauge shows no reserve at all - never a locked zone
  * with nothing behind it.
+ *
+ * The /apply amount dial no longer shows that reserve: it runs to the
+ * Maximum Loan Quantum itself (`maximumLoanQuantum`). The /v2 approval
+ * screen still reads `creditLimit`.
  */
 export function approvalOfferDisplay(formData: LoanFormData, limits?: AscendLimits) {
   const stored = Number(formData.approvedLoanAmount) || 0;
@@ -51,9 +55,16 @@ export function approvalOfferDisplay(formData: LoanFormData, limits?: AscendLimi
     ? (ceiling !== null && ceiling > 0 ? Math.min(approved * 2, ceiling) : approved * 2)
     : offer;
 
+  // The amount dial's full sweep: what the applicant could unlock across all
+  // licensed moneylenders, never less than today's offer. MLCB does not
+  // always report it - Ascend has passed orders without one - and then the
+  // dial is today's offer alone, with nothing past it to unlock.
+  const maximumLoanQuantum = ceiling !== null && ceiling > offer ? ceiling : offer;
+
   return {
     displayData: { ...formData, amount: offer },
     creditLimit: reserve,
+    maximumLoanQuantum,
     withdrawToday: offer,
   };
 }

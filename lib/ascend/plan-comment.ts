@@ -35,3 +35,11 @@ export function formatPlanComment(input: PlanComment): string {
 
   return parts.join(" | ");
 }
+
+/**
+ * The note when a customer books an appointment having chosen no plan, so the
+ * order carries no amount or term for staff to go on.
+ */
+export function formatBookingWithoutPlanNote(input: { date: string; time: string }): string {
+  return `Booked ${input.date} ${input.time} without choosing a plan - confirm the amount and term with the customer`;
+}

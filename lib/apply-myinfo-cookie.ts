@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { gunzipSync, gzipSync } from "zlib";
 
-import { COOKIE_BASE_OPTS, MYINFO_COOKIE } from "@/lib/apply-session-codec";
+import { COOKIE_BASE_OPTS, MYINFO_COOKIE, sessionSecret } from "@/lib/apply-session-codec";
 import type { CpfContribution, LoanFormData, NoaRecord } from "@/lib/loan-form";
 
 export { MYINFO_COOKIE };
@@ -20,7 +20,7 @@ export type MyinfoCookiePayload = {
 };
 
 function secret(): string {
-  return process.env.APPLY_SESSION_SECRET ?? "dev-insecure-secret-32chars-xx";
+  return sessionSecret();
 }
 
 function sign(payload: string): string {

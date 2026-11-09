@@ -54,6 +54,22 @@ describe("text translation", () => {
     expect(translateText("Add to calendar", "ms")).toBe("Tambah ke kalendar");
   });
 
+  it("keeps the amount slot in sentences that carry a figure", () => {
+    // The amount card splits these on {amount} to set the figure in bold; a
+    // translation that drops the slot would silently drop the figure.
+    for (const key of [
+      "You are drawing {amount} now.",
+      "Your maximum loan quantum is {amount}.",
+      "You can draw up to {amount} today",
+      "The minimum is {amount}",
+    ]) {
+      expect(translateText(key, "zh-CN")).toContain("{amount}");
+      expect(translateText(key, "ms")).toContain("{amount}");
+      expect(translateText(key, "zh-CN")).not.toBe(key);
+      expect(translateText(key, "ms")).not.toBe(key);
+    }
+  });
+
   it("translates income verification and customer outcome screens", () => {
     expect(translateText("Income Documents Required", "zh-CN")).toBe("需要收入证明文件");
     expect(translateText("Upload up to 3 months of documents", "ms")).toBe("Muat naik dokumen sehingga 3 bulan");
