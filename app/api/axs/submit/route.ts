@@ -24,6 +24,7 @@ import { assessCredit } from "@/lib/credit-score";
 import { deriveCreditRejectionReason } from "@/lib/credit-rejection";
 import { createAxsToken } from "@/lib/axs-token";
 import type { CpfContribution, NoaRecord } from "@/lib/loan-form";
+import { sgMobileOrNull } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -161,7 +162,15 @@ export async function POST(request: NextRequest) {
   const nric = myinfo.uinfin?.value ?? "";
   const fullName = myinfo.name?.value ?? "";
   const dob = myinfo.dob?.value ?? "";
-  const mobile = extractPhone(myinfo.mobileno);
+  // A partner's MyInfo payload is no more trusted than our own: an unreadable
+  // number is dropped rather than stored and passed on.
+  const rawMobile = extractPhone(myinfo.mobileno);
+  const mobile = sgMobileOrNull(rawMobile) ?? "";
+  if (rawMobile && !mobile) {
+    console.warn("[axs/submit] mobile from partner MyInfo is not a Singapore number - dropping it", {
+      length: rawMobile.length,
+    });
+  }
   const email = myinfo.email?.value ?? "";
   const address = extractAddress(myinfo.regadd);
   const postalCode = myinfo.regadd?.postal?.value ?? "";

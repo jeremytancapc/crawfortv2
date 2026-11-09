@@ -24,8 +24,36 @@ export const COOKIE_BASE_OPTS = {
 /** After eligible submit - approval + book access (not the same as `/apply/review`). */
 export const POST_SUBMIT_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 
+/**
+ * The key every apply cookie and the activate token are signed with.
+ *
+ * A deployment missing APPLY_SESSION_SECRET used to fall back to a constant
+ * that is written here in the open, which signs real sessions with a key
+ * anyone reading this file already knows - forgeable apply sessions, and no
+ * sign that anything is wrong. Deployed environments now refuse to start a
+ * session instead, which fails loudly on the first request rather than
+ * quietly for every one after it.
+ *
+ * The development constant stays for local work and tests, where there is no
+ * session worth forging.
+ */
+export function sessionSecret(): string {
+  const configured = process.env.APPLY_SESSION_SECRET?.trim();
+  if (configured) return configured;
+
+  // Set on every Vercel deployment - preview and production alike.
+  if (process.env.VERCEL_ENV) {
+    throw new Error(
+      "APPLY_SESSION_SECRET is not set on this deployment. Apply sessions cannot " +
+        "be signed safely without it.",
+    );
+  }
+
+  return "dev-insecure-secret-32chars-xx";
+}
+
 function secret(): string {
-  return process.env.APPLY_SESSION_SECRET ?? "dev-insecure-secret-32chars-xx";
+  return sessionSecret();
 }
 
 function sign(payload: string): string {

@@ -72,7 +72,7 @@ import { ascendBankruptcy, buildBorrowerMyInfo } from "@/lib/ascend/borrower-inf
 import { deriveBorrowerFields } from "@/lib/ascend/borrower-derive";
 import { getMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { myinfoPersonData } from "@/lib/myinfo";
-import { toSgE164 } from "@/lib/phone";
+import { toSgE164, sgMobileOrNull } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -104,6 +104,26 @@ export async function POST(request: NextRequest) {
     (sessionAuth === "manual" || sessionAuth === "singpass")
   ) {
     formData.authMethod = sessionAuth;
+  }
+
+  // The mobile number decides who we call and what AirConnect and Ascend are
+  // told. The review form already requires /^[89]\d{7}$/ before it will
+  // submit, so no applicant coming through the funnel can fail this - only a
+  // request that skipped the form, which is how `' OR '1'='1` and `%` reached
+  // the applicants table on 8 Nov 2026.
+  const submittedMobile = sgMobileOrNull(formData.mobile);
+  if (formData.mobile && !submittedMobile) {
+    // Deliberately generic to the caller: the review form already enforces this
+    // rule, so a real applicant never reaches here - only a request that skipped
+    // the form, which should learn nothing about what is checked. The real
+    // reason goes to our logs, not the response.
+    console.warn("[apply/submit] rejected a mobile that is not a Singapore number", {
+      length: String(formData.mobile).length,
+    });
+    return NextResponse.json(
+      { error: "We couldn't process this application. Please try again." },
+      { status: 400 },
+    );
   }
 
   // Read the draft lead ID from the dedicated draft_lead cookie.
@@ -143,7 +163,7 @@ export async function POST(request: NextRequest) {
     fullName: formData.fullName || null,
     nric: formData.nric || null,
     email: formData.email || null,
-    mobile: formData.mobile || null,
+    mobile: submittedMobile,
     secondaryMobile: formData.secondaryMobile || null,
     postalCode: formData.postalCode || null,
     address: formData.address || null,

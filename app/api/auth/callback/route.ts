@@ -1,8 +1,10 @@
-import { randomUUID } from "crypto";
+import { randomUUID, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { saveMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { isDatabaseConfigured } from "@/lib/db/sql";
+import { throttleApplication } from "@/lib/apply-throttle";
+import { countRecentApplicants } from "@/lib/db/applicants";
 import { encodeSession } from "@/lib/apply-session";
 import { buildMyInfoPatch } from "@/lib/myinfo";
 import { describeMyinfoPayload } from "@/lib/myinfo-diagnostics";
@@ -71,7 +73,53 @@ export async function GET(request: NextRequest) {
   );
 }
 
+/**
+ * Whether this POST really came from the auth gateway.
+ *
+ * This endpoint mints a signed apply session from whatever MyInfo JSON it is
+ * given, so anyone who can reach it can create an application under any NRIC,
+ * name and mobile they choose. Until 2026 it had no check at all, and on
+ * 8 Nov that was found and used.
+ *
+ * Enforced only once AUTH_CALLBACK_SECRET is set, so our side can ship before
+ * the gateway starts sending the header rather than the two having to land
+ * together. While it is unset the endpoint stays open and says so on every
+ * request - set it the moment the gateway is ready.
+ */
+function fromAuthGateway(request: NextRequest): boolean {
+  const secret = process.env.AUTH_CALLBACK_SECRET?.trim();
+  if (!secret) {
+    console.warn(
+      "[auth/callback] AUTH_CALLBACK_SECRET is not set - this endpoint will mint a " +
+        "session for anyone who can reach it. Set it once the gateway sends the header.",
+    );
+    return true;
+  }
+
+  const given = request.headers.get("authorization") ?? "";
+  const want = `Bearer ${secret}`;
+  // Length first: timingSafeEqual throws on a mismatch rather than returning false.
+  return given.length === want.length && timingSafeEqual(Buffer.from(given), Buffer.from(want));
+}
+
 export async function POST(request: NextRequest) {
+  if (!fromAuthGateway(request)) {
+    console.error("[auth/callback] refused a request that did not come from the auth gateway");
+    return NextResponse.json({ code: 401, message: "Unauthorised." }, { status: 401 });
+  }
+
+  // A global ceiling on how fast applications can be created. Far above real
+  // volume, so a genuine applicant never meets it; a hard stop on the abnormal
+  // flood of 8 Nov 2026. Blunt on purpose, and independent of the gateway
+  // secret - it holds while that is still being set up, and after.
+  const throttle = await throttleApplication(countRecentApplicants);
+  if (!throttle.allowed) {
+    return NextResponse.json(
+      { code: 429, message: "Please try again shortly." },
+      { status: 429, headers: { "retry-after": String(throttle.retryAfterSeconds) } },
+    );
+  }
+
   const rawBody = await request.text();
   let payload: MyInfoPayload = {};
 

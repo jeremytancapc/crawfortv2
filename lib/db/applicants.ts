@@ -259,3 +259,11 @@ export async function setAscendIdentity(
       ascend_has_myinfo = ${input.hasMyinfo}
     where id = ${id}`;
 }
+
+/** How many applicants were created in the last `minutes` minutes. For the rate ceiling. */
+export async function countRecentApplicants(minutes: number): Promise<number> {
+  const row = await sqlOne<{ n: number }>`
+    select count(*)::int as n from applicants
+    where created_at > now() - make_interval(mins => ${minutes})`;
+  return row?.n ?? 0;
+}
