@@ -119,6 +119,19 @@ describe("the payload Ascend receives", () => {
     expect(myinfoAscendPayload(legacy)).toEqual(legacy);
   });
 
+  it("drops prototype-pollution keys from a forged payload", () => {
+    const forged = JSON.parse(
+      '{"sub":"u1","__proto__":{"polluted":true},"constructor":{"x":1},"person_info":{"uinfin":{"value":"S7790686Z"}}}',
+    );
+    const sent = myinfoAscendPayload(forged) as Record<string, unknown>;
+
+    expect(Object.prototype.hasOwnProperty.call(sent, "__proto__")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(sent, "constructor")).toBe(false);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined(); // Object.prototype stays clean
+    expect(sent.sub).toBe("u1");
+    expect(sent.uinfin).toEqual({ value: "S7790686Z" });
+  });
+
   it("never lets a claim overwrite one of the person's fields", () => {
     // The person is the point of the payload. If a claim ever collided with a
     // MyInfo field, losing the MyInfo one would be the worse outcome.

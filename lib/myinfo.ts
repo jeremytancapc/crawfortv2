@@ -76,9 +76,14 @@ export function myinfoAscendPayload(payload: Record<string, unknown>): Record<st
   const person = myinfoPersonData(payload);
   if (person === payload) return payload;
 
+  // Skip person_info (unwrapped separately) and the prototype-pollution keys:
+  // assigning claims["__proto__"] would reparent the object, and a forged
+  // payload can carry these. The callback already screens them, but the mapper
+  // must not depend on that.
+  const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
   const claims: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
-    if (key !== "person_info") claims[key] = value;
+    if (key !== "person_info" && !DANGEROUS_KEYS.has(key)) claims[key] = value;
   }
 
   return { ...claims, ...person };
