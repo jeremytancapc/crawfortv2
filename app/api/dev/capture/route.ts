@@ -40,10 +40,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getMyinfoRetrieval, saveMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { isDatabaseConfigured } from "@/lib/db/sql";
+import { devEndpointsBlocked } from "@/lib/dev-guard";
 
 export const runtime = "nodejs";
 
 function enabled(): boolean {
+  if (devEndpointsBlocked()) return false;
   return (
     process.env.MYINFO_CAPTURE_ENABLED === "true" || process.env.MYINFO_EDITOR_ENABLED === "true"
   );

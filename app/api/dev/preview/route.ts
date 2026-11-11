@@ -8,10 +8,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildMyInfoPatch } from "@/lib/myinfo";
+import { devEndpointsBlocked } from "@/lib/dev-guard";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  if (devEndpointsBlocked()) {
+    return NextResponse.json({ error: "Not available." }, { status: 403 });
+  }
   let myinfo: Record<string, unknown> = {};
   try {
     const body = (await request.json()) as { myinfo?: Record<string, unknown> };
