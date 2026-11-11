@@ -25,6 +25,7 @@
  */
 
 import { logExternalApi } from "@/lib/external-api-logger";
+import { redactAirconnectBody } from "./redact";
 
 /**
  * NOT "dashboard" - that value is shared by ~2,500+ other, unrelated calls
@@ -77,7 +78,7 @@ async function postToAirConnect(input: {
       url: input.url,
       method: "POST",
       headers,
-      body: input.body,
+      body: redactAirconnectBody(input.body),
       status: res.status,
       ok: res.ok,
       ms,

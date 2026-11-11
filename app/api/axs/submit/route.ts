@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
   const requestedLoanAmount = myinfo.axs?.loan_amount ?? 20000;
   const requestedTenure = myinfo.axs?.tenure ?? DEFAULT_TENURE;
 
-  console.info(`${LOG} processing`, { nric: nric.slice(0, 2) + "***", fullName, axsRef, idType });
+  console.info(`${LOG} processing`, { nric: nric.slice(0, 2) + "***", axsRef, idType });
 
   if (!nric) {
     return NextResponse.json({ error: "Missing uinfin (NRIC/FIN)" }, { status: 400 });
