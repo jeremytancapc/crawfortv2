@@ -28,6 +28,7 @@ import { setApplicantNric } from "@/lib/db/applicants";
 import { getMyinfoRetrieval, saveMyinfoRetrieval } from "@/lib/db/myinfo-retrievals";
 import { updateMyinfoProcessed } from "@/lib/db/myinfo-profiles";
 import { isDatabaseConfigured } from "@/lib/db/sql";
+import { devEndpointsBlocked } from "@/lib/dev-guard";
 import { applicantIdFromRequest } from "@/lib/income-session";
 import { looksLikeLeadUuid } from "@/lib/lead-id";
 import {
@@ -43,6 +44,7 @@ import {
 export const runtime = "nodejs";
 
 function enabled(): boolean {
+  if (devEndpointsBlocked()) return false;
   return process.env.MYINFO_EDITOR_ENABLED === "true" || process.env.MYINFO_CAPTURE_ENABLED === "true";
 }
 
