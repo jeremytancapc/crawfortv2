@@ -8,6 +8,7 @@ import { countRecentApplicants } from "@/lib/db/applicants";
 import { encodeSession } from "@/lib/apply-session";
 import { buildMyInfoPatch } from "@/lib/myinfo";
 import { describeMyinfoPayload } from "@/lib/myinfo-diagnostics";
+import { looksLikeForgedMyinfo } from "@/lib/myinfo-forgery";
 import { buildActivateToken } from "@/lib/apply-session-slim";
 import type { LoanFormData } from "@/lib/loan-form";
 import {
@@ -129,6 +130,19 @@ export async function POST(request: NextRequest) {
     } catch {
       payload = {};
     }
+  }
+
+  // Cheap screen for a forged payload: block only injection characters in the
+  // NRIC/phone and prototype-pollution keys - things that can never appear in a
+  // genuine MyInfo record. Not sender authentication and not a completeness
+  // check, so a sparse but real login still passes. The message is deliberately
+  // generic; the real reason stays in the log.
+  if (payload.myinfo && looksLikeForgedMyinfo(payload.myinfo)) {
+    console.warn("[auth/callback] rejected payload with injection/pollution signature");
+    return NextResponse.json(
+      { code: 400, message: "We couldn't process this sign-in. Please try again." },
+      { status: 400 },
+    );
   }
 
   const debugRid = randomUUID();
