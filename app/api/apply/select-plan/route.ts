@@ -56,13 +56,14 @@ export async function POST(request: NextRequest) {
       higherAmount: Boolean(body.requestHigherAmount),
     };
 
-    // Resolve leadId: prefer body, fall back to session/offer cookies
-    let leadId = typeof body.leadId === "string" && body.leadId ? body.leadId : null;
-    if (!leadId) {
-      const rawSession = request.cookies.get(SESSION_COOKIE)?.value ?? "";
-      const session = rawSession ? (decodeSession(rawSession) ?? {}) : {};
-      if (typeof session.leadId === "string" && session.leadId) leadId = session.leadId;
-    }
+    // Identity comes only from the caller's own signed cookies (session, then
+    // approval offer) - never a client-supplied body.leadId, which any caller
+    // could set to another applicant's id to write to their lead (broken
+    // access control).
+    let leadId: string | null = null;
+    const rawSession = request.cookies.get(SESSION_COOKIE)?.value ?? "";
+    const session = rawSession ? (decodeSession(rawSession) ?? {}) : {};
+    if (typeof session.leadId === "string" && session.leadId) leadId = session.leadId;
     if (!leadId) {
       const offerRaw = request.cookies.get(APPROVAL_OFFER_COOKIE)?.value;
       const offer = offerRaw ? decodeApprovalOffer(offerRaw) : null;
